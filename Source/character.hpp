@@ -7,6 +7,9 @@
 #include "behavior_system.hpp"
 #include "input/input_mgr.hpp"
 
+#include "transform.hpp"
+#include "animator.hpp"
+
 class Character;
 
 class CharaIdle : public State<Character> {
@@ -29,10 +32,17 @@ public:
 class Character : public Updatable {
     CLONEABLE
     RTTR_ENABLE(Updatable)
+    friend CharaRun;
+    friend CharaIdle;
 public:
     Character()
     : motion_fsm(this) {
         
+    }
+
+    virtual void onCreate() {
+        transform = get<Transform>();
+        animator = get<Animator>();
     }
 
     virtual void init() {
@@ -93,6 +103,9 @@ public:
 
     gfxm::vec2 direction;
 private:
+    Animator* animator = 0;
+    Transform* transform = 0;
+
     InputListener* input_lis;
 
     StateMachine<Character> motion_fsm;
@@ -108,16 +121,14 @@ STATIC_RUN(Character)
 }
 
 void CharaRun::update(Character* chara) {
-    Transform* t = chara->getObject()->get<Transform>();
     Camera* current_cam = chara->getObject()->getScene()->getCurrentCamera();
     gfxm::vec4 dir = gfxm::vec4(chara->direction.x, 0.0f, chara->direction.y, 0.0f);
-    dir = current_cam->getObject()->get<Transform>()->getTransform() * dir;
-    t->lookAt(
-        t->worldPosition() + gfxm::vec3(dir.x, 0.0f, dir.z), 
+    dir = current_cam->get<Transform>()->getTransform() * dir;
+    chara->transform->lookAt(
+        chara->transform->worldPosition() + gfxm::vec3(dir.x, 0.0f, dir.z), 
         gfxm::vec3(0.0f, 1.0f, 0.0f),
         0.3f
     );
-    t->translate(gfxm::normalize(gfxm::vec3(dir.x, 0.0f, dir.z)) * 2.0f * 1.0f/60.0f);
 }
 
 #endif

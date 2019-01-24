@@ -44,7 +44,7 @@ void Transform::rotate(const gfxm::quat& q)
 
 void Transform::lookAt(const gfxm::vec3& tgt, const gfxm::vec3& up_vec, float f) {
     gfxm::mat3 mat_rotation (1.0f);
-    gfxm::vec3 forward = gfxm::normalize(tgt - position());
+    gfxm::vec3 forward = gfxm::normalize(worldPosition() - tgt);
     gfxm::vec3 up = gfxm::normalize(up_vec);
     gfxm::vec3 right = gfxm::normalize(gfxm::cross(forward, up));
 

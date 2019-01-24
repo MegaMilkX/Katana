@@ -30,6 +30,9 @@ void Editor::Init() {
         "ExitPlayMode",
         [this]() {
             play_mode = false;
+            // for debugging
+            // TODO: REMOVE
+            //scene->copyFrom(game.getScene());
         }
     );
 

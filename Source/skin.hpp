@@ -8,15 +8,17 @@
 class Skin : public Component {
     CLONEABLE
 public:
-    std::vector<Transform*> bones;
+    std::vector<size_t> bones;
     std::vector<gfxm::mat4> bind_pose;
+
+    Skin() {}
 
     virtual void _editorGui() {
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
         ImGui::Text("Bones");
         ImGui::BeginChild("Bones", ImVec2(0, 260), false, window_flags);
         for(auto t : bones) {
-            ImGui::Text(t->getObject()->getName().c_str());
+            ImGui::Text(getScene()->getComponent<Transform>(t)->getObject()->getName().c_str());
         }
         ImGui::EndChild();
     }

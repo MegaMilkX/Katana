@@ -34,6 +34,10 @@ public:
     virtual void onCreate() {}
     virtual Component* clone() { return 0; }
 
+    Scene* getScene();
+    template<typename T>
+    T*     get();
+
     virtual void serialize(std::ostream& out) {}
     virtual void deserialize(std::istream& in) {}
 
@@ -44,15 +48,8 @@ private:
 };
 
 template<typename T>
-class CompHandle {
-public:
-    T* operator->() {
-        if(!scene) return 0;
-        return scene->getComponent<T>(index);
-    }
-private:
-    Scene* scene = 0;
-    int index = 0;
-};
+T* Component::get() {
+    return scene_object->get<T>();
+}
 
 #endif

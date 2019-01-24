@@ -280,7 +280,7 @@ public:
             std::vector<gfxm::mat4> inverse_bind_transforms;
             std::vector<gfxm::mat4> skin_transforms;
             for(auto a : skin->bones) {
-                skin_transforms.emplace_back(a->getTransform());
+                skin_transforms.emplace_back(scene->getComponent<Transform>(a)->getTransform());
             }
             for(auto a : skin->bind_pose) {
                 inverse_bind_transforms.emplace_back(a);

@@ -4,30 +4,23 @@
 #include "component.hpp"
 #include "resource/animation.hpp"
 #include "resource/skeleton.hpp"
-#include <ozz/animation/offline/raw_skeleton.h>
-#include <ozz/animation/runtime/skeleton.h>
-#include <ozz/animation/offline/skeleton_builder.h>
 #include <ozz/animation/runtime/sampling_job.h>
 #include <ozz/animation/runtime/blending_job.h>
 #include <ozz/animation/runtime/local_to_model_job.h>
 #include <ozz/base/maths/soa_transform.h>
 
+#include "skeleton_anim_layer.hpp"
 
 class Animator : public Component {
-    //CLONEABLE
+    CLONEABLE
+    friend SkeletonAnimLayer;
 public:
-    std::shared_ptr<Skeleton> skeletom_;
-
-    ozz::animation::Skeleton* skeleton = 0;
-
     Animator() {
         auto& layer0 = addLayer();
         layer0.anim_index = 0;
     }
 
     ~Animator() {
-        if(skeleton)
-            ozz::memory::default_allocator()->Delete(skeleton);
     }
 
     struct Layer {
@@ -60,6 +53,10 @@ public:
         float weight;
     };
 
+    void setSkeleton(std::shared_ptr<Skeleton> skel) {
+        skeleton = skel;
+    }
+
     void addAnim(std::shared_ptr<Animation> anim) {
         anims.emplace_back(anim);
     }
@@ -73,6 +70,11 @@ public:
     }
 
     void Update(float dt) {
+        if(!this->skeleton) {
+            return;
+        }
+        ozz::animation::Skeleton* skeleton = this->skeleton->getOzzSkeleton();
+
         ozz::animation::SamplingCache* cache = 
             ozz::memory::default_allocator()->New<ozz::animation::SamplingCache>(skeleton->num_joints());
         ozz::Range<ozz::math::SoaTransform> locals_fin = 
@@ -80,7 +82,15 @@ public:
         ozz::Range<ozz::math::Float4x4> models =
             ozz::memory::default_allocator()->AllocateRange<ozz::math::Float4x4>(skeleton->num_joints());
         
+        // Final root motion translation
+        gfxm::vec3 rm_pos_final = gfxm::vec3(0.0f, 0.0f, 0.0f);
+        // Final root motion rotation
+        gfxm::quat rm_rot_final = gfxm::quat(0.0f, 0.0f, 0.0f, 1.0f);
+
         for(auto& l : layers) {
+            if(l.anim_index >= anims.size()) {
+                continue;
+            }
             if(anims[l.anim_index]->anim->duration() == 0.0f) {
                 continue;
             }
@@ -94,8 +104,11 @@ public:
 
             Transform* root_motion_transform = 0;
             if(!anims[l.anim_index]->root_motion_node.empty()) {
-                root_motion_transform = 
-                    getObject()->findObject(anims[l.anim_index]->root_motion_node)->get<Transform>();
+                SceneObject* root_so = getObject()->findObject(anims[l.anim_index]->root_motion_node);
+                if(root_so) {
+                    root_motion_transform = 
+                        root_so->get<Transform>();
+                }
             }
 
             ozz::animation::SamplingJob sampling_job;
@@ -109,22 +122,27 @@ public:
                 return;
             }
 
+            gfxm::vec3 root_motion_pos_delta;
+            gfxm::quat root_motion_rot_delta;
+            bool do_root_motion = anims[l.anim_index]->root_motion_enabled && root_motion_transform;
+            if(do_root_motion) {
+                gfxm::vec3 delta_pos = anims[l.anim_index]->root_motion_pos.delta(layer_cursor_prev, l.cursor);
+                gfxm::vec3 delta_pos4 = gfxm::vec4(delta_pos.x, delta_pos.y, delta_pos.z, 1.0f);
+                gfxm::quat delta_q = anims[l.anim_index]->root_motion_rot.delta(layer_cursor_prev, l.cursor);
+                if(root_motion_transform->parentTransform()) {
+                    delta_pos4 = root_motion_transform->getParentTransform() * delta_pos4;
+                    gfxm::quat w_rot = root_motion_transform->worldRotation();
+                }
+                root_motion_pos_delta = gfxm::vec3(delta_pos4.x, delta_pos4.y, delta_pos4.z);
+                root_motion_rot_delta = gfxm::inverse(root_motion_transform->rotation()) * delta_q * root_motion_transform->rotation();
+            }
+
             switch(l.mode) {
             case Layer::BASE:
                 memcpy(locals_fin.begin, locals.begin, locals_fin.size());
-                if(anims[l.anim_index]->root_motion_enabled && root_motion_transform) {
-                    gfxm::vec3 delta_pos = anims[l.anim_index]->root_motion_pos.delta(layer_cursor_prev, l.cursor);
-                    gfxm::vec3 delta_pos4 = gfxm::vec4(delta_pos.x, delta_pos.y, delta_pos.z, 1.0f);
-                    gfxm::quat delta_q = anims[l.anim_index]->root_motion_rot.delta(layer_cursor_prev, l.cursor);
-                    if(root_motion_transform->parentTransform()) {
-                        delta_pos4 = root_motion_transform->getParentTransform() * delta_pos4;
-                        gfxm::quat w_rot = root_motion_transform->worldRotation();
-                        delta_q = delta_q * gfxm::inverse(w_rot);
-                    }
-                    delta_pos = gfxm::vec3(delta_pos4.x, delta_pos4.y, delta_pos4.z);
-                    Transform* t = getObject()->get<Transform>();
-                    t->translate(delta_pos);
-                    t->rotate(delta_q);
+                if(root_motion_enabled) {
+                    rm_pos_final = root_motion_pos_delta;
+                    rm_rot_final = root_motion_rot_delta;
                 }
                 break;
             case Layer::BLEND: 
@@ -150,6 +168,11 @@ public:
                     }
                     memcpy(locals_fin.begin, locals_blend.begin, locals_fin.size());
                     ozz::memory::default_allocator()->Deallocate(locals_blend);
+
+                    if(root_motion_enabled) {
+                        rm_pos_final = gfxm::lerp(rm_pos_final, root_motion_pos_delta, l.weight);
+                        rm_rot_final = gfxm::slerp(rm_rot_final, root_motion_rot_delta, l.weight);
+                    }
                 }
                 break;
             case Layer::ADD:
@@ -178,6 +201,12 @@ public:
                     }
                     memcpy(locals_fin.begin, locals_blend.begin, locals_fin.size());
                     ozz::memory::default_allocator()->Deallocate(locals_blend);
+
+                    // NOTE: Additive root motion is untested
+                    if(root_motion_enabled) {
+                        rm_pos_final = gfxm::lerp(rm_pos_final, rm_pos_final + root_motion_pos_delta, l.weight);
+                        rm_rot_final = gfxm::slerp(rm_rot_final, root_motion_rot_delta * rm_rot_final, l.weight);
+                    }
                 }
                 break;
             };
@@ -201,6 +230,13 @@ public:
             so->get<Transform>()->setTransform(*(gfxm::mat4*)&models[i]);
         }
 
+        if(root_motion_enabled) {
+            Transform* t = getObject()->get<Transform>();
+            
+            t->translate(rm_pos_final);
+            t->rotate(rm_rot_final);
+        }
+
         ozz::memory::default_allocator()->Deallocate(locals_fin);
         ozz::memory::default_allocator()->Deallocate(models);
         ozz::memory::default_allocator()->Delete(cache);
@@ -208,6 +244,8 @@ public:
 
     size_t selected_index = 0;
     virtual void _editorGui() {
+        ImGui::Checkbox("Enable root motion", &root_motion_enabled);
+
         ImGui::Text("Layers");
         ImGui::BeginChild("Layers", ImVec2(0, 100), false, 0);
         
@@ -228,7 +266,12 @@ public:
             }
         }
         if(!layers.empty()) {
-            if (ImGui::BeginCombo("Current anim", anims[layers[selected_index].anim_index]->Name().c_str(), 0)) {
+            std::string current_anim_name = "";
+            if(!anims.empty()) {
+                current_anim_name = anims[layers[selected_index].anim_index]->Name();
+            }
+
+            if (ImGui::BeginCombo("Current anim", current_anim_name.c_str(), 0)) {
                 for(size_t i = 0; i < anims.size(); ++i) {
                     if(ImGui::Selectable(anims[i]->Name().c_str(), layers[selected_index].anim_index == i)) {
                         layers[selected_index].anim_index = i;
@@ -264,8 +307,10 @@ public:
         //ImGui::ListBox("Animations", 0, anim_list.data(), anim_list.size(), 4);
     }
 private:
+    bool root_motion_enabled = true;
     std::vector<Layer> layers;
     std::vector<std::shared_ptr<Animation>> anims;
+    std::shared_ptr<Skeleton> skeleton;
 };
 STATIC_RUN(Animator)
 {

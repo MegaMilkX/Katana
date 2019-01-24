@@ -9,6 +9,8 @@
 
 #include "../util/animation/curve.h"
 
+#include "skeleton.hpp"
+
 class Animation : public Resource {
 public:
     ozz::animation::Animation* anim = 0;
@@ -16,6 +18,8 @@ public:
     bool root_motion_enabled = false;
     curve<gfxm::vec3> root_motion_pos;
     curve<gfxm::quat> root_motion_rot;
+
+    void initTracks(std::shared_ptr<Skeleton> skel);
 
     ~Animation() {
         if(anim)

@@ -17,10 +17,10 @@
 #include "util/split.hpp"
 #include "asset_params.hpp"
 
-inline void resourcesFromAssimpScene(
+inline void meshesFromAssimpScene(
     const aiScene* ai_scene, 
     Scene* scene, 
-    std::set<std::string>& bones, 
+    std::shared_ptr<Skeleton> skeleton,
     AssetParams& asset_params
 ) {
     unsigned int mesh_count = ai_scene->mNumMeshes;
@@ -71,7 +71,7 @@ inline void resourcesFromAssimpScene(
             for(unsigned j = 0; j < ai_mesh->mNumBones; ++j) {
                 unsigned int bone_index = j;
                 aiBone* bone = ai_mesh->mBones[j];
-                bones.insert(bone->mName.C_Str());
+                skeleton->addBone(bone->mName.C_Str(), gfxm::mat4(1.0f));
                 
                 for(unsigned k = 0; k < bone->mNumWeights; ++k) {
                     aiVertexWeight& w = bone->mWeights[k];
@@ -107,7 +107,14 @@ inline void resourcesFromAssimpScene(
 
         scene->addLocalResource(mesh_ref);
     }
+}
 
+inline void animationsFromAssimpScene(
+    const aiScene* ai_scene, 
+    Scene* scene, 
+    std::shared_ptr<Skeleton> skeleton,
+    AssetParams& asset_params
+) {
     for(unsigned int i = 0; i < ai_scene->mNumAnimations; ++i) {
         aiAnimation* ai_anim = ai_scene->mAnimations[i];
         double fps = ai_anim->mTicksPerSecond;
@@ -125,20 +132,20 @@ inline void resourcesFromAssimpScene(
 
         for(unsigned int j = 0; j < ai_anim->mNumChannels; ++j) {
             aiNodeAnim* ai_node_anim = ai_anim->mChannels[j];
-            bones.insert(ai_node_anim->mNodeName.C_Str());
+            skeleton->addBone(ai_node_anim->mNodeName.C_Str(), gfxm::mat4(1.0f));
         }
 
         ozz::animation::offline::RawAnimation raw_anim;
         raw_anim.duration = (float)len;
-        raw_anim.tracks.resize(bones.size());
+        raw_anim.tracks.resize(skeleton->boneCount());
 
         for(unsigned int j = 0; j < ai_anim->mNumChannels; ++j) {
             aiNodeAnim* ai_node_anim = ai_anim->mChannels[j];
-            auto bone_it = bones.find(ai_node_anim->mNodeName.C_Str());
-            if(bone_it == bones.end()) continue;
+            std::string bone_node = ai_node_anim->mNodeName.C_Str();
+            Skeleton::Bone* bone = skeleton->getBone(bone_node);
+            if(!bone) continue;
 
-            auto track_id = std::distance(bones.begin(), bone_it);
-            auto& track = raw_anim.tracks[track_id];
+            auto& track = raw_anim.tracks[bone->id];
 
             if(root_motion_node_name == ai_node_anim->mNodeName.C_Str()) {
                 if(ai_node_anim->mNumPositionKeys) {
@@ -238,22 +245,44 @@ inline void resourcesFromAssimpScene(
         if(is_additive) {
             LOG("Loading " << anim->Name() << " as additive animation");
             ozz::animation::offline::AdditiveAnimationBuilder builder;
-            if(!builder(raw_anim, &raw_anim)) {
+            ozz::animation::offline::RawAnimation raw_anim_add;
+            if(!builder(raw_anim, &raw_anim_add)) {
                 LOG_WARN("Failed to build additive raw animation");
             }
-        }
-        ozz::animation::offline::AnimationBuilder builder;
-        anim->anim = builder(raw_anim);
 
+            ozz::animation::offline::AnimationBuilder builder2;
+            anim->anim = builder2(raw_anim_add);
+        } else {
+            ozz::animation::offline::AnimationBuilder builder;
+            anim->anim = builder(raw_anim);
+        }
         anim->root_motion_node = root_motion_node_name;
 
         scene->addLocalResource(anim);
     }
 }
 
-inline void objectFromAssimpNode(const aiScene* ai_scene, aiNode* node, SceneObject* root, SceneObject* object, size_t base_mesh_index, std::vector<std::function<void(void)>>& tasks) {
+inline void resourcesFromAssimpScene(
+    const aiScene* ai_scene, 
+    Scene* scene, 
+    std::shared_ptr<Skeleton> skeleton,
+    AssetParams& asset_params
+) {
+    meshesFromAssimpScene(ai_scene, scene, skeleton, asset_params);
+    animationsFromAssimpScene(ai_scene, scene, skeleton, asset_params);
+}
+
+inline void objectFromAssimpNode(
+    const aiScene* ai_scene, 
+    aiNode* node, 
+    SceneObject* root, 
+    SceneObject* object, 
+    size_t base_mesh_index, 
+    std::vector<std::function<void(void)>>& tasks,
+    std::shared_ptr<Skeleton> skeleton
+) {
     for(unsigned i = 0; i < node->mNumChildren; ++i) {
-        objectFromAssimpNode(ai_scene, node->mChildren[i], root, object->createChild(), base_mesh_index, tasks);
+        objectFromAssimpNode(ai_scene, node->mChildren[i], root, object->createChild(), base_mesh_index, tasks, skeleton);
     }
 
     object->setName(node->mName.C_Str());
@@ -270,11 +299,13 @@ inline void objectFromAssimpNode(const aiScene* ai_scene, aiNode* node, SceneObj
                 aiBone* bone = ai_mesh->mBones[j];
                 std::string name(bone->mName.data, bone->mName.length);
 
-                tasks.emplace_back([skin, bone, name, object, root](){
+                tasks.emplace_back([skin, bone, name, object, root, skeleton](){
                     SceneObject* so = root->findObject(name);
                     if(so) {
-                        skin->bones.emplace_back(so->get<Transform>());
+                        skin->bones.emplace_back(so->get<Transform>()->getId());
                         skin->bind_pose.emplace_back(gfxm::transpose(*(gfxm::mat4*)&bone->mOffsetMatrix));
+                        // TODO: Refactor?
+                        skeleton->addBone(bone->mName.C_Str(), *(gfxm::mat4*)&bone->mOffsetMatrix);
                     }
                 });
             }
@@ -329,8 +360,12 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
 
     std::vector<std::function<void(void)>> deferred_tasks;
 
-    std::set<std::string> bones;
-    resourcesFromAssimpScene(ai_scene, scene, bones, asset_params);
+    std::shared_ptr<Skeleton> skeleton(new Skeleton());
+    skeleton->Storage(Resource::LOCAL);
+    skeleton->Name("Skeleton");
+    scene->addLocalResource(skeleton);
+
+    resourcesFromAssimpScene(ai_scene, scene, skeleton, asset_params);
 
     for(unsigned i = 0; i < ai_rootNode->mNumChildren; ++i) {
         objectFromAssimpNode(
@@ -339,43 +374,20 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
             root, 
             root->createChild(), 
             base_mesh_index, 
-            deferred_tasks
+            deferred_tasks,
+            skeleton
         );
     }
 
     if(ai_scene->mNumAnimations > 0) {
         auto animator = root->get<Animator>();
-        ozz::animation::offline::RawSkeleton raw_skel;
-        raw_skel.roots.resize(bones.size());
-        /*
-        ozz::animation::offline::RawSkeleton::Joint& root = raw_skel.roots[0];
-        root.name = "root";
-        root.transform.translation = ozz::math::Float3(0.0f, 0.0f, 0.0f);
-        root.transform.rotation = ozz::math::Quaternion(0.f, 0.f, 0.f, 1.f);
-        root.transform.scale = ozz::math::Float3(1.f, 1.f, 1.f);
-
-        root.children.resize(bones.size());
-        */
-        int i = 0;
-        for(auto b : bones) {
-            ozz::animation::offline::RawSkeleton::Joint& j = raw_skel.roots[i];
-            j.name = b.c_str();
-            ++i;
-        }
-
-        if(!raw_skel.Validate()) {
-            LOG_WARN("Failed to validate skeleton");
-        } else {
-            ozz::animation::offline::SkeletonBuilder builder;
-            ozz::animation::Skeleton* skel = builder(raw_skel);
-            animator->skeleton = skel;
+        if(skeleton->buildOzzSkeleton()) {
+            animator->setSkeleton(skeleton);
         }
     }
 
     for(unsigned int i = 0; i < ai_scene->mNumAnimations; ++i) {
         auto animator = root->get<Animator>();
-        //auto ai_anim = ai_scene->mAnimations[i];
-        //animDriver->AddAnim(ai_anim->mName.data, importData.anims[i]);
         animator->addAnim(scene->getLocalResource<Animation>(base_anim_index + i));
     }
 
@@ -392,6 +404,8 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
     } else {
         root->setName("object");
     }
+
+    LOG("Fbx skeleton size: " << skeleton->boneCount());
 
     return true;
 }

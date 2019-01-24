@@ -6,6 +6,22 @@
 #include <map>
 #include <string>
 
+template<typename T>
+class CmpHdl {
+    friend Scene;
+public:
+    CmpHdl() {}
+    CmpHdl(Scene* scene, int index) 
+    : scene(scene), index(index) {}
+    T* operator->() {
+        if(!scene) return 0;
+        return scene->components.at(rttr::type::get<T>())[index].get();
+    }
+private:
+    Scene* scene = 0;
+    int index = 0;
+};
+
 class Scene;
 class SceneObject {
     friend Scene;
