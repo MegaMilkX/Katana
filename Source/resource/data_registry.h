@@ -12,6 +12,10 @@ public:
     void ScanArchives();
     void ScanFilesystem(const std::string& rootDir);
 
+    void Clear() {
+        dataSources.clear();
+    }
+
     DataSourceRef Get(const std::string& name) {
         if(dataSources.count(name) == 0) return 0;
         return dataSources[name];

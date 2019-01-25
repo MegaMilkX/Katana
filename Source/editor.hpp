@@ -15,6 +15,7 @@
 #include "editor_scene_tree.hpp"
 #include "editor_object_inspector.hpp"
 #include "editor_console.hpp"
+#include "editor_dir_view.hpp"
 
 #include "scene.hpp"
 
@@ -51,6 +52,7 @@ private:
     EditorSceneTree scene_tree;
     EditorObjectInspector object_inspector;
     EditorConsole console;
+    EditorDirView dir_view;
     EditorScene scene_window;
 
     Scene* scene;

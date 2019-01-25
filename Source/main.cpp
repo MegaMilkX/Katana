@@ -60,35 +60,19 @@ void cleanupWindow() {
     glfwTerminate();
 }
 
-#include "util/filesystem.hpp"
-#include "resource/data_registry.h"
-
-void initFilesystemResources(const std::string& rootDir) {
-    std::vector<std::string> files =
-        find_all_files(rootDir, "*.scn;*.geo;*.anim;*.mat;*.png;*.jpg;*.jpeg");
-    std::vector<std::string> resNames = files;
-    for(auto& f : resNames) {
-        f.erase(f.find_first_of(rootDir), rootDir.size());
-        if(f[0] == '\\') f.erase(0, 1);
-        std::replace(f.begin(), f.end(), '\\', '/');
-    }
-
-    for(size_t i = 0; i < files.size(); ++i) {
-        GlobalDataRegistry().Add(
-            resNames[i],
-            DataSourceRef(new DataSourceFilesystem(files[i]))
-        );
-    }
-}
+#include "util/init_filesystem_resources.hpp"
 
 #include "input/input_mgr.hpp"
 #include "input/input_glfw.hpp"
+
+#include "shader_factory.hpp"
 
 int main() {
     initFilesystemResources(get_module_dir());
     if(!initWindow()) {
         return 0;
     }
+    ShaderFactory::init();
 
     /*
     InputKeyboardMouseWin32* keyboardWin32 = new InputKeyboardMouseWin32(window);
@@ -118,6 +102,7 @@ int main() {
 
     game.cleanup();
 
+    ShaderFactory::cleanup();
     cleanupWindow();
     return 0;
 }

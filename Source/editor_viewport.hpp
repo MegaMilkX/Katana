@@ -3,6 +3,8 @@
 
 #include "editor_window.hpp"
 
+#include "g_buffer.hpp"
+
 #include "gl/frame_buffer.hpp"
 #include "gl/vertex_buffer.hpp"
 #include "gl/shader_program.h"
@@ -274,6 +276,9 @@ public:
         ImVec2 sz = ImGui::GetWindowSize();
         if(vp_size.x != sz.x || vp_size.y != sz.y) {
             vp_size = sz;
+            
+            g_buffer.resize((unsigned)sz.x, (unsigned)sz.y);
+
             frame_buffer.reinitBuffers((unsigned)sz.x, (unsigned)sz.y);
             fb_silhouette.reinitBuffers((unsigned)sz.x, (unsigned)sz.y);
             fb_fin.reinitBuffers((unsigned)sz.x, (unsigned)sz.y);
@@ -291,12 +296,13 @@ public:
         tcam.rotate(cam_angle_x, tcam.right());
         tcam.translate(tcam.back() * cam_zoom);
         gfxm::mat4 view = gfxm::inverse(tcam.matrix()); 
-
+        
         renderer->draw(
             &frame_buffer,
             proj,
             view
         );
+        //renderer->draw(&g_buffer, &frame_buffer, proj, view);
 
         if(editorState().selected_object) {
             gl::DrawInfo di = { 0 };
@@ -442,6 +448,7 @@ private:
     std::vector<gl::DrawInfo> draw_list;
     
     gl::IndexedMesh quad_mesh;
+    GBuffer g_buffer;
     gl::FrameBuffer frame_buffer;
     gl::FrameBuffer fb_silhouette;
     gl::FrameBuffer fb_fin;

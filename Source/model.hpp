@@ -3,6 +3,7 @@
 
 #include "component.hpp"
 #include "resource/mesh.hpp"
+#include "resource/material.hpp"
 #include "resource/resource_factory.h"
 
 inline void writeResource(std::ostream& out, std::shared_ptr<Resource> res, Scene* scene);
@@ -11,6 +12,7 @@ class Model : public Component {
     CLONEABLE
 public:
     std::shared_ptr<Mesh> mesh;
+    std::shared_ptr<Material> material;
 
     virtual void serialize(std::ostream& out) {
         if(mesh) {
@@ -60,6 +62,33 @@ public:
                 }
             }
         }
+    }
+
+    virtual void _editorGui() {
+        ImGui::Text("Mesh "); ImGui::SameLine();
+        if(ImGui::SmallButton("MESH_BUTTON")) {
+
+        }
+        ImGui::Text("Material "); ImGui::SameLine();
+        std::string mat_name = "! No material !";
+        if(material) {
+            mat_name = material->Name();
+        }
+        if(ImGui::SmallButton(mat_name.c_str())) {
+
+        }
+        ImGui::PushID(mat_name.c_str());
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
+                //SceneObject* tgt_dnd_so = *(SceneObject**)payload->Data;
+                //tgt_dnd_so->setParent(so);
+                std::string fname = (char*)payload->Data;
+                LOG("Payload received: " << fname);
+                material = getResource<Material>(fname);
+            }
+            ImGui::EndDragDropTarget();
+        }
+        ImGui::PopID();
     }
 };
 STATIC_RUN(Model)

@@ -8,6 +8,7 @@
 #include "transform.hpp"
 
 #include "gl/frame_buffer.hpp"
+#include "g_buffer.hpp"
 
 #include "draw.hpp"
 
@@ -23,12 +24,20 @@ public:
 
     Renderer()
     : scene(0) {
+        texture_white_px.reset(new Texture2D());
+        unsigned char wht[3] = { 255, 255, 255 };
+        texture_white_px->Data(wht, 1, 1, 3);
+
+        texture_black_px.reset(new Texture2D());
+        unsigned char blk[3] = { 0, 0, 0};
+        texture_black_px->Data(blk, 1, 1, 3);
+
         {
             gl::Shader vs(GL_VERTEX_SHADER);
             gl::Shader fs(GL_FRAGMENT_SHADER);
             vs.source(R"(
                 #version 450
-                in vec3 Vertex;
+                in vec3 Position;
                 in vec2 UV;
                 in vec3 Normal;
                 uniform mat4 Projection;
@@ -42,7 +51,7 @@ public:
                     ViewDir = (inverse(View) * vec4(0, 0, -1, 0)).xyz;
                     UVFrag = UV;
                     NormalFrag = normalize((Model * vec4(Normal, 0.0)).xyz);
-                    gl_Position = Projection * View * Model * vec4(Vertex, 1.0);
+                    gl_Position = Projection * View * Model * vec4(Position, 1.0);
                 })"
             );
             fs.source(R"(
@@ -51,13 +60,16 @@ public:
                 in vec3 NormalFrag;
                 in vec3 ViewDir;
                 out vec4 fragOut;
-                uniform sampler2D tex;
+                uniform sampler2D tex_albedo;
+                
+                uniform vec3 u_color;
+
                 void main()
                 {
-                    vec3 albedo = vec3(0.5, 0.5, 0.5);
+                    vec3 albedo = u_color;
                     float lightness = dot(NormalFrag, -ViewDir);
                     vec3 n = ((NormalFrag) * 0.5f ) + 0.5f;
-                    fragOut = vec4(albedo * lightness, 1.0);//texture(tex, UVFrag);
+                    fragOut = texture(tex_albedo, UVFrag);
                 })"
             );
             vs.compile();
@@ -65,13 +77,13 @@ public:
 
             prog.attachShader(&vs);
             prog.attachShader(&fs);
-            prog.bindAttrib(gl::POSITION, "Vertex");
+            prog.bindAttrib(gl::POSITION, "Position");
             prog.bindAttrib(gl::UV, "UV");
             prog.bindAttrib(gl::NORMAL, "Normal");
             prog.bindFragData(0, "fragOut");
             prog.link();
             prog.use();
-            glUniform1i(prog.getUniform("tex"), 0);
+            glUniform1i(prog.getUniform("tex_albedo"), 0);
         }
 
         {
@@ -243,6 +255,30 @@ public:
             draw_info.offset = 0;
             memcpy(draw_info.transform, (void*)&kv.second.mdl->getObject()->get<Transform>()->getTransform(), sizeof(draw_info.transform)); 
             
+            draw_info.textures[0] = texture_white_px->GetGlName();
+            draw_info.textures[1] = texture_black_px->GetGlName();
+            draw_info.textures[2] = texture_black_px->GetGlName();
+            draw_info.textures[3] = texture_white_px->GetGlName();
+
+            if(kv.second.mdl->material) {
+                Texture2D* tex = kv.second.mdl->material->albedo.get();
+                if(tex) {
+                    draw_info.textures[0] = tex->GetGlName();
+                }
+                tex = kv.second.mdl->material->normal.get();
+                if(tex) {
+                    draw_info.textures[1] = tex->GetGlName();
+                }
+                tex = kv.second.mdl->material->metallic.get();
+                if(tex) {
+                    draw_info.textures[2] = tex->GetGlName();
+                }
+                tex = kv.second.mdl->material->roughness.get();
+                if(tex) {
+                    draw_info.textures[3] = tex->GetGlName();
+                }
+            }
+
             if(kv.second.skin) {
                 draw_info.user_ptr = (uint64_t)kv.second.skin;
                 draw_list_skin.emplace_back(draw_info);
@@ -264,6 +300,9 @@ public:
                 glActiveTexture(GL_TEXTURE0 + t);
                 glBindTexture(GL_TEXTURE_2D, d.textures[t]);
             }
+
+            glUniform3f(prog->getUniform("u_color"), 0.5f, 0.5f, 0.5f);
+
             glBindVertexArray(d.vao);
             glDrawElements(GL_TRIANGLES, d.index_count, GL_UNSIGNED_INT, (GLvoid*)d.offset);
         }
@@ -326,6 +365,11 @@ public:
     void draw(gl::FrameBuffer* fb, gfxm::mat4 projection, gfxm::mat4 view) {
         draw(fb->getId(), fb->getWidth(), fb->getHeight(), projection, view);
     }
+
+    void draw(GBuffer* g_buffer, gl::FrameBuffer* fb_final, gfxm::mat4& projection, gfxm::mat4& view) {
+
+    }
+
     void drawPickBuffer(gl::FrameBuffer* fb, gfxm::mat4 projection, gfxm::mat4 view) {
         std::vector<gl::DrawInfo> draw_list;
         for(auto kv : objects) {
@@ -365,9 +409,15 @@ public:
     }
 private:
     Scene* scene;
+
+    gl::ShaderProgram prog_pbr_solid;
+    gl::ShaderProgram prog_pbr_skin;
+
     gl::ShaderProgram prog;
     gl::ShaderProgram prog_skin;
     gl::ShaderProgram prog_pick;
+    std::shared_ptr<Texture2D> texture_white_px;
+    std::shared_ptr<Texture2D> texture_black_px;
 
     std::map<SceneObject*, ObjectInfo> objects;
 };

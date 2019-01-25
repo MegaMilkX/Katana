@@ -8,6 +8,8 @@
 
 #include "util/has_suffix.hpp"
 
+#include "util/filesystem.hpp"
+
 Editor::Editor()
 : scene_tree(&object_inspector, &scene_window) {
 
@@ -15,6 +17,8 @@ Editor::Editor()
 
 void Editor::Init() {
     ImGuiInit();
+
+    dir_view.init(get_module_dir() + "\\");
 
     scene = Scene::create();
 
@@ -64,13 +68,15 @@ void Editor::AddWindow(EditorWindow* win) {
 int Editor::SetupLayout() {
     ImGuiID dockspace_id = ImGui::GetID("MyDockspace");
 
-    ImGuiID dsid_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.20f, NULL, &dockspace_id);
-    ImGuiID dsid_right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.30f, NULL, &dockspace_id);
-    ImGuiID dsid_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.20f, NULL, &dockspace_id);
+    ImGuiID dsid_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.15f, NULL, &dockspace_id);
+    ImGuiID dsid_right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.20f, NULL, &dockspace_id);
+    ImGuiID dsid_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.30f, NULL, &dockspace_id);
+    //ImGuiID dsid_down_right = ImGui::DockBuilderSplitNode(dsid_down, ImGuiDir_Right, 0.40f, NULL, &dsid_down);
 
     ImGui::DockBuilderDockWindow("Scene tree", dsid_left);
     ImGui::DockBuilderDockWindow("Object inspector", dsid_right);
     ImGui::DockBuilderDockWindow("Console", dsid_down);
+    ImGui::DockBuilderDockWindow("DirView", dsid_down);
     ImGui::DockBuilderDockWindow("Scene", dockspace_id);
 
     ImGui::DockBuilderFinish(dockspace_id);
@@ -272,6 +278,11 @@ void Editor::_updateEditor(GLFWwindow* window) {
     //ImGui::SetNextWindowDockID(dsid_down);
     if(ImGui::Begin("Console")) {
         console.Update();
+        ImGui::End();
+    }
+
+    if(ImGui::Begin("DirView")) {
+        dir_view.Update();
         ImGui::End();
     }
 
