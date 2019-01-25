@@ -20,25 +20,24 @@ public:
         return r;
     }
 
-    int anim_index;
-    BlendMode mode;
-    float cursor;
-    float speed;
-    float weight;
+    int anim_index = 0;
+    BlendMode mode = BASE;
+    float cursor = 0.0f;
+    float speed = 1.0f;
+    float weight = 0.0f;
 
-    SkeletonAnimLayer(Animator* animator) 
-    : animator(animator) {}
+    SkeletonAnimLayer() {}
 
     void update(
+        Animator* animator,
         float dt,
         ozz::animation::Skeleton* skeleton,
         ozz::Range<ozz::math::SoaTransform>& locals_fin,
         ozz::animation::SamplingCache* cache,
-        gfxm::vec3 rm_pos_final,
-        gfxm::quat rm_rot_final
+        gfxm::vec3& rm_pos_final,
+        gfxm::quat& rm_rot_final
     );
 private:
-    Animator* animator = 0;
     ozz::Range<ozz::math::SoaTransform> locals;
 };
 

@@ -11,6 +11,8 @@
 #include <ozz/animation/runtime/skeleton.h>
 #include <ozz/animation/offline/skeleton_builder.h>
 
+#include "util/log.hpp"
+
 class Skeleton : public Resource {
 public:
     struct Bone {

@@ -7,12 +7,13 @@
 #include "scene.hpp"
 
 void SkeletonAnimLayer::update(
+    Animator* animator,
     float dt,
     ozz::animation::Skeleton* skeleton,
     ozz::Range<ozz::math::SoaTransform>& locals_fin,
     ozz::animation::SamplingCache* cache,
-    gfxm::vec3 rm_pos_final,
-    gfxm::quat rm_rot_final
+    gfxm::vec3& rm_pos_final,
+    gfxm::quat& rm_rot_final
 ) {
     if(anim_index >= animator->anims.size()) {
         return;
