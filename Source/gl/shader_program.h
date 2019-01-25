@@ -19,6 +19,7 @@ public:
     GLuint locView() const { return loc_view; }
     GLuint locModel() const { return loc_model; }
     void use();
+    bool validate();
     GLuint getId() const;
 private:
     ShaderProgram(const ShaderProgram &) {}

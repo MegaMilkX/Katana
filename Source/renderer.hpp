@@ -12,6 +12,8 @@
 
 #include "draw.hpp"
 
+#include "shader_factory.hpp"
+
 class Renderer : 
 public ISceneProbe<Model>,
 public ISceneProbe<Skin>,
@@ -32,174 +34,136 @@ public:
         unsigned char blk[3] = { 0, 0, 0};
         texture_black_px->Data(blk, 1, 1, 3);
 
-        {
-            gl::Shader vs(GL_VERTEX_SHADER);
-            gl::Shader fs(GL_FRAGMENT_SHADER);
-            vs.source(R"(
-                #version 450
-                in vec3 Position;
-                in vec2 UV;
-                in vec3 Normal;
-                uniform mat4 Projection;
-                uniform mat4 View;
-                uniform mat4 Model;
-                out vec2 UVFrag;
-                out vec3 NormalFrag;
-                out vec3 ViewDir;
-                void main()
-                {
-                    ViewDir = (inverse(View) * vec4(0, 0, -1, 0)).xyz;
-                    UVFrag = UV;
-                    NormalFrag = normalize((Model * vec4(Normal, 0.0)).xyz);
-                    gl_Position = Projection * View * Model * vec4(Position, 1.0);
-                })"
-            );
-            fs.source(R"(
-                #version 450
-                in vec2 UVFrag;
-                in vec3 NormalFrag;
-                in vec3 ViewDir;
-                out vec4 fragOut;
-                uniform sampler2D tex_albedo;
-                
-                uniform vec3 u_color;
+        prog = ShaderFactory::getOrCreate(
+            "solid",
+            R"(#version 450
+            in vec3 Position;
+            in vec2 UV;
+            in vec3 Normal;
+            uniform mat4 mat_projection;
+            uniform mat4 mat_view;
+            uniform mat4 mat_model;
+            out vec2 UVFrag;
+            out vec3 NormalFrag;
+            out vec3 ViewDir;
+            void main()
+            {
+                ViewDir = (inverse(mat_view) * vec4(0, 0, -1, 0)).xyz;
+                UVFrag = UV;
+                NormalFrag = normalize((mat_model * vec4(Normal, 0.0)).xyz);
+                gl_Position = mat_projection * mat_view * mat_model * vec4(Position, 1.0);
+            })",
+            R"(#version 450
+            in vec2 UVFrag;
+            in vec3 NormalFrag;
+            in vec3 ViewDir;
+            out vec4 out_albedo;
+            uniform sampler2D tex_albedo;
+            
+            uniform vec3 u_color;
 
-                void main()
-                {
-                    vec3 albedo = u_color;
-                    float lightness = dot(NormalFrag, -ViewDir);
-                    vec3 n = ((NormalFrag) * 0.5f ) + 0.5f;
-                    fragOut = texture(tex_albedo, UVFrag);
-                })"
-            );
-            vs.compile();
-            fs.compile();
-
-            prog.attachShader(&vs);
-            prog.attachShader(&fs);
-            prog.bindAttrib(gl::POSITION, "Position");
-            prog.bindAttrib(gl::UV, "UV");
-            prog.bindAttrib(gl::NORMAL, "Normal");
-            prog.bindFragData(0, "fragOut");
-            prog.link();
-            prog.use();
-            glUniform1i(prog.getUniform("tex_albedo"), 0);
+            void main()
+            {
+                vec3 albedo = u_color;
+                float lightness = dot(NormalFrag, -ViewDir);
+                vec3 n = ((NormalFrag) * 0.5f ) + 0.5f;
+                out_albedo = texture(tex_albedo, UVFrag);
+            })"
+        );
+        if(!prog) {
+            LOG_ERR("Failed to get SOLID shader program");
         }
 
-        {
-            gl::Shader vs(GL_VERTEX_SHADER);
-            gl::Shader fs(GL_FRAGMENT_SHADER);
-            vs.source(R"(#version 450
-                #define MAX_BONE_COUNT 100
-                in vec3 Position;
-                in vec2 UV;
-                in vec3 Normal;
-                in vec4 BoneIndex4;
-                in vec4 BoneWeight4;
+        prog_skin = ShaderFactory::getOrCreate(
+            "skin",
+            R"(#version 450
+            #define MAX_BONE_COUNT 100
+            in vec3 Position;
+            in vec2 UV;
+            in vec3 Normal;
+            in vec4 BoneIndex4;
+            in vec4 BoneWeight4;
 
-                out vec3 fs_NormalModel;
-                out vec3 ViewDir;
+            out vec3 fs_NormalModel;
+            out vec3 ViewDir;
 
-                uniform mat4 mat_projection;
-                uniform mat4 mat_view;
-                uniform mat4 mat_model;
+            uniform mat4 mat_projection;
+            uniform mat4 mat_view;
+            uniform mat4 mat_model;
 
-                uniform mat4 inverseBindPose[MAX_BONE_COUNT];
-                uniform mat4 bones[MAX_BONE_COUNT];
+            uniform mat4 inverseBindPose[MAX_BONE_COUNT];
+            uniform mat4 bones[MAX_BONE_COUNT];
 
-                void main() {
-                    ViewDir = (inverse(mat_view) * vec4(0, 0, -1, 0)).xyz;
+            void main() {
+                ViewDir = (inverse(mat_view) * vec4(0, 0, -1, 0)).xyz;
 
-                    ivec4 bi = ivec4(
-                        int(BoneIndex4.x), int(BoneIndex4.y),
-                        int(BoneIndex4.z), int(BoneIndex4.w)
-                    );
-                    vec4 w = BoneWeight4;
-                    if(w.x + w.y + w.z + w.w > 1.0) {
-                        w = normalize(w);
-                    }
-                    vec4 posModel = (
-                        (bones[bi.x] * inverseBindPose[bi.x]) * vec4(Position, 1.0) * w.x +
-                        (bones[bi.y] * inverseBindPose[bi.y]) * vec4(Position, 1.0) * w.y +
-                        (bones[bi.z] * inverseBindPose[bi.z]) * vec4(Position, 1.0) * w.z +
-                        (bones[bi.w] * inverseBindPose[bi.w]) * vec4(Position, 1.0) * w.w
-                    );
-                    vec3 normalSkinned = (
-                        (bones[bi.x] * inverseBindPose[bi.x]) * vec4(Normal, 0.0) * w.x +
-                        (bones[bi.y] * inverseBindPose[bi.y]) * vec4(Normal, 0.0) * w.y +
-                        (bones[bi.z] * inverseBindPose[bi.z]) * vec4(Normal, 0.0) * w.z +
-                        (bones[bi.w] * inverseBindPose[bi.w]) * vec4(Normal, 0.0) * w.w
-                    ).xyz;
+                ivec4 bi = ivec4(
+                    int(BoneIndex4.x), int(BoneIndex4.y),
+                    int(BoneIndex4.z), int(BoneIndex4.w)
+                );
+                vec4 w = BoneWeight4;
+                if(w.x + w.y + w.z + w.w > 1.0) {
+                    w = normalize(w);
+                }
+                vec4 posModel = (
+                    (bones[bi.x] * inverseBindPose[bi.x]) * vec4(Position, 1.0) * w.x +
+                    (bones[bi.y] * inverseBindPose[bi.y]) * vec4(Position, 1.0) * w.y +
+                    (bones[bi.z] * inverseBindPose[bi.z]) * vec4(Position, 1.0) * w.z +
+                    (bones[bi.w] * inverseBindPose[bi.w]) * vec4(Position, 1.0) * w.w
+                );
+                vec3 normalSkinned = (
+                    (bones[bi.x] * inverseBindPose[bi.x]) * vec4(Normal, 0.0) * w.x +
+                    (bones[bi.y] * inverseBindPose[bi.y]) * vec4(Normal, 0.0) * w.y +
+                    (bones[bi.z] * inverseBindPose[bi.z]) * vec4(Normal, 0.0) * w.z +
+                    (bones[bi.w] * inverseBindPose[bi.w]) * vec4(Normal, 0.0) * w.w
+                ).xyz;
 
-                    fs_NormalModel = normalize(vec4(normalSkinned, 0.0)).xyz;
+                fs_NormalModel = normalize(vec4(normalSkinned, 0.0)).xyz;
 
-                    gl_Position = 
-                        mat_projection *
-                        mat_view *
-                        posModel;
-                }  
-            )");
-            fs.source(R"(#version 450
-                in vec2 UVFrag;
-                in vec3 fs_NormalModel;
-                in vec3 ViewDir;
-                out vec4 out_albedo;
-                uniform sampler2D tex;
-                void main()
-                {
-                    vec3 albedo = vec3(0.5, 0.5, 0.5);
-                    float lightness = dot(fs_NormalModel, -ViewDir);
-                    out_albedo = vec4(albedo * lightness, 1.0);
-                })"
-            );
-            vs.compile();
-            fs.compile();
-
-            prog_skin.attachShader(&vs);
-            prog_skin.attachShader(&fs);
-            prog_skin.bindAttrib(gl::POSITION, "Position");
-            prog_skin.bindAttrib(gl::UV, "UV");
-            prog_skin.bindAttrib(gl::NORMAL, "Normal");
-            prog_skin.bindAttrib(gl::BONE_INDEX4, "BoneIndex4");
-            prog_skin.bindAttrib(gl::BONE_WEIGHT4, "BoneWeight4");
-            prog_skin.bindFragData(0, "out_albedo");
-            prog_skin.link();
-            prog_skin.use();
-            glUniform1i(prog.getUniform("tex_diffuse"), 0);
+                gl_Position = 
+                    mat_projection *
+                    mat_view *
+                    posModel;
+            })",
+            R"(#version 450
+            in vec2 UVFrag;
+            in vec3 fs_NormalModel;
+            in vec3 ViewDir;
+            out vec4 out_albedo;
+            uniform sampler2D tex_albedo;
+            void main()
+            {
+                vec3 albedo = vec3(0.5, 0.5, 0.5);
+                float lightness = dot(fs_NormalModel, -ViewDir);
+                out_albedo = vec4(albedo * lightness, 1.0);
+            })"
+        );
+        if(!prog_skin) {
+            LOG_ERR("Failed to get SOLID shader program");
         }
 
-        {
-            gl::Shader vs(GL_VERTEX_SHADER);
-            gl::Shader fs(GL_FRAGMENT_SHADER);
-            vs.source(R"(
-                #version 450
-                in vec3 Vertex;
-                uniform mat4 Projection;
-                uniform mat4 View;
-                uniform mat4 Model;
-                void main()
-                {
-                    gl_Position = Projection * View * Model * vec4(Vertex, 1.0);
-                })"
-            );
-            fs.source(R"(
-                #version 450
-                out vec4 fragOut;
-                uniform vec4 object_ptr;
-                void main()
-                {
-                    fragOut = object_ptr;
-                })"
-            );
-            vs.compile();
-            fs.compile();
-
-            prog_pick.attachShader(&vs);
-            prog_pick.attachShader(&fs);
-            prog_pick.bindAttrib(gl::POSITION, "Vertex");
-            prog_pick.bindFragData(0, "fragOut");
-            prog_pick.link();
-            prog_pick.use();
+        prog_pick = ShaderFactory::getOrCreate(
+            "pick",
+            R"(#version 450
+            in vec3 Position;
+            uniform mat4 mat_projection;
+            uniform mat4 mat_view;
+            uniform mat4 mat_model;
+            void main()
+            {
+                gl_Position = mat_projection * mat_view * mat_model * vec4(Position, 1.0);
+            })",
+            R"(
+            #version 450
+            out vec4 out_albedo;
+            uniform vec4 object_ptr;
+            void main()
+            {
+                out_albedo = object_ptr;
+            })"
+        );
+        if(!prog_pick) {
+            LOG_ERR("Failed to get SOLID shader program");
         }
     }
 
@@ -290,12 +254,12 @@ public:
 
     void drawSolidObjects(gl::ShaderProgram* prog, gfxm::mat4& projection, gfxm::mat4& view, std::vector<gl::DrawInfo>& draw_list) {
         glUseProgram(prog->getId());
-        glUniformMatrix4fv(prog->getUniform("Projection"), 1, GL_FALSE, (float*)&projection);
-        glUniformMatrix4fv(prog->getUniform("View"), 1, GL_FALSE, (float*)&view);
+        glUniformMatrix4fv(prog->getUniform("mat_projection"), 1, GL_FALSE, (float*)&projection);
+        glUniformMatrix4fv(prog->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
 
         for(size_t i = 0; i < draw_list.size(); ++i) {
             gl::DrawInfo& d = draw_list[i];
-            glUniformMatrix4fv(prog->getUniform("Model"), 1, GL_FALSE, d.transform);
+            glUniformMatrix4fv(prog->getUniform("mat_model"), 1, GL_FALSE, d.transform);
             for(unsigned t = 0; t < sizeof(d.textures) / sizeof(d.textures[0]); ++t) {
                 glActiveTexture(GL_TEXTURE0 + t);
                 glBindTexture(GL_TEXTURE_2D, d.textures[t]);
@@ -358,8 +322,8 @@ public:
 
         // =============================
 
-        drawSolidObjects(&prog, projection, view, draw_list);
-        drawSkinObjects(&prog_skin, projection, view, draw_list_skin);
+        drawSolidObjects(prog, projection, view, draw_list);
+        drawSkinObjects(prog_skin, projection, view, draw_list_skin);
     }
 
     void draw(gl::FrameBuffer* fb, gfxm::mat4 projection, gfxm::mat4 view) {
@@ -392,17 +356,17 @@ public:
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO: Should only clear depth
 
-        glUseProgram(prog_pick.getId());
-        glUniformMatrix4fv(prog_pick.getUniform("Projection"), 1, GL_FALSE, (float*)&projection);
-        glUniformMatrix4fv(prog_pick.getUniform("View"), 1, GL_FALSE, (float*)&view);
+        glUseProgram(prog_pick->getId());
+        glUniformMatrix4fv(prog_pick->getUniform("mat_projection"), 1, GL_FALSE, (float*)&projection);
+        glUniformMatrix4fv(prog_pick->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
 
         for(size_t i = 0; i < draw_list.size(); ++i) {
             gl::DrawInfo& d = draw_list[i];
-            glUniformMatrix4fv(prog_pick.getUniform("Model"), 1, GL_FALSE, d.transform);
+            glUniformMatrix4fv(prog_pick->getUniform("mat_model"), 1, GL_FALSE, d.transform);
             int r = (d.user_ptr & 0x000000FF) >>  0;
             int g = (d.user_ptr & 0x0000FF00) >>  8;
             int b = (d.user_ptr & 0x00FF0000) >> 16;  
-            glUniform4f(prog_pick.getUniform("object_ptr"), r/255.0f, g/255.0f, b/255.0f, 1.0f);
+            glUniform4f(prog_pick->getUniform("object_ptr"), r/255.0f, g/255.0f, b/255.0f, 1.0f);
             glBindVertexArray(d.vao);
             glDrawElements(GL_TRIANGLES, d.index_count, GL_UNSIGNED_INT, (GLvoid*)d.offset);
         }
@@ -410,12 +374,12 @@ public:
 private:
     Scene* scene;
 
-    gl::ShaderProgram prog_pbr_solid;
-    gl::ShaderProgram prog_pbr_skin;
+    gl::ShaderProgram* prog_pbr_solid;
+    gl::ShaderProgram* prog_pbr_skin;
 
-    gl::ShaderProgram prog;
-    gl::ShaderProgram prog_skin;
-    gl::ShaderProgram prog_pick;
+    gl::ShaderProgram* prog;
+    gl::ShaderProgram* prog_skin;
+    gl::ShaderProgram* prog_pick;
     std::shared_ptr<Texture2D> texture_white_px;
     std::shared_ptr<Texture2D> texture_black_px;
 

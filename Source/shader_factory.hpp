@@ -36,7 +36,7 @@ public:
         if(it != programs.end()) {
             return it->second.get();
         } else {
-            std::shared_ptr<gl::ShaderProgram> prog = 
+            std::shared_ptr<gl::ShaderProgram>& prog = 
                 programs[name];
             prog.reset(new gl::ShaderProgram());
 
@@ -67,13 +67,27 @@ public:
             prog->bindFragData(0, "out_frag");
             if(!prog->link()) {
                 LOG_WARN("Failed to link program '" << name << "'");
+                return 0;
             }
             prog->use();
 
-            glUniform1i(prog->getUniform("tex_albedo"), 0);
-            glUniform1i(prog->getUniform("tex_normal"), 1);
-            glUniform1i(prog->getUniform("tex_metallic"), 2);
-            glUniform1i(prog->getUniform("tex_roughness"), 3);
+            GLuint u = 0;
+            if((u = prog->getUniform("tex_albedo"))) glUniform1i(u, 0);
+            if((u = prog->getUniform("tex_normal"))) glUniform1i(u, 1);
+            if((u = prog->getUniform("tex_metallic"))) glUniform1i(u, 2);
+            if((u = prog->getUniform("tex_roughness"))) glUniform1i(u, 3);
+
+            if((u = prog->getUniform("tex_0"))) glUniform1i(u, 0);
+            if((u = prog->getUniform("tex_1"))) glUniform1i(u, 1);
+            if((u = prog->getUniform("tex_2"))) glUniform1i(u, 2);
+            if((u = prog->getUniform("tex_3"))) glUniform1i(u, 3);
+
+            if(!prog->validate()) {
+                LOG_WARN("Failed to validate shader program '" << name << "'");
+            }
+            glUseProgram(0);
+
+            return prog.get();
         }
     }
 

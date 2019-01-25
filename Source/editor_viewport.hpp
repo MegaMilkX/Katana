@@ -61,109 +61,78 @@ public:
         quad_mesh.setAttribData(gl::UV, uvs, sizeof(float) * 8, 2, GL_FLOAT, GL_FALSE);
         quad_mesh.setIndices(indices, 6);
 
-        {
-            gl::Shader vs(GL_VERTEX_SHADER);
-            gl::Shader fs(GL_FRAGMENT_SHADER);
-            vs.source(R"(
-                #version 450
-                in vec3 Position;
-                uniform mat4 mat_projection;
-                uniform mat4 mat_view;
-                uniform mat4 mat_model;
-                void main()
-                {
-                    gl_Position = mat_projection * mat_view * mat_model * vec4(Position, 1.0);
-                })"
-            );
-            fs.source(R"(
-                #version 450
-                out vec4 out_albedo;
-                void main()
-                {
-                    out_albedo = vec4(1.0, 1.0, 1.0, 1.0);
-                })"
-            );
-            vs.compile();
-            fs.compile();
+        prog_silhouette = ShaderFactory::getOrCreate(
+            "viewport_silhouette",
+            R"(#version 450
+            in vec3 Position;
+            uniform mat4 mat_projection;
+            uniform mat4 mat_view;
+            uniform mat4 mat_model;
+            void main()
+            {
+                gl_Position = mat_projection * mat_view * mat_model * vec4(Position, 1.0);
+            })",
+            R"(#version 450
+            out vec4 out_albedo;
+            void main()
+            {
+                out_albedo = vec4(1.0, 1.0, 1.0, 1.0);
+            })"
+        );
 
-            prog_silhouette.attachShader(&vs);
-            prog_silhouette.attachShader(&fs);
-            prog_silhouette.bindAttrib(gl::POSITION, "Position");
-            prog_silhouette.bindFragData(0, "out_albedo");
-            prog_silhouette.link();
-            prog_silhouette.use();
-        }
-        //
-        {
-            gl::Shader vs(GL_VERTEX_SHADER);
-            gl::Shader fs(GL_FRAGMENT_SHADER);
-            vs.source(R"(
-                #version 450
-                in vec2 Position;
-                in vec2 UV;
-                out vec2 UVFrag;
-                void main()
-                {
-                    UVFrag = UV;
-                    gl_Position = vec4(Position.xy, 0.0, 1.0);
-                })"
-            );
-            fs.source(R"(
-                #version 450
-                in vec2 UVFrag;
-                out vec4 out_albedo;
-                uniform sampler2D tex0;
-                uniform sampler2D tex1;
+        prog_fin = ShaderFactory::getOrCreate(
+            "viewport_fin",
+            R"(#version 450
+            in vec2 Position;
+            in vec2 UV;
+            out vec2 UVFrag;
+            void main()
+            {
+                UVFrag = UV;
+                gl_Position = vec4(Position.xy, 0.0, 1.0);
+            })",
+            R"(#version 450
+            in vec2 UVFrag;
+            out vec4 out_albedo;
+            uniform sampler2D tex_0;
+            uniform sampler2D tex_1;
 
-                vec4 blur5(sampler2D image, vec2 uv, vec2 resolution, vec2 direction) {
-                    vec4 color = vec4(0.0);
-                    vec2 off1 = vec2(1.3333333333333333) * direction;
-                    color += texture2D(image, uv) * 0.29411764705882354;
-                    color += texture2D(image, uv + (off1 / resolution)) * 0.35294117647058826;
-                    color += texture2D(image, uv - (off1 / resolution)) * 0.35294117647058826;
-                    return color; 
-                }
-                vec4 blur13(sampler2D image, vec2 uv, vec2 resolution, vec2 direction) {
-                    vec4 color = vec4(0.0);
-                    vec2 off1 = vec2(1.411764705882353) * direction;
-                    vec2 off2 = vec2(3.2941176470588234) * direction;
-                    vec2 off3 = vec2(5.176470588235294) * direction;
-                    color += texture2D(image, uv) * 0.1964825501511404;
-                    color += texture2D(image, uv + (off1 / resolution)) * 0.2969069646728344;
-                    color += texture2D(image, uv - (off1 / resolution)) * 0.2969069646728344;
-                    color += texture2D(image, uv + (off2 / resolution)) * 0.09447039785044732;
-                    color += texture2D(image, uv - (off2 / resolution)) * 0.09447039785044732;
-                    color += texture2D(image, uv + (off3 / resolution)) * 0.010381362401148057;
-                    color += texture2D(image, uv - (off3 / resolution)) * 0.010381362401148057;
-                    return color;
-                }
+            vec4 blur5(sampler2D image, vec2 uv, vec2 resolution, vec2 direction) {
+                vec4 color = vec4(0.0);
+                vec2 off1 = vec2(1.3333333333333333) * direction;
+                color += texture2D(image, uv) * 0.29411764705882354;
+                color += texture2D(image, uv + (off1 / resolution)) * 0.35294117647058826;
+                color += texture2D(image, uv - (off1 / resolution)) * 0.35294117647058826;
+                return color; 
+            }
+            vec4 blur13(sampler2D image, vec2 uv, vec2 resolution, vec2 direction) {
+                vec4 color = vec4(0.0);
+                vec2 off1 = vec2(1.411764705882353) * direction;
+                vec2 off2 = vec2(3.2941176470588234) * direction;
+                vec2 off3 = vec2(5.176470588235294) * direction;
+                color += texture2D(image, uv) * 0.1964825501511404;
+                color += texture2D(image, uv + (off1 / resolution)) * 0.2969069646728344;
+                color += texture2D(image, uv - (off1 / resolution)) * 0.2969069646728344;
+                color += texture2D(image, uv + (off2 / resolution)) * 0.09447039785044732;
+                color += texture2D(image, uv - (off2 / resolution)) * 0.09447039785044732;
+                color += texture2D(image, uv + (off3 / resolution)) * 0.010381362401148057;
+                color += texture2D(image, uv - (off3 / resolution)) * 0.010381362401148057;
+                return color;
+            }
 
-                void main()
-                {
-                    vec4 blurred = blur13(tex1, UVFrag, vec2(256, 256), vec2(1, 0));
-                    blurred += blur13(tex1, UVFrag, vec2(256, 256), vec2(0, 1));
-                    blurred = clamp(blurred, vec4(0.0), vec4(1.0));
-                    vec4 border = (vec4(blurred.xxx, 1.0) - vec4(texture(tex1, UVFrag).xxx, 1.0));
-                    border *= 2.0f;
-                    border = clamp(border, vec4(0.0), vec4(1.0));
-                    out_albedo = 
-                        texture(tex0, UVFrag) + 
-                        border;
-                })"
-            );
-            vs.compile();
-            fs.compile();
-
-            prog_fin.attachShader(&vs);
-            prog_fin.attachShader(&fs);
-            prog_fin.bindAttrib(gl::POSITION, "Position");
-            prog_fin.bindAttrib(gl::UV, "UV");
-            prog_fin.bindFragData(0, "out_albedo");
-            prog_fin.link();
-            prog_fin.use();
-            glUniform1i(prog_fin.getUniform("tex0"), 0);
-            glUniform1i(prog_fin.getUniform("tex1"), 1);
-        }
+            void main()
+            {
+                vec4 blurred = blur13(tex_1, UVFrag, vec2(256, 256), vec2(1, 0));
+                blurred += blur13(tex_1, UVFrag, vec2(256, 256), vec2(0, 1));
+                blurred = clamp(blurred, vec4(0.0), vec4(1.0));
+                vec4 border = (vec4(blurred.xxx, 1.0) - vec4(texture(tex_1, UVFrag).xxx, 1.0));
+                border *= 2.0f;
+                border = clamp(border, vec4(0.0), vec4(1.0));
+                out_albedo = 
+                    texture(tex_0, UVFrag) + 
+                    border;
+            })"
+        );
 
         input_lis = input().createListener();
 
@@ -315,46 +284,28 @@ public:
 
                 gl::draw(
                     fb_silhouette.getId(), 
-                    prog_silhouette.getId(), 
+                    prog_silhouette->getId(), 
                     sz.x, sz.y,
-                    prog_silhouette.getUniform("mat_projection"),
+                    prog_silhouette->getUniform("mat_projection"),
                     (float*)&proj,
-                    prog_silhouette.getUniform("mat_view"),
+                    prog_silhouette->getUniform("mat_view"),
                     (float*)&view,
-                    prog_silhouette.getUniform("mat_model"),
+                    prog_silhouette->getUniform("mat_model"),
                     &di,
                     1
                 );
             } else {
-                gl::draw(
-                    fb_silhouette.getId(), 
-                    prog_silhouette.getId(), 
-                    sz.x, sz.y,
-                    prog_silhouette.getUniform("mat_projection"),
-                    (float*)&proj,
-                    prog_silhouette.getUniform("mat_view"),
-                    (float*)&view,
-                    prog_silhouette.getUniform("mat_model"),
-                    0, 0
-                );
+                fb_silhouette.bind();
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             }
         } else {
-            gl::draw(
-                fb_silhouette.getId(), 
-                prog_silhouette.getId(), 
-                sz.x, sz.y,
-                prog_silhouette.getUniform("mat_projection"),
-                (float*)&proj,
-                prog_silhouette.getUniform("mat_view"),
-                (float*)&view,
-                prog_silhouette.getUniform("mat_model"),
-                0, 0
-            );
+            fb_silhouette.bind();
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         }
 
         fb_fin.bind();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        prog_fin.use();
+        prog_fin->use();
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, frame_buffer.getTextureId(0));
         glActiveTexture(GL_TEXTURE0 + 1);
@@ -453,9 +404,8 @@ private:
     gl::FrameBuffer fb_silhouette;
     gl::FrameBuffer fb_fin;
     gl::FrameBuffer fb_pick;
-    gl::ShaderProgram prog_silhouette;
-    gl::ShaderProgram prog_fin;
-    gl::ShaderProgram prog_pick;
+    gl::ShaderProgram* prog_silhouette;
+    gl::ShaderProgram* prog_fin;
     ImVec2 vp_size = ImVec2(0, 0);
 };
 

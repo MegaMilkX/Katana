@@ -83,6 +83,24 @@ void ShaderProgram::use()
     glUseProgram(id);
     GL_LOG_ERROR("glUseProgram");  
 }
+bool ShaderProgram::validate() {
+    int res;
+    int infoLogLen;
+    glValidateProgram(id);
+    GL_LOG_ERROR("glValidateProgram");
+
+    glGetProgramiv(id, GL_VALIDATE_STATUS, &res);
+    glGetProgramiv(id, GL_INFO_LOG_LENGTH, &infoLogLen);
+    if(infoLogLen > 1)
+    {
+        std::vector<char> errMsg(infoLogLen + 1);
+        glGetProgramInfoLog(id, infoLogLen, NULL, &errMsg[0]);
+        LOG("GLSL Validate: " << &errMsg[0]);
+    }
+    if(res == GL_FALSE)
+        return false;
+    return true;
+}
 GLuint ShaderProgram::getId() const
 {
     return id;
