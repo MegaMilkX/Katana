@@ -178,6 +178,7 @@ void SceneObject::deserialize(std::istream& in) {
 }
 
 #include "transform.hpp"
+#include "light.hpp"
 #include "character.hpp"
 #include "camera.hpp"
 #include "tps_camera.hpp"
@@ -196,6 +197,12 @@ void SceneObject::_editorGui() {
         if(ImGui::Selectable("Transform", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
             if (ImGui::IsMouseDoubleClicked(0)) {
                 component_creator_so_tgt->get<Transform>();
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        if(ImGui::Selectable("LightOmni", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+            if (ImGui::IsMouseDoubleClicked(0)) {
+                component_creator_so_tgt->get<LightOmni>();
                 ImGui::CloseCurrentPopup();
             }
         }

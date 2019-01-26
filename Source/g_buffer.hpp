@@ -8,7 +8,6 @@ class GBuffer {
 public:
     enum ATTACHMENT {
         ALBEDO,
-        POSITION,
         NORMAL,
         METALLIC,
         ROUGHNESS
@@ -16,7 +15,6 @@ public:
 
     GBuffer() {
         fb.pushBuffer(GL_RGB, GL_UNSIGNED_BYTE); // albedo
-        fb.pushBuffer(GL_RGB16F, GL_FLOAT); // position
         fb.pushBuffer(GL_RGB16F, GL_FLOAT); // normal
         fb.pushBuffer(GL_RED, GL_UNSIGNED_BYTE); // metallic
         fb.pushBuffer(GL_RED, GL_UNSIGNED_BYTE); // roughness
@@ -25,20 +23,27 @@ public:
         fb.reinitBuffers(width, height);
     }
 
+    GLsizei getWidth() {
+        return fb.getWidth();
+    }
+    GLsizei getHeight() {
+        return fb.getHeight();
+    }
+
     GLuint getAlbedoTexture() {
         return fb.getTextureId(0);
     }
-    GLuint getPositionTexture() {
+    GLuint getNormalTexture() {
         return fb.getTextureId(1);
     }
-    GLuint getNormalTexture() {
+    GLuint getMetallicTexture() {
         return fb.getTextureId(2);
     }
-    GLuint getMetallicTexture() {
+    GLuint getRoughnessTexture() {
         return fb.getTextureId(3);
     }
-    GLuint getRoughnessTexture() {
-        return fb.getTextureId(4);
+    GLuint getDepthTexture() {
+        return fb.getDepthTextureId();
     }
 
     GLuint getGlFramebuffer() {

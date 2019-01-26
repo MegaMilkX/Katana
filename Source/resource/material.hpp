@@ -32,18 +32,26 @@ public:
             return false;
         }
 
-        json j_albedo = j["albedo"];
-        if(j_albedo.is_string()) {
-            std::string albedo_name = j_albedo.get<std::string>();
-            this->albedo = getResource<Texture2D>(albedo_name);
-        } else {
-            LOG_WARN("albedo value must be a string");
-        }
+        getMap(j, "albedo", albedo);
+        getMap(j, "normal", normal);
+        getMap(j, "metallic", metallic);
+        getMap(j, "roughness", roughness);
 
         return true;
     }
     virtual bool Serialize(std::vector<unsigned char>& data) {
         return false;
+    }
+
+private:
+    void getMap(nlohmann::json& j, const std::string& name, std::shared_ptr<Texture2D>& ptr) {
+        nlohmann::json j_ = j[name];
+        if(j_.is_string()) {
+            std::string name = j_.get<std::string>();
+            ptr = getResource<Texture2D>(name);
+        } else {
+            LOG_WARN(name << " value must be a string");
+        }
     }
 };
 

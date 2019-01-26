@@ -73,6 +73,9 @@ public:
     GLuint getTextureId(int buf) {
         return buffers[buf].id;
     }
+    GLuint getDepthTextureId() {
+        return depth;
+    }
 
     unsigned getWidth() const { return width; }
     unsigned getHeight() const { return height; }

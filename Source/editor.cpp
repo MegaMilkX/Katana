@@ -196,7 +196,9 @@ void Editor::_updateEditor(GLFWwindow* window) {
                 if(r == NFD_OKAY) {
                     LOG(outPath);
                     std::string filePath(outPath);
-                    sceneFromFbx(filePath, scene, scene->createObject());
+                    auto new_so = scene->createObject();
+                    sceneFromFbx(filePath, scene, new_so);
+                    editorState().selected_object = new_so;
                 }
             }
             if (ImGui::MenuItem("Save")) {

@@ -33,6 +33,8 @@ inline void meshesFromAssimpScene(
         std::vector<uint32_t> indices;
         std::vector<std::vector<float>> normal_layers;
         normal_layers.resize(1);
+        std::vector<float> tangent;
+        std::vector<float> bitangent;
         std::vector<std::vector<float>> uv_layers;
         std::vector<std::vector<float>> rgb_layers;
         std::vector<gfxm::vec4> boneIndices;
@@ -87,6 +89,20 @@ inline void meshesFromAssimpScene(
                 }
             }
         }
+        for(unsigned j = 0; j < vertexCount; ++j) {
+            aiVector3D& n = ai_mesh->mTangents[j];
+            tangent.emplace_back(n.x);
+            tangent.emplace_back(n.y);
+            tangent.emplace_back(n.z);
+        }
+        for(unsigned j = 0; j < vertexCount; ++j) {
+            aiVector3D& n = ai_mesh->mBitangents[j];
+            bitangent.emplace_back(n.x);
+            bitangent.emplace_back(n.y);
+            bitangent.emplace_back(n.z);
+        }
+
+        
 
         std::shared_ptr<Mesh> mesh_ref(new Mesh());
         mesh_ref->Name(MKSTR(i << ".geo"));
@@ -103,6 +119,9 @@ inline void meshesFromAssimpScene(
             mesh_ref->mesh.setAttribData(gl::BONE_INDEX4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4), 4, GL_FLOAT, GL_FALSE);
             mesh_ref->mesh.setAttribData(gl::BONE_WEIGHT4, boneWeights.data(), boneWeights.size() * sizeof(gfxm::vec4), 4, GL_FLOAT, GL_FALSE);
         }
+        mesh_ref->mesh.setAttribData(gl::TANGENT, tangent.data(), tangent.size() * sizeof(float), 3, GL_FLOAT, GL_FALSE);
+        mesh_ref->mesh.setAttribData(gl::BITANGENT, bitangent.data(), bitangent.size() * sizeof(float), 3, GL_FLOAT, GL_FALSE);
+
         mesh_ref->mesh.setIndices(indices.data(), indices.size());
 
         scene->addLocalResource(mesh_ref);
@@ -325,7 +344,8 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
         aiProcess_JoinIdenticalVertices |
         aiProcess_LimitBoneWeights |
         aiProcess_GlobalScale |
-        aiProcess_GenUVCoords
+        aiProcess_GenUVCoords |
+        aiProcess_GenSmoothNormals
     );
     if(!ai_scene) {
         LOG_WARN("Failed to import " << filename);

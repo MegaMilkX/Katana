@@ -1172,6 +1172,66 @@ private:
 	mat4 m;
 };
 
+inline float radian(float deg) {
+    return deg * (pi / 180.0f);
+}
+
+template<typename T>
+inline tmat4<T> lookAt(const tvec3<T>& eye, const tvec3<T>& center, const tvec3<T>& up) {
+    tvec3<T> const f(normalize(center - eye));
+    tvec3<T> const s(normalize(cross(f, up)));
+    tvec3<T> const u(cross(s, f));
+
+    tmat4<T> res(1);
+    res[0][0] = s.x;
+    res[1][0] = s.y;
+    res[2][0] = s.z;
+    res[0][1] = u.x;
+    res[1][1] = u.y;
+    res[2][1] = u.z;
+    res[0][2] = -f.x;
+    res[1][2] = -f.y;
+    res[2][2] = -f.z;
+    res[3][0] =-dot(s, eye);
+    res[3][1] =-dot(u, eye);
+    res[3][2] = dot(f, eye);
+    return res;
+}
+
+template<typename T>
+inline tvec3<T> screenToWorldPlaneXY(
+    const tvec2<T>& scr_pos,
+    const tvec2<T>& scr_sz,
+    const tmat4<T>& proj,
+    const tmat4<T>& view
+) {
+    gfxm::tvec2<T> scr_spc_pos(
+        scr_pos.x / scr_sz.x * 2.0f - 1.0f,
+        scr_pos.y / scr_sz.y * 2.0f - 1.0f
+    );
+    gfxm::tvec4<T> wpos4(
+        scr_spc_pos.x, 
+        scr_spc_pos.y,
+        -1.0f, 1.0f
+    );
+    gfxm::tvec3<T> ray_origin = inverse(view) * tvec4<T>(0.0f, 0.0f, 0.0f, 1.0f);
+    wpos4 = inverse(proj * view) * wpos4;
+    tvec3<T> wpos = gfxm::tvec3<T>(wpos4.x, wpos4.y, wpos4.z) / wpos4.w;
+    tvec3<T> ray = normalize(
+        wpos - ray_origin
+    );
+
+    tvec3<T> v_to_target = ray;
+    float ym = -ray_origin.y;
+    float xc = ray.x / ray.y;
+    float zc = ray.z / ray.y;
+    v_to_target = tvec3<T>(
+        xc * ym, ym, zc * ym
+    );
+
+    return ray_origin + v_to_target;
+}
+
 }
 
 #endif

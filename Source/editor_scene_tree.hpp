@@ -37,6 +37,30 @@ public:
             sceneTreeViewNode(scene->getRootObject()->getChild(i));
         }
         */
+
+        ImGui::Separator();
+        ImGui::Text("Environment map ");
+        std::string env_map_name = "! No texture !";
+        if(scene->getEnvironmentMap()) {
+            env_map_name = scene->getEnvironmentMap()->Name();
+        }
+        if(ImGui::SmallButton(env_map_name.c_str())) {
+
+        }
+        ImGui::PushID(env_map_name.c_str());
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
+                std::string fname = (char*)payload->Data;
+                LOG("Payload received: " << fname);
+                scene->setEnvironmentMap(getResource<CubeMap>(fname));
+            }
+            ImGui::EndDragDropTarget();
+        }
+        ImGui::PopID();
+        /*
+        if(scene->getEnvironmentMap()) {
+            ImGui::Image((ImTextureID)scene->getEnvironmentMap()->getId(), ImVec2(100, 100), ImVec2(0, 1), ImVec2(1, 0));
+        }*/
     }
 
     void setScene(Scene* scene) {

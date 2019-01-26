@@ -29,8 +29,21 @@
 
 #include "lib/imguizmo/ImGuizmo.h"
 
+#include "util/has_suffix.hpp"
+
+#include "scene_from_fbx.hpp"
+
 class EditorViewport : public EditorWindow {
 public:
+    enum DISPLAY_BUFFER {
+        ALBEDO,
+        POSITION,
+        NORMAL,
+        METALLIC,
+        ROUGHNESS,
+        FINAL
+    };
+
     EditorViewport(Renderer* renderer)
     : renderer(renderer) {
         frame_buffer.pushBuffer(GL_RGB, GL_UNSIGNED_BYTE);
@@ -207,11 +220,18 @@ public:
                 cam_pivot = resetPos;
             }
         );
+
+        input_lis->bindActionPress("View0", [this](){ disp_buf = FINAL; });
+        input_lis->bindActionPress("View1", [this](){ disp_buf = ALBEDO; });
+        input_lis->bindActionPress("View2", [this](){ disp_buf = POSITION; });
+        input_lis->bindActionPress("View3", [this](){ disp_buf = NORMAL; });
+        input_lis->bindActionPress("View4", [this](){ disp_buf = METALLIC; });
+        input_lis->bindActionPress("View5", [this](){ disp_buf = ROUGHNESS; });
     }
     bool mouse_look = false;
     bool mouse_look_alt = false;
-    float cam_angle_y = 0.0f;
-    float cam_angle_x = 0.0f;
+    float cam_angle_y = gfxm::radian(45.0f);
+    float cam_angle_x = gfxm::radian(-25.0f);
     float cam_zoom = 5.0f;
     gfxm::vec3 cam_pivot;
 
@@ -258,20 +278,20 @@ public:
             // TODO: ?
         }
 
-        gfxm::mat4 proj = gfxm::perspective(0.90f, sz.x/(float)sz.y, 0.01f, 1000.0f);
+        gfxm::mat4 proj = gfxm::perspective(gfxm::radian(75.0f), sz.x/(float)sz.y, 0.01f, 1000.0f);
         gfxm::transform tcam;
         tcam.position(cam_pivot);
         tcam.rotate(cam_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
         tcam.rotate(cam_angle_x, tcam.right());
         tcam.translate(tcam.back() * cam_zoom);
         gfxm::mat4 view = gfxm::inverse(tcam.matrix()); 
-        
+        /*
         renderer->draw(
             &frame_buffer,
             proj,
             view
-        );
-        //renderer->draw(&g_buffer, &frame_buffer, proj, view);
+        );*/
+        renderer->draw(&g_buffer, &frame_buffer, proj, view);
 
         if(editorState().selected_object) {
             gl::DrawInfo di = { 0 };
@@ -307,7 +327,17 @@ public:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         prog_fin->use();
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, frame_buffer.getTextureId(0));
+        // NOTE: Color buffer for this viewport
+        GLuint color_buf = 0;
+        switch(disp_buf) {
+        case ALBEDO: color_buf = g_buffer.getAlbedoTexture(); break;
+        case POSITION: color_buf = g_buffer.getDepthTexture(); break;
+        case NORMAL: color_buf = g_buffer.getNormalTexture(); break;
+        case METALLIC: color_buf = g_buffer.getMetallicTexture(); break;
+        case ROUGHNESS: color_buf = g_buffer.getRoughnessTexture(); break;
+        case FINAL: color_buf = frame_buffer.getTextureId(0); break;
+        }
+        glBindTexture(GL_TEXTURE_2D, color_buf);
         glActiveTexture(GL_TEXTURE0 + 1);
         glBindTexture(GL_TEXTURE_2D, fb_silhouette.getTextureId(0));
         quad_mesh.bind();
@@ -342,10 +372,9 @@ public:
             }
         }
 
-        if(ImGui::IsWindowHovered() && 
-            io.MouseClicked[0] && 
-            (lcl_cursor.x >= 0 && lcl_cursor.y >= 0) &&
-            !using_gizmo
+        SceneObject* pick_candidate = 0;
+        if(ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem | ImGuiHoveredFlags_AllowWhenOverlapped) &&
+            (lcl_cursor.x >= 0 && lcl_cursor.y >= 0)
         ) {
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glBindFramebuffer(GL_READ_FRAMEBUFFER, fb_pick.getId());
@@ -358,28 +387,104 @@ public:
             if(picked_index != -65793) {
                 if(this->scene) {
                     if(picked_index < this->scene->objectCount()) {
-                        editorState().selected_object = this->scene->getObject(picked_index);
+                        pick_candidate = this->scene->getObject(picked_index);
                     }
                 }
             } else {
-                editorState().selected_object = 0;
+                pick_candidate = 0;
             }
             glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        }
+
+        if(io.MouseClicked[0] && !using_gizmo &&
+            ImGui::IsWindowHovered() &&
+            (lcl_cursor.x >= 0 && lcl_cursor.y >= 0)) {
+            editorState().selected_object = pick_candidate;
         }
 
         GLuint color_tex = fb_fin.getTextureId(0);//frame_buffer.getTextureId(0);
         //auto tex = getResource<Texture2D>("image.png");
 
+        ImVec2 imvp_size = ImVec2(
+            ImGui::GetCursorScreenPos().x + sz.x, 
+            ImGui::GetCursorScreenPos().y + sz.y
+        );
         ImGui::GetWindowDrawList()->AddImage((void*)color_tex, 
             ImVec2(ImGui::GetCursorScreenPos()),
-            ImVec2(
-                ImGui::GetCursorScreenPos().x + sz.x, 
-                ImGui::GetCursorScreenPos().y + sz.y
-            ), 
+            imvp_size, 
             ImVec2(0, 1), 
             ImVec2(1, 0)
-        );        
+        );
+
+        unsigned char pixel[3] = { 0, 0, 0 };
+        if(ImGui::IsWindowHovered() &&
+        (lcl_cursor.x >= 0 && lcl_cursor.y >= 0)) {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, frame_buffer.getId());
+            glReadBuffer(GL_COLOR_ATTACHMENT0);
+            
+            glReadPixels(lcl_cursor.x, lcl_cursor.y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, (void*)&pixel);
+            glReadBuffer(GL_NONE);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        }
+        ImGui::Text(
+            MKSTR("Pixel: (" << (int)pixel[0] << ", " << (int)pixel[1] << ", " << (int)pixel[2] << ")").c_str()
+        );
+
+        ImGui::Dummy(sz);
+
+        gfxm::vec3 wpt_xy = gfxm::screenToWorldPlaneXY(
+            gfxm::vec2(lcl_cursor.x, lcl_cursor.y),
+            gfxm::vec2(sz.x, sz.y),
+            proj, view
+        );
+
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
+                //SceneObject* tgt_dnd_so = *(SceneObject**)payload->Data;
+                //tgt_dnd_so->setParent(so);
+                std::string fname = (char*)payload->Data;
+                LOG("Payload received: " << fname);
+                if(pick_candidate) {
+                    LOG("Pick candidate: " << pick_candidate);
+
+                    if(has_suffix(fname, ".mat")) {
+                        Model* mdl = pick_candidate->find<Model>();
+                        if(mdl) {
+                            mdl->material = getResource<Material>(fname);
+                        }
+                    }
+                }
+                if(has_suffix(fname, ".fbx")) {
+                    SceneObject* new_so = scene->createObject();
+                    sceneFromFbx(
+                        fname, 
+                        scene, 
+                        new_so
+                    );
+                    new_so->get<Transform>()->position(wpt_xy);
+                    editorState().selected_object = new_so;
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
+        
+        if (ImGui::BeginPopupContextWindow()) {
+            if(ImGui::BeginMenu("Create...")) {
+                if(ImGui::MenuItem("LightOmni")) {
+                    auto so = scene->createObject();
+                    so->setName("LightOmni");
+                    so->get<LightOmni>();
+                    so->get<Transform>()->position(context_menu_wpt_xy);
+                    editorState().selected_object = so;
+                }
+            }
+            ImGui::EndPopup();
+        } else {
+            context_menu_wpt_xy = wpt_xy;
+        }
     }
+    gfxm::vec3 context_menu_wpt_xy;
 
     void setScene(Scene* scn) {
         scene = scn;
@@ -392,6 +497,8 @@ private:
 
     gfxm::ivec2 cursor_pos;
     gfxm::ivec2 lcl_cursor;
+
+    DISPLAY_BUFFER disp_buf = FINAL;
 
     Renderer* renderer;
     Scene* scene = 0;

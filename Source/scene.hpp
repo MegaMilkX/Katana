@@ -14,6 +14,8 @@
 // Required components
 #include "camera.hpp"
 
+#include "resource/cube_map.hpp"
+
 class ISceneProbeBase {
 public:
     virtual ~ISceneProbeBase() {}
@@ -102,11 +104,19 @@ public:
         return objects[0].get();
     }
 
+    // ====
     Camera* getCurrentCamera() { return current_camera; }
     void    setCurrentCamera(Camera* cam) { 
         current_camera = cam;
         LOG("Set current camera: " << current_camera); 
     }
+    std::shared_ptr<CubeMap> getEnvironmentMap() {
+        return environment_map;
+    }
+    void setEnvironmentMap(std::shared_ptr<CubeMap> tex) {
+        environment_map = tex;
+    }
+    // ====
 
     template<typename T>
     T* createComponent(SceneObject* so = 0) {
@@ -371,6 +381,9 @@ private:
     std::map<rttr::type, ISceneProbeBase*> probes;
 
     Camera* current_camera = 0;
+
+    // Environment
+    std::shared_ptr<CubeMap> environment_map;
 };
 
 #endif

@@ -1,11 +1,12 @@
 R"(#version 450
     in vec2 uv_frag;
     in vec3 normal_model;
-    in vec3 frag_pos_world;
+    in vec3 frag_pos_screen;
     in vec4 base_color;
 
+    in mat3 mat_tbn;
+
     out vec4 out_albedo;
-    out vec4 out_position;
     out vec4 out_normal;
     out vec4 out_metallic;
     out vec4 out_roughness;
@@ -25,9 +26,11 @@ R"(#version 450
             ).xyz * u_tint, 
             1.0
         );
-        out_position = vec4(frag_pos_world, 1.0);
-        out_normal = vec4(normal_model, 1.0);
-        out_metallic = texture(tex_metallic, uv_frag)
-        out_roughness = texture(tex_roughness, uv_frag)
+
+        vec3 t_normal = mat_tbn * (texture(tex_normal, uv_frag).xyz * 2.0 - 1.0);
+
+        out_normal = vec4(t_normal * 0.5 + 0.5, 1.0);
+        out_metallic = vec4(texture(tex_metallic, uv_frag).xxx, 1.0);
+        out_roughness = vec4(texture(tex_roughness, uv_frag).xxx, 1.0);
     }
 )"

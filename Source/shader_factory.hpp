@@ -60,7 +60,6 @@ public:
                 prog->bindAttrib(i, gl::getAttribDesc((gl::ATTRIB_INDEX)i).name);
             }
             prog->bindFragData(GBuffer::ALBEDO, "out_albedo");
-            prog->bindFragData(GBuffer::POSITION, "out_position");
             prog->bindFragData(GBuffer::NORMAL, "out_normal");
             prog->bindFragData(GBuffer::METALLIC, "out_metallic");
             prog->bindFragData(GBuffer::ROUGHNESS, "out_roughness");
@@ -76,11 +75,15 @@ public:
             if((u = prog->getUniform("tex_normal"))) glUniform1i(u, 1);
             if((u = prog->getUniform("tex_metallic"))) glUniform1i(u, 2);
             if((u = prog->getUniform("tex_roughness"))) glUniform1i(u, 3);
+            if((u = prog->getUniform("tex_position"))) glUniform1i(u, 4);
+            if((u = prog->getUniform("tex_environment"))) glUniform1i(u, 5);
+            if((u = prog->getUniform("tex_depth"))) glUniform1i(u, 6);
 
             if((u = prog->getUniform("tex_0"))) glUniform1i(u, 0);
             if((u = prog->getUniform("tex_1"))) glUniform1i(u, 1);
             if((u = prog->getUniform("tex_2"))) glUniform1i(u, 2);
             if((u = prog->getUniform("tex_3"))) glUniform1i(u, 3);
+            if((u = prog->getUniform("tex_4"))) glUniform1i(u, 4);
 
             if(!prog->validate()) {
                 LOG_WARN("Failed to validate shader program '" << name << "'");

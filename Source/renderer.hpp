@@ -14,6 +14,44 @@
 
 #include "shader_factory.hpp"
 
+inline void drawQuad()
+{
+    std::vector<float> vertices = {
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+        1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+        -1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+        -1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+        1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+        1.0f, 1.0f, 0.0f, 1.0f, 1.0f
+    };
+
+    GLuint vao_handle = 0;
+    GLuint vbuf;
+    glGenBuffers(1, &vbuf);
+
+    glGenVertexArrays(1, &vao_handle);
+    glBindVertexArray(vao_handle);
+    glBindBuffer(GL_ARRAY_BUFFER, vbuf);
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(
+        0, 3, GL_FLOAT, GL_FALSE, 
+        sizeof(float) * 5, 0
+    );
+    glVertexAttribPointer(
+        1, 2, GL_FLOAT, GL_FALSE, 
+        sizeof(float) * 5, (void*)(sizeof(float) * 3)
+    );
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbuf);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), (void*)vertices.data(), GL_STREAM_DRAW);
+    
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    glDeleteVertexArrays(1, &vao_handle);
+    glDeleteBuffers(1, &vbuf);
+}
+
 class Renderer : 
 public ISceneProbe<Model>,
 public ISceneProbe<Skin>,
@@ -34,41 +72,42 @@ public:
         unsigned char blk[3] = { 0, 0, 0};
         texture_black_px->Data(blk, 1, 1, 3);
 
+        texture_normal_px.reset(new Texture2D());
+        unsigned char nrm[3] = { 128, 128, 255 };
+        texture_normal_px->Data(nrm, 1, 1, 3);
+
+        prog_light_pass = ShaderFactory::getOrCreate(
+            "light_pass",
+            #include "shaders/v_quad.glsl"
+            ,
+            #include "shaders/f_light_pass.glsl"
+        );
+
+        prog_gbuf_solid = ShaderFactory::getOrCreate(
+            "gbuf_solid_pbr",
+            #include "shaders/v_solid_deferred_pbr.glsl"
+            ,
+            #include "shaders/f_deferred_pbr.glsl"
+        );
+        prog_gbuf_skin = ShaderFactory::getOrCreate(
+            "gbuf_skin_pbr",
+            #include "shaders/v_skin_deferred_pbr.glsl"
+            ,
+            #include "shaders/f_deferred_pbr.glsl"
+        );
+
+        prog_skybox = ShaderFactory::getOrCreate(
+            "skybox",
+            #include "shaders/v_skybox.glsl"
+            ,
+            #include "shaders/f_skybox.glsl"
+        );
+
         prog = ShaderFactory::getOrCreate(
             "solid",
-            R"(#version 450
-            in vec3 Position;
-            in vec2 UV;
-            in vec3 Normal;
-            uniform mat4 mat_projection;
-            uniform mat4 mat_view;
-            uniform mat4 mat_model;
-            out vec2 UVFrag;
-            out vec3 NormalFrag;
-            out vec3 ViewDir;
-            void main()
-            {
-                ViewDir = (inverse(mat_view) * vec4(0, 0, -1, 0)).xyz;
-                UVFrag = UV;
-                NormalFrag = normalize((mat_model * vec4(Normal, 0.0)).xyz);
-                gl_Position = mat_projection * mat_view * mat_model * vec4(Position, 1.0);
-            })",
-            R"(#version 450
-            in vec2 UVFrag;
-            in vec3 NormalFrag;
-            in vec3 ViewDir;
-            out vec4 out_albedo;
-            uniform sampler2D tex_albedo;
-            
-            uniform vec3 u_color;
-
-            void main()
-            {
-                vec3 albedo = u_color;
-                float lightness = dot(NormalFrag, -ViewDir);
-                vec3 n = ((NormalFrag) * 0.5f ) + 0.5f;
-                out_albedo = texture(tex_albedo, UVFrag);
-            })"
+            #include "shaders/v_solid.glsl"
+            ,
+            #include "shaders/f_solid.glsl"
         );
         if(!prog) {
             LOG_ERR("Failed to get SOLID shader program");
@@ -76,67 +115,9 @@ public:
 
         prog_skin = ShaderFactory::getOrCreate(
             "skin",
-            R"(#version 450
-            #define MAX_BONE_COUNT 100
-            in vec3 Position;
-            in vec2 UV;
-            in vec3 Normal;
-            in vec4 BoneIndex4;
-            in vec4 BoneWeight4;
-
-            out vec3 fs_NormalModel;
-            out vec3 ViewDir;
-
-            uniform mat4 mat_projection;
-            uniform mat4 mat_view;
-            uniform mat4 mat_model;
-
-            uniform mat4 inverseBindPose[MAX_BONE_COUNT];
-            uniform mat4 bones[MAX_BONE_COUNT];
-
-            void main() {
-                ViewDir = (inverse(mat_view) * vec4(0, 0, -1, 0)).xyz;
-
-                ivec4 bi = ivec4(
-                    int(BoneIndex4.x), int(BoneIndex4.y),
-                    int(BoneIndex4.z), int(BoneIndex4.w)
-                );
-                vec4 w = BoneWeight4;
-                if(w.x + w.y + w.z + w.w > 1.0) {
-                    w = normalize(w);
-                }
-                vec4 posModel = (
-                    (bones[bi.x] * inverseBindPose[bi.x]) * vec4(Position, 1.0) * w.x +
-                    (bones[bi.y] * inverseBindPose[bi.y]) * vec4(Position, 1.0) * w.y +
-                    (bones[bi.z] * inverseBindPose[bi.z]) * vec4(Position, 1.0) * w.z +
-                    (bones[bi.w] * inverseBindPose[bi.w]) * vec4(Position, 1.0) * w.w
-                );
-                vec3 normalSkinned = (
-                    (bones[bi.x] * inverseBindPose[bi.x]) * vec4(Normal, 0.0) * w.x +
-                    (bones[bi.y] * inverseBindPose[bi.y]) * vec4(Normal, 0.0) * w.y +
-                    (bones[bi.z] * inverseBindPose[bi.z]) * vec4(Normal, 0.0) * w.z +
-                    (bones[bi.w] * inverseBindPose[bi.w]) * vec4(Normal, 0.0) * w.w
-                ).xyz;
-
-                fs_NormalModel = normalize(vec4(normalSkinned, 0.0)).xyz;
-
-                gl_Position = 
-                    mat_projection *
-                    mat_view *
-                    posModel;
-            })",
-            R"(#version 450
-            in vec2 UVFrag;
-            in vec3 fs_NormalModel;
-            in vec3 ViewDir;
-            out vec4 out_albedo;
-            uniform sampler2D tex_albedo;
-            void main()
-            {
-                vec3 albedo = vec3(0.5, 0.5, 0.5);
-                float lightness = dot(fs_NormalModel, -ViewDir);
-                out_albedo = vec4(albedo * lightness, 1.0);
-            })"
+            #include "shaders/v_skin.glsl"
+            ,
+            #include "shaders/f_skin.glsl"
         );
         if(!prog_skin) {
             LOG_ERR("Failed to get SOLID shader program");
@@ -144,23 +125,9 @@ public:
 
         prog_pick = ShaderFactory::getOrCreate(
             "pick",
-            R"(#version 450
-            in vec3 Position;
-            uniform mat4 mat_projection;
-            uniform mat4 mat_view;
-            uniform mat4 mat_model;
-            void main()
-            {
-                gl_Position = mat_projection * mat_view * mat_model * vec4(Position, 1.0);
-            })",
-            R"(
-            #version 450
-            out vec4 out_albedo;
-            uniform vec4 object_ptr;
-            void main()
-            {
-                out_albedo = object_ptr;
-            })"
+            #include "shaders/v_pick.glsl"
+            ,
+            #include "shaders/f_pick.glsl"
         );
         if(!prog_pick) {
             LOG_ERR("Failed to get SOLID shader program");
@@ -185,9 +152,11 @@ public:
     }
     virtual void onCreateComponent(LightOmni* omni) {
         LOG("LightOmni added");
+        lights_omni.insert(omni);
     }
     virtual void onRemoveComponent(LightOmni* omni) {
         LOG("LightOmni removed");
+        lights_omni.erase(omni);
     }
 
     void setScene(Scene* scn) {
@@ -220,9 +189,9 @@ public:
             memcpy(draw_info.transform, (void*)&kv.second.mdl->getObject()->get<Transform>()->getTransform(), sizeof(draw_info.transform)); 
             
             draw_info.textures[0] = texture_white_px->GetGlName();
-            draw_info.textures[1] = texture_black_px->GetGlName();
+            draw_info.textures[1] = texture_normal_px->GetGlName();
             draw_info.textures[2] = texture_black_px->GetGlName();
-            draw_info.textures[3] = texture_white_px->GetGlName();
+            draw_info.textures[3] = texture_black_px->GetGlName();
 
             if(kv.second.mdl->material) {
                 Texture2D* tex = kv.second.mdl->material->albedo.get();
@@ -265,7 +234,7 @@ public:
                 glBindTexture(GL_TEXTURE_2D, d.textures[t]);
             }
 
-            glUniform3f(prog->getUniform("u_color"), 0.5f, 0.5f, 0.5f);
+            glUniform3f(prog->getUniform("u_tint"), 1.0f, 1.0f, 1.0f);
 
             glBindVertexArray(d.vao);
             glDrawElements(GL_TRIANGLES, d.index_count, GL_UNSIGNED_INT, (GLvoid*)d.offset);
@@ -303,16 +272,26 @@ public:
                 GL_FALSE,
                 (GLfloat*)skin_transforms.data()
             );
+            glUniform3f(prog->getUniform("u_tint"), 1.0f, 1.0f, 1.0f);
             glBindVertexArray(d.vao);
             glDrawElements(GL_TRIANGLES, d.index_count, GL_UNSIGNED_INT, (GLvoid*)d.offset);
         }
     }
 
-    void draw(GLuint framebuffer_index, GLsizei w, GLsizei h, gfxm::mat4 projection, gfxm::mat4 view) {
+    void draw(
+        GLuint framebuffer_index, 
+        GLsizei w, GLsizei h, 
+        gfxm::mat4& projection, 
+        gfxm::mat4& view,
+        gl::ShaderProgram* prog_solid,
+        gl::ShaderProgram* prog_skin
+    ) {
         std::vector<gl::DrawInfo> draw_list;
         std::vector<gl::DrawInfo> draw_list_skin;
 
         collectDrawLists(draw_list, draw_list_skin);
+
+        glDepthFunc(GL_LEQUAL);
 
         glEnable(GL_DEPTH_TEST);
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_index);
@@ -321,9 +300,81 @@ public:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO: Should only clear depth ?
 
         // =============================
+        prog_skybox->use();
+        glUniformMatrix4fv(prog_skybox->getUniform("mat_projection"), 1, GL_FALSE, (float*)&projection);
+        glUniformMatrix4fv(prog_skybox->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
+        glActiveTexture(GL_TEXTURE0 + 5);
+        if(scene->getEnvironmentMap()) {
+            glBindTexture(GL_TEXTURE_CUBE_MAP, scene->getEnvironmentMap()->getId());
+        } else {
+            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        }
+        drawCube();
 
-        drawSolidObjects(prog, projection, view, draw_list);
+        drawSolidObjects(prog_solid, projection, view, draw_list);
         drawSkinObjects(prog_skin, projection, view, draw_list_skin);
+    }
+
+    void draw(GLuint framebuffer_index, GLsizei w, GLsizei h, gfxm::mat4& projection, gfxm::mat4& view) {
+        draw(framebuffer_index, w, h, projection, view, prog, prog_skin);
+    }
+
+    void drawGBuffer(GLuint fb, GLsizei w, GLsizei h, gfxm::mat4& proj, gfxm::mat4& view) {
+        draw(fb, w, h, proj, view, prog_gbuf_solid, prog_gbuf_skin);
+    }
+
+    void draw(GBuffer* g_buffer, GLuint fb_final, GLsizei w, GLsizei h, gfxm::mat4 projection, gfxm::mat4 view) {
+        drawGBuffer(
+            g_buffer->getGlFramebuffer(),
+            g_buffer->getWidth(),
+            g_buffer->getHeight(),
+            projection, view
+        );
+
+        glBindFramebuffer(GL_FRAMEBUFFER, fb_final);
+        glViewport(0, 0, w, h);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        prog_light_pass->use();
+
+        const int MAX_OMNI_LIGHT = 10;
+        gfxm::vec3 light_omni_pos[MAX_OMNI_LIGHT];
+        gfxm::vec3 light_omni_col[MAX_OMNI_LIGHT];
+        int i = 0;
+        for(auto l : lights_omni) {
+            light_omni_pos[i] = l->get<Transform>()->worldPosition();
+            light_omni_col[i] = l->color;
+            ++i;
+            if(i >= MAX_OMNI_LIGHT) break;
+        }
+
+        glUniform3fv(prog_light_pass->getUniform("light_omni_pos"), i, (float*)light_omni_pos);
+        glUniform3fv(prog_light_pass->getUniform("light_omni_col"), i, (float*)light_omni_col);
+        glUniform1i(prog_light_pass->getUniform("light_omni_count"), i);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, g_buffer->getAlbedoTexture());
+        glActiveTexture(GL_TEXTURE0 + 1);
+        glBindTexture(GL_TEXTURE_2D, g_buffer->getNormalTexture());
+        glActiveTexture(GL_TEXTURE0 + 2);
+        glBindTexture(GL_TEXTURE_2D, g_buffer->getMetallicTexture());
+        glActiveTexture(GL_TEXTURE0 + 3);
+        glBindTexture(GL_TEXTURE_2D, g_buffer->getRoughnessTexture());
+        glActiveTexture(GL_TEXTURE0 + 5);
+        if(scene->getEnvironmentMap()) {
+            glBindTexture(GL_TEXTURE_CUBE_MAP, scene->getEnvironmentMap()->getId());
+        } else {
+            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        }
+        glActiveTexture(GL_TEXTURE0 + 6);
+        glBindTexture(GL_TEXTURE_2D, g_buffer->getDepthTexture());
+
+        gfxm::vec4 view_pos4 = gfxm::inverse(view) * gfxm::vec4(0,0,0,1);
+        glUniform3f(prog_light_pass->getUniform("view_pos"), view_pos4.x, view_pos4.y, view_pos4.z);
+        glUniform2f(prog_light_pass->getUniform("viewport_size"), (float)w, (float)h);
+        gfxm::mat4 inverse_view_projection =
+            gfxm::inverse(projection * view);
+        glUniformMatrix4fv(prog_light_pass->getUniform("inverse_view_projection"), 1, GL_FALSE, (float*)&inverse_view_projection);
+        drawQuad();
     }
 
     void draw(gl::FrameBuffer* fb, gfxm::mat4 projection, gfxm::mat4 view) {
@@ -331,7 +382,11 @@ public:
     }
 
     void draw(GBuffer* g_buffer, gl::FrameBuffer* fb_final, gfxm::mat4& projection, gfxm::mat4& view) {
-
+        draw(
+            g_buffer, 
+            fb_final->getId(), fb_final->getWidth(), fb_final->getHeight(),
+            projection, view
+        );
     }
 
     void drawPickBuffer(gl::FrameBuffer* fb, gfxm::mat4 projection, gfxm::mat4 view) {
@@ -374,16 +429,20 @@ public:
 private:
     Scene* scene;
 
-    gl::ShaderProgram* prog_pbr_solid;
-    gl::ShaderProgram* prog_pbr_skin;
+    gl::ShaderProgram* prog_gbuf_solid;
+    gl::ShaderProgram* prog_gbuf_skin;
+    gl::ShaderProgram* prog_light_pass;
+    gl::ShaderProgram* prog_skybox;
 
     gl::ShaderProgram* prog;
     gl::ShaderProgram* prog_skin;
     gl::ShaderProgram* prog_pick;
     std::shared_ptr<Texture2D> texture_white_px;
     std::shared_ptr<Texture2D> texture_black_px;
+    std::shared_ptr<Texture2D> texture_normal_px;
 
     std::map<SceneObject*, ObjectInfo> objects;
+    std::set<LightOmni*> lights_omni;
 };
 
 #endif

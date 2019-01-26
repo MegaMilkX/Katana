@@ -98,6 +98,8 @@ PFNGLDELETERENDERBUFFERSPROC glDeleteRenderbuffers;
 
 PFNGLBINDFRAGDATALOCATIONPROC glBindFragDataLocation;
 
+PFNGLFRAMEBUFFERTEXTURE2DPROC glFramebufferTexture2D;
+
 HMODULE opengl32Module = NULL;
 
 void* GLEXTLoadFunction(const char* name)
@@ -224,6 +226,8 @@ void GLEXTLoadFunctions()
     GLPROCLOAD(PFNGLDELETERENDERBUFFERSPROC, glDeleteRenderbuffers);
 
     GLPROCLOAD(PFNGLBINDFRAGDATALOCATIONPROC, glBindFragDataLocation);
+
+    GLPROCLOAD(PFNGLFRAMEBUFFERTEXTURE2DPROC, glFramebufferTexture2D);
     
     FreeLibrary(opengl32Module);
     opengl32Module = NULL;
