@@ -19,3 +19,15 @@
 10/ Asset params inspector to the right of directory view
 
 11/ Asset preview icons where applicable
+
+12/ Serialization/de~ for most important components (need to pass around size)
+13/ Look into dynamic lib modules
+
+14/ Extract all local resources to a subfolder on fbx import and use them as global ones?
+15/ Add de/serialization for animations!
+
+16/ Bounding boxes (maybe spheres too) for meshes!
+
+17/ Root motion option to ignore Y coord (for root motion from pelvis and stuff like that)
+
+18/ Replace Resource::Build() with deserialize()
