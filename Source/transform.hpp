@@ -146,7 +146,7 @@ public:
         out.write((char*)&_rotation, sizeof(_rotation));
         out.write((char*)&_scale, sizeof(_scale));
     }
-    virtual void deserialize(std::istream& in) {
+    virtual void deserialize(std::istream& in, size_t sz) {
         in.read((char*)&_position, sizeof(_position));
         in.read((char*)&_rotation, sizeof(_rotation));
         in.read((char*)&_scale, sizeof(_scale));

@@ -1,6 +1,8 @@
 #ifndef EDITOR_VIEWPORT_HPP
 #define EDITOR_VIEWPORT_HPP
 
+#include <cctype>
+
 #include "editor_window.hpp"
 
 #include "g_buffer.hpp"
@@ -30,6 +32,7 @@
 #include "lib/imguizmo/ImGuizmo.h"
 
 #include "util/has_suffix.hpp"
+#include "util/filesystem.hpp"
 
 #include "scene_from_fbx.hpp"
 
@@ -278,7 +281,7 @@ public:
             // TODO: ?
         }
 
-        gfxm::mat4 proj = gfxm::perspective(gfxm::radian(75.0f), sz.x/(float)sz.y, 0.01f, 1000.0f);
+        gfxm::mat4 proj = gfxm::perspective(gfxm::radian(45.0f), sz.x/(float)sz.y, 0.01f, 1000.0f);
         gfxm::transform tcam;
         tcam.position(cam_pivot);
         tcam.rotate(cam_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
@@ -445,6 +448,10 @@ public:
                 //tgt_dnd_so->setParent(so);
                 std::string fname = (char*)payload->Data;
                 LOG("Payload received: " << fname);
+
+                for(size_t i = 0; i < fname.size(); ++i) {
+                    fname[i] = (std::tolower(fname[i]));
+                }
                 if(pick_candidate) {
                     LOG("Pick candidate: " << pick_candidate);
 
@@ -452,6 +459,31 @@ public:
                         Model* mdl = pick_candidate->find<Model>();
                         if(mdl) {
                             mdl->material = getResource<Material>(fname);
+                        }
+                    } else if(has_suffix(fname, ".jpg") ||
+                        has_suffix(fname, ".jpeg") ||
+                        has_suffix(fname, ".png") ||
+                        has_suffix(fname, ".tga") ||
+                        has_suffix(fname, ".bmp") ||
+                        has_suffix(fname, ".psd") ||
+                        has_suffix(fname, ".gif") ||
+                        has_suffix(fname, ".hdr") ||
+                        has_suffix(fname, ".pic")
+                    ) {
+                        Material material;
+                        material.albedo = getResource<Texture2D>(fname);
+                        std::ofstream file(fname + ".mat");
+                        material.serialize(file);
+                        file.close();
+                        LOG(fname + ".mat");
+                        GlobalDataRegistry().Add(
+                            fname + ".mat",
+                            DataSourceRef(new DataSourceFilesystem(get_module_dir() + "\\" + fname + ".mat"))
+                        );
+
+                        Model* mdl = pick_candidate->find<Model>();
+                        if(mdl) {
+                            mdl->material = getResource<Material>(fname + ".mat");
                         }
                     }
                 }

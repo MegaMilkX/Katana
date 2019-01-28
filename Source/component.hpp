@@ -39,7 +39,7 @@ public:
     T*     get();
 
     virtual void serialize(std::ostream& out) {}
-    virtual void deserialize(std::istream& in) {}
+    virtual void deserialize(std::istream& in, size_t sz) {}
 
     virtual void _editorGui() {}
 private:

@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "scene_object.hpp"
+#include "scene_components/scene_component.hpp"
 #include "resource/resource.h"
 #include "util/log.hpp"
 
@@ -15,6 +16,8 @@
 #include "camera.hpp"
 
 #include "resource/cube_map.hpp"
+
+#include "skybox_gradient.hpp"
 
 class ISceneProbeBase {
 public:
@@ -40,69 +43,16 @@ public:
 class Scene {
     friend SceneObject;
 public:
-    static Scene* create() {
-        return new Scene();
-    }
-    void destroy() {
-        clear();
-        delete this;
-    }
+    static Scene*   create();
+    void            destroy();
 
-    void clear() {
-        // Root object always remains
-        while(objectCount() > 1) {
-            removeObject(getObject(objectCount() - 1));
-        }
-        getRootObject()->removeComponents();
-        local_resources.clear();
-    }
+    void            clear();
 
-    SceneObject* createObject(SceneObject* parent = 0) {
-        if(!parent) {
-            parent = getRootObject();
-        }
-        objects.emplace_back(std::shared_ptr<SceneObject>(new SceneObject(this, parent)));
-        if(parent) {
-            parent->children.emplace_back(objects.back().get());
-        }
-        objects.back()->id = objects.size() - 1;
-        return objects.back().get();
-    }
-    void removeObject(SceneObject* so) {
-        if(!so->parent) {
-            // Root object always remains
-            return;
-        }
-        auto it = objects.end();
-        for(size_t i = 0; i < objects.size(); ++i) {
-            // Note the one to remove
-            if(objects[i].get() == so) {
-                it = objects.begin() + i;
-                continue;
-            }
-            // If it is a parent to this object, clear the relationship
-            if(objects[i]->getParent() == so) {
-                objects[i]->setParent(getRootObject());
-            }
-        }
-        if(it != objects.end()) {
-            SceneObject* parent = (*it)->getParent();
-            if(parent) {
-                parent->removeChild((*it).get());
-            }
-            (*it)->removeComponents();
-            objects.erase(it);
-        }
-    }
-    size_t objectCount() const {
-        return objects.size();
-    }
-    SceneObject* getObject(size_t index) {
-        return objects[index].get();
-    }
-    SceneObject* getRootObject() {
-        return objects[0].get();
-    }
+    SceneObject*    createObject(SceneObject* parent = 0);
+    void            removeObject(SceneObject* so);
+    size_t          objectCount() const;
+    SceneObject*    getObject(size_t index);
+    SceneObject*    getRootObject();
 
     // ====
     Camera* getCurrentCamera() { return current_camera; }
@@ -110,12 +60,45 @@ public:
         current_camera = cam;
         LOG("Set current camera: " << current_camera); 
     }
-    std::shared_ptr<CubeMap> getEnvironmentMap() {
-        return environment_map;
+    SkyboxGradient& getSkybox() {
+        return skybox;
     }
-    void setEnvironmentMap(std::shared_ptr<CubeMap> tex) {
-        environment_map = tex;
+    // ====
+
+    template<typename T>
+    T* getSceneComponent() {
+        rttr::type t = rttr::type::get<T>();
+        auto it = scene_components.find(t);
+        if(it == scene_components.end()) {
+            scene_components[t] =    
+                std::shared_ptr<SceneComponent>(new T());
+        }
+        return (T*)scene_components[t].get();
     }
+    SceneComponent* getSceneComponent(const std::string& type_name) {
+        return getSceneComponent(rttr::type::get_by_name(type_name));
+    }
+    SceneComponent* getSceneComponent(rttr::type t) {
+        auto it = scene_components.find(t);
+        if(it == scene_components.end()) {
+            if(!t.is_valid()) {
+                LOG_WARN(t.get_name().to_string() << " is not a valid type");
+                return 0;
+            }
+            rttr::variant v = t.create();
+            if(!v.get_type().is_pointer()) {
+                LOG_WARN(t.get_name().to_string() << " - rttr constructor policy must be pointer");
+                return 0;
+            }
+            SceneComponent* c = v.get_value<SceneComponent*>();
+            if(c) {
+                scene_components[t] =    
+                    std::shared_ptr<SceneComponent>(c);
+            }
+        }
+        return scene_components[t].get();
+    }
+
     // ====
 
     template<typename T>
@@ -378,12 +361,15 @@ private:
     std::map<rttr::type, std::vector<std::shared_ptr<Component>>> components;
     std::map<rttr::type, std::vector<std::shared_ptr<Resource>>> local_resources;
 
+    std::map<rttr::type, std::shared_ptr<SceneComponent>> scene_components;
+
     std::map<rttr::type, ISceneProbeBase*> probes;
 
     Camera* current_camera = 0;
 
     // Environment
     std::shared_ptr<CubeMap> environment_map;
+    SkyboxGradient skybox;
 };
 
 #endif

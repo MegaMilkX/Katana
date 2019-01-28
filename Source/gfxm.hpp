@@ -447,6 +447,11 @@ inline tvec3<T> cross(const tvec3<T>& a, const tvec3<T>& b)
 }
 
 template<typename T>
+inline tvec2<T> operator*(const tvec2<T>& a, const tvec2<T>& b) {
+    return tvec2<T>(a.x * b.x, a.y * b.y);
+}
+
+template<typename T>
 inline tmat4<T> operator+(const tmat4<T>& m0, const tmat4<T>& m1) {
     tmat4<T> m;
     for (int i = 0; i < 4; ++i)

@@ -7,6 +7,9 @@
 #include "behavior_system.hpp"
 #include "input/input_mgr.hpp"
 
+#include "scene_components/scene_player_info.hpp"
+#include "scene.hpp"
+
 class TpsCamera : public Updatable {
     CLONEABLE
     RTTR_ENABLE(Updatable)
@@ -14,6 +17,8 @@ public:
     virtual void onCreate() {
         camera = getObject()->get<Camera>();
         transform = getObject()->get<Transform>();
+
+        player_info = getScene()->getSceneComponent<ScenePlayerInfo>();
     }
 
     virtual void init() {
@@ -57,8 +62,14 @@ public:
     }
 
     virtual void update() {
-        Transform* t = getObject()->getScene()->getComponent<Transform>(tgt_transform_id);
-        gfxm::vec3 tgt_pos = t->worldPosition() + gfxm::vec3(0.0f, 1.3f, 0.0f);
+        Transform* t = player_info->character_transform;
+        gfxm::vec3 tgt_pos;
+
+        if(t) {
+            tgt_pos = t->worldPosition() + gfxm::vec3(0.0f, 1.3f, 0.0f);
+        } else {
+            tgt_pos = gfxm::vec3(0.0,0.0,0.0);
+        }
         pivot = gfxm::lerp(pivot, tgt_pos, 0.1f);
 
         _distance = gfxm::lerp(_distance, distance, 0.1f);
@@ -74,6 +85,7 @@ public:
     }
 
     virtual void _editorGui() {
+        /*
         std::string object_name = "(target transform)";
 
         Transform* t = getObject()->getScene()->getComponent<Transform>(tgt_transform_id);
@@ -90,11 +102,12 @@ public:
             ImGui::EndDragDropTarget();
         }
         ImGui::PopID();
+        */
     }
 private:
     InputListener* input_lis;
 
-    size_t tgt_transform_id = 0;
+    ScenePlayerInfo* player_info;
 
     Camera* camera = 0;
     Transform* transform = 0;

@@ -13,10 +13,18 @@ public:
     typedef std::unordered_map<std::string, res_weak_ptr_t> resource_map_t;
     
     template<typename T>
-    std::shared_ptr<T> Get(const std::string& name) {
+    std::shared_ptr<T> Get(const std::string& n) {
+        std::string name = n;
+        for(size_t i = 0; i < name.size(); ++i) {
+            name[i] = (std::tolower(name[i]));
+            if(name[i] == '\\') {
+                name[i] = '/';
+            }
+        }
+
         DataSourceRef dataSrc = GlobalDataRegistry().Get(name);
         if(!dataSrc) {
-            LOG("Data source " << name << " doesn't exist.");
+            LOG("Data source '" << name << "' doesn't exist.");
             return std::shared_ptr<T>();
         }
         std::shared_ptr<T> ptr;

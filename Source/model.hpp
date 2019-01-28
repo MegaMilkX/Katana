@@ -35,7 +35,7 @@ public:
             out.write((char*)&null_flag, sizeof(null_flag));
         }
     }
-    virtual void deserialize(std::istream& in) {
+    virtual void deserialize(std::istream& in, size_t sz) {
         uint8_t null_flag = 0;
         in.read((char*)&null_flag, sizeof(null_flag));
         if(null_flag == 1) {

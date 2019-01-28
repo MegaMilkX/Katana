@@ -4,6 +4,8 @@
 #include "data_source.h"
 #include <unordered_map>
 #include <map>
+#include <cctype>
+#include "../util/log.hpp"
 
 class DataRegistry {
 public:
@@ -16,7 +18,11 @@ public:
         dataSources.clear();
     }
 
-    DataSourceRef Get(const std::string& name) {
+    DataSourceRef Get(const std::string& n) {
+        std::string name = n;
+        for(size_t i = 0; i < name.size(); ++i) {
+            name[i] = (std::tolower(name[i]));
+        }
         if(dataSources.count(name) == 0) return 0;
         return dataSources[name];
     }
@@ -34,7 +40,14 @@ public:
         return it->first;
     }
 
-    void Add(const std::string& name, DataSourceRef dataSource) {
+    void Add(const std::string& n, DataSourceRef dataSource) {
+        std::string name = n;
+        for(size_t i = 0; i < name.size(); ++i) {
+            name[i] = (std::tolower(name[i]));
+            if(name[i] == '\\') {
+                name[i] = '/';
+            }
+        }
         dataSources[name] = dataSource;
     }
 private:

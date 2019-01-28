@@ -7,6 +7,72 @@
 #include "util/split.hpp"
 #include "util/has_suffix.hpp"
 
+Scene* Scene::create() {
+    return new Scene();
+}
+void Scene::destroy() {
+    clear();
+    delete this;
+}
+
+void Scene::clear() {
+    // Root object always remains
+    while(objectCount() > 1) {
+        removeObject(getObject(objectCount() - 1));
+    }
+    getRootObject()->removeComponents();
+    local_resources.clear();
+}
+
+SceneObject* Scene::createObject(SceneObject* parent) {
+    if(!parent) {
+        parent = getRootObject();
+    }
+    objects.emplace_back(std::shared_ptr<SceneObject>(new SceneObject(this, parent)));
+    if(parent) {
+        parent->children.emplace_back(objects.back().get());
+    }
+    objects.back()->id = objects.size() - 1;
+    return objects.back().get();
+}
+
+void Scene::removeObject(SceneObject* so) {
+    if(!so->parent) {
+        // Root object always remains
+        return;
+    }
+    auto it = objects.end();
+    for(size_t i = 0; i < objects.size(); ++i) {
+        // Note the one to remove
+        if(objects[i].get() == so) {
+            it = objects.begin() + i;
+            continue;
+        }
+        // If it is a parent to this object, clear the relationship
+        if(objects[i]->getParent() == so) {
+            objects[i]->setParent(getRootObject());
+        }
+    }
+    if(it != objects.end()) {
+        SceneObject* parent = (*it)->getParent();
+        if(parent) {
+            parent->removeChild((*it).get());
+        }
+        (*it)->removeComponents();
+        objects.erase(it);
+    }
+}
+
+size_t Scene::objectCount() const {
+    return objects.size();
+}
+SceneObject* Scene::getObject(size_t index) {
+    return objects[index].get();
+}
+SceneObject* Scene::getRootObject() {
+    return objects[0].get();
+}
+
 bool zipAddFromStream(std::istream& in, mz_zip_archive& archive, const std::string& name) {
     in.seekg(0, std::ios::end);
     size_t sz = in.tellg();
@@ -63,7 +129,12 @@ bool Scene::serialize(std::vector<char>& buf) {
                 uint32_t owner_id = (uint32_t)c->scene_object->getId();
                 LOG("Component owner id: " << owner_id);
                 ss.write((char*)&owner_id, sizeof(owner_id));
-                c->serialize(ss);
+
+                std::stringstream ss_c;
+                c->serialize(ss_c);
+                uint64_t sz = ss_c.tellp();
+                ss.write((char*)&sz, sizeof(sz));
+                if(sz) ss << ss_c.rdbuf();
             }
 
             zipAddFromStream(
@@ -81,7 +152,11 @@ bool Scene::serialize(std::vector<char>& buf) {
             ss.write((char*)&count, sizeof(count));
 
             for(auto& r : kv.second) {
-                r->serialize(ss);
+                std::stringstream ss_r;
+                r->serialize(ss_r);
+                uint64_t sz = ss_r.tellp();
+                ss.write((char*)&sz, sizeof(sz));
+                if(sz) ss << ss_r.rdbuf();
             }
 
             zipAddFromStream(
@@ -222,6 +297,9 @@ bool Scene::deserialize(std::vector<char>& data) {
             continue;
         }
         for(uint32_t i = 0; i < res_count; ++i) {
+            uint64_t sz = 0;
+            ss.read((char*)&sz, sizeof(sz));
+            
             // TODO:
             rttr::variant v = type.create();
             if(!v.get_type().is_pointer()) {
@@ -232,7 +310,7 @@ bool Scene::deserialize(std::vector<char>& data) {
             std::shared_ptr<Resource> res_ptr(res);
             res_ptr->Storage(Resource::LOCAL);
             res_ptr->Name(MKSTR(res_name << "#" << i));
-            res_ptr->deserialize(ss);
+            res_ptr->deserialize(ss, (size_t)sz);
             addLocalResource(type, res_ptr);
         }
     }
@@ -266,6 +344,9 @@ bool Scene::deserialize(std::vector<char>& data) {
         for(uint32_t i = 0; i < component_count; ++i) {
             uint32_t owner_id = 0;
             ss.read((char*)&owner_id, sizeof(owner_id));
+            uint64_t sz = 0;
+            ss.read((char*)&sz, sizeof(sz));
+
             LOG("Component owner_id: " << owner_id);
             LOG("Component owner ptr: " << getObject(owner_id));
             if(getObject(owner_id)) {
@@ -274,7 +355,7 @@ bool Scene::deserialize(std::vector<char>& data) {
                     LOG_WARN("Failed to create component " << component_name);
                     break;
                 }
-                c->deserialize(ss);
+                c->deserialize(ss, (size_t)sz);
             } else {
                 LOG_ERR("No owner found for id " << owner_id);
                 break;

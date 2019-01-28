@@ -43,6 +43,25 @@ public:
         return false;
     }
 
+    virtual void serialize(std::ostream& out) {
+        using json = nlohmann::json;
+        json j;
+        if(albedo) {
+            j["albedo"] = albedo->Name();
+        }
+        if(normal) {
+            j["normal"] = normal->Name();
+        }
+        if(metallic) {
+            j["metallic"] = metallic->Name();
+        }
+        if(roughness) {
+            j["roughness"] = roughness->Name();
+        }
+
+        out << j;
+    }
+
 private:
     void getMap(nlohmann::json& j, const std::string& name, std::shared_ptr<Texture2D>& ptr) {
         nlohmann::json j_ = j[name];

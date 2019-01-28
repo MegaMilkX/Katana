@@ -4,6 +4,7 @@
 #include <algorithm>
 #include "filesystem.hpp"
 #include "../resource/data_registry.h"
+#include "log.hpp"
 
 inline void initFilesystemResources(const std::string& rootDir) {
     GlobalDataRegistry().Clear();
@@ -19,6 +20,9 @@ inline void initFilesystemResources(const std::string& rootDir) {
     }
 
     for(size_t i = 0; i < files.size(); ++i) {
+        for(size_t j = 0; j < resNames[i].size(); ++j) {
+            resNames[i][j] = (std::tolower(resNames[i][j]));
+        }
         GlobalDataRegistry().Add(
             resNames[i],
             DataSourceRef(new DataSourceFilesystem(files[i]))

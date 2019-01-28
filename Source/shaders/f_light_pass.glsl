@@ -20,8 +20,13 @@ uniform vec3 view_pos;
 uniform int light_omni_count;
 uniform vec3 light_omni_pos[MAX_OMNI_LIGHT];
 uniform vec3 light_omni_col[MAX_OMNI_LIGHT];
+uniform float light_omni_radius[MAX_OMNI_LIGHT];
 
 const float PI = 3.14159265359;
+
+float saturate(float value) {
+    return clamp(value, 0.0, 1.0);
+}
 
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
@@ -66,6 +71,7 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 vec3 calcLightSource(
     vec3 light_pos,
     vec3 light_color, 
+    float light_radius,
     vec3 world_pos, 
     vec3 albedo,
     float roughness,
@@ -77,7 +83,8 @@ vec3 calcLightSource(
     vec3 L = normalize(light_pos - world_pos);
     vec3 H = normalize(V + L);
     float distance = length(light_pos - world_pos);
-    float attenuation = 1.0 / (distance * distance);
+    //float attenuation = 1.0 / (distance * distance);
+    float attenuation = pow(saturate(1 - pow(distance / light_radius, 4)), 2) / (distance * distance + 1);
     vec3 radiance = light_color * attenuation;
 
     float NDF = distributionGGX(N, H, roughness);
@@ -98,7 +105,10 @@ vec3 calcLightSource(
 
 void main()
 {
-    float depth = texture(tex_depth, uv_frag).x * 2.0 - 1.0;
+    float depth = texture(tex_depth, uv_frag).x;
+    gl_FragDepth = depth;
+    depth = depth * 2.0 - 1.0;
+
     vec3 albedo = texture(tex_albedo, uv_frag).xyz;
     vec3 normal = texture(tex_normal, uv_frag).xyz;
     vec3 position = vec3((gl_FragCoord.xy / viewport_size) * 2.0 - 1.0, depth);
@@ -124,19 +134,9 @@ void main()
 
     for(int i = 0; i < light_omni_count; ++i) {
         Lo += calcLightSource(
-            light_omni_pos[i], light_omni_col[i], position, albedo, roughness, metallic, N, V, F0
+            light_omni_pos[i], light_omni_col[i], light_omni_radius[i], position, albedo, roughness, metallic, N, V, F0
         );
     }
-    /*
-    Lo += calcLightSource(
-        light_pos, vec3(1.0,0.3,0), position, albedo, roughness, metallic, N, V, F0
-    );
-    Lo += calcLightSource(
-        vec3(0.5,0,0), vec3(1.0,0.3,0), position, albedo, roughness, metallic, N, V, F0
-    );
-    Lo += calcLightSource(
-        vec3(0,0,0.5), vec3(1.0,0.3,0), position, albedo, roughness, metallic, N, V, F0
-    );*/
     
     vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
     vec3 kD = 1.0 - kS;

@@ -6,6 +6,7 @@
 #include <map>
 #include "gl/shader_program.h"
 #include "gl/indexed_mesh.hpp"
+#include "gl/texture.hpp"
 #include "g_buffer.hpp"
 #include "util/log.hpp"
 
@@ -71,19 +72,22 @@ public:
             prog->use();
 
             GLuint u = 0;
-            if((u = prog->getUniform("tex_albedo"))) glUniform1i(u, 0);
-            if((u = prog->getUniform("tex_normal"))) glUniform1i(u, 1);
-            if((u = prog->getUniform("tex_metallic"))) glUniform1i(u, 2);
-            if((u = prog->getUniform("tex_roughness"))) glUniform1i(u, 3);
-            if((u = prog->getUniform("tex_position"))) glUniform1i(u, 4);
-            if((u = prog->getUniform("tex_environment"))) glUniform1i(u, 5);
-            if((u = prog->getUniform("tex_depth"))) glUniform1i(u, 6);
+            if((u = prog->getUniform("tex_diffuse"))) glUniform1i(u, gl::TEXTURE_DIFFUSE);
+            if((u = prog->getUniform("tex_albedo"))) glUniform1i(u, gl::TEXTURE_ALBEDO);
+            if((u = prog->getUniform("tex_normal"))) glUniform1i(u, gl::TEXTURE_NORMAL);
+            if((u = prog->getUniform("tex_metallic"))) glUniform1i(u, gl::TEXTURE_METALLIC);
+            if((u = prog->getUniform("tex_roughness"))) glUniform1i(u, gl::TEXTURE_ROUGHNESS);
+            if((u = prog->getUniform("tex_position"))) glUniform1i(u, gl::TEXTURE_POSITION);
+            if((u = prog->getUniform("tex_environment"))) glUniform1i(u, gl::TEXTURE_ENVIRONMENT);
+            if((u = prog->getUniform("tex_depth"))) glUniform1i(u, gl::TEXTURE_DEPTH);
 
-            if((u = prog->getUniform("tex_0"))) glUniform1i(u, 0);
-            if((u = prog->getUniform("tex_1"))) glUniform1i(u, 1);
-            if((u = prog->getUniform("tex_2"))) glUniform1i(u, 2);
-            if((u = prog->getUniform("tex_3"))) glUniform1i(u, 3);
-            if((u = prog->getUniform("tex_4"))) glUniform1i(u, 4);
+            if((u = prog->getUniform("tex_0"))) glUniform1i(u, gl::TEXTURE_0);
+            if((u = prog->getUniform("tex_1"))) glUniform1i(u, gl::TEXTURE_1);
+            if((u = prog->getUniform("tex_2"))) glUniform1i(u, gl::TEXTURE_2);
+            if((u = prog->getUniform("tex_3"))) glUniform1i(u, gl::TEXTURE_3);
+            if((u = prog->getUniform("tex_4"))) glUniform1i(u, gl::TEXTURE_4);
+            if((u = prog->getUniform("tex_5"))) glUniform1i(u, gl::TEXTURE_5);
+            if((u = prog->getUniform("tex_6"))) glUniform1i(u, gl::TEXTURE_6);
 
             if(!prog->validate()) {
                 LOG_WARN("Failed to validate shader program '" << name << "'");

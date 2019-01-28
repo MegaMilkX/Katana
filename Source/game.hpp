@@ -17,7 +17,10 @@ public:
     void update(int w, int h);
 private:
     Scene* scene = 0;
+    
     Renderer renderer;
+    GBuffer g_buffer;
+
     AnimatorSys animator_sys;
     SysBehavior behavior_sys;
 };

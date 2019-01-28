@@ -39,7 +39,9 @@ public:
         */
 
         ImGui::Separator();
-        ImGui::Text("Environment map ");
+        ImGui::Text("Environment");
+        scene->getSkybox()._editorGui();
+        /*
         std::string env_map_name = "! No texture !";
         if(scene->getEnvironmentMap()) {
             env_map_name = scene->getEnvironmentMap()->Name();
@@ -51,12 +53,14 @@ public:
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
                 std::string fname = (char*)payload->Data;
+                
                 LOG("Payload received: " << fname);
                 scene->setEnvironmentMap(getResource<CubeMap>(fname));
             }
             ImGui::EndDragDropTarget();
         }
         ImGui::PopID();
+        */
         /*
         if(scene->getEnvironmentMap()) {
             ImGui::Image((ImTextureID)scene->getEnvironmentMap()->getId(), ImVec2(100, 100), ImVec2(0, 1), ImVec2(1, 0));

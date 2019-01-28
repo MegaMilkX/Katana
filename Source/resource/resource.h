@@ -27,7 +27,7 @@ public:
     virtual bool Serialize(std::vector<unsigned char>& data) = 0;
 
     virtual void serialize(std::ostream& out) {}
-    virtual bool deserialize(std::istream& in) { return false; }
+    virtual bool deserialize(std::istream& in, size_t sz) { return false; }
 
     virtual void _editorGui() {}
 private:

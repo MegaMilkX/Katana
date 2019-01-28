@@ -7,6 +7,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <assimp/cimport.h>
 
 #include "scene.hpp"
 #include "transform.hpp"
@@ -67,6 +68,7 @@ inline void meshesFromAssimpScene(
             }
             uv_layers.emplace_back(uv_layer);
         }
+
         if(ai_mesh->mNumBones) {
             boneIndices.resize(vertexCount);
             boneWeights.resize(vertexCount);
@@ -89,17 +91,22 @@ inline void meshesFromAssimpScene(
                 }
             }
         }
-        for(unsigned j = 0; j < vertexCount; ++j) {
-            aiVector3D& n = ai_mesh->mTangents[j];
-            tangent.emplace_back(n.x);
-            tangent.emplace_back(n.y);
-            tangent.emplace_back(n.z);
-        }
-        for(unsigned j = 0; j < vertexCount; ++j) {
-            aiVector3D& n = ai_mesh->mBitangents[j];
-            bitangent.emplace_back(n.x);
-            bitangent.emplace_back(n.y);
-            bitangent.emplace_back(n.z);
+
+        tangent.resize(vertexCount * 3);
+        bitangent.resize(vertexCount * 3);
+        if(ai_mesh->mTangents && ai_mesh->mBitangents) {
+            for(unsigned j = 0; j < vertexCount; ++j) {
+                aiVector3D& n = ai_mesh->mTangents[j];
+                tangent[j * 3] = (n.x);
+                tangent[j * 3 + 1] = (n.y);
+                tangent[j * 3 + 2] = (n.z);
+            }
+            for(unsigned j = 0; j < vertexCount; ++j) {
+                aiVector3D& n = ai_mesh->mBitangents[j];
+                bitangent[j * 3] = (n.x);
+                bitangent[j * 3 + 1] = (n.y);
+                bitangent[j * 3 + 2] = (n.z);
+            }
         }
 
         
@@ -108,19 +115,19 @@ inline void meshesFromAssimpScene(
         mesh_ref->Name(MKSTR(i << ".geo"));
         mesh_ref->Storage(Resource::LOCAL);
 
-        mesh_ref->mesh.setAttribData(gl::POSITION, vertices.data(), vertices.size() * sizeof(float), 3, GL_FLOAT, GL_FALSE);
+        mesh_ref->mesh.setAttribData(gl::POSITION, vertices.data(), vertices.size() * sizeof(float));
         if(normal_layers.size() > 0) {
-            mesh_ref->mesh.setAttribData(gl::NORMAL, normal_layers[0].data(), normal_layers[0].size() * sizeof(float), 3, GL_FLOAT, GL_FALSE);
+            mesh_ref->mesh.setAttribData(gl::NORMAL, normal_layers[0].data(), normal_layers[0].size() * sizeof(float));
         }
         if(uv_layers.size() > 0) {
-            mesh_ref->mesh.setAttribData(gl::UV, uv_layers[0].data(), uv_layers[0].size() * sizeof(float), 2, GL_FLOAT, GL_FALSE);
+            mesh_ref->mesh.setAttribData(gl::UV, uv_layers[0].data(), uv_layers[0].size() * sizeof(float));
         }
         if(!boneIndices.empty() && !boneWeights.empty()) {
-            mesh_ref->mesh.setAttribData(gl::BONE_INDEX4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4), 4, GL_FLOAT, GL_FALSE);
-            mesh_ref->mesh.setAttribData(gl::BONE_WEIGHT4, boneWeights.data(), boneWeights.size() * sizeof(gfxm::vec4), 4, GL_FLOAT, GL_FALSE);
+            mesh_ref->mesh.setAttribData(gl::BONE_INDEX4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4));
+            mesh_ref->mesh.setAttribData(gl::BONE_WEIGHT4, boneWeights.data(), boneWeights.size() * sizeof(gfxm::vec4));
         }
-        mesh_ref->mesh.setAttribData(gl::TANGENT, tangent.data(), tangent.size() * sizeof(float), 3, GL_FLOAT, GL_FALSE);
-        mesh_ref->mesh.setAttribData(gl::BITANGENT, bitangent.data(), bitangent.size() * sizeof(float), 3, GL_FLOAT, GL_FALSE);
+        mesh_ref->mesh.setAttribData(gl::TANGENT, tangent.data(), tangent.size() * sizeof(float));
+        mesh_ref->mesh.setAttribData(gl::BITANGENT, bitangent.data(), bitangent.size() * sizeof(float));
 
         mesh_ref->mesh.setIndices(indices.data(), indices.size());
 
@@ -332,21 +339,59 @@ inline void objectFromAssimpNode(
     }
 }
 
+inline gfxm::vec2 sampleSphericalMap(gfxm::vec3 v) {
+    const gfxm::vec2 invAtan = gfxm::vec2(0.1591f, 0.3183f);
+    gfxm::vec2 uv = gfxm::vec2(atan2f(v.z, v.x), asinf(v.y));
+    uv *= invAtan;
+    uv = gfxm::vec2(uv.x + 0.5, uv.y + 0.5);
+    return uv;
+}
+
 inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject* root_node = 0) {
     AssetParams asset_params;
     asset_params.load(filename + ".asset_params");
     
-    Assimp::Importer importer;
-    const aiScene* ai_scene = importer.ReadFile(
-        filename,
-        aiProcess_CalcTangentSpace |
+    const aiScene* ai_scene = aiImportFile(
+        filename.c_str(), 
+        aiProcess_GenSmoothNormals |
+        aiProcess_GenUVCoords |
         aiProcess_Triangulate |
         aiProcess_JoinIdenticalVertices |
         aiProcess_LimitBoneWeights |
-        aiProcess_GlobalScale |
-        aiProcess_GenUVCoords |
-        aiProcess_GenSmoothNormals
+        aiProcess_GlobalScale
     );
+
+    std::vector<aiMesh*> meshes_with_fallback_uv;
+    unsigned int mesh_count = ai_scene->mNumMeshes;
+    for(unsigned int i = 0; i < mesh_count; ++i) {
+        aiMesh* ai_mesh = ai_scene->mMeshes[i];
+
+        if(ai_mesh->HasTextureCoords(0) == false) {
+            meshes_with_fallback_uv.emplace_back(ai_mesh);
+            ai_mesh->mTextureCoords[0] = new aiVector3D[ai_mesh->mNumVertices];
+            // Generate uvs
+            LOG("No uvs found, generating...")
+            std::vector<float> uvs;
+            for(unsigned j = 0; j < ai_mesh->mNumVertices; ++j) {
+                gfxm::vec2 uv = sampleSphericalMap(
+                    gfxm::normalize(gfxm::vec3(
+                        ai_mesh->mVertices[j].x,
+                        ai_mesh->mVertices[j].y,
+                        ai_mesh->mVertices[j].z
+                    ))
+                );
+                ai_mesh->mTextureCoords[0][j].x = uv.x;
+                ai_mesh->mTextureCoords[0][j].y = uv.y;
+            }
+            LOG("Done");
+        }
+    }
+
+    ai_scene = aiApplyPostProcessing(
+        ai_scene,
+        aiProcess_CalcTangentSpace
+    );
+
     if(!ai_scene) {
         LOG_WARN("Failed to import " << filename);
         return false;
@@ -426,6 +471,12 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
     }
 
     LOG("Fbx skeleton size: " << skeleton->boneCount());
+
+    for(auto m : meshes_with_fallback_uv) {
+        delete m->mTextureCoords[0];
+        m->mTextureCoords[0] = 0;
+    }
+    aiReleaseImport(ai_scene);
 
     return true;
 }

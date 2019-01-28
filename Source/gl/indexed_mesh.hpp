@@ -35,8 +35,8 @@ inline const AttribDesc& getAttribDesc(ATTRIB_INDEX index) {
         { "Position", 3, GL_FLOAT, GL_FALSE },
         { "UV", 2, GL_FLOAT, GL_FALSE },
         { "Normal", 3, GL_FLOAT, GL_FALSE },
-        { "Tangent", 3, GL_BYTE, GL_TRUE },
-        { "Bitangent", 3, GL_BYTE, GL_TRUE },
+        { "Tangent", 3, GL_FLOAT, GL_FALSE },
+        { "Bitangent", 3, GL_FLOAT, GL_FALSE },
         { "BoneIndex4", 4, GL_FLOAT, GL_FALSE },
         { "BoneWeight4", 4, GL_FLOAT, GL_FALSE },
         { "ColorRGBA", 4, GL_UNSIGNED_BYTE, GL_TRUE }
@@ -51,6 +51,10 @@ public:
     }
     ~IndexedMesh() {
         glDeleteVertexArrays(1, &id);
+    }
+    void setAttribData(ATTRIB_INDEX index, void* data, size_t size) {
+        auto& inf = getAttribDesc(index);
+        setAttribData(index, data, size, inf.size, inf.type, inf.normalized);
     }
     void setAttribData(ATTRIB_INDEX index, void* data, size_t size, GLint attrib_size, GLenum type, GLboolean normalized) {
         attribs[index].reset(new gl::VertexAttribBuffer());

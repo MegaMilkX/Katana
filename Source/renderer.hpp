@@ -14,6 +14,8 @@
 
 #include "shader_factory.hpp"
 
+#include "data_headers/icon_light_64.png.h"
+
 inline void drawQuad()
 {
     std::vector<float> vertices = {
@@ -76,6 +78,14 @@ public:
         unsigned char nrm[3] = { 128, 128, 255 };
         texture_normal_px->Data(nrm, 1, 1, 3);
 
+        auto make_icon_texture = [](const unsigned char* data, size_t sz, Texture2D& tex) {
+            std::shared_ptr<DataSourceMemory> ds_mem(new DataSourceMemory((char*)data, (sz)));
+            if(!tex.Build(ds_mem)) {
+                LOG_ERR("Failed to build file icon texture");
+            }
+        };
+        make_icon_texture(icon_light_64_png, sizeof(icon_light_64_png), tex_icon_light_64);
+
         prog_light_pass = ShaderFactory::getOrCreate(
             "light_pass",
             #include "shaders/v_quad.glsl"
@@ -103,25 +113,18 @@ public:
             #include "shaders/f_skybox.glsl"
         );
 
-        prog = ShaderFactory::getOrCreate(
-            "solid",
-            #include "shaders/v_solid.glsl"
+        prog_billboard_sprite = ShaderFactory::getOrCreate(
+            "billboard_sprite",
+            #include "shaders/v_billboard_sprite.glsl"
             ,
-            #include "shaders/f_solid.glsl"
+            #include "shaders/f_sprite.glsl"
         );
-        if(!prog) {
-            LOG_ERR("Failed to get SOLID shader program");
-        }
-
-        prog_skin = ShaderFactory::getOrCreate(
-            "skin",
-            #include "shaders/v_skin.glsl"
+        prog_billboard_sprite_pick = ShaderFactory::getOrCreate(
+            "billboard_sprite_pick",
+            #include "shaders/v_billboard_sprite.glsl"
             ,
-            #include "shaders/f_skin.glsl"
+            #include "shaders/f_pick_alpha.glsl"
         );
-        if(!prog_skin) {
-            LOG_ERR("Failed to get SOLID shader program");
-        }
 
         prog_pick = ShaderFactory::getOrCreate(
             "pick",
@@ -249,6 +252,11 @@ public:
             gl::DrawInfo& d = draw_list[i];
             Skin* skin = (Skin*)d.user_ptr;
 
+            for(unsigned t = 0; t < sizeof(d.textures) / sizeof(d.textures[0]); ++t) {
+                glActiveTexture(GL_TEXTURE0 + t);
+                glBindTexture(GL_TEXTURE_2D, d.textures[t]);
+            }
+
             std::vector<gfxm::mat4> inverse_bind_transforms;
             std::vector<gfxm::mat4> skin_transforms;
             for(auto a : skin->bones) {
@@ -291,8 +299,6 @@ public:
 
         collectDrawLists(draw_list, draw_list_skin);
 
-        glDepthFunc(GL_LEQUAL);
-
         glEnable(GL_DEPTH_TEST);
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_index);
         glViewport(0, 0, w, h);
@@ -300,23 +306,9 @@ public:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // TODO: Should only clear depth ?
 
         // =============================
-        prog_skybox->use();
-        glUniformMatrix4fv(prog_skybox->getUniform("mat_projection"), 1, GL_FALSE, (float*)&projection);
-        glUniformMatrix4fv(prog_skybox->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
-        glActiveTexture(GL_TEXTURE0 + 5);
-        if(scene->getEnvironmentMap()) {
-            glBindTexture(GL_TEXTURE_CUBE_MAP, scene->getEnvironmentMap()->getId());
-        } else {
-            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-        }
-        drawCube();
 
         drawSolidObjects(prog_solid, projection, view, draw_list);
         drawSkinObjects(prog_skin, projection, view, draw_list_skin);
-    }
-
-    void draw(GLuint framebuffer_index, GLsizei w, GLsizei h, gfxm::mat4& projection, gfxm::mat4& view) {
-        draw(framebuffer_index, w, h, projection, view, prog, prog_skin);
     }
 
     void drawGBuffer(GLuint fb, GLsizei w, GLsizei h, gfxm::mat4& proj, gfxm::mat4& view) {
@@ -339,34 +331,27 @@ public:
         const int MAX_OMNI_LIGHT = 10;
         gfxm::vec3 light_omni_pos[MAX_OMNI_LIGHT];
         gfxm::vec3 light_omni_col[MAX_OMNI_LIGHT];
+        float light_omni_radius[MAX_OMNI_LIGHT];
         int i = 0;
         for(auto l : lights_omni) {
             light_omni_pos[i] = l->get<Transform>()->worldPosition();
-            light_omni_col[i] = l->color;
+            light_omni_col[i] = l->color * l->intensity;
+            light_omni_radius[i] = l->radius;
             ++i;
             if(i >= MAX_OMNI_LIGHT) break;
         }
 
         glUniform3fv(prog_light_pass->getUniform("light_omni_pos"), i, (float*)light_omni_pos);
         glUniform3fv(prog_light_pass->getUniform("light_omni_col"), i, (float*)light_omni_col);
+        glUniform1fv(prog_light_pass->getUniform("light_omni_radius"), i, (float*)light_omni_radius);
         glUniform1i(prog_light_pass->getUniform("light_omni_count"), i);
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, g_buffer->getAlbedoTexture());
-        glActiveTexture(GL_TEXTURE0 + 1);
-        glBindTexture(GL_TEXTURE_2D, g_buffer->getNormalTexture());
-        glActiveTexture(GL_TEXTURE0 + 2);
-        glBindTexture(GL_TEXTURE_2D, g_buffer->getMetallicTexture());
-        glActiveTexture(GL_TEXTURE0 + 3);
-        glBindTexture(GL_TEXTURE_2D, g_buffer->getRoughnessTexture());
-        glActiveTexture(GL_TEXTURE0 + 5);
-        if(scene->getEnvironmentMap()) {
-            glBindTexture(GL_TEXTURE_CUBE_MAP, scene->getEnvironmentMap()->getId());
-        } else {
-            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-        }
-        glActiveTexture(GL_TEXTURE0 + 6);
-        glBindTexture(GL_TEXTURE_2D, g_buffer->getDepthTexture());
+        gl::bindTexture2d(gl::TEXTURE_ALBEDO, g_buffer->getAlbedoTexture());
+        gl::bindTexture2d(gl::TEXTURE_NORMAL, g_buffer->getNormalTexture());
+        gl::bindTexture2d(gl::TEXTURE_METALLIC, g_buffer->getMetallicTexture());
+        gl::bindTexture2d(gl::TEXTURE_ROUGHNESS, g_buffer->getRoughnessTexture());
+        gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, scene->getSkybox().getIrradianceMap());
+        gl::bindTexture2d(gl::TEXTURE_DEPTH, g_buffer->getDepthTexture());
 
         gfxm::vec4 view_pos4 = gfxm::inverse(view) * gfxm::vec4(0,0,0,1);
         glUniform3f(prog_light_pass->getUniform("view_pos"), view_pos4.x, view_pos4.y, view_pos4.z);
@@ -375,10 +360,25 @@ public:
             gfxm::inverse(projection * view);
         glUniformMatrix4fv(prog_light_pass->getUniform("inverse_view_projection"), 1, GL_FALSE, (float*)&inverse_view_projection);
         drawQuad();
-    }
 
-    void draw(gl::FrameBuffer* fb, gfxm::mat4 projection, gfxm::mat4 view) {
-        draw(fb->getId(), fb->getWidth(), fb->getHeight(), projection, view);
+        glDepthFunc(GL_LEQUAL);
+        prog_skybox->use();
+        glUniformMatrix4fv(prog_skybox->getUniform("mat_projection"), 1, GL_FALSE, (float*)&projection);
+        glUniformMatrix4fv(prog_skybox->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
+        gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, scene->getSkybox().getSkyMap());
+        drawCube();
+
+        prog_billboard_sprite->use();
+        glUniformMatrix4fv(prog_billboard_sprite->getUniform("mat_projection"), 1, GL_FALSE, (float*)&projection);
+        glUniformMatrix4fv(prog_billboard_sprite->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
+        glUniform2f(prog_billboard_sprite->getUniform("viewport_size"), (float)w, (float)h);
+        glUniform2f(prog_billboard_sprite->getUniform("sprite_size"), (float)64, (float)64);
+        gl::bindTexture2d(gl::TEXTURE_DIFFUSE, tex_icon_light_64.GetGlName());
+
+        for(auto l : lights_omni) {
+            glUniformMatrix4fv(prog_billboard_sprite->getUniform("mat_model"), 1, GL_FALSE, (float*)&l->get<Transform>()->getTransform());
+            drawQuad();
+        }
     }
 
     void draw(GBuffer* g_buffer, gl::FrameBuffer* fb_final, gfxm::mat4& projection, gfxm::mat4& view) {
@@ -390,6 +390,9 @@ public:
     }
 
     void drawPickBuffer(gl::FrameBuffer* fb, gfxm::mat4 projection, gfxm::mat4 view) {
+        int w = fb->getWidth();
+        int h = fb->getHeight();
+
         std::vector<gl::DrawInfo> draw_list;
         for(auto kv : objects) {
             if(!kv.second.mdl) continue;
@@ -425,6 +428,21 @@ public:
             glBindVertexArray(d.vao);
             glDrawElements(GL_TRIANGLES, d.index_count, GL_UNSIGNED_INT, (GLvoid*)d.offset);
         }
+
+        prog_billboard_sprite_pick->use();
+        glUniformMatrix4fv(prog_billboard_sprite_pick->getUniform("mat_projection"), 1, GL_FALSE, (float*)&projection);
+        glUniformMatrix4fv(prog_billboard_sprite_pick->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
+        glUniform2f(prog_billboard_sprite_pick->getUniform("viewport_size"), (float)w, (float)h);
+        glUniform2f(prog_billboard_sprite_pick->getUniform("sprite_size"), (float)64, (float)64);
+        gl::bindTexture2d(gl::TEXTURE_DIFFUSE, tex_icon_light_64.GetGlName());
+        for(auto l : lights_omni) {
+            glUniformMatrix4fv(prog_billboard_sprite_pick->getUniform("mat_model"), 1, GL_FALSE, (float*)&l->get<Transform>()->getTransform());
+            int r = (l->getObject()->getId() & 0x000000FF) >>  0;
+            int g = (l->getObject()->getId() & 0x0000FF00) >>  8;
+            int b = (l->getObject()->getId() & 0x00FF0000) >> 16;  
+            glUniform4f(prog_billboard_sprite_pick->getUniform("object_ptr"), r/255.0f, g/255.0f, b/255.0f, 1.0f);
+            drawQuad();
+        }
     }
 private:
     Scene* scene;
@@ -433,9 +451,9 @@ private:
     gl::ShaderProgram* prog_gbuf_skin;
     gl::ShaderProgram* prog_light_pass;
     gl::ShaderProgram* prog_skybox;
+    gl::ShaderProgram* prog_billboard_sprite;
+    gl::ShaderProgram* prog_billboard_sprite_pick;
 
-    gl::ShaderProgram* prog;
-    gl::ShaderProgram* prog_skin;
     gl::ShaderProgram* prog_pick;
     std::shared_ptr<Texture2D> texture_white_px;
     std::shared_ptr<Texture2D> texture_black_px;
@@ -443,6 +461,8 @@ private:
 
     std::map<SceneObject*, ObjectInfo> objects;
     std::set<LightOmni*> lights_omni;
+
+    Texture2D tex_icon_light_64;
 };
 
 #endif

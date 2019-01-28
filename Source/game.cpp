@@ -5,6 +5,8 @@
 void Game::init() {
     scene = Scene::create();
     renderer.setScene(scene);
+    g_buffer.resize(1280, 720);
+
     animator_sys.setScene(scene);
     behavior_sys.setScene(scene);
 }
@@ -33,5 +35,7 @@ void Game::update(int w, int h) {
         view = gfxm::inverse(gfxm::translate(gfxm::mat4(1.0f), gfxm::vec3(0.0f, 0.0f, 5.0f)));
     }
 
-    renderer.draw(0, w, h, proj, view);
+    // TODO:
+    //renderer.draw(0, w, h, proj, view);
+    renderer.draw(&g_buffer, 0, w, h, proj, view);
 }

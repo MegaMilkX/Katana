@@ -10,6 +10,9 @@
 #include "transform.hpp"
 #include "animator.hpp"
 
+#include "scene_components/scene_player_info.hpp"
+#include "scene.hpp"
+
 class Character;
 
 class CharaIdle : public State<Character> {
@@ -39,10 +42,19 @@ public:
     : motion_fsm(this) {
         
     }
+    ~Character() {
+        ScenePlayerInfo* pi = getScene()->getSceneComponent<ScenePlayerInfo>();
+        if(pi->character_transform == transform) {
+            getScene()->getSceneComponent<ScenePlayerInfo>()->character_transform = 0;
+        }
+    }
 
     virtual void onCreate() {
         transform = get<Transform>();
         animator = get<Animator>();
+
+        ScenePlayerInfo* pi = getScene()->getSceneComponent<ScenePlayerInfo>();
+        pi->character_transform = transform;
     }
 
     virtual void init() {

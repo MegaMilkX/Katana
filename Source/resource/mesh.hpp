@@ -18,7 +18,7 @@ public:
     virtual void serialize(std::ostream& out) {
         mesh.serialize(out);
     }
-    virtual bool deserialize(std::istream& in) { 
+    virtual bool deserialize(std::istream& in, size_t sz) { 
         mesh.deserialize(in);
         return true; 
     }

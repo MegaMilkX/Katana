@@ -1,5 +1,8 @@
 R"(#version 450
 out vec4 out_albedo;
+out vec4 out_normal;
+out vec4 out_metallic;
+out vec4 out_roughness;
 
 in vec3 local_pos;
 
@@ -12,5 +15,8 @@ void main() {
     env_color = pow(env_color, vec3(1.0/2.2));
 
     out_albedo = vec4(env_color, 1.0);
+    out_normal = vec4(1.0, 1.0, 1.0, 0.0);
+    out_metallic = vec4(0.0);
+    out_roughness = vec4(1.0);
 }
 )"
