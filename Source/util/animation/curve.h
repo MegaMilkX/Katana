@@ -78,6 +78,8 @@ inline gfxm::quat curve_value_add(const gfxm::quat& a, const gfxm::quat& b) {
 template<typename T>
 class curve {
 public:
+    typedef keyframe<T> keyframe_t;
+
     T at(float time, T def = T()) {
         if(keyframes.empty())
             return def;

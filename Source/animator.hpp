@@ -7,10 +7,6 @@
 
 #include "resource/animation.hpp"
 #include "resource/skeleton.hpp"
-#include <ozz/animation/runtime/sampling_job.h>
-#include <ozz/animation/runtime/blending_job.h>
-#include <ozz/animation/runtime/local_to_model_job.h>
-#include <ozz/base/maths/soa_transform.h>
 
 #include "skeleton_anim_layer.hpp"
 
@@ -28,10 +24,18 @@ public:
 
     void setSkeleton(std::shared_ptr<Skeleton> skel) {
         skeleton = skel;
+        updateTransformBuffer();
+        updateAnimationMapping();
     }
 
     void addAnim(std::shared_ptr<Animation> anim) {
-        anims.emplace_back(anim);
+        anims.emplace_back(
+            AnimInfo {
+                anim->Name().substr(anim->Name().find_last_of("/")),
+                anim
+            }
+        );
+        updateAnimationMapping(anims.back());
     }
 
     SkeletonAnimLayer& addLayer() {
@@ -39,62 +43,55 @@ public:
         return layers.back();
     }
 
-    void Update(float dt) {
-        if(!this->skeleton) {
-            return;
-        }
-        ozz::animation::Skeleton* skeleton = this->skeleton->getOzzSkeleton();
+private:
+    struct AnimInfo {
+        std::string                 alias;
+        std::shared_ptr<Animation>  anim;
+        std::map<size_t, size_t>    bone_remap;
+    };
 
-        ozz::animation::SamplingCache* cache = 
-            ozz::memory::default_allocator()->New<ozz::animation::SamplingCache>(skeleton->num_joints());
-        ozz::Range<ozz::math::SoaTransform> locals_fin = 
-            ozz::memory::default_allocator()->AllocateRange<ozz::math::SoaTransform>(skeleton->num_soa_joints());
-        ozz::Range<ozz::math::Float4x4> models =
-            ozz::memory::default_allocator()->AllocateRange<ozz::math::Float4x4>(skeleton->num_joints());
-        
-        // Final root motion translation
+    std::vector<AnimInfo>       anims;
+    std::shared_ptr<Skeleton>   skeleton;
+    std::vector<AnimSample>     sample_buffer;
+    std::vector<gfxm::mat4>     bone_transforms;
+    std::vector<std::string>    bone_names;
+
+public:    
+    void Update(float dt) {
         gfxm::vec3 rm_pos_final = gfxm::vec3(0.0f, 0.0f, 0.0f);
-        // Final root motion rotation
         gfxm::quat rm_rot_final = gfxm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 
         for(auto& l : layers) {
             l.update(
-                this, 
-                dt, 
-                skeleton, 
-                locals_fin, 
-                cache, 
-                rm_pos_final, 
-                rm_rot_final
+                this, dt, skeleton.get(),
+                sample_buffer,
+                rm_pos_final, rm_rot_final
             );
         }
 
-        ozz::animation::LocalToModelJob ltm_job;
-        ltm_job.skeleton = skeleton;
-        ltm_job.input = locals_fin;
-        ltm_job.output = models;
-        if (!ltm_job.Run()) {
-            LOG_WARN("Local to model job failed");
-            return;
+        for(size_t i = 0; i < sample_buffer.size(); ++i) {
+            auto& s = sample_buffer[i];
+            auto& m = bone_transforms[i];
+            m = gfxm::translate(gfxm::mat4(1.0f), s.t) * 
+                gfxm::to_mat4(s.r) * 
+                gfxm::scale(gfxm::mat4(1.0f), s.s);
         }
 
-        auto names = skeleton->joint_names();
-        for(size_t i = 0; i < names.size() / sizeof(char*); ++i) {
-            auto so = getObject()->findObject(names[i]);
+        // TODO: Optimize
+        for(size_t i = 0; i < skeleton->boneCount(); ++i) {
+            Skeleton::Bone& b = skeleton->getBone(i);
+            auto so = getObject()->findObject(b.name);
             if(!so) continue;
-            so->get<Transform>()->setTransform(*(gfxm::mat4*)&models[i]);
+            so->get<Transform>()->setTransform(bone_transforms[i]);
         }
 
+        // Update root motion target
         if(root_motion_enabled) {
             Transform* t = getObject()->get<Transform>();
             
             t->translate(rm_pos_final);
             t->rotate(rm_rot_final);
         }
-
-        ozz::memory::default_allocator()->Deallocate(locals_fin);
-        ozz::memory::default_allocator()->Deallocate(models);
-        ozz::memory::default_allocator()->Delete(cache);
     }
 
     size_t selected_index = 0;
@@ -123,12 +120,12 @@ public:
         if(!layers.empty()) {
             std::string current_anim_name = "";
             if(!anims.empty()) {
-                current_anim_name = anims[layers[selected_index].anim_index]->Name();
+                current_anim_name = anims[layers[selected_index].anim_index].anim->Name();
             }
 
             if (ImGui::BeginCombo("Current anim", current_anim_name.c_str(), 0)) {
                 for(size_t i = 0; i < anims.size(); ++i) {
-                    if(ImGui::Selectable(anims[i]->Name().c_str(), layers[selected_index].anim_index == i)) {
+                    if(ImGui::Selectable(anims[i].alias.c_str(), layers[selected_index].anim_index == i)) {
                         layers[selected_index].anim_index = i;
                     }
                 }
@@ -157,15 +154,42 @@ public:
 
         for(auto a : anims) {
             bool selected = false;
-            ImGui::Selectable(a->Name().c_str(), &selected);
+            ImGui::Selectable(a.alias.c_str(), &selected);
         }
         //ImGui::ListBox("Animations", 0, anim_list.data(), anim_list.size(), 4);
     }
 private:
     bool root_motion_enabled = true;
     std::vector<SkeletonAnimLayer> layers;
-    std::vector<std::shared_ptr<Animation>> anims;
-    std::shared_ptr<Skeleton> skeleton;
+
+    void updateAnimationMapping() {
+        if(!skeleton) return;
+        for(auto& a : anims) {
+            updateAnimationMapping(a);
+        }
+    }
+    void updateAnimationMapping(AnimInfo& anim_info) {
+        if(!skeleton) return;
+
+        for(size_t i = 0; i < skeleton->boneCount(); ++i) {
+            Skeleton::Bone& b = skeleton->getBone(i);
+            int32_t bone_index = (int32_t)i;
+            int32_t node_index = anim_info.anim->getNodeIndex(b.name);
+            if(node_index >= 0) {
+                anim_info.bone_remap[node_index] = bone_index;
+            }
+        }
+    }
+    void updateTransformBuffer() {
+        if(!skeleton) return;
+
+        bone_transforms.resize(skeleton->boneCount());
+        sample_buffer.resize(skeleton->boneCount());
+        for(size_t i = 0; i < skeleton->boneCount(); ++i) {
+            Skeleton::Bone& b = skeleton->getBone(i);
+            bone_transforms[i] = b.bind_pose;
+        }
+    }
 };
 STATIC_RUN(Animator)
 {

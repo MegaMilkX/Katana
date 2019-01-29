@@ -1,9 +1,6 @@
 #ifndef SKELETON_ANIM_LAYER_HPP
 #define SKELETON_ANIM_LAYER_HPP
 
-#include <ozz/animation/runtime/sampling_job.h>
-#include <ozz/animation/runtime/blending_job.h>
-
 #include "resource/animation.hpp"
 
 class Animator;
@@ -31,14 +28,11 @@ public:
     void update(
         Animator* animator,
         float dt,
-        ozz::animation::Skeleton* skeleton,
-        ozz::Range<ozz::math::SoaTransform>& locals_fin,
-        ozz::animation::SamplingCache* cache,
+        Skeleton* skeleton,
+        std::vector<AnimSample>& t_fin,
         gfxm::vec3& rm_pos_final,
         gfxm::quat& rm_rot_final
     );
-private:
-    ozz::Range<ozz::math::SoaTransform> locals;
 };
 
 #endif

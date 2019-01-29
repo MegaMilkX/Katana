@@ -84,7 +84,7 @@ inline void meshesFromAssimpScene(
             for(unsigned j = 0; j < ai_mesh->mNumBones; ++j) {
                 unsigned int bone_index = j;
                 aiBone* bone = ai_mesh->mBones[j];
-                skeleton->addBone(bone->mName.C_Str(), gfxm::mat4(1.0f));
+                skeleton->addBone(bone->mName.C_Str(), *(gfxm::mat4*)&bone->mOffsetMatrix);
                 
                 for(unsigned k = 0; k < bone->mNumWeights; ++k) {
                     aiVertexWeight& w = bone->mWeights[k];
@@ -149,6 +149,90 @@ inline void meshesFromAssimpScene(
     }
 }
 
+inline void animNodeFromAssimpNode(aiNodeAnim* ai_node_anim, AnimNode& node) {
+    for(unsigned k = 0; k < ai_node_anim->mNumPositionKeys; ++k) {
+        auto& ai_v = ai_node_anim->mPositionKeys[k].mValue;
+        float t = (float)ai_node_anim->mPositionKeys[k].mTime;
+        gfxm::vec3 v = { ai_v.x, ai_v.y, ai_v.z };
+        node.t[t] = v;
+    }
+    for(unsigned k = 0; k < ai_node_anim->mNumRotationKeys; ++k) {
+        auto& ai_v = ai_node_anim->mRotationKeys[k].mValue;
+        float t = (float)ai_node_anim->mRotationKeys[k].mTime;
+        gfxm::quat v = { ai_v.x, ai_v.y, ai_v.z, ai_v.w };
+        node.r[t] = v;
+    }
+    for(unsigned k = 0; k < ai_node_anim->mNumScalingKeys; ++k) {
+        auto& ai_v = ai_node_anim->mScalingKeys[k].mValue;
+        float t = (float)ai_node_anim->mScalingKeys[k].mTime;
+        gfxm::vec3 v = { ai_v.x, ai_v.y, ai_v.z };
+        node.s[t] = v;
+    }
+}
+
+inline void animationsFromAssimpScene(
+    const aiScene* ai_scene,
+    Scene* scene,
+    std::shared_ptr<Skeleton> skeleton,
+    AssetParams& asset_params,
+    const std::string& dirname
+) {
+    for(unsigned i = 0; i < ai_scene->mNumAnimations; ++i) {
+        aiAnimation* ai_anim = ai_scene->mAnimations[i];
+        double fps = ai_anim->mTicksPerSecond;
+        double len = ai_anim->mDuration;
+        
+        for(unsigned j = 0; j < ai_anim->mNumChannels; ++j) {
+            aiNodeAnim* ai_node_anim = ai_anim->mChannels[j];
+            skeleton->addBone(ai_node_anim->mNodeName.C_Str(), gfxm::mat4(1.0f));
+        }
+
+        AssetParams anim_asset_params = 
+            asset_params.get_object("Animation").get_object(ai_anim->mName.C_Str());
+        bool is_additive = anim_asset_params.get_bool("Additive", false);
+        bool enable_root_motion = anim_asset_params.get_bool("EnableRootMotion", false);
+        std::string root_motion_node_name = anim_asset_params.get_string("RootMotionNode", "");
+
+        std::shared_ptr<Animation> anim(new Animation());
+        anim->Storage(Resource::GLOBAL);
+        anim->Name(ai_anim->mName.C_Str());
+
+        anim->length                = (float)len;
+        anim->fps                   = (float)fps;
+        anim->root_motion_enabled   = enable_root_motion;
+        anim->root_motion_node_name = root_motion_node_name;
+        
+        for(unsigned j = 0; j < ai_anim->mNumChannels; ++j) {
+            aiNodeAnim* ai_node_anim = ai_anim->mChannels[j];
+            std::string bone_node = ai_node_anim->mNodeName.C_Str();
+            Skeleton::Bone* bone = skeleton->getBone(bone_node);
+            if(!bone) continue;
+
+            if(root_motion_node_name == bone_node) {
+                animNodeFromAssimpNode(ai_node_anim, anim->getRootMotionNode());
+                continue;
+            }
+
+            AnimNode& node = anim->getNode(bone_node);
+
+            animNodeFromAssimpNode(ai_node_anim, node);
+        }
+
+        if(is_additive) {
+            // TODO: Convert to additive?
+        }
+
+        std::string fname = MKSTR(dirname << "\\" << replace_reserved_chars(ai_anim->mName.C_Str(), '_') << ".anim");
+        anim->write_to_file(fname);
+        LOG("New anim file: " << fname);
+        GlobalDataRegistry().Add(
+            fname,
+            DataSourceRef(new DataSourceFilesystem(get_module_dir() + "\\" + fname))
+        );
+    }
+}
+
+/*
 inline void animationsFromAssimpScene(
     const aiScene* ai_scene, 
     Scene* scene, 
@@ -302,6 +386,7 @@ inline void animationsFromAssimpScene(
         scene->addLocalResource(anim);
     }
 }
+*/
 
 inline void resourcesFromAssimpScene(
     const aiScene* ai_scene, 
@@ -471,14 +556,15 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
 
     if(ai_scene->mNumAnimations > 0) {
         auto animator = root->get<Animator>();
-        if(skeleton->buildOzzSkeleton()) {
-            animator->setSkeleton(skeleton);
-        }
+        animator->setSkeleton(skeleton);
     }
 
     for(unsigned int i = 0; i < ai_scene->mNumAnimations; ++i) {
         auto animator = root->get<Animator>();
-        animator->addAnim(scene->getLocalResource<Animation>(base_anim_index + i));
+        std::string fname = MKSTR(dirname << "\\" << replace_reserved_chars(ai_scene->mAnimations[i]->mName.C_Str(), '_') << ".anim");
+        animator->addAnim(getResource<Animation>(fname));
+
+        //animator->addAnim(scene->getLocalResource<Animation>(base_anim_index + i));
     }
 
     for(auto& t : deferred_tasks) {

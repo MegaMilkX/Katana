@@ -11,6 +11,20 @@
 #include <sstream>
 #include <iterator>
 
+inline std::string replace_reserved_chars(const std::string& path, char r) {
+    std::string result = path;
+    for(size_t i = 0; i < path.size(); ++i) {
+        const char& c = path[i];
+        if (c == '/' || c == '\\' || c == '?' || c == '%' ||
+            c == '*' || c == ':' || c == '|' || c == '"' ||
+            c == '<' || c == '>'
+        ) {
+            result[i] = r;
+        }
+    }
+    return result;
+}
+
 inline std::string cut_dirpath(const std::string& path)
 {
     return std::string(

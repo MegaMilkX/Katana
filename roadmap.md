@@ -40,4 +40,8 @@
 
 21/ 'Meta' directory for asset previews
 
-22/ Import animations as global resources
+22/ [DONE] Import animations as global resources
+
+23/ Animator serialization
+24/ Animator editor gui animation list editing
+25/ Extract fbx skeleton to disk
