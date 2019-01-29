@@ -180,6 +180,7 @@ void SceneObject::deserialize(std::istream& in) {
 #include "model.hpp"
 #include "transform.hpp"
 #include "light.hpp"
+#include "animator.hpp"
 #include "character.hpp"
 #include "camera.hpp"
 #include "tps_camera.hpp"
@@ -195,6 +196,12 @@ void SceneObject::_editorGui() {
     {
         ImGui::BeginChild("ComponentList", ImVec2(150, 100), false, 0);
         bool selected = false;
+        if(ImGui::Selectable("Animator", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+            if (ImGui::IsMouseDoubleClicked(0)) {
+                component_creator_so_tgt->get<Animator>();
+                ImGui::CloseCurrentPopup();
+            }
+        }
         if(ImGui::Selectable("Model", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
             if (ImGui::IsMouseDoubleClicked(0)) {
                 component_creator_so_tgt->get<Model>();

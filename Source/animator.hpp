@@ -7,6 +7,7 @@
 
 #include "resource/animation.hpp"
 #include "resource/skeleton.hpp"
+#include "resource/resource_factory.h"
 
 #include "skeleton_anim_layer.hpp"
 
@@ -58,6 +59,9 @@ private:
 
 public:    
     void Update(float dt) {
+        if(!skeleton) {
+            return;
+        }
         gfxm::vec3 rm_pos_final = gfxm::vec3(0.0f, 0.0f, 0.0f);
         gfxm::quat rm_rot_final = gfxm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -96,6 +100,27 @@ public:
 
     size_t selected_index = 0;
     virtual void _editorGui() {
+        ImGui::Text("Skeleton "); ImGui::SameLine();
+        std::string button_label = "! No skeleton !";
+        if(skeleton) {
+            button_label = skeleton->Name();
+        }
+        if(ImGui::SmallButton(button_label.c_str())) {
+
+        }
+        ImGui::PushID(button_label.c_str());
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
+                std::string fname = (char*)payload->Data;
+                LOG("Payload received: " << fname);
+                setSkeleton(getResource<Skeleton>(fname));
+            }
+            ImGui::EndDragDropTarget();
+        }
+        ImGui::PopID();
+
+        
+
         ImGui::Checkbox("Enable root motion", &root_motion_enabled);
 
         ImGui::Text("Layers");
@@ -152,10 +177,23 @@ public:
         }
         ImGui::Separator();
 
+        ImGui::BeginChild("Animations", ImVec2(0, 100), false, 0);
         for(auto a : anims) {
             bool selected = false;
             ImGui::Selectable(a.alias.c_str(), &selected);
         }
+        ImGui::EndChild();
+        ImGui::PushID("Animations");
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
+                std::string fname = (char*)payload->Data;
+                LOG("Payload received: " << fname);
+                auto anim = getResource<Animation>(fname);
+                addAnim(anim);
+            }
+            ImGui::EndDragDropTarget();
+        }
+        ImGui::PopID();
         //ImGui::ListBox("Animations", 0, anim_list.data(), anim_list.size(), 4);
     }
 private:

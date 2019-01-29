@@ -8,6 +8,7 @@
 #include "../gfxm.hpp"
 
 #include "util/log.hpp"
+#include "util/serialization.hpp"
 
 class Skeleton : public Resource {
 public:
@@ -45,6 +46,45 @@ public:
             return 0;
         }
         return &bones[it->second];
+    }
+
+    virtual void serialize(std::ostream& out) {
+        uint32_t bone_count = bones.size();
+        write(out, bone_count);
+        for(uint32_t i = 0; i < bone_count; ++i) {
+            uint32_t id = bones[i].id;
+            uint32_t parent_id = bones[i].parent;
+            write(out, id);
+            write(out, parent_id);
+            wt_string(out, bones[i].name);
+            write(out, bones[i].bind_pose);
+        }
+        for(auto kv : name_to_bone) {
+            wt_string(out, kv.first);
+            uint32_t bone_id = (uint32_t)kv.second;
+            write(out, bone_id);
+        }
+    }
+    virtual bool deserialize(std::istream& in, size_t sz) { 
+        uint32_t bone_count = read<uint32_t>(in);
+        for(uint32_t i = 0; i < bone_count; ++i) {
+            uint32_t id = read<uint32_t>(in);
+            uint32_t parent_id = read<uint32_t>(in);
+            std::string name = rd_string(in);
+            gfxm::mat4 pose = read<gfxm::mat4>(in);
+            bones.emplace_back(
+                Bone {
+                    id, parent_id, name, pose
+                }
+            );
+        }
+        for(uint32_t i = 0; i < bone_count; ++i) {
+            std::string name = rd_string(in);
+            uint32_t bone_id = read<uint32_t>(in);
+            name_to_bone[name] = bone_id;
+        }
+        
+        return true; 
     }
 private:
     std::vector<Bone> bones;

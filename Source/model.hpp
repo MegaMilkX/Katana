@@ -6,6 +6,8 @@
 #include "resource/material.hpp"
 #include "resource/resource_factory.h"
 
+#include "util/serialization.hpp"
+
 inline void writeResource(std::ostream& out, std::shared_ptr<Resource> res, Scene* scene);
 
 class Model : public Component {
@@ -15,6 +17,15 @@ public:
     std::shared_ptr<Material> material;
 
     virtual void serialize(std::ostream& out) {
+        std::string mesh_name = "";
+        std::string mat_name = "";
+        if(mesh) mesh_name = mesh->Name();
+        if(material) mat_name = material->Name();
+
+        wt_string(out, mesh_name);
+        wt_string(out, mat_name);
+
+        /*
         if(mesh) {
             uint8_t null_flag = 1;
             out.write((char*)&null_flag, sizeof(null_flag));
@@ -33,9 +44,22 @@ public:
         } else {
             uint8_t null_flag = 0;
             out.write((char*)&null_flag, sizeof(null_flag));
-        }
+        }*/
     }
     virtual void deserialize(std::istream& in, size_t sz) {
+        std::string mesh_name = "";
+        std::string mat_name = "";
+
+        mesh_name = rd_string(in);
+        mat_name = rd_string(in);
+        if(!mesh_name.empty()) {
+            mesh = getResource<Mesh>(mesh_name);
+        }
+        if(!mat_name.empty()) {
+            material = getResource<Material>(mat_name);
+        }
+
+        /*
         uint8_t null_flag = 0;
         in.read((char*)&null_flag, sizeof(null_flag));
         if(null_flag == 1) {
@@ -62,6 +86,7 @@ public:
                 }
             }
         }
+        */
     }
 
     virtual void _editorGui() {

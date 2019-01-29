@@ -381,7 +381,6 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
     std::shared_ptr<Skeleton> skeleton(new Skeleton());
     skeleton->Storage(Resource::LOCAL);
     skeleton->Name("Skeleton");
-    scene->addLocalResource(skeleton);
 
     resourcesFromAssimpScene(ai_scene, scene, skeleton, asset_params, dirname);
 
@@ -398,9 +397,16 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
         );
     }
 
+    std::string skel_res_name = MKSTR(dirname << "\\" << "Skeleton" << ".skel");
+    skeleton->write_to_file(skel_res_name);
+    GlobalDataRegistry().Add(
+        skel_res_name,
+        DataSourceRef(new DataSourceFilesystem(get_module_dir() + "\\" + skel_res_name))
+    );
+
     if(ai_scene->mNumAnimations > 0) {
         auto animator = root->get<Animator>();
-        animator->setSkeleton(skeleton);
+        animator->setSkeleton(getResource<Skeleton>(skel_res_name));
     }
 
     for(unsigned int i = 0; i < ai_scene->mNumAnimations; ++i) {

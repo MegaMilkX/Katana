@@ -29,6 +29,8 @@
 16/ Bounding boxes (maybe spheres too) for meshes!
 
 17/ Root motion option to ignore Y coord (for root motion from pelvis and stuff like that)
+	also maintain upright rotation for root and not destroy original animation while extracting
+	root motion
 
 18/ [DONE] Replace Resource::Build() with deserialize()
 
@@ -43,5 +45,8 @@
 22/ [DONE] Import animations as global resources
 
 23/ Animator serialization
+23.5/ SKIN serialization
+
 24/ Animator editor gui animation list editing
-25/ Extract fbx skeleton to disk
+25/ [DONE] Extract fbx skeleton to disk
+26/ Handle bind poses properly

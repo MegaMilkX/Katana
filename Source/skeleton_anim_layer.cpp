@@ -27,7 +27,7 @@ void SkeletonAnimLayer::update(
     float fps      = anim_info.anim->fps;
 
     float cursor_prev = cursor;
-    cursor += dt * 60.0f * speed;
+    cursor += dt * fps * speed;
     if(cursor >= duration) {
         cursor -= duration;
     }
