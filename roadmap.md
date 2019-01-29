@@ -30,4 +30,14 @@
 
 17/ Root motion option to ignore Y coord (for root motion from pelvis and stuff like that)
 
-18/ Replace Resource::Build() with deserialize()
+18/ [DONE] Replace Resource::Build() with deserialize()
+
+19/ BUG :
+	INFO | 15:02:40 | 21196: Data source 'assets/materials//material3.mat' doesn't exist.
+	after directory refresh
+
+20/ Fix multiple meshes on one node for fbx to scene import
+
+21/ 'Meta' directory for asset previews
+
+22/ Import animations as global resources

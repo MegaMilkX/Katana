@@ -8,13 +8,6 @@ class Mesh : public Resource {
 public:
     gl::IndexedMesh mesh;
 
-    virtual bool Build(DataSourceRef r) {
-        return false;
-    }
-    virtual bool Serialize(std::vector<unsigned char>& data) {
-        return false;
-    }
-
     virtual void serialize(std::ostream& out) {
         mesh.serialize(out);
     }

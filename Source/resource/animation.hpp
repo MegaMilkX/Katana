@@ -25,13 +25,6 @@ public:
         if(anim)
             ozz::memory::default_allocator()->Delete(anim);
     }
-
-    virtual bool Build(DataSourceRef r) {
-        return false;
-    }
-    virtual bool Serialize(std::vector<unsigned char>& data) {
-        return false;
-    }
 };
 
 #endif

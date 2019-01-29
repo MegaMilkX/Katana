@@ -46,26 +46,20 @@ public:
     int Width() { return width; }
     int Height() { return height; }
 
-    bool Build(DataSourceRef r)
-    {
-        std::vector<char> bytes;
-        if(r->Size() == 0) return false;
-        bytes.resize((size_t)r->Size());
-        r->ReadAll((char*)bytes.data());
+    virtual bool deserialize(std::istream& in, size_t sz) { 
+        std::vector<char> buf;
+        buf.resize(sz);
+        in.read((char*)buf.data(), buf.size());
 
         stbi_set_flip_vertically_on_load(1);
         int w, h, bpp;
         unsigned char* data =
-            stbi_load_from_memory((unsigned char*)bytes.data(), bytes.size(), &w, &h, &bpp, 4);
+            stbi_load_from_memory((unsigned char*)buf.data(), sz, &w, &h, &bpp, 4);
         if(!data)
             return false;
         Data(data, w, h, 4);
         return true;
-    }
-    virtual bool Serialize(std::vector<unsigned char>& data) {
-        throw std::exception("not implemented");
-        return false;
-    }
+    }   
 private:
     bool dirty;
     std::vector<unsigned char> _data;

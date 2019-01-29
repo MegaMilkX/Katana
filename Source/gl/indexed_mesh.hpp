@@ -11,7 +11,7 @@
 namespace gl {
 
 enum ATTRIB_INDEX {
-    POSITION,
+    POSITION = 0,
     UV,
     NORMAL,
     TANGENT,
@@ -80,7 +80,7 @@ public:
     }
     bool copyAttribData(ATTRIB_INDEX index, void* dest) {
         if(attribs.count(index)) {
-            return attribs[index]->copyData(dest);
+            return attribs[index]->copyData(dest, attribs[index]->getDataSize());
         }
         return 0;
     }
@@ -88,7 +88,7 @@ public:
         return indices.getDataSize();
     }
     bool copyIndexData(void* dest) {
-        return indices.copyData(dest);
+        return indices.copyData(dest, indices.getDataSize());
     }
 
     GLuint getVao() const {
@@ -102,20 +102,21 @@ public:
     }
 
     void serialize(std::ostream& out) {
-        uint8_t attrib_count = attribs.size();
+        uint8_t attrib_count = (uint8_t)attribs.size();
         out.write((char*)&attrib_count, sizeof(attrib_count));
 
-        for(auto kv : attribs) {
+        for(auto& kv : attribs) {
+            auto ptr = kv.second;
+            
             uint8_t attrib_id = (uint8_t)kv.first;
             out.write((char*)&attrib_id, sizeof(attrib_id));
-
-            uint64_t data_size = kv.second->getDataSize();
+            uint64_t data_size = (uint64_t)kv.second->getDataSize();
             out.write((char*)&data_size, sizeof(data_size));
 
             std::vector<char> buf;
-            buf.resize(kv.second->getDataSize());
-            kv.second->copyData((void*)buf.data());
-            out.write(buf.data(), buf.size());
+            buf.resize(data_size);
+            ptr->copyData((void*)buf.data(), data_size);
+            out.write(buf.data(), data_size);
         }
 
         uint64_t index_data_size = indices.getDataSize();
@@ -123,7 +124,7 @@ public:
 
         std::vector<char> buf;
         buf.resize(index_data_size);
-        indices.copyData((void*)buf.data());
+        indices.copyData((void*)buf.data(), index_data_size);
         out.write(buf.data(), buf.size());
     }
     void deserialize(std::istream& in) {
@@ -143,7 +144,6 @@ public:
             in.read((char*)buf.data(), buf.size());
 
             auto& attrDesc = getAttribDesc((ATTRIB_INDEX)attrib_id_ui8);
-            LOG(attrDesc.name << ": " << data_size);
             setAttribData(
                 (ATTRIB_INDEX)attrib_id_ui8, 
                 buf.data(), buf.size(),
@@ -155,7 +155,6 @@ public:
 
         uint64_t index_data_size = 0;
         in.read((char*)&index_data_size, sizeof(index_data_size));
-        LOG("Index data size: " << index_data_size);
         std::vector<char> buf;
         buf.resize(index_data_size);
         in.read((char*)buf.data(), buf.size());

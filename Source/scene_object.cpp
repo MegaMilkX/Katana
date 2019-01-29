@@ -177,6 +177,7 @@ void SceneObject::deserialize(std::istream& in) {
     }
 }
 
+#include "model.hpp"
 #include "transform.hpp"
 #include "light.hpp"
 #include "character.hpp"
@@ -194,6 +195,12 @@ void SceneObject::_editorGui() {
     {
         ImGui::BeginChild("ComponentList", ImVec2(150, 100), false, 0);
         bool selected = false;
+        if(ImGui::Selectable("Model", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+            if (ImGui::IsMouseDoubleClicked(0)) {
+                component_creator_so_tgt->get<Model>();
+                ImGui::CloseCurrentPopup();
+            }
+        }
         if(ImGui::Selectable("Transform", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
             if (ImGui::IsMouseDoubleClicked(0)) {
                 component_creator_so_tgt->get<Transform>();

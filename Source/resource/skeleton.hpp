@@ -75,13 +75,6 @@ public:
     ozz::animation::Skeleton* getOzzSkeleton() {
         return ozz_skel;
     }
-
-    virtual bool Build(DataSourceRef r) {
-        return false;
-    }
-    virtual bool Serialize(std::vector<unsigned char>& data) {
-        return false;
-    }
 private:
     std::vector<Bone> bones;
     std::map<std::string, size_t> name_to_bone;

@@ -1,6 +1,8 @@
 #ifndef RESOURCE_H
 #define RESOURCE_H
 
+#include <fstream>
+
 #include "data_source.h"
 #include <rttr/type>
 #include <rttr/registration>
@@ -23,11 +25,15 @@ public:
     STORAGE Storage() const { return storage; }
     void Storage(STORAGE storage) { this->storage = storage; }
 
-    virtual bool Build(DataSourceRef src) = 0;
-    virtual bool Serialize(std::vector<unsigned char>& data) = 0;
-
     virtual void serialize(std::ostream& out) {}
     virtual bool deserialize(std::istream& in, size_t sz) { return false; }
+
+    void write_to_file(const std::string& filename) {
+        std::ofstream f(filename, std::ios::binary);
+        if(f.is_open()) {
+            serialize(f);
+        }
+    }
 
     virtual void _editorGui() {}
 private:

@@ -17,32 +17,6 @@ public:
     std::shared_ptr<Texture2D> metallic;
     std::shared_ptr<Texture2D> roughness;
 
-    virtual bool Build(DataSourceRef r) {
-        std::vector<char> data;
-        if(r->Size() == 0) return false;
-        data.resize((size_t)r->Size());
-        r->ReadAll((char*)data.data());
-
-        using json = nlohmann::json;
-        json j;
-        try {
-            j = json::parse((char*)data.data(), (char*)data.data() + data.size());
-        } catch(std::exception& e) {
-            LOG_WARN("Material json parse error: " << e.what());
-            return false;
-        }
-
-        getMap(j, "albedo", albedo);
-        getMap(j, "normal", normal);
-        getMap(j, "metallic", metallic);
-        getMap(j, "roughness", roughness);
-
-        return true;
-    }
-    virtual bool Serialize(std::vector<unsigned char>& data) {
-        return false;
-    }
-
     virtual void serialize(std::ostream& out) {
         using json = nlohmann::json;
         json j;
@@ -60,6 +34,27 @@ public:
         }
 
         out << j;
+    }
+    virtual bool deserialize(std::istream& in, size_t sz) {
+        std::vector<char> buf;
+        buf.resize(sz);
+        in.read((char*)buf.data(), buf.size());
+
+        using json = nlohmann::json;
+        json j;
+        try {
+            j = json::parse((char*)buf.data(), (char*)buf.data() + sz);
+        } catch(std::exception& e) {
+            LOG_WARN("Material json parse error: " << e.what());
+            return false;
+        }
+
+        getMap(j, "albedo", albedo);
+        getMap(j, "normal", normal);
+        getMap(j, "metallic", metallic);
+        getMap(j, "roughness", roughness);
+
+        return true;
     }
 
 private:

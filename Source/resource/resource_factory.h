@@ -30,11 +30,19 @@ public:
         std::shared_ptr<T> ptr;
         res_weak_ptr_t& weak = resources[name];
         if(weak.expired()) {
+            auto& strm = dataSrc->open_stream();
+            strm.seekg(0, std::ios::end);
+            size_t sz = (size_t)strm.tellg();
+            strm.seekg(0, std::ios::beg);
+
             ptr.reset(new T());
-            if(!ptr->Build(dataSrc)) {
+            if(!ptr->deserialize(strm, sz)) {
                 LOG("Failed to build resource " << name);
+                dataSrc->close_stream();
                 return std::shared_ptr<T>();
             }
+            dataSrc->close_stream();
+
             weak = ptr;
             ptr->Name(name);
             ptr->Storage(Resource::GLOBAL);

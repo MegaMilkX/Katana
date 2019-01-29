@@ -37,13 +37,17 @@ public:
     size_t getDataSize() {
         return size;
     }
-    bool copyData(void* dest) {
-        if(!size) {
+    bool copyData(void* dest, size_t sz) {
+        if(!sz) {
             return false;
         }
-        glBindBuffer(GL_ARRAY_BUFFER, id);
-        glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, dest);
+
+        glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_COPY_READ_BUFFER, id);
+        glGetBufferSubData(GL_COPY_READ_BUFFER, 0, sz, dest);
+        glBindBuffer(GL_COPY_READ_BUFFER, 0);
+        
         return true;
     }
 private:
@@ -77,13 +81,17 @@ public:
     size_t getDataSize() {
         return size;
     }
-    bool copyData(void* dest) {
+    bool copyData(void* dest, size_t sz) {
         if(!size) {
             return false;
         }
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
-        glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, size, dest);
+
+        glBindVertexArray(0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_COPY_READ_BUFFER, id);
+        glGetBufferSubData(GL_COPY_READ_BUFFER, 0, sz, dest);
+        glBindBuffer(GL_COPY_READ_BUFFER, 0);
+        
         return true;
     }
 private:

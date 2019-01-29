@@ -66,9 +66,26 @@ public:
 
     virtual void _editorGui() {
         ImGui::Text("Mesh "); ImGui::SameLine();
-        if(ImGui::SmallButton("MESH_BUTTON")) {
+        std::string mesh_name = "! No mesh !";
+        if(mesh) {
+            mesh_name = mesh->Name();
+        }
+        if(ImGui::SmallButton(mesh_name.c_str())) {
 
         }
+        ImGui::PushID(mesh_name.c_str());
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
+                //SceneObject* tgt_dnd_so = *(SceneObject**)payload->Data;
+                //tgt_dnd_so->setParent(so);
+                std::string fname = (char*)payload->Data;
+                LOG("Payload received: " << fname);
+                mesh = getResource<Mesh>(fname);
+            }
+            ImGui::EndDragDropTarget();
+        }
+        ImGui::PopID();
+
         ImGui::Text("Material "); ImGui::SameLine();
         std::string mat_name = "! No material !";
         if(material) {

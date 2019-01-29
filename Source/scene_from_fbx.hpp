@@ -1,6 +1,11 @@
 #ifndef SCENE_FROM_FBX_HPP
 #define SCENE_FROM_FBX_HPP
 
+#define NO_MIN_MAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
+#include <algorithm>
 #include <functional>
 #include <vector>
 
@@ -18,11 +23,15 @@
 #include "util/split.hpp"
 #include "asset_params.hpp"
 
+#include "resource/data_registry.h"
+#include "resource/resource_factory.h"
+
 inline void meshesFromAssimpScene(
     const aiScene* ai_scene, 
     Scene* scene, 
     std::shared_ptr<Skeleton> skeleton,
-    AssetParams& asset_params
+    AssetParams& asset_params,
+    const std::string& dirname
 ) {
     unsigned int mesh_count = ai_scene->mNumMeshes;
     for(unsigned int i = 0; i < mesh_count; ++i) {
@@ -131,7 +140,12 @@ inline void meshesFromAssimpScene(
 
         mesh_ref->mesh.setIndices(indices.data(), indices.size());
 
-        scene->addLocalResource(mesh_ref);
+        std::string fname = MKSTR(dirname << "\\" << i << ".mesh");
+        mesh_ref->write_to_file(MKSTR(dirname << "\\" << i << ".mesh"));
+        GlobalDataRegistry().Add(
+            fname,
+            DataSourceRef(new DataSourceFilesystem(get_module_dir() + "\\" + fname))
+        );
     }
 }
 
@@ -139,7 +153,8 @@ inline void animationsFromAssimpScene(
     const aiScene* ai_scene, 
     Scene* scene, 
     std::shared_ptr<Skeleton> skeleton,
-    AssetParams& asset_params
+    AssetParams& asset_params,
+    const std::string& dirname
 ) {
     for(unsigned int i = 0; i < ai_scene->mNumAnimations; ++i) {
         aiAnimation* ai_anim = ai_scene->mAnimations[i];
@@ -292,10 +307,11 @@ inline void resourcesFromAssimpScene(
     const aiScene* ai_scene, 
     Scene* scene, 
     std::shared_ptr<Skeleton> skeleton,
-    AssetParams& asset_params
+    AssetParams& asset_params,
+    const std::string& dirname
 ) {
-    meshesFromAssimpScene(ai_scene, scene, skeleton, asset_params);
-    animationsFromAssimpScene(ai_scene, scene, skeleton, asset_params);
+    meshesFromAssimpScene(ai_scene, scene, skeleton, asset_params, dirname);
+    animationsFromAssimpScene(ai_scene, scene, skeleton, asset_params, dirname);
 }
 
 inline void objectFromAssimpNode(
@@ -305,10 +321,11 @@ inline void objectFromAssimpNode(
     SceneObject* object, 
     size_t base_mesh_index, 
     std::vector<std::function<void(void)>>& tasks,
-    std::shared_ptr<Skeleton> skeleton
+    std::shared_ptr<Skeleton> skeleton,
+    const std::string& dirname
 ) {
     for(unsigned i = 0; i < node->mNumChildren; ++i) {
-        objectFromAssimpNode(ai_scene, node->mChildren[i], root, object->createChild(), base_mesh_index, tasks, skeleton);
+        objectFromAssimpNode(ai_scene, node->mChildren[i], root, object->createChild(), base_mesh_index, tasks, skeleton, dirname);
     }
 
     object->setName(node->mName.C_Str());
@@ -316,7 +333,7 @@ inline void objectFromAssimpNode(
 
     if(node->mNumMeshes > 0) {
         Model* m = object->get<Model>();
-        m->mesh = object->getScene()->getLocalResource<Mesh>(base_mesh_index + node->mMeshes[0]);
+        m->mesh = getResource<Mesh>(MKSTR(dirname << "\\" << node->mMeshes[0] << ".mesh"));
         // TODO: Set material
         aiMesh* ai_mesh = ai_scene->mMeshes[node->mMeshes[0]];
         if(ai_mesh->mNumBones) {
@@ -348,6 +365,13 @@ inline gfxm::vec2 sampleSphericalMap(gfxm::vec3 v) {
 }
 
 inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject* root_node = 0) {
+    // Create subdir to store all resources extracted from this file
+    
+    std::string dirname = filename;
+    std::replace( dirname.begin(), dirname.end(), '.', '_'); 
+    CreateDirectoryA(dirname.c_str(), 0);
+    
+
     AssetParams asset_params;
     asset_params.load(filename + ".asset_params");
     
@@ -430,7 +454,7 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
     skeleton->Name("Skeleton");
     scene->addLocalResource(skeleton);
 
-    resourcesFromAssimpScene(ai_scene, scene, skeleton, asset_params);
+    resourcesFromAssimpScene(ai_scene, scene, skeleton, asset_params, dirname);
 
     for(unsigned i = 0; i < ai_rootNode->mNumChildren; ++i) {
         objectFromAssimpNode(
@@ -440,7 +464,8 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
             root->createChild(), 
             base_mesh_index, 
             deferred_tasks,
-            skeleton
+            skeleton,
+            dirname
         );
     }
 
@@ -473,7 +498,7 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
     LOG("Fbx skeleton size: " << skeleton->boneCount());
 
     for(auto m : meshes_with_fallback_uv) {
-        delete m->mTextureCoords[0];
+        delete[] m->mTextureCoords[0];
         m->mTextureCoords[0] = 0;
     }
     aiReleaseImport(ai_scene);
