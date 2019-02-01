@@ -50,3 +50,5 @@
 24/ Animator editor gui animation list editing
 25/ [DONE] Extract fbx skeleton to disk
 26/ Handle bind poses properly
+
+27/ Separate FBX resource extraction and scene importing

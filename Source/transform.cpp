@@ -137,6 +137,10 @@ gfxm::vec3 Transform::rotationEuler()
 {
     return gfxm::to_euler(_rotation);
 }
+gfxm::vec3 Transform::worldScale() {
+    gfxm::mat3 m3 = gfxm::to_mat3(getTransform());
+    return gfxm::vec3(gfxm::length(m3[0]), gfxm::length(m3[1]), gfxm::length(m3[2]));
+}
 const gfxm::vec3& Transform::scale()
 { return _scale; }
 

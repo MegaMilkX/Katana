@@ -29,7 +29,6 @@
 inline void meshesFromAssimpScene(
     const aiScene* ai_scene, 
     Scene* scene, 
-    std::shared_ptr<Skeleton> skeleton,
     AssetParams& asset_params,
     const std::string& dirname
 ) {
@@ -84,7 +83,6 @@ inline void meshesFromAssimpScene(
             for(unsigned j = 0; j < ai_mesh->mNumBones; ++j) {
                 unsigned int bone_index = j;
                 aiBone* bone = ai_mesh->mBones[j];
-                skeleton->addBone(bone->mName.C_Str(), *(gfxm::mat4*)&bone->mOffsetMatrix);
                 
                 for(unsigned k = 0; k < bone->mNumWeights; ++k) {
                     aiVertexWeight& w = bone->mWeights[k];
@@ -116,9 +114,7 @@ inline void meshesFromAssimpScene(
                 bitangent[j * 3 + 1] = (n.y);
                 bitangent[j * 3 + 2] = (n.z);
             }
-        }
-
-        
+        }        
 
         std::shared_ptr<Mesh> mesh_ref(new Mesh());
         mesh_ref->Name(MKSTR(i << ".geo"));
@@ -149,6 +145,41 @@ inline void meshesFromAssimpScene(
     }
 }
 
+inline void finalizeSkeleton(const aiScene* ai_scene, std::shared_ptr<Skeleton> skel) {
+    unsigned int mesh_count = ai_scene->mNumMeshes;
+    for(unsigned int i = 0; i < mesh_count; ++i) {
+        auto ai_mesh = ai_scene->mMeshes[i];
+        for(unsigned j = 0; j < ai_mesh->mNumBones; ++j) {
+            unsigned int bone_index = j;
+            aiBone* bone = ai_mesh->mBones[j];
+            skel->addBone(bone->mName.C_Str());
+        }
+    }
+    
+    for(unsigned i = 0; i < ai_scene->mNumAnimations; ++i) {
+        aiAnimation* ai_anim = ai_scene->mAnimations[i];
+        for(unsigned j = 0; j < ai_anim->mNumChannels; ++j) {
+            aiNodeAnim* ai_node_anim = ai_anim->mChannels[j];
+            skel->addBone(ai_node_anim->mNodeName.C_Str());
+        }
+    }
+    
+    std::function<void(aiNode*, std::shared_ptr<Skeleton>)> finalizeBone;
+    finalizeBone = [&finalizeBone](aiNode* node, std::shared_ptr<Skeleton> skel) {
+        for(unsigned i = 0; i < node->mNumChildren; ++i) {
+            skel->addBone(node->mChildren[i]->mName.C_Str());
+            finalizeBone(node->mChildren[i], skel);
+            skel->setDefaultPose(
+                node->mChildren[i]->mName.C_Str(), 
+                gfxm::transpose(*(gfxm::mat4*)&node->mChildren[i]->mTransformation)
+            );
+            skel->setParent(node->mChildren[i]->mName.C_Str(), node->mName.C_Str());
+        }
+    };
+
+    finalizeBone(ai_scene->mRootNode, skel);
+}
+
 inline void animNodeFromAssimpNode(aiNodeAnim* ai_node_anim, AnimNode& node) {
     for(unsigned k = 0; k < ai_node_anim->mNumPositionKeys; ++k) {
         auto& ai_v = ai_node_anim->mPositionKeys[k].mValue;
@@ -170,28 +201,118 @@ inline void animNodeFromAssimpNode(aiNodeAnim* ai_node_anim, AnimNode& node) {
     }
 }
 
+inline void extractRootMotionFromAssimpAnimNode(
+    aiNodeAnim* ai_node_anim, 
+    AnimNode& node, 
+    AnimNode& rm_node, 
+    std::shared_ptr<Skeleton> skeleton,
+    bool root_translation,
+    bool root_rotation
+) {
+    std::string node_name = ai_node_anim->mNodeName.C_Str();
+    Skeleton::Bone* bone = skeleton->getBone(node_name);
+    LOG("extractRootMotionFromAssimpAnimNode bone: " << node_name);
+
+    // Get transforms
+    gfxm::mat4 parent_transform = skeleton->getParentTransform(bone->name);
+    gfxm::mat4 bone_w_transform = skeleton->getWorldTransform(bone->name);
+    gfxm::mat4 bone_transform = bone->bind_pose;//skeleton->getWorldTransform(bone->name);
+    gfxm::mat3 m3 = gfxm::to_mat3(bone_transform);
+    m3[0] /= gfxm::length(m3[0]);
+    m3[1] /= gfxm::length(m3[1]);
+    m3[2] /= gfxm::length(m3[2]);
+    gfxm::quat bone_rot = gfxm::to_quat(m3);
+
+    // Get rotation curve as is
+    curve<gfxm::quat> r_curve;
+    for(unsigned k = 0; k < ai_node_anim->mNumRotationKeys; ++k) {
+        auto& ai_v = ai_node_anim->mRotationKeys[k].mValue;
+        float t = (float)ai_node_anim->mRotationKeys[k].mTime;
+        gfxm::quat o_q = { ai_v.x, ai_v.y, ai_v.z, ai_v.w };
+        r_curve[t] = o_q;
+    }
+
+    if(!root_translation) {
+        rm_node.t[0.0f] = gfxm::vec3(.0f, .0f, .0f);
+        rm_node.t[1.0f] = gfxm::vec3(.0f, .0f, .0f);
+    } else {
+        auto& ai_v = ai_node_anim->mPositionKeys[0].mValue;
+        gfxm::vec4 original_v = { ai_v.x, ai_v.y, ai_v.z, 1.0f };
+        node.t[0.0f] = original_v;
+        node.t[1.0f] = original_v;
+    }
+    if(!root_rotation) {
+        rm_node.r[0.0f] = gfxm::quat(.0f, .0f, .0f, 1.0f);
+        rm_node.r[1.0f] = gfxm::quat(.0f, .0f, .0f, 1.0f);
+    } else {
+        node.r[0.0f] = bone_rot;
+        node.r[1.0f] = bone_rot;
+        rm_node.r[0.0f] = bone_rot;
+    }
+    rm_node.s[0.0f] = gfxm::vec3(1.0f, 1.0f, 1.0f);
+    rm_node.s[1.0f] = gfxm::vec3(1.0f, 1.0f, 1.0f);
+    
+    for(unsigned k = 0; k < ai_node_anim->mNumPositionKeys; ++k) {
+        auto& ai_v = ai_node_anim->mPositionKeys[k].mValue;
+        float t = (float)ai_node_anim->mPositionKeys[k].mTime;
+        gfxm::vec4 original_v = { ai_v.x, ai_v.y, ai_v.z, 1.0f };
+
+        if(root_translation) {
+            gfxm::vec4 transformed_v = 
+                parent_transform * original_v;
+            gfxm::vec4 rm_v = 
+                gfxm::vec4(transformed_v.x, .0f, transformed_v.z, 1.0f);
+            gfxm::vec4 v = 
+                gfxm::inverse(parent_transform) * gfxm::vec4(.0f, transformed_v.y, .0f, 1.0f);
+            
+            node.t[t] = v;
+            rm_node.t[t] = rm_v;
+        } else {
+            node.t[t] = original_v;
+        }
+    }
+    for(unsigned k = 0; k < ai_node_anim->mNumRotationKeys; ++k) {
+        auto& ai_v = ai_node_anim->mRotationKeys[k].mValue;
+        float t = (float)ai_node_anim->mRotationKeys[k].mTime;
+        gfxm::quat o_q = { ai_v.x, ai_v.y, ai_v.z, ai_v.w };
+
+        if(root_rotation) {
+            
+
+            //node.r[t] = t_q;
+            rm_node.r[t] = o_q;
+        } else {
+            node.r[t] = o_q;
+        }
+    }
+    for(unsigned k = 0; k < ai_node_anim->mNumScalingKeys; ++k) {
+        auto& ai_v = ai_node_anim->mScalingKeys[k].mValue;
+        float t = (float)ai_node_anim->mScalingKeys[k].mTime;
+        gfxm::vec3 v = { ai_v.x, ai_v.y, ai_v.z };
+        node.s[t] = v;
+    }
+}
+
 inline void animationsFromAssimpScene(
     const aiScene* ai_scene,
     Scene* scene,
     std::shared_ptr<Skeleton> skeleton,
     AssetParams& asset_params,
-    const std::string& dirname
+    const std::string& dirname,
+    const std::string& root_name
 ) {
     for(unsigned i = 0; i < ai_scene->mNumAnimations; ++i) {
         aiAnimation* ai_anim = ai_scene->mAnimations[i];
         double fps = ai_anim->mTicksPerSecond;
         double len = ai_anim->mDuration;
-        
-        for(unsigned j = 0; j < ai_anim->mNumChannels; ++j) {
-            aiNodeAnim* ai_node_anim = ai_anim->mChannels[j];
-            skeleton->addBone(ai_node_anim->mNodeName.C_Str(), gfxm::mat4(1.0f));
-        }
 
-        AssetParams anim_asset_params = 
+        AssetParams& anim_asset_params = 
             asset_params.get_object("Animation").get_object(ai_anim->mName.C_Str());
         bool is_additive = anim_asset_params.get_bool("Additive", false);
         bool enable_root_motion = anim_asset_params.get_bool("EnableRootMotion", false);
         std::string root_motion_node_name = anim_asset_params.get_string("RootMotionNode", "");
+        bool root_rotation = anim_asset_params.get_bool("RootRotation", false);
+        bool root_translation = anim_asset_params.get_bool("RootTranslation", false);
 
         std::shared_ptr<Animation> anim(new Animation());
         anim->Storage(Resource::GLOBAL);
@@ -208,13 +329,18 @@ inline void animationsFromAssimpScene(
             Skeleton::Bone* bone = skeleton->getBone(bone_node);
             if(!bone) continue;
 
+            AnimNode& node = anim->getNode(bone_node);
             if(root_motion_node_name == bone_node) {
-                animNodeFromAssimpNode(ai_node_anim, anim->getRootMotionNode());
+                extractRootMotionFromAssimpAnimNode(
+                    ai_node_anim, 
+                    node,       
+                    anim->getRootMotionNode(),
+                    skeleton,
+                    root_translation,
+                    root_rotation
+                );
                 continue;
             }
-
-            AnimNode& node = anim->getNode(bone_node);
-
             animNodeFromAssimpNode(ai_node_anim, node);
         }
 
@@ -222,9 +348,8 @@ inline void animationsFromAssimpScene(
             // TODO: Convert to additive?
         }
 
-        std::string fname = MKSTR(dirname << "\\" << replace_reserved_chars(ai_anim->mName.C_Str(), '_') << ".anim");
+        std::string fname = MKSTR(dirname << "\\" << root_name << "_" << replace_reserved_chars(ai_anim->mName.C_Str(), '_') << ".anim");
         anim->write_to_file(fname);
-        LOG("New anim file: " << fname);
         GlobalDataRegistry().Add(
             fname,
             DataSourceRef(new DataSourceFilesystem(get_module_dir() + "\\" + fname))
@@ -237,10 +362,12 @@ inline void resourcesFromAssimpScene(
     Scene* scene, 
     std::shared_ptr<Skeleton> skeleton,
     AssetParams& asset_params,
-    const std::string& dirname
+    const std::string& dirname,
+    const std::string& root_name
 ) {
-    meshesFromAssimpScene(ai_scene, scene, skeleton, asset_params, dirname);
-    animationsFromAssimpScene(ai_scene, scene, skeleton, asset_params, dirname);
+    finalizeSkeleton(ai_scene, skeleton);
+    meshesFromAssimpScene(ai_scene, scene, asset_params, dirname);
+    animationsFromAssimpScene(ai_scene, scene, skeleton, asset_params, dirname, root_name);
 }
 
 inline void objectFromAssimpNode(
@@ -250,11 +377,10 @@ inline void objectFromAssimpNode(
     SceneObject* object, 
     size_t base_mesh_index, 
     std::vector<std::function<void(void)>>& tasks,
-    std::shared_ptr<Skeleton> skeleton,
     const std::string& dirname
 ) {
     for(unsigned i = 0; i < node->mNumChildren; ++i) {
-        objectFromAssimpNode(ai_scene, node->mChildren[i], root, object->createChild(), base_mesh_index, tasks, skeleton, dirname);
+        objectFromAssimpNode(ai_scene, node->mChildren[i], root, object->createChild(), base_mesh_index, tasks, dirname);
     }
 
     object->setName(node->mName.C_Str());
@@ -271,13 +397,11 @@ inline void objectFromAssimpNode(
                 aiBone* bone = ai_mesh->mBones[j];
                 std::string name(bone->mName.data, bone->mName.length);
 
-                tasks.emplace_back([skin, bone, name, object, root, skeleton](){
+                tasks.emplace_back([skin, bone, name, object, root](){
                     SceneObject* so = root->findObject(name);
                     if(so) {
                         skin->bones.emplace_back(so->get<Transform>()->getId());
                         skin->bind_pose.emplace_back(gfxm::transpose(*(gfxm::mat4*)&bone->mOffsetMatrix));
-                        // TODO: Refactor?
-                        skeleton->addBone(bone->mName.C_Str(), *(gfxm::mat4*)&bone->mOffsetMatrix);
                     }
                 });
             }
@@ -299,7 +423,14 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
     std::string dirname = filename;
     std::replace( dirname.begin(), dirname.end(), '.', '_'); 
     CreateDirectoryA(dirname.c_str(), 0);
-    
+
+    std::string root_name = "object";
+    std::vector<std::string> tokens = split(filename, '\\');
+    if(!tokens.empty()) {
+        std::string name = tokens[tokens.size() - 1];
+        tokens = split(name, '.');
+        root_name = name.substr(0, name.find_last_of("."));
+    }
 
     AssetParams asset_params;
     asset_params.load(filename + ".asset_params");
@@ -355,9 +486,9 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
         return false;
     }
 
+    double scaleFactor = 1.0;
     SceneObject* root = root_node == 0 ? scene->getRootObject() : root_node;
     if(ai_scene->mMetaData) {
-        double scaleFactor = 1.0;
         if(ai_scene->mMetaData->Get("UnitScaleFactor", scaleFactor)) {
             if(scaleFactor == 0.0) scaleFactor = 1.0f;
             scaleFactor *= 0.01;
@@ -382,7 +513,17 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
     skeleton->Storage(Resource::LOCAL);
     skeleton->Name("Skeleton");
 
-    resourcesFromAssimpScene(ai_scene, scene, skeleton, asset_params, dirname);
+    LOG("root bone: " << ai_rootNode->mName.C_Str());
+    skeleton->addBone(ai_rootNode->mName.C_Str());
+    skeleton->setDefaultPose(
+        ai_rootNode->mName.C_Str(), 
+        gfxm::scale(
+            gfxm::mat4(1.0f), 
+            gfxm::vec3(scaleFactor, scaleFactor, scaleFactor)
+        )
+    );
+
+    resourcesFromAssimpScene(ai_scene, scene, skeleton, asset_params, dirname, root_name);
 
     for(unsigned i = 0; i < ai_rootNode->mNumChildren; ++i) {
         objectFromAssimpNode(
@@ -392,7 +533,6 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
             root->createChild(), 
             base_mesh_index, 
             deferred_tasks,
-            skeleton,
             dirname
         );
     }
@@ -411,7 +551,7 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
 
     for(unsigned int i = 0; i < ai_scene->mNumAnimations; ++i) {
         auto animator = root->get<Animator>();
-        std::string fname = MKSTR(dirname << "\\" << replace_reserved_chars(ai_scene->mAnimations[i]->mName.C_Str(), '_') << ".anim");
+        std::string fname = MKSTR(dirname << "\\" << root_name << "_" << replace_reserved_chars(ai_scene->mAnimations[i]->mName.C_Str(), '_') << ".anim");
         animator->addAnim(getResource<Animation>(fname));
 
         //animator->addAnim(scene->getLocalResource<Animation>(base_anim_index + i));
@@ -421,15 +561,7 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
         t();
     }
 
-    std::vector<std::string> tokens = split(filename, '\\');
-    if(!tokens.empty()) {
-        std::string name = tokens[tokens.size() - 1];
-        tokens = split(name, '.');
-        name = name.substr(0, name.find_last_of("."));
-        root->setName(name);
-    } else {
-        root->setName("object");
-    }
+    root->setName(root_name);
 
     LOG("Fbx skeleton size: " << skeleton->boneCount());
 
@@ -438,6 +570,8 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
         m->mTextureCoords[0] = 0;
     }
     aiReleaseImport(ai_scene);
+
+    asset_params.write(filename + ".asset_params");
 
     return true;
 }

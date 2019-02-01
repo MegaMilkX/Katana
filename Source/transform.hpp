@@ -46,6 +46,7 @@ public:
     gfxm::quat worldRotation();
     const gfxm::quat& rotation();
     gfxm::vec3 rotationEuler();
+    gfxm::vec3 worldScale();
     const gfxm::vec3& scale();
     
     gfxm::vec3 right();

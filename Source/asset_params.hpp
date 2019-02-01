@@ -44,37 +44,65 @@ public:
         parse(j);
     }
 
-    AssetParams get_object(const std::string& name) {
+    void write(const std::string& filename) {
+        using json = nlohmann::json;
+        std::ofstream file(filename);
+        if(!file.is_open()) {
+            LOG_WARN("Failed to write " << filename);
+            return;
+        }
+        json j;
+        toJson(j);
+        file << j;
+    }
+
+    void toJson(nlohmann::json& j) {
+        j = nlohmann::json::object();
+        for(auto& kv : objects) {
+            kv.second.toJson(j[kv.first]);
+        }
+        for(auto& kv : string_values) {
+            j[kv.first] = kv.second;
+        }
+        for(auto& kv : numeric_values) {
+            j[kv.first] = kv.second;
+        }
+        for(auto& kv : bool_values) {
+            j[kv.first] = kv.second;
+        }
+    }
+
+    AssetParams& get_object(const std::string& name) {
         return objects[name];
     }
 
     bool get_bool(const std::string& name, bool def) {
         if(bool_values.count(name) == 0) {
-            return def;
+            bool_values[name] = def;
         }
         return bool_values[name];
     }
     std::string get_string(const std::string& name, const std::string& def) {
         if(string_values.count(name) == 0) {
-            return def;
+            string_values[name] = def;
         }
         return string_values[name];
     }
     double get_double(const std::string& name, double def) {
         if(numeric_values.count(name) == 0) {
-            return def;
+            numeric_values[name] = def;
         }
         return numeric_values[name];
     }
     float get_float(const std::string& name, float def) {
         if(numeric_values.count(name) == 0) {
-            return def;
+            numeric_values[name] = (double)def;
         }
         return (float)numeric_values[name];
     }
     int get_int(const std::string& name, int def) {
         if(numeric_values.count(name) == 0) {
-            return def;
+            numeric_values[name] = (double)def;
         }
         return (int)numeric_values[name];
     }

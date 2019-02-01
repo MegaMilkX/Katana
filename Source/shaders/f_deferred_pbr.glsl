@@ -19,13 +19,14 @@ R"(#version 450
     uniform vec3 u_tint;
 
     void main()
-    {        
-        out_albedo = vec4(
-            (
-                base_color * texture(tex_albedo, uv_frag)
-            ).xyz * u_tint, 
-            1.0
-        );
+    {
+        vec4 t = texture(tex_albedo, uv_frag);
+        t = t * base_color;
+
+        out_albedo = vec4(t.xyz * u_tint, t.w);
+        if (out_albedo.a < 0.8) {
+            discard;
+        }
 
         vec3 t_normal = mat_tbn * (texture(tex_normal, uv_frag).xyz * 2.0 - 1.0);
 

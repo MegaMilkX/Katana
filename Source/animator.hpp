@@ -62,6 +62,7 @@ public:
         if(!skeleton) {
             return;
         }
+
         gfxm::vec3 rm_pos_final = gfxm::vec3(0.0f, 0.0f, 0.0f);
         gfxm::quat rm_rot_final = gfxm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -73,12 +74,20 @@ public:
             );
         }
 
-        for(size_t i = 0; i < sample_buffer.size(); ++i) {
-            auto& s = sample_buffer[i];
-            auto& m = bone_transforms[i];
-            m = gfxm::translate(gfxm::mat4(1.0f), s.t) * 
-                gfxm::to_mat4(s.r) * 
-                gfxm::scale(gfxm::mat4(1.0f), s.s);
+        if(layers.empty() || anims.empty()) {
+            for(size_t i = 0; i < sample_buffer.size(); ++i) {
+                auto& m = bone_transforms[i];
+                m = skeleton->getBone(i).bind_pose;
+            }
+        } else {
+            for(size_t i = 0; i < sample_buffer.size(); ++i) {
+                auto& s = sample_buffer[i];
+                auto& m = bone_transforms[i];
+
+                m = gfxm::translate(gfxm::mat4(1.0f), s.t) * 
+                    gfxm::to_mat4(s.r) * 
+                    gfxm::scale(gfxm::mat4(1.0f), s.s);
+            }
         }
 
         // TODO: Optimize
@@ -92,9 +101,9 @@ public:
         // Update root motion target
         if(root_motion_enabled) {
             Transform* t = getObject()->get<Transform>();
-            
-            t->translate(rm_pos_final);
+
             t->rotate(rm_rot_final);
+            t->translate(rm_pos_final);
         }
     }
 

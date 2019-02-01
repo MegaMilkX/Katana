@@ -13,8 +13,8 @@
 class Skeleton : public Resource {
 public:
     struct Bone {
-        size_t id;
-        size_t parent;
+        int32_t id;
+        int32_t parent;
         std::string name;
         gfxm::mat4 bind_pose;
     };
@@ -22,18 +22,54 @@ public:
     ~Skeleton() {
     }
 
-    void addBone(const std::string& name, const gfxm::mat4& bind_pose) {
+    void addBone(const std::string& name) {
         auto it = name_to_bone.find(name);
-        if(it != name_to_bone.end()) {
-            //bones[it->second].bind_pose = bind_pose;
-        } else {
-            size_t bone_id = bones.size();
+        if(it == name_to_bone.end()) {
+            int32_t bone_id = (int32_t)bones.size();
             bones.emplace_back(
-                Bone{ bone_id, 0, name, bind_pose }
+                Bone{ bone_id, -1, name, gfxm::mat4(1.0f) }
             );
             name_to_bone[name] = bone_id;
         }
     }
+    void setDefaultPose(const std::string& bone, const gfxm::mat4& pose) {
+        Bone* b = getBone(bone);
+        if(b) {
+            b->bind_pose = pose;
+        }
+    }
+    void setParent(const std::string& bone, const std::string& parent) {
+        Bone* b = getBone(bone);
+        Bone* p = getBone(parent);
+        if(b && p) {
+            b->parent = p->id;
+        }
+    }
+
+    gfxm::mat4 getParentTransform(const std::string& bone) {
+        Bone* b = getBone(bone);
+        if(!b) return gfxm::mat4(1.0f);
+
+        if(b->parent >= 0) {
+            Bone& p = getBone(b->parent);
+            return getWorldTransform(p.name);
+        } else {
+            return gfxm::mat4(1.0f);
+        }
+    }
+
+    gfxm::mat4 getWorldTransform(const std::string& bone) {
+        Bone* b = getBone(bone);
+        if(!b) return gfxm::mat4(1.0f);
+        
+        if(b->parent >= 0) {
+            Bone& p = getBone(b->parent);
+            return b->bind_pose * p.bind_pose;
+        } else {
+            return b->bind_pose;
+        }
+    }
+
     size_t boneCount() {
         return bones.size();
     }
@@ -52,8 +88,8 @@ public:
         uint32_t bone_count = bones.size();
         write(out, bone_count);
         for(uint32_t i = 0; i < bone_count; ++i) {
-            uint32_t id = bones[i].id;
-            uint32_t parent_id = bones[i].parent;
+            int32_t id = bones[i].id;
+            int32_t parent_id = bones[i].parent;
             write(out, id);
             write(out, parent_id);
             wt_string(out, bones[i].name);
@@ -68,8 +104,8 @@ public:
     virtual bool deserialize(std::istream& in, size_t sz) { 
         uint32_t bone_count = read<uint32_t>(in);
         for(uint32_t i = 0; i < bone_count; ++i) {
-            uint32_t id = read<uint32_t>(in);
-            uint32_t parent_id = read<uint32_t>(in);
+            int32_t id = read<int32_t>(in);
+            int32_t parent_id = read<int32_t>(in);
             std::string name = rd_string(in);
             gfxm::mat4 pose = read<gfxm::mat4>(in);
             bones.emplace_back(
