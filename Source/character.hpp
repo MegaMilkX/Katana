@@ -33,7 +33,7 @@ public:
 };
 
 class Character : public Updatable {
-    CLONEABLE
+    CLONEABLE_AUTO
     RTTR_ENABLE(Updatable)
     friend CharaRun;
     friend CharaIdle;

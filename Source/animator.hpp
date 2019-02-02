@@ -14,7 +14,7 @@
 #include "util/serialization.hpp"
 
 class Animator : public Component {
-    CLONEABLE
+    CLONEABLE_AUTO
     friend SkeletonAnimLayer;
 public:
     Animator() {

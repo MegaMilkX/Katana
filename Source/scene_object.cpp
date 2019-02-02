@@ -107,6 +107,7 @@ void SceneObject::cloneFrom(SceneObject* other) {
         Component* c = scene->createComponentCopy(kv.first, kv.second, this);
         if(c) {
             components[kv.first] = c;
+            c->_onClone(kv.second);
         } else {
             LOG_WARN("Failed to clone " << kv.first.get_name().to_string() << " component (clone() not implemented)");
         }

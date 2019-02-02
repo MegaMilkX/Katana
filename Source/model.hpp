@@ -11,7 +11,7 @@
 inline void writeResource(std::ostream& out, std::shared_ptr<Resource> res, Scene* scene);
 
 class Model : public Component {
-    CLONEABLE
+    CLONEABLE_AUTO
 public:
     std::shared_ptr<Mesh> mesh;
     std::shared_ptr<Material> material;

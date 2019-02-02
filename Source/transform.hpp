@@ -7,7 +7,7 @@
 
 class Transform : public Component
 {
-    CLONEABLE
+    CLONEABLE_AUTO
     //RTTR_ENABLE(Component)
 public:
     Transform()

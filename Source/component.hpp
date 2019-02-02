@@ -13,6 +13,15 @@
 #define CLONEABLE \
 public: \
     Component* clone() { \
+        return new std::remove_reference<decltype(*this)>::type(); \
+    } \
+    virtual void _onClone(Component* other) { \
+        onClone((std::remove_reference<decltype(*this)>::type*)other); \
+    }
+
+#define CLONEABLE_AUTO \
+public: \
+    Component* clone() { \
         return new std::remove_reference<decltype(*this)>::type(*this); \
     }
 
@@ -26,13 +35,16 @@ class Component {
 public:
     Component() : scene_object(0) {}
     virtual ~Component() {}
+
+    virtual Component* clone() { return 0; }
+
     SceneObject* getObject() {
         return scene_object;
     }
     uint64_t getId() { return id; }
 
     virtual void onCreate() {}
-    virtual Component* clone() { return 0; }
+    virtual void _onClone(Component* other) {}
 
     Scene* getScene();
     template<typename T>

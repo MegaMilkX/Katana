@@ -16,6 +16,10 @@ public:
 
     Skin() {}
 
+    void onClone(Skin* other) {
+        
+    }
+
     virtual void serialize(std::ostream& out) {
         write(out, (uint32_t)bones.size());
         for(size_t i = 0; i < bones.size(); ++i) {

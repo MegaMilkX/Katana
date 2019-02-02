@@ -11,7 +11,7 @@
 #include "scene.hpp"
 
 class TpsCamera : public Updatable {
-    CLONEABLE
+    CLONEABLE_AUTO
     RTTR_ENABLE(Updatable)
 public:
     virtual void onCreate() {

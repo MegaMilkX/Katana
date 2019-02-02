@@ -8,7 +8,7 @@
 #include "util/log.hpp"
 
 class Camera : public Component {
-    CLONEABLE
+    CLONEABLE_AUTO
 public:
     enum PROJECTION_TYPE {
         PERSPECTIVE,
