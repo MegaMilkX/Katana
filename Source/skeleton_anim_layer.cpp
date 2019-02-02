@@ -49,28 +49,8 @@ void SkeletonAnimLayer::update(
         gfxm::vec3 delta_pos =  anim->getRootMotionNode().t.delta(cursor_prev, cursor);
         gfxm::vec3 delta_pos4 = gfxm::vec4(delta_pos.x, delta_pos.y, delta_pos.z, 0.0f);
         gfxm::quat delta_q = anim->getRootMotionNode().r.delta(cursor_prev, cursor);
-        if(root_motion_transform->parentTransform()) {
-            //delta_pos4 = root_motion_transform->getParentTransform() * delta_pos4;
-            // TRY THIS:
-            gfxm::mat4 root_m4 = animator->get<Transform>()->getTransform();
-            root_m4[3] = gfxm::vec4(.0f, .0f, .0f, 1.0f);
-            root_m4[0] = gfxm::normalize(root_m4[0]);
-            root_m4[1] = gfxm::normalize(root_m4[1]);
-            root_m4[2] = gfxm::normalize(root_m4[2]);
-            delta_pos4 = (root_m4) * delta_pos4;
-            // delta_pos4 = ROOT_ROTATION * delta_pos4;
+        if(root_motion_transform->parentTransform()) {}
 
-            gfxm::quat w_rot = root_motion_transform->worldRotation();
-
-            //delta_q = gfxm::inverse(root_motion_transform->rotation()) * delta_q * root_motion_transform->rotation();
-        }
-        // Ignore y displacement (TODO: Make optional)
-        {
-            //delta_pos4.y = 0.0f;
-            
-            //float yaw = gfxm::yaw(delta_q);
-            //delta_q = angle_axis(yaw, gfxm::vec3(.0f, 1.0f, .0f));
-        }
         root_motion_pos_delta = delta_pos4;
         root_motion_rot_delta = delta_q;
     }

@@ -222,6 +222,11 @@ inline void extractRootMotionFromAssimpAnimNode(
     m3[1] /= gfxm::length(m3[1]);
     m3[2] /= gfxm::length(m3[2]);
     gfxm::quat bone_rot = gfxm::to_quat(m3);
+    m3 = gfxm::to_mat3(bone_w_transform);
+    m3[0] /= gfxm::length(m3[0]);
+    m3[1] /= gfxm::length(m3[1]);
+    m3[2] /= gfxm::length(m3[2]);
+    gfxm::quat bone_rot_w = gfxm::to_quat(m3);
 
     // Get rotation curve as is
     curve<gfxm::quat> r_curve;
@@ -255,6 +260,23 @@ inline void extractRootMotionFromAssimpAnimNode(
     for(unsigned k = 0; k < ai_node_anim->mNumPositionKeys; ++k) {
         auto& ai_v = ai_node_anim->mPositionKeys[k].mValue;
         float t = (float)ai_node_anim->mPositionKeys[k].mTime;
+        gfxm::vec4 original_v = { ai_v.x, ai_v.y, ai_v.z, 0.0f };
+
+        if(root_translation) {
+            gfxm::quat anim_rot = r_curve.at(t);
+            gfxm::mat4 anim_rot_m4 = gfxm::to_mat4(anim_rot);
+
+            gfxm::vec4 lcl_v = (parent_transform) * original_v;
+            
+            rm_node.t[t] = lcl_v;
+        } else {
+            node.t[t] = original_v;
+        }
+    }
+    /*
+    for(unsigned k = 0; k < ai_node_anim->mNumPositionKeys; ++k) {
+        auto& ai_v = ai_node_anim->mPositionKeys[k].mValue;
+        float t = (float)ai_node_anim->mPositionKeys[k].mTime;
         gfxm::vec4 original_v = { ai_v.x, ai_v.y, ai_v.z, 1.0f };
 
         if(root_translation) {
@@ -270,7 +292,7 @@ inline void extractRootMotionFromAssimpAnimNode(
         } else {
             node.t[t] = original_v;
         }
-    }
+    }*/
     for(unsigned k = 0; k < ai_node_anim->mNumRotationKeys; ++k) {
         auto& ai_v = ai_node_anim->mRotationKeys[k].mValue;
         float t = (float)ai_node_anim->mRotationKeys[k].mTime;
@@ -280,7 +302,7 @@ inline void extractRootMotionFromAssimpAnimNode(
             
 
             //node.r[t] = t_q;
-            rm_node.r[t] = o_q;
+            rm_node.r[t] = gfxm::inverse(bone_rot) * o_q * bone_rot_w;
         } else {
             node.r[t] = o_q;
         }

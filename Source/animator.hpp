@@ -11,6 +11,8 @@
 
 #include "skeleton_anim_layer.hpp"
 
+#include "util/serialization.hpp"
+
 class Animator : public Component {
     CLONEABLE
     friend SkeletonAnimLayer;
@@ -51,11 +53,14 @@ private:
         std::map<size_t, size_t>    bone_remap;
     };
 
-    std::vector<AnimInfo>       anims;
-    std::shared_ptr<Skeleton>   skeleton;
-    std::vector<AnimSample>     sample_buffer;
-    std::vector<gfxm::mat4>     bone_transforms;
-    std::vector<std::string>    bone_names;
+    bool                            root_motion_enabled = true;
+    std::vector<SkeletonAnimLayer>  layers;
+    std::vector<AnimInfo>           anims;
+    std::shared_ptr<Skeleton>       skeleton;
+
+    std::vector<AnimSample>         sample_buffer;
+    std::vector<gfxm::mat4>         bone_transforms;
+    std::vector<std::string>        bone_names;
 
 public:    
     void Update(float dt) {
@@ -103,8 +108,86 @@ public:
             Transform* t = getObject()->get<Transform>();
 
             t->rotate(rm_rot_final);
-            t->translate(rm_pos_final);
+
+            gfxm::vec4 t4 = gfxm::vec4(
+                rm_pos_final.x,
+                rm_pos_final.y,
+                rm_pos_final.z,
+                0.0f
+            );
+            gfxm::mat4 root_m4 = t->getTransform();
+            root_m4[3] = gfxm::vec4(.0f, .0f, .0f, 1.0f);
+            root_m4[0] = gfxm::normalize(root_m4[0]);
+            root_m4[1] = gfxm::normalize(root_m4[1]);
+            root_m4[2] = gfxm::normalize(root_m4[2]);
+            t4 = (root_m4) * t4;
+
+            t->translate(t4);
         }
+    }
+
+    virtual void serialize(std::ostream& out) {
+        write(out, root_motion_enabled);
+        
+        write(out, (uint32_t)layers.size());
+        for(size_t i = 0; i < layers.size(); ++i) {
+            SkeletonAnimLayer& l = layers[i];
+            write(out, (uint32_t)l.anim_index);
+            write(out, (uint32_t)l.mode);
+            write(out, l.cursor);
+            write(out, l.speed);
+            write(out, l.weight);
+        }
+
+        write(out, (uint32_t)anims.size());
+        for(size_t i = 0; i < anims.size(); ++i) {
+            AnimInfo& a = anims[i];
+            wt_string(out, a.alias);
+            if(a.anim) {
+                wt_string(out, a.anim->Name());
+            } else {
+                wt_string(out, "");
+            }
+            write(out, (uint32_t)a.bone_remap.size());
+            for(auto& kv : a.bone_remap) {
+                write(out, (uint32_t)kv.first);
+                write(out, (uint32_t)kv.second);
+            }
+        }
+
+        if(skeleton) {
+            wt_string(out, skeleton->Name());
+        } else {
+            wt_string(out, "");
+        }
+    }
+    virtual void deserialize(std::istream& in, size_t sz) {
+        root_motion_enabled = read<bool>(in);
+        
+        layers.resize(read<uint32_t>(in));
+        for(size_t i = 0; i < layers.size(); ++i) {
+            auto& l = layers[i];
+            l.anim_index = read<uint32_t>(in);
+            l.mode = (SkeletonAnimLayer::BlendMode)read<uint32_t>(in);
+            l.cursor = read<float>(in);
+            l.speed = read<float>(in);
+            l.weight = read<float>(in);
+        }
+
+        anims.resize(read<uint32_t>(in));
+        for(size_t i = 0; i < anims.size(); ++i) {
+            auto& a = anims[i];
+            a.alias = rd_string(in);
+            a.anim = getResource<Animation>(rd_string(in));
+            uint32_t bone_remap_sz = read<uint32_t>(in);
+            for(uint32_t j = 0; j < bone_remap_sz; ++j) {
+                auto f = read<uint32_t>(in);
+                auto t = read<uint32_t>(in);
+                a.bone_remap[f] = t;
+            }
+        }
+
+        setSkeleton(getResource<Skeleton>(rd_string(in)));
     }
 
     size_t selected_index = 0;
@@ -206,9 +289,6 @@ public:
         //ImGui::ListBox("Animations", 0, anim_list.data(), anim_list.size(), 4);
     }
 private:
-    bool root_motion_enabled = true;
-    std::vector<SkeletonAnimLayer> layers;
-
     void updateAnimationMapping() {
         if(!skeleton) return;
         for(auto& a : anims) {
