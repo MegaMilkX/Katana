@@ -2,6 +2,8 @@
 
 #include "gfxm.hpp"
 
+#include "debug_draw.hpp"
+
 void Game::init() {
     scene = Scene::create();
     renderer.setScene(scene);
@@ -20,8 +22,15 @@ Scene* Game::getScene() {
 }
 
 void Game::update(int w, int h) {
+    DebugDraw::getInstance()->clear();
+
+    if(g_buffer.getWidth() != w || g_buffer.getHeight() != h) {
+        g_buffer.resize(w, h);
+    }
+
     animator_sys.Update(1.0f / 60.0f);
     behavior_sys.update();
+    scene->getSceneComponent<PhysicsWorld>()->update(1.0f / 60.0f);
 
     gfxm::mat4 proj;
     gfxm::mat4 view;
@@ -35,7 +44,8 @@ void Game::update(int w, int h) {
         view = gfxm::inverse(gfxm::translate(gfxm::mat4(1.0f), gfxm::vec3(0.0f, 0.0f, 5.0f)));
     }
 
-    // TODO:
-    //renderer.draw(0, w, h, proj, view);
     renderer.draw(&g_buffer, 0, w, h, proj, view);
+    //scene->getSceneComponent<PhysicsWorld>()->debugDraw();
+
+    DebugDraw::getInstance()->draw(proj, view);
 }

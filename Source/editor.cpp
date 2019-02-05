@@ -10,6 +10,8 @@
 
 #include "util/filesystem.hpp"
 
+#include "scene_components/scene_physics_world.hpp"
+
 Editor::Editor()
 : scene_tree(&object_inspector, &scene_window) {
 
@@ -17,6 +19,8 @@ Editor::Editor()
 
 void Editor::Init() {
     ImGuiInit();
+    auto& io = ImGui::GetIO();
+    io.KeyMap[ImGuiKey_Backspace] = GLFW_KEY_BACKSPACE;
 
     dir_view.init(get_module_dir() + "\\");
 
@@ -260,12 +264,18 @@ void Editor::_updateEditor(GLFWwindow* window) {
         ImGui::EndPopup();
     }
 */
+
+    DebugDraw::getInstance()->clear();
+    // TODO: Update physics? 
+    // Shouldn't be necessary for editor
+    scene->getSceneComponent<PhysicsWorld>()->debugDraw();
+
     for(auto w : windows) {
         if(ImGui::Begin(MKSTR(w->Name() << "##" << w.get()).c_str(), &w->is_open)) {
             w->Update();
             ImGui::End();
         }
-    }    
+    }
 
     //ImGui::SetNextWindowDockID(dsid_left);
     if(ImGui::Begin("Scene tree")) {

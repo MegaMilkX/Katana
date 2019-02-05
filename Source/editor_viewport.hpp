@@ -36,6 +36,8 @@
 
 #include "scene_from_fbx.hpp"
 
+#include "debug_draw.hpp"
+
 class EditorViewport : public EditorWindow {
 public:
     enum DISPLAY_BUFFER {
@@ -295,6 +297,7 @@ public:
             view
         );*/
         renderer->draw(&g_buffer, &frame_buffer, proj, view);
+        DebugDraw::getInstance()->draw(proj, view);
 
         if(editorState().selected_object) {
             gl::DrawInfo di = { 0 };

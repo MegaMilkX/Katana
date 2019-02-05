@@ -22,6 +22,7 @@
 #include "input/input_mgr.hpp"
 
 #include "animator_sys.hpp"
+#include "systems/physics_system.hpp"
 
 #include "game.hpp"
 

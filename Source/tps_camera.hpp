@@ -66,7 +66,7 @@ public:
         gfxm::vec3 tgt_pos;
 
         if(t) {
-            tgt_pos = t->worldPosition() + gfxm::vec3(0.0f, 1.3f, 0.0f);
+            tgt_pos = t->worldPosition() + gfxm::vec3(0.0f, 1.6f, 0.0f);
         } else {
             tgt_pos = gfxm::vec3(0.0,0.0,0.0);
         }

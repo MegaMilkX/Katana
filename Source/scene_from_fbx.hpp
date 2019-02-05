@@ -266,9 +266,16 @@ inline void extractRootMotionFromAssimpAnimNode(
             gfxm::quat anim_rot = r_curve.at(t);
             gfxm::mat4 anim_rot_m4 = gfxm::to_mat4(anim_rot);
 
-            gfxm::vec4 lcl_v = (parent_transform) * original_v;
+            gfxm::vec4 transformed_v = 
+                parent_transform * original_v;
+
+            gfxm::vec4 rm_v = 
+                gfxm::vec4(transformed_v.x, .0f, transformed_v.z, 1.0f);
+            gfxm::vec4 v = 
+                gfxm::inverse(parent_transform) * gfxm::vec4(.0f, transformed_v.y, .0f, 1.0f);
             
-            rm_node.t[t] = lcl_v;
+            node.t[t] = v;
+            rm_node.t[t] = rm_v;
         } else {
             node.t[t] = original_v;
         }
@@ -422,7 +429,8 @@ inline void objectFromAssimpNode(
                 tasks.emplace_back([skin, bone, name, object, root](){
                     SceneObject* so = root->findObject(name);
                     if(so) {
-                        skin->bones.emplace_back(so->get<Transform>()->getId());
+                        skin->skeleton_root = root;
+                        skin->bones.emplace_back(so->get<Transform>());
                         skin->bind_pose.emplace_back(gfxm::transpose(*(gfxm::mat4*)&bone->mOffsetMatrix));
                     }
                 });
@@ -579,11 +587,11 @@ inline bool sceneFromFbx(const std::string& filename, Scene* scene, SceneObject*
         //animator->addAnim(scene->getLocalResource<Animation>(base_anim_index + i));
     }
 
+    root->setName(root_name);
+
     for(auto& t : deferred_tasks) {
         t();
     }
-
-    root->setName(root_name);
 
     LOG("Fbx skeleton size: " << skeleton->boneCount());
 

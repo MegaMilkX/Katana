@@ -17,11 +17,26 @@ void Scene::destroy() {
 
 void Scene::clear() {
     // Root object always remains
+    /*
     while(objectCount() > 1) {
         removeObject(getObject(objectCount() - 1));
     }
     getRootObject()->removeComponents();
     local_resources.clear();
+    */
+
+    for(auto& kv : components) {
+        for(size_t i = 0; i < kv.second.size(); ++i) {
+            triggerProbeOnRemoveRecursive(kv.first, kv.second[i].get());
+        }
+    }
+    components.clear();
+    objects.clear();
+
+    objects.emplace_back(std::shared_ptr<SceneObject>(new SceneObject(this, 0)));
+    objects.back()->setName("Root");
+
+    scene_components.clear();
 }
 
 SceneObject* Scene::createObject(SceneObject* parent) {

@@ -17,12 +17,14 @@ target_include_directories(aurora3 PRIVATE
 	../lib/rttr/src
 	../lib/assimp-master/include
 	../lib/assimp-master/build/include
+	../lib/bullet3-2.86.1/src
 )
 target_link_directories(aurora3 PRIVATE 
 	../lib/glfw/lib
 	../lib/rttr/lib
 	../lib/assimp-master/build/code/Release
 	../lib/assimp-master/build/contrib/zlib/Release
+	../lib/bullet3-2.86.1/bin
 )
 target_link_libraries(aurora3 
 	shlwapi.lib
@@ -31,4 +33,7 @@ target_link_libraries(aurora3
 	librttr_core.lib
 	assimp.lib
 	zlibstatic.lib
+	BulletCollision_vs2010.lib
+	BulletDynamics_vs2010.lib
+	LinearMath_vs2010.lib
 )

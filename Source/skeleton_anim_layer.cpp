@@ -14,6 +14,9 @@ void SkeletonAnimLayer::update(
     gfxm::vec3& rm_pos_final,
     gfxm::quat& rm_rot_final
 ) {
+    if(weight == 0.0f) {
+        return;
+    }
     if(anim_index >= animator->anims.size()) {
         return;
     }

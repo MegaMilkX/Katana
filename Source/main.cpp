@@ -67,12 +67,16 @@ void cleanupWindow() {
 
 #include "shader_factory.hpp"
 
+#include "debug_draw.hpp"
+
 int main() {
     initFilesystemResources(get_module_dir());
     if(!initWindow()) {
         return 0;
     }
     ShaderFactory::init();
+
+    DebugDraw::getInstance()->init();
 
     /*
     InputKeyboardMouseWin32* keyboardWin32 = new InputKeyboardMouseWin32(window);
@@ -101,6 +105,8 @@ int main() {
     delete editor;
 
     game.cleanup();
+
+    DebugDraw::getInstance()->cleanup();
 
     ShaderFactory::cleanup();
     cleanupWindow();

@@ -103,17 +103,24 @@ void SceneObject::setParent(SceneObject* so) {
 void SceneObject::cloneFrom(SceneObject* other) {
     if(!scene) return;
     removeComponents();
+
+    std::map<Component*, Component*> copy_pairs;
     for(auto kv : other->components) {
         Component* c = scene->createComponentCopy(kv.first, kv.second, this);
         if(c) {
             components[kv.first] = c;
-            c->_onClone(kv.second);
+            copy_pairs[c] = kv.second;
         } else {
             LOG_WARN("Failed to clone " << kv.first.get_name().to_string() << " component (clone() not implemented)");
         }
     }
+
+    for(auto& kv : copy_pairs) {
+        kv.first->onCreate();
+        kv.first->_onClone(kv.second);
+    }
+
     for(auto& kv : components) {
-        kv.second->onCreate();
         getScene()->triggerProbeOnCreateRecursive(kv.first, kv.second);
     }
 }
@@ -122,6 +129,7 @@ SceneObject* SceneObject::findObject(const std::string& name) {
     if(this->name == name) {
         return this;
     }
+    
     for(auto o : children) {
         SceneObject* result = 0;
         if(result = o->findObject(name)) {
@@ -180,6 +188,7 @@ void SceneObject::deserialize(std::istream& in) {
 
 #include "model.hpp"
 #include "transform.hpp"
+#include "components/collider.hpp"
 #include "light.hpp"
 #include "animator.hpp"
 #include "character.hpp"
@@ -197,6 +206,12 @@ void SceneObject::_editorGui() {
     {
         ImGui::BeginChild("ComponentList", ImVec2(150, 100), false, 0);
         bool selected = false;
+        if(ImGui::Selectable("Collider", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+            if (ImGui::IsMouseDoubleClicked(0)) {
+                component_creator_so_tgt->get<Collider>();
+                ImGui::CloseCurrentPopup();
+            }
+        }
         if(ImGui::Selectable("Animator", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
             if (ImGui::IsMouseDoubleClicked(0)) {
                 component_creator_so_tgt->get<Animator>();

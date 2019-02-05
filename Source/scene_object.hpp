@@ -59,10 +59,10 @@ public:
 
     void            _editorGui();
 private:
-    size_t id;
+    size_t id = 0;
     std::string name;
-    Scene* scene;
-    SceneObject* parent;
+    Scene* scene = 0;
+    SceneObject* parent = 0;
     std::vector<SceneObject*> children;
     std::map<rttr::type, Component*> components;
 };

@@ -50,6 +50,8 @@ public:
     template<typename T>
     T*     get();
 
+    void retriggerProbes(rttr::type t);
+
     virtual void serialize(std::ostream& out) {}
     virtual void deserialize(std::istream& in, size_t sz) {}
 

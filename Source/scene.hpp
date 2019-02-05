@@ -175,7 +175,8 @@ public:
     void copyFrom(Scene* other) {
         LOG("Copying from scene " << other);
         clear();
-        //copyObjectRecursive(getRootObject(), other->getRootObject());
+        
+        other->_logStats();
 
         // Objects
         for(size_t i = 1; i < other->objects.size(); ++i) {
@@ -186,40 +187,44 @@ public:
             SceneObject* so = objects[i].get();
             so->setName(other_so->getName());
 
-            LOG("Copying " << other_so->getName() << "(" << other_so->getId() << ")...");
             if(other_so->parent) {
                 size_t parent_id = other_so->parent->getId();
-                LOG("  parent: " << parent_id);
                 //so->setParent(objects[parent_id].get());
                 so->parent = objects[parent_id].get();
             }
             for(size_t j = 0; j < other_so->children.size(); ++j) {
                 size_t child_id = other_so->children[j]->getId();
-                LOG("  child: " << child_id);
                 so->children.emplace_back(objects[child_id].get());
             }
         }
 
         // Components
+        std::map<Component*, Component*> copy_pairs;
         for(auto& kv : other->components) {
-            LOG("  Components: " << kv.first.get_name().to_string());
             for(size_t i = 0; i < kv.second.size(); ++i) {
                 size_t owner_id = kv.second[i]->scene_object->getId();
                 SceneObject* owner_so = objects[owner_id].get();
                 Component* c = createComponentCopy(kv.first, kv.second[i].get(), owner_so);
                 owner_so->components[kv.first] = c;
-
-                LOG("    owner_id: " << owner_id);
+                
+                copy_pairs[c] = kv.second[i].get();
             }
         }
+
+        for(auto& kv : copy_pairs) {
+            kv.first->onCreate();
+            kv.first->_onClone(kv.second);
+        }
+        
         for(auto& kv : components) {
             for(size_t i = 0; i < kv.second.size(); ++i) {
-                kv.second[i]->onCreate();
                 triggerProbeOnCreateRecursive(kv.first, kv.second[i].get());
             }
         }
 
         local_resources = other->local_resources;
+
+        _logStats();
 
         LOG("Done");
     }
@@ -322,6 +327,21 @@ public:
             ++i;
         }
     }
+
+    void _logStats() {
+        LOG("=== Scene stats ===");
+        LOG("Object count: " << objects.size());
+        for(auto& kv : components) {
+            LOG(kv.first.get_name().to_string() << " count: " << kv.second.size());
+        }
+        LOG("=== End ===");
+    }
+
+    void retriggerProbes(rttr::type t, Component* c) {
+        triggerProbeOnRemoveRecursive(t, c);
+        triggerProbeOnCreateRecursive(t, c);
+    }
+
 private:
     Scene() {
         objects.emplace_back(std::shared_ptr<SceneObject>(new SceneObject(this, 0)));

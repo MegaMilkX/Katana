@@ -78,6 +78,10 @@ public:
         unsigned char nrm[3] = { 128, 128, 255 };
         texture_normal_px->Data(nrm, 1, 1, 3);
 
+        texture_def_roughness_px.reset(new Texture2D());
+        unsigned char rgh[3] = { 230, 230, 230 };
+        texture_def_roughness_px->Data(rgh, 1, 1, 3);
+
         auto make_icon_texture = [](const unsigned char* data, size_t sz, Texture2D& tex) {
             std::shared_ptr<DataSourceMemory> ds_mem(new DataSourceMemory((char*)data, (sz)));
             if(!tex.deserialize(ds_mem->open_stream(), sz)) {
@@ -195,7 +199,7 @@ public:
             draw_info.textures[0] = texture_white_px->GetGlName();
             draw_info.textures[1] = texture_normal_px->GetGlName();
             draw_info.textures[2] = texture_black_px->GetGlName();
-            draw_info.textures[3] = texture_black_px->GetGlName();
+            draw_info.textures[3] = texture_white_px->GetGlName();
 
             if(kv.second.mdl->material) {
                 Texture2D* tex = kv.second.mdl->material->albedo.get();
@@ -261,7 +265,7 @@ public:
             std::vector<gfxm::mat4> inverse_bind_transforms;
             std::vector<gfxm::mat4> skin_transforms;
             for(auto a : skin->bones) {
-                skin_transforms.emplace_back(scene->getComponent<Transform>(a)->getTransform());
+                skin_transforms.emplace_back(a->getTransform());
             }
             for(auto a : skin->bind_pose) {
                 inverse_bind_transforms.emplace_back(a);
@@ -459,6 +463,7 @@ private:
     std::shared_ptr<Texture2D> texture_white_px;
     std::shared_ptr<Texture2D> texture_black_px;
     std::shared_ptr<Texture2D> texture_normal_px;
+    std::shared_ptr<Texture2D> texture_def_roughness_px;
 
     std::map<SceneObject*, ObjectInfo> objects;
     std::set<LightOmni*> lights_omni;

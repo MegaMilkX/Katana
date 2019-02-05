@@ -20,6 +20,7 @@ public:
     Animator() {
         auto& layer0 = addLayer();
         layer0.anim_index = 0;
+        layer0.weight = 1.0f;
     }
 
     ~Animator() {
@@ -41,9 +42,18 @@ public:
         updateAnimationMapping(anims.back());
     }
 
+    void reserveLayers(unsigned count) {
+        layers.clear();
+        layers.resize(count);
+    }
+
     SkeletonAnimLayer& addLayer() {
         layers.emplace_back(SkeletonAnimLayer());
         return layers.back();
+    }
+
+    SkeletonAnimLayer& getLayer(unsigned i) {
+        return layers[i];
     }
 
 private:
@@ -62,7 +72,19 @@ private:
     std::vector<gfxm::mat4>         bone_transforms;
     std::vector<std::string>        bone_names;
 
-public:    
+public:  
+    void play(int layer, const std::string& anim_alias) {
+        size_t anim_i = 0;
+        for(size_t i = 0; i < anims.size(); ++i) {
+            if(anims[i].alias == anim_alias) {
+                anim_i = i;
+            }
+        }
+
+        layers[layer].anim_index = anim_i;
+        layers[layer].cursor = 0.0f;
+    }
+
     void Update(float dt) {
         if(!skeleton) {
             return;
@@ -191,6 +213,7 @@ public:
     }
 
     size_t selected_index = 0;
+    size_t selected_anim_index = 0;
     virtual void _editorGui() {
         ImGui::Text("Skeleton "); ImGui::SameLine();
         std::string button_label = "! No skeleton !";
@@ -270,9 +293,10 @@ public:
         ImGui::Separator();
 
         ImGui::BeginChild("Animations", ImVec2(0, 100), false, 0);
-        for(auto a : anims) {
-            bool selected = false;
-            ImGui::Selectable(a.alias.c_str(), &selected);
+        for(size_t i = 0; i < anims.size(); ++i) {
+            if(ImGui::Selectable(anims[i].alias.c_str(), selected_anim_index == i)) {
+                selected_anim_index = i;
+            }
         }
         ImGui::EndChild();
         ImGui::PushID("Animations");
@@ -286,7 +310,18 @@ public:
             ImGui::EndDragDropTarget();
         }
         ImGui::PopID();
-        //ImGui::ListBox("Animations", 0, anim_list.data(), anim_list.size(), 4);
+
+        if(!anims.empty()) {
+            std::string current_anim_name = "";
+            if(!anims.empty()) {
+                current_anim_name = anims[selected_anim_index].alias;
+            }
+            char buf[256];
+            memcpy(buf, anims[selected_anim_index].alias.data(), anims[selected_anim_index].alias.size());
+            if(ImGui::InputText("Alias", buf, 256)) {
+                anims[selected_anim_index].alias = buf;
+            }
+        }
     }
 private:
     void updateAnimationMapping() {
