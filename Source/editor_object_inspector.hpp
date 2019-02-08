@@ -20,7 +20,14 @@ public:
         if(ImGui::InputText("Name", (char*)buf.data(), buf.size())) {
             editorState().selected_object->setName(buf);
         }
-        editorState().selected_object->_editorGui();
+        if(ImGui::Button("Delete object")) {
+            editorState().selected_object->getScene()->removeObject(
+                editorState().selected_object
+            );
+            editorState().selected_object = 0;
+        } else {
+            editorState().selected_object->_editorGui();
+        }
     }
 };
 

@@ -40,6 +40,7 @@ public:
     template<typename T>
     T*              find();
     Component*      find(const std::string& type);
+    void            removeComponent(rttr::type t);
     void            removeComponents();
     SceneObject*    createChild();
     size_t          childCount();

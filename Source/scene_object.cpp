@@ -49,6 +49,11 @@ Component* SceneObject::find(const std::string& type_name) {
     return components[type];
 }
 
+void SceneObject::removeComponent(rttr::type t) {
+    scene->removeComponent(t, components[t]);
+    components.erase(t);
+}
+
 void SceneObject::removeComponents() {
     if(!scene) return;
     for(auto kv : components) {
@@ -261,8 +266,12 @@ void SceneObject::_editorGui() {
     }
     ImGui::Separator();
     for(auto kv : components) {
-        if(ImGui::CollapsingHeader(kv.first.get_name().to_string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+        bool exists = true;
+        if(ImGui::CollapsingHeader(kv.first.get_name().to_string().c_str(), &exists, ImGuiTreeNodeFlags_DefaultOpen)) {
             kv.second->_editorGui();
+        }
+        if(!exists) {
+            removeComponent(kv.first);
         }
     }
 }

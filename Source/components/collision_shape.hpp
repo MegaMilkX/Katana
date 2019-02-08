@@ -42,6 +42,48 @@ protected:
     gfxm::vec3 center;
 };
 
+class CollisionBox : public CollisionShape {
+public:
+    CollisionBox()
+    : shape(btVector3(0.5f, 0.5f, 0.5f)) {}
+
+    virtual TYPE getShapeType() {
+        return BOX;
+    }
+    virtual btCollisionShape* getBtShape() {
+        return &shape;
+    }
+    virtual CollisionShape* clone() {
+        return new CollisionBox(*this);
+    }
+    virtual rttr::type getType() {
+        return rttr::type::get<CollisionBox>();
+    }
+    virtual bool _editorGui(Collider*) {
+        bool changed = false;
+        if(ImGui::DragFloat3("Center", (float*)&center, 0.01f)) {
+            changed = true;
+        }
+        if(ImGui::DragFloat3("Size", (float*)&size, 0.01f)) {
+            shape = btBoxShape(btVector3(size.x, size.y, size.z));    
+        }
+        return changed;
+    }
+    virtual void serialize(std::ostream& out) {
+        write(out, size);
+        write(out, center);
+    }
+    virtual void deserialize(std::istream& in, size_t sz) {
+        size = read<gfxm::vec3>(in);
+        center = read<gfxm::vec3>(in);
+        
+        shape = btBoxShape(btVector3(size.x, size.y, size.z));    
+    }
+private:
+    btBoxShape shape;
+    gfxm::vec3 size;
+};
+
 class CollisionCapsule : public CollisionShape {
 public:
     CollisionCapsule()

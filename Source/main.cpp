@@ -72,14 +72,6 @@ void cleanupWindow() {
 #include "event.hpp"
 
 int main() {
-    eventMgr().getContext("test").post("hello", 2);
-    auto l = eventMgr().getContext("test").listen("hello", [](const Event& e){
-        int i = e.getPayload<int>();
-        i++;
-        LOG("EVENT PAYLOAD: " << i);
-        eventMgr().getContext("test").post("hello", i);
-    });
-
     initFilesystemResources(get_module_dir());
     if(!initWindow()) {
         return 0;
@@ -105,8 +97,8 @@ int main() {
 
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-        eventMgr().pollEvents();
         updateGlfwInput();
+        eventMgr().pollEvents();
 
         editor->Update(window);
         glfwSwapBuffers(window);

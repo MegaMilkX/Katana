@@ -95,6 +95,9 @@ public:
         }
 
         if (ImGui::BeginCombo("Shape", collision_shape->getType().get_name().to_string().c_str(), 0)) {
+            if(ImGui::Selectable(rttr::type::get<CollisionBox>().get_name().to_string().c_str())) {
+                setShape<CollisionBox>();
+            }
             if(ImGui::Selectable(rttr::type::get<CollisionCapsule>().get_name().to_string().c_str())) {
                 setShape<CollisionCapsule>();
             }

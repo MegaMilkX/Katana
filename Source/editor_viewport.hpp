@@ -38,6 +38,8 @@
 
 #include "debug_draw.hpp"
 
+#include "components/collider.hpp"
+
 class EditorViewport : public EditorWindow {
 public:
     enum DISPLAY_BUFFER {
@@ -375,6 +377,10 @@ public:
                 using_gizmo = true;
                 gfxm::vec4 dT = dModel[3];
                 editorState().selected_object->get<Transform>()->translate(dT);
+                Collider* collider = editorState().selected_object->find<Collider>();
+                if(collider) {
+                    collider->updateTransform();
+                }
             }
         }
 
