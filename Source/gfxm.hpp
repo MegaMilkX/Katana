@@ -761,6 +761,14 @@ inline tmat4<T> to_mat4(const tquat<T>& q)
     return m;
 }
 template<typename T>
+inline tmat4<T> to_mat4(const tmat3<T>& m3) {
+    tmat4<T> m(1.0f);
+    m[0] = gfxm::vec4(m3[0].x, m3[0].y, m3[0].z, .0f);
+    m[1] = gfxm::vec4(m3[1].x, m3[1].y, m3[1].z, .0f);
+    m[2] = gfxm::vec4(m3[2].x, m3[2].y, m3[2].z, .0f);
+    return m;
+}
+template<typename T>
 inline tquat<T> euler_to_quat(const tvec3<T>& euler)
 {
     tquat<T> qx = angle_axis(euler.x, tvec3<T>(1.0f, 0.0f, 0.0f));

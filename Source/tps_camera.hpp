@@ -8,6 +8,7 @@
 #include "input/input_mgr.hpp"
 
 #include "scene_components/scene_player_info.hpp"
+#include "scene_components/scene_physics_world.hpp"
 #include "scene.hpp"
 
 class TpsCamera : public Updatable {
@@ -19,6 +20,8 @@ public:
         transform = getObject()->get<Transform>();
 
         player_info = getScene()->getSceneComponent<ScenePlayerInfo>();
+
+        physics_world = getScene()->getSceneComponent<PhysicsWorld>();
     }
 
     virtual void init() {
@@ -79,12 +82,23 @@ public:
         tcam.position(pivot);
         tcam.rotate(_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
         tcam.rotate(_angle_x, tcam.right());
-        tcam.translate(tcam.back() * _distance);
+
+        gfxm::vec3 hit;
+        if(physics_world->sphereSweepClosestHit(0.3f, pivot, pivot + tcam.back() * _distance, collision_flags, hit)) {
+            tcam.position(hit);
+        } else {
+            tcam.translate(tcam.back() * _distance);
+        }
 
         transform->setTransform(tcam.matrix());
     }
 
     virtual void _editorGui() {
+        ImGui::CheckboxFlags("Static", &collision_flags, 1);
+        ImGui::CheckboxFlags("Probe", &collision_flags, 2);
+        ImGui::CheckboxFlags("Sensor", &collision_flags, 4);
+        ImGui::CheckboxFlags("Hitbox", &collision_flags, 8);
+        ImGui::CheckboxFlags("Hurtbox", &collision_flags, 16);
         /*
         std::string object_name = "(target transform)";
 
@@ -104,10 +118,21 @@ public:
         ImGui::PopID();
         */
     }
+
+    virtual void serialize(std::ostream& out) {
+        write(out, (uint64_t)collision_flags);
+    }
+    virtual void deserialize(std::istream& in, size_t sz) {
+        collision_flags = (uint32_t)read<uint64_t>(in);
+    }
 private:
+    unsigned collision_flags = 0;
+
     InputListener* input_lis;
 
     ScenePlayerInfo* player_info;
+
+    PhysicsWorld* physics_world = 0;
 
     Camera* camera = 0;
     Transform* transform = 0;

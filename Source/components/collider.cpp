@@ -3,6 +3,8 @@
 #include "../scene.hpp"
 
 void Collider::onCreate() {
+    setShape<CollisionCapsule>();
+
     world = getScene()->getSceneComponent<PhysicsWorld>();
     world->getBtWorld()->addCollisionObject(collision_object.get());
 

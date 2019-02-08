@@ -5,7 +5,6 @@
 #include "renderer.hpp"
 #include "animator_sys.hpp"
 #include "behavior_system.hpp"
-#include "systems/physics_system.hpp"
 #include "scene_components/scene_physics_world.hpp"
 #include "camera.hpp"
 

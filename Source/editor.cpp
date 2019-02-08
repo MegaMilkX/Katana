@@ -30,7 +30,7 @@ void Editor::Init() {
 
     scene_window.setScene(scene);
 
-    animator_sys.setScene(scene);
+    //animator_sys.setScene(scene);
 
     input_lis = input().createListener();
 
@@ -110,7 +110,7 @@ void Editor::_updateEditor(GLFWwindow* window) {
     else io.MouseDown[1] = false;
 
     //buildFrame();
-    animator_sys.Update(1.f/60.f);
+    //animator_sys.Update(1.f/60.f);
     //
 
     bool p_open = true;

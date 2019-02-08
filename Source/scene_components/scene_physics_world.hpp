@@ -30,8 +30,13 @@ private:
     gfxm::mat4 view;
 };
 
+class PhysicsWorld;
 class ContactCallback : public btCollisionWorld::ContactResultCallback {
 public:
+    ContactCallback(PhysicsWorld* wrld, gfxm::vec3& pos)
+    : world(wrld), pos(pos) {
+
+    }
     virtual btScalar addSingleResult(
         btManifoldPoint& cp, 
         const btCollisionObjectWrapper* colObj0Wrap, 
@@ -40,43 +45,45 @@ public:
         const btCollisionObjectWrapper* colObj1Wrap, 
         int partId1, 
         int index1
-    ) {
-
-    }
+    );
 
     bool hasHit() {
         return has_hit;
     }
+
+    gfxm::vec3 hit_normal;
+    gfxm::vec3 pos;
 private:
     bool has_hit = false;
+    PhysicsWorld* world = 0;
+    
 };
 
 class ConvexSweepCallback : public btCollisionWorld::ConvexResultCallback {
 public:
-    ConvexSweepCallback(gfxm::vec3 delta, gfxm::vec3 initial_translation)
-    : delta(delta), initial_translation(initial_translation),
-    closestResult(0, 0, btVector3(0,0,0), btVector3(0,0,0), btScalar(1.0f)) {
-        
-    }
+    ConvexSweepCallback(PhysicsWorld* wrld, float r, const gfxm::vec3& v_from, const gfxm::vec3& v_to, unsigned flags)
+    : world(wrld), radius(r), from(v_from), to(v_to), flags(flags) {}
 
     virtual bool needsCollision(btBroadphaseProxy *proxy0) const {
         return true;
     }
 
-    virtual btScalar addSingleResult(btCollisionWorld::LocalConvexResult &convexResult, bool normalInWorldSpace) {
-        if(!convexResult.m_hitCollisionObject->isStaticObject()) {
-            return 0.0f;
-        }
+    virtual btScalar addSingleResult(btCollisionWorld::LocalConvexResult &convexResult, bool normalInWorldSpace);
 
-        return convexResult.m_hitFraction;
+    bool hasHit() {
+        return has_hit;
     }
 
-    gfxm::vec3 hitNormal;
-
-    btCollisionWorld::LocalConvexResult closestResult;
+    gfxm::vec3 closest_hit;
+    gfxm::vec3 closest_hit_center;
+    float closest_hit_fraction = 1.0f;
 private:
-    gfxm::vec3 delta;
-    gfxm::vec3 initial_translation;
+    PhysicsWorld* world = 0;
+    gfxm::vec3 from;
+    gfxm::vec3 to;
+    float radius;
+    bool has_hit = false;
+    unsigned flags = 0;
 };
 
 class PhysicsWorld : public SceneComponent {
@@ -143,21 +150,32 @@ public:
         }
     }
 
-    bool contactTest(btCollisionObject* co) {
-        ContactCallback cb;
+    bool contactTest(btCollisionObject* co, gfxm::vec3& new_pos, unsigned flags) {
+        ContactCallback cb(this, new_pos);
         world->contactTest(co, cb);
         if(cb.hasHit()) {
-
+            new_pos = cb.pos;
+            return true;
         }
+        return false;
     }
 
-    bool sphereSweep(float radius, const gfxm::mat4& from, const gfxm::mat4& to, gfxm::vec3& normal) {
+    bool sphereSweepClosestHit(float radius, const gfxm::vec3& v_from, const gfxm::vec3& v_to, unsigned flags, gfxm::vec3& hit) {
+        gfxm::mat4 from = 
+            gfxm::translate(
+                gfxm::mat4(1.0f), 
+                v_from
+            );
+        gfxm::mat4 to = 
+            gfxm::translate(
+                gfxm::mat4(1.0f), 
+                v_to
+            );
+        
         btSphereShape shape(radius);
-        btVector3 vfrom(from[3].x, from[3].y, from[3].z);
-        btVector3 vto(to[3].x, to[3].y, to[3].z);
-        btCollisionWorld::ClosestConvexResultCallback cb(
-            vfrom, vto
-        );
+        btVector3 vfrom(v_from.x, v_from.y, v_from.z);
+        btVector3 vto(v_to.x, v_to.y, v_to.z);
+        ConvexSweepCallback cb(this, radius, v_from, v_to, flags);
 
         world->convexSweepTest(
             &shape, 
@@ -165,7 +183,7 @@ public:
             *(btTransform*)&to,
             cb
         );
-
+        /*
         world->getDebugDrawer()->drawSphere(
             radius,
             *(btTransform*)&from,
@@ -175,32 +193,50 @@ public:
             radius,
             *(btTransform*)&to,
             btVector3(1.0f, 0.5f, .0f)
-        );
+        );*/
         if(cb.hasHit()) {
-            gfxm::vec3 hit_pt_world(
-                cb.m_hitPointWorld.getX(),
-                cb.m_hitPointWorld.getY(),
-                cb.m_hitPointWorld.getZ()
-            );
+            hit = cb.closest_hit;
+        }
 
-            world->getDebugDrawer()->drawLine(
-                cb.m_hitPointWorld,
-                cb.m_hitPointWorld + cb.m_hitNormalWorld,
-                btVector3(.0f, .0f, 1.0f)
-            );
+        return cb.hasHit();
+    }
 
-            world->getDebugDrawer()->drawContactPoint(
-                cb.m_hitPointWorld,
-                cb.m_hitNormalWorld,
-                1.0f, 0,
-                btVector3(.0f, .0f, 1.0f)
+    bool sphereSweep(float radius, const gfxm::vec3& v_from, const gfxm::vec3& v_to, unsigned flags) {
+        gfxm::mat4 from = 
+            gfxm::translate(
+                gfxm::mat4(1.0f), 
+                v_from
             );
+        gfxm::mat4 to = 
+            gfxm::translate(
+                gfxm::mat4(1.0f), 
+                v_to
+            );
+        
+        btSphereShape shape(radius);
+        btVector3 vfrom(v_from.x, v_from.y, v_from.z);
+        btVector3 vto(v_to.x, v_to.y, v_to.z);
+        ConvexSweepCallback cb(this, radius, v_from, v_to, flags);
 
-            normal = gfxm::vec3(
-                cb.m_hitNormalWorld.getX(),
-                cb.m_hitNormalWorld.getY(),
-                cb.m_hitNormalWorld.getZ()
-            );
+        world->convexSweepTest(
+            &shape, 
+            *(btTransform*)&from, 
+            *(btTransform*)&to,
+            cb
+        );
+        /*
+        world->getDebugDrawer()->drawSphere(
+            radius,
+            *(btTransform*)&from,
+            btVector3(1.0f, 1.0f, .0f)
+        );
+        world->getDebugDrawer()->drawSphere(
+            radius,
+            *(btTransform*)&to,
+            btVector3(1.0f, 0.5f, .0f)
+        );*/
+        if(cb.hasHit()) {
+            
         }
 
         return cb.hasHit();
@@ -228,5 +264,47 @@ private:
 
     BulletDebugDrawer_OpenGL debugDrawer;
 };
+
+inline btScalar ContactCallback::addSingleResult(
+    btManifoldPoint& cp, 
+    const btCollisionObjectWrapper* colObj0Wrap, 
+    int partId0, 
+    int index0, 
+    const btCollisionObjectWrapper* colObj1Wrap, 
+    int partId1, 
+    int index1
+) {
+    if(cp.getDistance() > 0.0f) {
+        return 0.0f;
+    }
+
+    world->getBtWorld()->getDebugDrawer()->drawSphere(
+        0.1f,
+        *(btTransform*)&gfxm::translate(gfxm::mat4(1.0f), *(gfxm::vec3*)&cp.getPositionWorldOnB()),
+        btVector3(0.3f, .0f, .0f)
+    );
+    world->getBtWorld()->getDebugDrawer()->drawSphere(
+        0.1f,
+        *(btTransform*)&gfxm::translate(gfxm::mat4(1.0f), *(gfxm::vec3*)&cp.getPositionWorldOnA()),
+        btVector3(0.0f, .3f, .0f)
+    );
+    world->getBtWorld()->getDebugDrawer()->drawLine(
+        cp.m_positionWorldOnB,
+        cp.m_positionWorldOnB + cp.m_normalWorldOnB,
+        btVector3(1.0f, .0f, .0f)
+    );
+
+    btVector3 nrm = cp.m_positionWorldOnB - cp.m_positionWorldOnA;
+
+    pos += gfxm::vec3(
+        nrm.getX(),
+        nrm.getY(),
+        nrm.getZ()
+    ) * std::min(gfxm::sqrt(-cp.getDistance()), 1.0f);
+
+    has_hit = true;
+
+    return 1.0f;
+}
 
 #endif

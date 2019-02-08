@@ -22,7 +22,6 @@
 #include "input/input_mgr.hpp"
 
 #include "animator_sys.hpp"
-#include "systems/physics_system.hpp"
 
 #include "game.hpp"
 
@@ -59,7 +58,7 @@ private:
     Scene* scene;
     std::string currentSceneFile;
     Game game;
-    AnimatorSys animator_sys;
+    //AnimatorSys animator_sys;
 
     gfxm::ivec2 cursor_pos;
 };
