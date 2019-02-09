@@ -194,6 +194,8 @@ void SceneObject::deserialize(std::istream& in) {
 #include "model.hpp"
 #include "transform.hpp"
 #include "components/collider.hpp"
+#include "components/collision_sensor.hpp"
+#include "components/box_sensor.hpp"
 #include "light.hpp"
 #include "animator.hpp"
 #include "character.hpp"
@@ -214,6 +216,18 @@ void SceneObject::_editorGui() {
         if(ImGui::Selectable("Collider", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
             if (ImGui::IsMouseDoubleClicked(0)) {
                 component_creator_so_tgt->get<Collider>();
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        if(ImGui::Selectable("BoxSensor", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+            if (ImGui::IsMouseDoubleClicked(0)) {
+                component_creator_so_tgt->get<BoxSensor>();
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        if(ImGui::Selectable("CollisionSensor", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+            if (ImGui::IsMouseDoubleClicked(0)) {
+                component_creator_so_tgt->get<CollisionSensor>();
                 ImGui::CloseCurrentPopup();
             }
         }
@@ -273,5 +287,6 @@ void SceneObject::_editorGui() {
         if(!exists) {
             removeComponent(kv.first);
         }
+        ImGui::Dummy(ImVec2(0.0f, 20.0f));
     }
 }

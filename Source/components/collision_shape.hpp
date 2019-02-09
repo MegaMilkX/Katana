@@ -14,6 +14,8 @@
 
 #include "../util/serialization.hpp"
 
+#include "collision_component_base.hpp"
+
 class Collider;
 
 class CollisionShape {
@@ -30,7 +32,7 @@ public:
     virtual btCollisionShape* getBtShape() = 0;
     virtual CollisionShape* clone() = 0;
     virtual rttr::type getType() = 0;
-    virtual bool _editorGui(Collider*) = 0;
+    virtual bool _editorGui(BaseCollisionComponent*) = 0;
 
     virtual void serialize(std::ostream& out) {}
     virtual void deserialize(std::istream& in, size_t sz) {}
@@ -59,7 +61,7 @@ public:
     virtual rttr::type getType() {
         return rttr::type::get<CollisionBox>();
     }
-    virtual bool _editorGui(Collider*) {
+    virtual bool _editorGui(BaseCollisionComponent*) {
         bool changed = false;
         if(ImGui::DragFloat3("Center", (float*)&center, 0.01f)) {
             changed = true;
@@ -81,7 +83,7 @@ public:
     }
 private:
     btBoxShape shape;
-    gfxm::vec3 size;
+    gfxm::vec3 size = gfxm::vec3(.5f, .5f, .5f);
 };
 
 class CollisionCapsule : public CollisionShape {
@@ -102,7 +104,7 @@ public:
     virtual rttr::type getType() {
         return rttr::type::get<CollisionCapsule>();
     }
-    virtual bool _editorGui(Collider*) {
+    virtual bool _editorGui(BaseCollisionComponent*) {
         bool changed = false;
         if(ImGui::DragFloat3("Center", (float*)&center, 0.01f)) {
             changed = true;
@@ -187,7 +189,7 @@ public:
     virtual rttr::type getType() {
         return rttr::type::get<CollisionMesh>();
     }
-    virtual bool _editorGui(Collider*);
+    virtual bool _editorGui(BaseCollisionComponent*);
 
     virtual void serialize(std::ostream& out) {
         write(out, center);

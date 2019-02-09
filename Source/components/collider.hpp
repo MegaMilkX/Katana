@@ -2,6 +2,7 @@
 #define COLLIDER_HPP
 
 #include "../component.hpp"
+#include "collision_component_base.hpp"
 #include <btBulletDynamicsCommon.h>
 
 #include "../model.hpp"
@@ -16,10 +17,15 @@
 #include "../util/serialization.hpp"
 
 class PhysicsSystem;
-class Collider : public Component {
+class Collider : public BaseCollisionComponent {
     CLONEABLE
-    RTTR_ENABLE(Component)
+    RTTR_ENABLE(BaseCollisionComponent)
 public:
+    enum TYPE {
+        SOLID,
+        SENSOR
+    };
+
     Collider() {
         collision_object = std::shared_ptr<btCollisionObject>(
             new btCollisionObject()
@@ -32,7 +38,6 @@ public:
     }
 
     void onClone(Collider* other) {
-        // TODO: Make an actual copy
         collision_shape.reset(other->collision_shape->clone());
         collision_object->setCollisionShape(collision_shape->getBtShape());
         collision_group = other->collision_group;
@@ -49,6 +54,13 @@ public:
     }
 
     virtual void onCreate();
+
+    TYPE getType() const {
+        return type;
+    }
+    void setType(TYPE t) {
+        type = t;
+    }
 
     unsigned getGroupMask() {
         return collision_object->getCollisionFlags();
@@ -76,21 +88,13 @@ public:
     }
 
     virtual void _editorGui() {
-        if(ImGui::BeginCombo("Type", "STATIC")) {
-            if(ImGui::Selectable("STATIC")) {
-
-            }
-            if(ImGui::Selectable("KINEMATIC")) {
-
-            }
-            ImGui::EndCombo();
-        }
-        if(ImGui::CheckboxFlags("Static", &collision_group, 1) ||
-            ImGui::CheckboxFlags("Probe", &collision_group, 2) ||
-            ImGui::CheckboxFlags("Sensor", &collision_group, 4) ||
-            ImGui::CheckboxFlags("Hitbox", &collision_group, 8) ||
-            ImGui::CheckboxFlags("Hurtbox", &collision_group, 16)
-        ) {
+        bool group_changed = false;
+        group_changed = ImGui::CheckboxFlags("Static", &collision_group, 1); ImGui::SameLine();
+        group_changed = ImGui::CheckboxFlags("Probe", &collision_group, 2);
+        group_changed = ImGui::CheckboxFlags("Sensor", &collision_group, 4); ImGui::SameLine();
+        group_changed = ImGui::CheckboxFlags("Hitbox", &collision_group, 8);
+        group_changed = ImGui::CheckboxFlags("Hurtbox", &collision_group, 16);
+        if(group_changed) {
             collision_object->setCollisionFlags(collision_group);
         }
 
@@ -151,6 +155,8 @@ private:
 
         world->getBtWorld()->updateAabbs();
     }
+
+    TYPE type = SOLID; 
 
     unsigned collision_group = 1;
 

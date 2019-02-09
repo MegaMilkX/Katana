@@ -3,10 +3,7 @@
 #include "../components/collider.hpp"
 
 btScalar ConvexSweepCallback::addSingleResult(btCollisionWorld::LocalConvexResult &convexResult, bool normalInWorldSpace) {
-    Collider* col = (Collider*)convexResult.m_hitCollisionObject->getUserPointer();
-    if((col->getGroupMask() & flags) == 0) {
-        return 0.0f;
-    }
+    // Check collision group mask here
 
     if(convexResult.m_hitFraction < closest_hit_fraction) {
         closest_hit_fraction = convexResult.m_hitFraction;
@@ -25,4 +22,26 @@ btScalar ConvexSweepCallback::addSingleResult(btCollisionWorld::LocalConvexResul
     );*/
 
     return .0f;
+}
+
+void PhysicsWorld::update(float dt) {
+    world->stepSimulation(dt);
+
+/*
+    int numManifolds = dispatcher->getNumManifolds();
+    for(int i = 0; i < numManifolds; ++i) {
+        btPersistentManifold* m = dispatcher->getMainifoldByIndexInternal(i);
+        btCollisionObject* a = m->getBody0();
+        btCollisionObject* b = m->getBody1();
+        Collider* sensorCollider = 0;
+        if(((Collider*)a->getUserPointer())->getType() == Collider::SENSOR) {
+            sensorCollider = (Collider*)a->getUserPointer();
+        } else if (((Collider*)b->getUserPointer())->getType() == Collider::SENSOR) {
+            sensorCollider = (Collider*)b->getUserPointer();
+        } else {
+            continue;
+        }
+
+        
+    }*/
 }

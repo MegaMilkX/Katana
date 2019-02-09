@@ -21,7 +21,7 @@ public:
 	virtual void setDebugMode(int p) {
 		m = p;
 	}
-	int getDebugMode(void) const { return DBG_DrawWireframe | DBG_DrawAabb |  DBG_DrawContactPoints; }
+	int getDebugMode(void) const { return DBG_DrawWireframe /*| DBG_DrawAabb*/ |  DBG_DrawContactPoints; }
 	int m;
 private:
     GLuint vao_handle = 0;
@@ -242,9 +242,7 @@ public:
         return cb.hasHit();
     }
 
-    void update(float dt) {
-        world->stepSimulation(dt);
-    }
+    void update(float dt);
 
     btCollisionWorld* getBtWorld() {
         return world;
@@ -274,6 +272,9 @@ inline btScalar ContactCallback::addSingleResult(
     int partId1, 
     int index1
 ) {
+    if(colObj1Wrap->getCollisionObject()->getInternalType() == btCollisionObject::CO_GHOST_OBJECT) {
+        return 0.0f;
+    }
     if(cp.getDistance() > 0.0f) {
         return 0.0f;
     }
