@@ -61,6 +61,7 @@ private:
         std::string                 alias;
         std::shared_ptr<Animation>  anim;
         std::map<size_t, size_t>    bone_remap;
+        bool                        looping = true;
     };
 
     bool                            root_motion_enabled = true;
@@ -83,6 +84,32 @@ public:
 
         layers[layer].anim_index = anim_i;
         layers[layer].cursor = 0.0f;
+        layers[layer].stopped = false;
+        layers[layer].blend_over_speed = 0.0f;
+    }
+
+    void blendOver(int layer, const std::string& anim_alias, float speed = 0.1f) {
+        size_t anim_i = 0;
+        for(size_t i = 0; i < anims.size(); ++i) {
+            if(anims[i].alias == anim_alias) {
+                anim_i = i;
+            }
+        }
+
+        layers[layer].blend_target_index = anim_i;
+        layers[layer].blend_target_cursor = 0.0f;
+        layers[layer].blend_target_prev_cursor = 0.0f;
+        layers[layer].blend_over_weight = 0.0f;
+        layers[layer].blend_over_speed = 1.0f / speed;
+    }
+
+    bool layerStopped(int layer, float offset = 0.0f) {
+        if(!anims[layers[layer].anim_index].looping) {
+            return 
+                layers[layer].cursor >= anims[layers[layer].anim_index].anim->length + offset * anims[layers[layer].anim_index].anim->fps;
+        } else {
+            return false;
+        }
     }
 
     void Update(float dt) {
@@ -170,6 +197,7 @@ public:
             } else {
                 wt_string(out, "");
             }
+            write(out, (uint8_t)a.looping);
             write(out, (uint32_t)a.bone_remap.size());
             for(auto& kv : a.bone_remap) {
                 write(out, (uint32_t)kv.first);
@@ -190,7 +218,7 @@ public:
         for(size_t i = 0; i < layers.size(); ++i) {
             auto& l = layers[i];
             l.anim_index = read<uint32_t>(in);
-            l.mode = (SkeletonAnimLayer::BlendMode)read<uint32_t>(in);
+            l.mode = (ANIM_BLEND_MODE)read<uint32_t>(in);
             l.cursor = read<float>(in);
             l.speed = read<float>(in);
             l.weight = read<float>(in);
@@ -201,6 +229,7 @@ public:
             auto& a = anims[i];
             a.alias = rd_string(in);
             a.anim = getResource<Animation>(rd_string(in));
+            a.looping = (bool)read<uint8_t>(in);
             uint32_t bone_remap_sz = read<uint32_t>(in);
             for(uint32_t j = 0; j < bone_remap_sz; ++j) {
                 auto f = read<uint32_t>(in);
@@ -273,9 +302,9 @@ public:
             }
 
             if(ImGui::BeginCombo("Mode", SkeletonAnimLayer::blendModeString(layers[selected_index].mode).c_str())) {
-                for(size_t i = 0; i < SkeletonAnimLayer::BLEND_MODE_LAST; ++i) {
-                    if(ImGui::Selectable(SkeletonAnimLayer::blendModeString((SkeletonAnimLayer::BlendMode)i).c_str(), layers[selected_index].mode == i)) {
-                        layers[selected_index].mode = (SkeletonAnimLayer::BlendMode)i;
+                for(size_t i = 0; i < ANIM_MODE_LAST; ++i) {
+                    if(ImGui::Selectable(SkeletonAnimLayer::blendModeString((ANIM_BLEND_MODE)i).c_str(), layers[selected_index].mode == i)) {
+                        layers[selected_index].mode = (ANIM_BLEND_MODE)i;
                     }
                 }
                 ImGui::EndCombo();
@@ -283,11 +312,7 @@ public:
             ImGui::SliderFloat("Cursor", &layers[selected_index].cursor, 0.0f, 1.0f);
             if(ImGui::DragFloat("Speed", &layers[selected_index].speed, 0.01f, 0.0f, 10.0f)) {}
             if(ImGui::DragFloat("Weight", &layers[selected_index].weight, 0.01f, 0.0f, 1.0f)) {}
-            bool looping = true;
-            if(ImGui::Checkbox("Looping", &looping)) {
-            } ImGui::SameLine();
-            bool autoplay = true;
-            if(ImGui::Checkbox("Autoplay", &autoplay)) {
+            if(ImGui::Checkbox("Stopped", &layers[selected_index].stopped)) {
             }
         }
         ImGui::Separator();
@@ -320,6 +345,8 @@ public:
             memcpy(buf, anims[selected_anim_index].alias.data(), anims[selected_anim_index].alias.size());
             if(ImGui::InputText("Alias", buf, 256)) {
                 anims[selected_anim_index].alias = buf;
+            }
+            if(ImGui::Checkbox("Looping", &anims[selected_anim_index].looping)) {
             }
         }
     }

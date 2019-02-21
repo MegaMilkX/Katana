@@ -1,11 +1,16 @@
 #ifndef SCENE_PHYSICS_WORLD_HPP
 #define SCENE_PHYSICS_WORLD_HPP
 
+#include <set>
+
 #include "scene_component.hpp"
 #include <btBulletDynamicsCommon.h>
 #include <btBulletCollisionCommon.h>
+#include <bulletcollision/collisiondispatch/btghostobject.h>
 #include "../gfxm.hpp"
 #include "../debug_draw.hpp"
+
+#include "../components/i_collision_sensor.hpp"
 
 class BulletDebugDrawer_OpenGL : public btIDebugDraw {
 public:
@@ -100,6 +105,9 @@ public:
             constraintSolver,
             collisionConf
         );
+
+        broadphase->getOverlappingPairCache()->setInternalGhostPairCallback(new btGhostPairCallback());
+
         world->setGravity(btVector3(0.0f, -10.0f, 0.0f));
 
         world->setDebugDrawer(&debugDrawer);
@@ -244,6 +252,13 @@ public:
 
     void update(float dt);
 
+    void _addSensor(ICollisionSensor* ptr) {
+        sensors.insert(ptr);
+    }
+    void _removeSensor(ICollisionSensor* ptr) {
+        sensors.erase(ptr);
+    }
+
     btCollisionWorld* getBtWorld() {
         return world;
     }
@@ -253,6 +268,8 @@ public:
     }
 
 private:
+    std::set<ICollisionSensor*> sensors;
+
     btDefaultCollisionConfiguration* collisionConf;
     btCollisionDispatcher* dispatcher;
     btDbvtBroadphase* broadphase;

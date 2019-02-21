@@ -1,176 +1,183 @@
 #ifndef COLLIDER_HPP
 #define COLLIDER_HPP
 
-#include "../component.hpp"
-#include "collision_component_base.hpp"
-#include <btBulletDynamicsCommon.h>
-
-#include "../model.hpp"
-#include "../transform.hpp"
-
-#include "../scene_components/scene_physics_world.hpp"
+#include "../util/serialization.hpp"
+#include "base_collision_object.hpp"
 
 #include "../scene_object.hpp"
+#include "../model.hpp"
 
-#include "collision_shape.hpp"
-
-#include "../util/serialization.hpp"
-
-class PhysicsSystem;
-class Collider : public BaseCollisionComponent {
+template<typename COLLISION_SHAPE_T>
+class Collider : public CollisionObject<btCollisionObject, COLLISION_SHAPE_T> {
     CLONEABLE
-    RTTR_ENABLE(BaseCollisionComponent)
+    RTTR_ENABLE(CollisionObject<btCollisionObject, COLLISION_SHAPE_T>)
 public:
-    enum TYPE {
-        SOLID,
-        SENSOR
-    };
-
     Collider() {
-        collision_object = std::shared_ptr<btCollisionObject>(
-            new btCollisionObject()
+        bt_object->setCollisionFlags(
+            bt_object->getCollisionFlags() |
+            btCollisionObject::CF_HAS_CUSTOM_DEBUG_RENDERING_COLOR
         );
-        collision_object->setUserPointer(this);
+        bt_object->setCustomDebugColor(btVector3(.2f, 1.0f, 0.25f));
     }
 
-    ~Collider() {
-        world->getBtWorld()->removeCollisionObject(collision_object.get());
+    virtual void serialize(std::ostream& out) {}
+    virtual void deserialize(std::istream& in, size_t sz) {}
+};
+
+class MeshCollider : public Component {
+    CLONEABLE
+    RTTR_ENABLE(Component)
+public:
+    MeshCollider() {
+        bt_empty_shape.reset(new btEmptyShape());
+
+        bt_object.reset(new btCollisionObject());
+        bt_object->setCollisionShape(bt_empty_shape.get());
+
+        bt_object->setCollisionFlags(
+            bt_object->getCollisionFlags() |
+            btCollisionObject::CF_HAS_CUSTOM_DEBUG_RENDERING_COLOR
+        );
+        bt_object->setCustomDebugColor(btVector3(.2f, 1.0f, 0.25f));
     }
+    ~MeshCollider() {
+        world->getBtWorld()->removeCollisionObject(bt_object.get());
+    }
+    virtual void onCreate() {
+        bt_object->setUserPointer(getObject());
 
-    void onClone(Collider* other) {
-        collision_shape.reset(other->collision_shape->clone());
-        collision_object->setCollisionShape(collision_shape->getBtShape());
-        collision_group = other->collision_group;
-        collision_object->setCollisionFlags(collision_group);
-
-        // ===
-        //vertices = other->vertices;
-        //indices = other->indices;
-
-        //center = other->center;
+        world = getScene()->getSceneComponent<PhysicsWorld>();
+        world->getBtWorld()->addCollisionObject(bt_object.get());
+        transform = getObject()->get<Transform>();
 
         updateTransform();
-        resetCollisionObject();
     }
-
-    virtual void onCreate();
-
-    TYPE getType() const {
-        return type;
-    }
-    void setType(TYPE t) {
-        type = t;
-    }
-
-    unsigned getGroupMask() {
-        return collision_object->getCollisionFlags();
-    }
-
-    bool contactTest(gfxm::vec3& new_pos, unsigned flags) {
-        return world->contactTest(collision_object.get(), new_pos, flags);
-    }
-
-    template<typename T>
-    void setShape() {
-        collision_shape.reset(new T());
-        collision_object->setCollisionShape(collision_shape->getBtShape());
-    }
-
-    void refreshShape() {
-        collision_object->setCollisionShape(collision_shape->getBtShape());
+    void onClone(MeshCollider* other) {
+        if(other->vertices.empty() || other->indices.empty()) {
+            return;
+        }
+        vertices = other->vertices;
+        indices = other->indices;
+        makeMesh();
     }
 
     void updateTransform() {
         gfxm::mat4 t = 
-            gfxm::translate(gfxm::mat4(1.0f), transform->worldPosition() + collision_shape->getCenter());
+            gfxm::translate(gfxm::mat4(1.0f), transform->worldPosition() + center);
+        bt_object->setWorldTransform(*(btTransform*)&t);
+    }
 
-        collision_object->setWorldTransform(*(btTransform*)&t);
+    void makeFromModel(Model* mdl) {
+        if(mdl->mesh) {
+            vertices.clear();
+            indices.clear();
+
+            auto msh = mdl->mesh;
+            vertices.resize(msh->mesh.getAttribDataSize(gl::POSITION) / sizeof(gfxm::vec3));
+            msh->mesh.copyAttribData(gl::POSITION, vertices.data());
+
+            indices.resize(msh->mesh.getIndexDataSize() / sizeof(uint32_t));
+            msh->mesh.copyIndexData(indices.data());
+
+            gfxm::mat4 t = 
+                gfxm::to_mat4(
+                    gfxm::to_mat3(mdl->getObject()->get<Transform>()->getTransform())
+                );
+            for(auto& v : vertices) {
+                gfxm::vec4 v4 = gfxm::vec4(v.x, v.y, v.z, 1.0f);
+                v = t * v4;
+            }
+
+            makeMesh();
+        }
     }
 
     virtual void _editorGui() {
-        bool group_changed = false;
-        group_changed = ImGui::CheckboxFlags("Static", &collision_group, 1); ImGui::SameLine();
-        group_changed = ImGui::CheckboxFlags("Probe", &collision_group, 2);
-        group_changed = ImGui::CheckboxFlags("Sensor", &collision_group, 4); ImGui::SameLine();
-        group_changed = ImGui::CheckboxFlags("Hitbox", &collision_group, 8);
-        group_changed = ImGui::CheckboxFlags("Hurtbox", &collision_group, 16);
-        if(group_changed) {
-            collision_object->setCollisionFlags(collision_group);
+        if(ImGui::Button("Make from model")) {
+            makeFromModel(getObject()->get<Model>());            
         }
-
-        if (ImGui::BeginCombo("Shape", collision_shape->getType().get_name().to_string().c_str(), 0)) {
-            if(ImGui::Selectable(rttr::type::get<CollisionBox>().get_name().to_string().c_str())) {
-                setShape<CollisionBox>();
-            }
-            if(ImGui::Selectable(rttr::type::get<CollisionCapsule>().get_name().to_string().c_str())) {
-                setShape<CollisionCapsule>();
-            }
-            if(ImGui::Selectable(rttr::type::get<CollisionMesh>().get_name().to_string().c_str())) {
-                setShape<CollisionMesh>();
-            }
-            ImGui::EndCombo();
-        }
-
-        if(ImGui::Button("Update transform")) {
-            updateTransform();
-        }
-
-        if(collision_shape->_editorGui(this)) {
-            updateTransform();
-        }
+        updateTransform();
     }
 
     virtual void serialize(std::ostream& out) {
-        write(out, (int32_t)collision_shape->getShapeType());
-        write(out, (uint64_t)collision_group);
-        collision_shape->serialize(out);
+        write(out, group_mask);
+
+        write(out, center);
+        
+        write(out, (uint64_t)vertices.size());
+        out.write((char*)vertices.data(), sizeof(gfxm::vec3) * vertices.size());
+        write(out, (uint64_t)indices.size());
+        out.write((char*)indices.data(), sizeof(uint32_t) * indices.size());
     }
     virtual void deserialize(std::istream& in, size_t sz) {
-        CollisionShape::TYPE t = (CollisionShape::TYPE)read<int32_t>(in);
-        collision_group = (uint32_t)read<uint64_t>(in);
-        switch(t) {
-        case CollisionShape::CAPSULE:
-            setShape<CollisionCapsule>();
-            collision_shape->deserialize(in, sz - sizeof(int32_t));
-            collision_object->setCollisionShape(collision_shape->getBtShape());
-            updateTransform();
-            break;
-        case CollisionShape::MESH:
-            setShape<CollisionMesh>();
-            collision_shape->deserialize(in, sz - sizeof(int32_t));
-            collision_object->setCollisionShape(collision_shape->getBtShape());
-            updateTransform();
-            break;
-        default:
-            in.seekg(sz - sizeof(int32_t), std::ios_base::cur);
-            break;
-        }
+        group_mask = read<uint64_t>(in);
         
-        collision_object->setCollisionFlags(collision_group);
+        center = read<gfxm::vec3>(in);
+
+        uint64_t v_count = read<uint64_t>(in);
+        vertices.resize(v_count);
+        in.read((char*)vertices.data(), v_count * sizeof(gfxm::vec3));
+        uint64_t i_count = read<uint64_t>(in);
+        indices.resize(i_count);
+        in.read((char*)indices.data(), i_count * sizeof(uint32_t));
+
+        makeMesh();
     }
 private:
-    void resetCollisionObject() {
-        world->getBtWorld()->removeCollisionObject(collision_object.get());
-        world->getBtWorld()->addCollisionObject(collision_object.get());
-
-        world->getBtWorld()->updateAabbs();
+    void makeMesh() {
+        indexVertexArray.reset(new btTriangleIndexVertexArray(
+            indices.size() / 3,
+            (int32_t*)indices.data(),
+            sizeof(uint32_t) * 3,
+            vertices.size() / sizeof(gfxm::vec3),
+            (btScalar*)vertices.data(),
+            sizeof(gfxm::vec3)
+        ));
+        bt_mesh_shape.reset(new btBvhTriangleMeshShape(
+            indexVertexArray.get(), true
+        ));
+        bt_object->setCollisionShape(bt_mesh_shape.get());
     }
 
-    TYPE type = SOLID; 
+    uint64_t group_mask = 0;
+    gfxm::vec3 center;
 
-    unsigned collision_group = 1;
-
-    std::shared_ptr<btCollisionObject> collision_object;
-
-    std::shared_ptr<CollisionShape> collision_shape;
-
-    Transform* transform = 0;
+    std::shared_ptr<btCollisionObject> bt_object;
+    std::shared_ptr<btBvhTriangleMeshShape> bt_mesh_shape;
+    std::shared_ptr<btEmptyShape> bt_empty_shape;
+    std::shared_ptr<btTriangleIndexVertexArray> indexVertexArray;
+    std::vector<gfxm::vec3> vertices;
+    std::vector<uint32_t> indices;
+    
     PhysicsWorld* world = 0;
-    PhysicsSystem* sys = 0;
+    Transform* transform = 0;
 };
-STATIC_RUN(Collider)
+
+typedef Collider<Collision::Box> BoxCollider;
+typedef Collider<Collision::Sphere> SphereCollider;
+typedef Collider<Collision::Cylinder> CylinderCollider;
+typedef Collider<Collision::Capsule> CapsuleCollider;
+
+STATIC_RUN(Colliders)
 {
-    rttr::registration::class_<Collider>("Collider")
+    rttr::registration::class_<BoxCollider>("BoxCollider")
+        .constructor<>()(
+            rttr::policy::ctor::as_raw_ptr
+        );
+    rttr::registration::class_<SphereCollider>("SphereCollider")
+        .constructor<>()(
+            rttr::policy::ctor::as_raw_ptr
+        );
+    rttr::registration::class_<CylinderCollider>("CylinderCollider")
+        .constructor<>()(
+            rttr::policy::ctor::as_raw_ptr
+        );
+    rttr::registration::class_<CapsuleCollider>("CapsuleCollider")
+        .constructor<>()(
+            rttr::policy::ctor::as_raw_ptr
+        );
+
+    rttr::registration::class_<MeshCollider>("MeshCollider")
         .constructor<>()(
             rttr::policy::ctor::as_raw_ptr
         );

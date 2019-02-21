@@ -372,6 +372,19 @@ public:
         glUniformMatrix4fv(prog_skybox->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
         gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, scene->getSkybox().getSkyMap());
         drawCube();
+    }
+
+    void draw(GBuffer* g_buffer, gl::FrameBuffer* fb_final, gfxm::mat4& projection, gfxm::mat4& view) {
+        draw(
+            g_buffer, 
+            fb_final->getId(), fb_final->getWidth(), fb_final->getHeight(),
+            projection, view
+        );
+    }
+
+    void drawEditorHelpers(GLuint fb_final, GLsizei w, GLsizei h, gfxm::mat4 projection, gfxm::mat4 view) {
+        glBindFramebuffer(GL_FRAMEBUFFER, fb_final);
+        glViewport(0, 0, w, h);
 
         prog_billboard_sprite->use();
         glUniformMatrix4fv(prog_billboard_sprite->getUniform("mat_projection"), 1, GL_FALSE, (float*)&projection);
@@ -384,14 +397,6 @@ public:
             glUniformMatrix4fv(prog_billboard_sprite->getUniform("mat_model"), 1, GL_FALSE, (float*)&l->get<Transform>()->getTransform());
             drawQuad();
         }
-    }
-
-    void draw(GBuffer* g_buffer, gl::FrameBuffer* fb_final, gfxm::mat4& projection, gfxm::mat4& view) {
-        draw(
-            g_buffer, 
-            fb_final->getId(), fb_final->getWidth(), fb_final->getHeight(),
-            projection, view
-        );
     }
 
     void drawPickBuffer(gl::FrameBuffer* fb, gfxm::mat4 projection, gfxm::mat4 view) {

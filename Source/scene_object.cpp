@@ -193,14 +193,22 @@ void SceneObject::deserialize(std::istream& in) {
 
 #include "model.hpp"
 #include "transform.hpp"
-#include "components/collider.hpp"
 #include "components/collision_sensor.hpp"
-#include "components/box_sensor.hpp"
+#include "components/collision_beacon.hpp"
+#include "components/collider.hpp"
 #include "light.hpp"
 #include "animator.hpp"
 #include "character.hpp"
 #include "camera.hpp"
 #include "tps_camera.hpp"
+
+#define CO_SELECTABLE(NAME) \
+    if(ImGui::Selectable(#NAME, &selected, ImGuiSelectableFlags_AllowDoubleClick)) { \
+        if (ImGui::IsMouseDoubleClicked(0)) { \
+            component_creator_so_tgt->get<NAME>(); \
+            ImGui::CloseCurrentPopup(); \
+        } \
+    }
 
 void SceneObject::_editorGui() {
     static SceneObject* component_creator_so_tgt = 0;
@@ -211,26 +219,21 @@ void SceneObject::_editorGui() {
     bool dummy_open = true;
     if (ImGui::BeginPopupModal("ComponentCreator", &dummy_open))
     {
-        ImGui::BeginChild("ComponentList", ImVec2(150, 100), false, 0);
+        ImGui::BeginChild("ComponentList", ImVec2(200, 500), false, 0);
         bool selected = false;
-        if(ImGui::Selectable("Collider", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
-            if (ImGui::IsMouseDoubleClicked(0)) {
-                component_creator_so_tgt->get<Collider>();
-                ImGui::CloseCurrentPopup();
-            }
-        }
-        if(ImGui::Selectable("BoxSensor", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
-            if (ImGui::IsMouseDoubleClicked(0)) {
-                component_creator_so_tgt->get<BoxSensor>();
-                ImGui::CloseCurrentPopup();
-            }
-        }
-        if(ImGui::Selectable("CollisionSensor", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
-            if (ImGui::IsMouseDoubleClicked(0)) {
-                component_creator_so_tgt->get<CollisionSensor>();
-                ImGui::CloseCurrentPopup();
-            }
-        }
+        CO_SELECTABLE(BoxCollider);
+        CO_SELECTABLE(SphereCollider);
+        CO_SELECTABLE(CylinderCollider);
+        CO_SELECTABLE(CapsuleCollider);
+        CO_SELECTABLE(MeshCollider);
+        CO_SELECTABLE(BoxSensor_t);
+        CO_SELECTABLE(SphereSensor_t);
+        CO_SELECTABLE(CylinderSensor_t);
+        CO_SELECTABLE(CapsuleSensor_t);
+        CO_SELECTABLE(BoxBeacon);
+        CO_SELECTABLE(SphereBeacon);
+        CO_SELECTABLE(CylinderBeacon);
+        CO_SELECTABLE(CapsuleBeacon);
         if(ImGui::Selectable("Animator", &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
             if (ImGui::IsMouseDoubleClicked(0)) {
                 component_creator_so_tgt->get<Animator>();

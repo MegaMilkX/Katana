@@ -73,7 +73,7 @@ public:
         } else {
             tgt_pos = gfxm::vec3(0.0,0.0,0.0);
         }
-        pivot = gfxm::lerp(pivot, tgt_pos, 0.1f);
+        pivot = gfxm::lerp(pivot, tgt_pos, std::pow(gfxm::length(tgt_pos - pivot), 2.0f));
 
         _distance = gfxm::lerp(_distance, distance, 0.1f);
         _angle_y = gfxm::lerp(_angle_y, angle_y, 0.1f);
@@ -85,38 +85,24 @@ public:
 
         gfxm::vec3 hit;
         if(physics_world->sphereSweepClosestHit(0.3f, pivot, pivot + tcam.back() * _distance, collision_flags, hit)) {
-            tcam.position(hit);
-        } else {
-            tcam.translate(tcam.back() * _distance);
+            float len = gfxm::length(pivot - hit);
+            if(len < distance) {
+                _distance = len;
+            }
         }
+
+        tcam.translate(tcam.back() * _distance);
 
         transform->setTransform(tcam.matrix());
     }
 
     virtual void _editorGui() {
+        ImGui::Text("Collision masking");
         ImGui::CheckboxFlags("Static", &collision_flags, 1);
         ImGui::CheckboxFlags("Probe", &collision_flags, 2);
         ImGui::CheckboxFlags("Sensor", &collision_flags, 4);
         ImGui::CheckboxFlags("Hitbox", &collision_flags, 8);
         ImGui::CheckboxFlags("Hurtbox", &collision_flags, 16);
-        /*
-        std::string object_name = "(target transform)";
-
-        Transform* t = getObject()->getScene()->getComponent<Transform>(tgt_transform_id);
-        SceneObject* so = t->getObject();
-        object_name = MKSTR(so->getName() << "#" << so->getId());
-
-        ImGui::PushID(object_name.c_str());
-        ImGui::Button(object_name.c_str());
-        if (ImGui::BeginDragDropTarget()) {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
-                SceneObject* tgt_dnd_so = *(SceneObject**)payload->Data;
-                tgt_transform_id = tgt_dnd_so->get<Transform>()->getId();
-            }
-            ImGui::EndDragDropTarget();
-        }
-        ImGui::PopID();
-        */
     }
 
     virtual void serialize(std::ostream& out) {

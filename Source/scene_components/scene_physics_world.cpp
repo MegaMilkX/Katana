@@ -1,9 +1,10 @@
 #include "scene_physics_world.hpp"
 
-#include "../components/collider.hpp"
-
 btScalar ConvexSweepCallback::addSingleResult(btCollisionWorld::LocalConvexResult &convexResult, bool normalInWorldSpace) {
-    // Check collision group mask here
+    if(convexResult.m_hitCollisionObject->getInternalType() == btCollisionObject::CO_GHOST_OBJECT) {
+        return 0.0f;
+    }
+    // TODO: Check collision group mask here
 
     if(convexResult.m_hitFraction < closest_hit_fraction) {
         closest_hit_fraction = convexResult.m_hitFraction;
@@ -26,6 +27,10 @@ btScalar ConvexSweepCallback::addSingleResult(btCollisionWorld::LocalConvexResul
 
 void PhysicsWorld::update(float dt) {
     world->stepSimulation(dt);
+    
+    for(auto s : sensors) {
+        s->update();
+    }
 
 /*
     int numManifolds = dispatcher->getNumManifolds();

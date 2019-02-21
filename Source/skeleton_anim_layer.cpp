@@ -6,6 +6,58 @@
 
 #include "scene.hpp"
 
+static void blendAnim(
+    Animation* anim,
+    std::map<size_t, size_t>& bone_remap,
+    float cursor, 
+    float cursor_prev,
+    ANIM_BLEND_MODE mode,
+    float weight,
+    std::vector<AnimSample>& samples,
+    bool enable_root_motion,
+    Transform* root_transform,
+    gfxm::vec3& rm_pos_final,
+    gfxm::quat& rm_rot_final
+) {
+    gfxm::vec3 root_motion_pos_delta;
+    gfxm::quat root_motion_rot_delta;
+    bool do_root_motion = anim->root_motion_enabled && root_transform;
+    if(do_root_motion) {
+        gfxm::vec3 delta_pos =  anim->getRootMotionNode().t.delta(cursor_prev, cursor);
+        gfxm::vec3 delta_pos4 = gfxm::vec4(delta_pos.x, delta_pos.y, delta_pos.z, 0.0f);
+        gfxm::quat delta_q = anim->getRootMotionNode().r.delta(cursor_prev, cursor);
+        if(root_transform->parentTransform()) {}
+
+        root_motion_pos_delta = delta_pos4;
+        root_motion_rot_delta = delta_q;
+    }
+
+    switch(mode) {
+    case ANIM_MODE_NONE:
+        anim->sample_remapped(samples, cursor, bone_remap);
+        if(enable_root_motion) {
+            rm_pos_final = root_motion_pos_delta;
+            rm_rot_final = root_motion_rot_delta;
+        }
+        break;
+    case ANIM_MODE_BLEND:
+        anim->blend_remapped(samples, cursor, weight, bone_remap);
+        if(enable_root_motion) {
+            rm_pos_final = gfxm::lerp(rm_pos_final, root_motion_pos_delta, weight);
+            rm_rot_final = gfxm::slerp(rm_rot_final, root_motion_rot_delta, weight);
+        }
+        break;
+    case ANIM_MODE_ADD:
+        anim->additive_blend_remapped(samples, cursor, weight, bone_remap);
+        // NOTE: Additive root motion is untested
+        if(enable_root_motion) {
+            rm_pos_final = gfxm::lerp(rm_pos_final, rm_pos_final + root_motion_pos_delta, weight);
+            rm_rot_final = gfxm::slerp(rm_rot_final, root_motion_rot_delta * rm_rot_final, weight);
+        }
+        break;
+    }
+}
+
 void SkeletonAnimLayer::update(
     Animator* animator,
     float dt,
@@ -23,16 +75,20 @@ void SkeletonAnimLayer::update(
     auto& anim_info = animator->anims[anim_index];
     auto& anim = anim_info.anim;
 
-    //std::vector<AnimSample> t_lcl;
-    //t_lcl.resize(t_fin.size());
-
     float duration = anim_info.anim->length;
     float fps      = anim_info.anim->fps;
 
     float cursor_prev = cursor;
-    cursor += dt * fps * speed;
-    if(cursor >= duration) {
-        cursor -= duration;
+    if(!stopped) {
+        cursor += dt * fps * speed;
+        if(cursor >= duration) {
+            if(anim_info.looping) {
+                cursor -= duration;
+            } else {
+                cursor = duration;
+                stopped = true;
+            }
+        }
     }
 
     // TODO: Optimize
@@ -45,42 +101,45 @@ void SkeletonAnimLayer::update(
         }
     }
 
-    gfxm::vec3 root_motion_pos_delta;
-    gfxm::quat root_motion_rot_delta;
-    bool do_root_motion = anim->root_motion_enabled && root_motion_transform;
-    if(do_root_motion) {
-        gfxm::vec3 delta_pos =  anim->getRootMotionNode().t.delta(cursor_prev, cursor);
-        gfxm::vec3 delta_pos4 = gfxm::vec4(delta_pos.x, delta_pos.y, delta_pos.z, 0.0f);
-        gfxm::quat delta_q = anim->getRootMotionNode().r.delta(cursor_prev, cursor);
-        if(root_motion_transform->parentTransform()) {}
+    blendAnim(
+        anim_info.anim.get(),
+        anim_info.bone_remap,
+        cursor, cursor_prev,
+        mode,
+        weight,
+        t_fin,
+        animator->root_motion_enabled,
+        root_motion_transform,
+        rm_pos_final,
+        rm_rot_final
+    );
 
-        root_motion_pos_delta = delta_pos4;
-        root_motion_rot_delta = delta_q;
-    }
+    if(blend_over_speed > 0.0f) {
+        float fps = animator->anims[blend_target_index].anim->fps;
+        blend_over_weight += dt * blend_over_speed;
+        if(blend_over_weight > 1.0f) blend_over_weight = 1.0f;
 
-    switch(mode) {
-    case BASE:
-        anim_info.anim->sample_remapped(t_fin, cursor, anim_info.bone_remap);
-        if(animator->root_motion_enabled) {
-            rm_pos_final = root_motion_pos_delta;
-            rm_rot_final = root_motion_rot_delta;
+        blendAnim(
+            animator->anims[blend_target_index].anim.get(),
+            animator->anims[blend_target_index].bone_remap,
+            blend_target_cursor, blend_target_prev_cursor,
+            ANIM_MODE_BLEND,
+            blend_over_weight,
+            t_fin,
+            animator->root_motion_enabled,
+            root_motion_transform,
+            rm_pos_final,
+            rm_rot_final
+        );
+
+        blend_target_prev_cursor = blend_target_cursor;
+        blend_target_cursor += dt * fps * speed;
+        if(blend_over_weight >= 1.0f) {
+            anim_index = blend_target_index;
+            cursor = blend_target_cursor;
+            blend_over_speed = 0.0f;
+            stopped = false;
         }
-        break;
-    case BLEND:
-        anim_info.anim->blend_remapped(t_fin, cursor, weight, anim_info.bone_remap);
-        if(animator->root_motion_enabled) {
-            rm_pos_final = gfxm::lerp(rm_pos_final, root_motion_pos_delta, weight);
-            rm_rot_final = gfxm::slerp(rm_rot_final, root_motion_rot_delta, weight);
-        }
-        break;
-    case ADD:
-        anim_info.anim->additive_blend_remapped(t_fin, cursor, weight, anim_info.bone_remap);
-        // NOTE: Additive root motion is untested
-        if(animator->root_motion_enabled) {
-            rm_pos_final = gfxm::lerp(rm_pos_final, rm_pos_final + root_motion_pos_delta, weight);
-            rm_rot_final = gfxm::slerp(rm_rot_final, root_motion_rot_delta * rm_rot_final, weight);
-        }
-        break;
     }
 }
 
