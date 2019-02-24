@@ -415,6 +415,35 @@ inline void objectFromAssimpNode(
     object->setName(node->mName.C_Str());
     object->get<Transform>()->setTransform(gfxm::transpose(*(gfxm::mat4*)&node->mTransformation));
 
+    if(node->mNumMeshes) {
+        Model* m = object->get<Model>();
+
+        for(unsigned i = 0; i < node->mNumMeshes; ++i) {
+            Model* m = object->get<Model>();
+            m->getSegment(i).mesh = getResource<Mesh>(MKSTR(dirname << "\\" << node->mMeshes[i] << ".mesh"));
+            // TODO: Set material
+            // m->setSegmentMaterial(i, 0);
+            
+            aiMesh* ai_mesh = ai_scene->mMeshes[node->mMeshes[i]];
+            if(ai_mesh->mNumBones) {
+                Skin* skin = object->get<Skin>();
+                for(unsigned j = 0; j < ai_mesh->mNumBones; ++j) {
+                    aiBone* bone = ai_mesh->mBones[j];
+                    std::string name(bone->mName.data, bone->mName.length);
+
+                    tasks.emplace_back([skin, bone, name, root, i](){
+                        SceneObject* so = root->findObject(name);
+                        if(so) {
+                            skin->getSegment(i).skeleton_root = root;
+                            skin->getSegment(i).bones.emplace_back(so->get<Transform>());
+                            skin->getSegment(i).bind_pose.emplace_back(gfxm::transpose(*(gfxm::mat4*)&bone->mOffsetMatrix));
+                        }
+                    });
+                }
+            }
+        }
+    }
+/*
     if(node->mNumMeshes > 0) {
         Model* m = object->get<Model>();
         m->mesh = getResource<Mesh>(MKSTR(dirname << "\\" << node->mMeshes[0] << ".mesh"));
@@ -437,6 +466,7 @@ inline void objectFromAssimpNode(
             }
         }
     }
+    */
 }
 
 inline gfxm::vec2 sampleSphericalMap(gfxm::vec3 v) {

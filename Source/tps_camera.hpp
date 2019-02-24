@@ -73,7 +73,8 @@ public:
         } else {
             tgt_pos = gfxm::vec3(0.0,0.0,0.0);
         }
-        pivot = gfxm::lerp(pivot, tgt_pos, std::pow(gfxm::length(tgt_pos - pivot), 2.0f));
+
+        pivot = gfxm::lerp(pivot, tgt_pos, std::pow(gfxm::clamp(gfxm::length(tgt_pos - pivot), 0.0f, 1.0f), 2.0f));
 
         _distance = gfxm::lerp(_distance, distance, 0.1f);
         _angle_y = gfxm::lerp(_angle_y, angle_y, 0.1f);

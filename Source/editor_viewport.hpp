@@ -290,41 +290,40 @@ public:
         tcam.rotate(cam_angle_x, tcam.right());
         tcam.translate(tcam.back() * cam_zoom);
         gfxm::mat4 view = gfxm::inverse(tcam.matrix()); 
-        /*
-        renderer->draw(
-            &frame_buffer,
-            proj,
-            view
-        );*/
+
         renderer->draw(&g_buffer, &frame_buffer, proj, view);
         renderer->drawEditorHelpers(frame_buffer.getId(), frame_buffer.getWidth(), frame_buffer.getHeight(), proj, view);
         DebugDraw::getInstance()->draw(proj, view);
 
         if(editorState().selected_object) {
-            gl::DrawInfo di = { 0 };
-            Model* mdl = editorState().selected_object->find<Model>();
-            if(mdl && mdl->mesh) {
-                di.index_count = mdl->mesh->mesh.getIndexCount();
-                di.offset = 0;
-                memcpy(di.transform, (float*)&editorState().selected_object->get<Transform>()->getTransform(), sizeof(di.transform));
-                di.vao = mdl->mesh->mesh.getVao();
+            std::vector<Model*> models;
+            std::vector<gl::DrawInfo> draw_list;
+            editorState().selected_object->findAllRecursive(models);
+            for(auto m : models) {
+                for(size_t i = 0; i < m->segmentCount(); ++i) {
+                    Model::Segment& seg = m->getSegment(i);
+                    gl::DrawInfo di = { 0 };
+                    di.index_count = seg.mesh->mesh.getIndexCount();
+                    di.offset = 0;
+                    memcpy(di.transform, (float*)&m->getObject()->get<Transform>()->getTransform(), sizeof(di.transform));
+                    di.vao = seg.mesh->mesh.getVao();
 
-                gl::draw(
-                    fb_silhouette.getId(), 
-                    prog_silhouette->getId(), 
-                    sz.x, sz.y,
-                    prog_silhouette->getUniform("mat_projection"),
-                    (float*)&proj,
-                    prog_silhouette->getUniform("mat_view"),
-                    (float*)&view,
-                    prog_silhouette->getUniform("mat_model"),
-                    &di,
-                    1
-                );
-            } else {
-                fb_silhouette.bind();
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                    draw_list.emplace_back(di);
+                }
             }
+
+            gl::draw(
+                fb_silhouette.getId(), 
+                prog_silhouette->getId(), 
+                sz.x, sz.y,
+                prog_silhouette->getUniform("mat_projection"),
+                (float*)&proj,
+                prog_silhouette->getUniform("mat_view"),
+                (float*)&view,
+                prog_silhouette->getUniform("mat_model"),
+                draw_list.data(),
+                draw_list.size()
+            );
         } else {
             fb_silhouette.bind();
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -459,7 +458,7 @@ public:
                 }
                 if(pick_candidate) {
                     LOG("Pick candidate: " << pick_candidate);
-
+                    /*
                     if(has_suffix(fname, ".mat")) {
                         Model* mdl = pick_candidate->find<Model>();
                         if(mdl) {
@@ -491,6 +490,7 @@ public:
                             mdl->material = getResource<Material>(fname + ".mat");
                         }
                     }
+                    */
                 }
                 if(has_suffix(fname, ".fbx")) {
                     SceneObject* new_so = scene->createObject();

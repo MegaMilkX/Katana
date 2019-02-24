@@ -68,6 +68,7 @@ public:
     }
 
     void makeFromModel(Model* mdl) {
+        /*
         if(mdl->mesh) {
             vertices.clear();
             indices.clear();
@@ -89,7 +90,7 @@ public:
             }
 
             makeMesh();
-        }
+        }*/
     }
 
     virtual void _editorGui() {

@@ -1,5 +1,5 @@
 R"(#version 450
-#define MAX_BONE_COUNT 100
+#define MAX_BONE_COUNT 110
 in vec3 Position;
 in vec2 UV;
 in vec3 Normal;

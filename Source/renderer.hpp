@@ -16,6 +16,8 @@
 
 #include "data_headers/icon_light_64.png.h"
 
+#define SKIN_BONE_LIMIT 128
+
 inline void drawQuad()
 {
     std::vector<float> vertices = {
@@ -183,48 +185,54 @@ public:
 
     void collectDrawLists(std::vector<gl::DrawInfo>& draw_list_solid, std::vector<gl::DrawInfo>& draw_list_skin) {
         for(auto kv : objects) {
-            if(!kv.second.mdl) {
+            Model* model = kv.second.mdl;
+            Skin* skin = kv.second.skin;
+
+            if(!model) {
                 continue;
             }
-            if(!kv.second.mdl->mesh) {
-                continue;
-            }
 
-            gl::DrawInfo draw_info = { 0 };
-            draw_info.vao = kv.second.mdl->mesh->mesh.getVao();
-            draw_info.index_count = kv.second.mdl->mesh->mesh.getIndexCount();
-            draw_info.offset = 0;
-            memcpy(draw_info.transform, (void*)&kv.second.mdl->getObject()->get<Transform>()->getTransform(), sizeof(draw_info.transform)); 
-            
-            draw_info.textures[0] = texture_white_px->GetGlName();
-            draw_info.textures[1] = texture_normal_px->GetGlName();
-            draw_info.textures[2] = texture_black_px->GetGlName();
-            draw_info.textures[3] = texture_white_px->GetGlName();
+            for(size_t i = 0; i < model->segmentCount(); ++i) {
+                Model::Segment& seg = model->getSegment(i);
 
-            if(kv.second.mdl->material) {
-                Texture2D* tex = kv.second.mdl->material->albedo.get();
-                if(tex) {
-                    draw_info.textures[0] = tex->GetGlName();
-                }
-                tex = kv.second.mdl->material->normal.get();
-                if(tex) {
-                    draw_info.textures[1] = tex->GetGlName();
-                }
-                tex = kv.second.mdl->material->metallic.get();
-                if(tex) {
-                    draw_info.textures[2] = tex->GetGlName();
-                }
-                tex = kv.second.mdl->material->roughness.get();
-                if(tex) {
-                    draw_info.textures[3] = tex->GetGlName();
-                }
-            }
+                if(!seg.mesh) continue;
 
-            if(kv.second.skin) {
-                draw_info.user_ptr = (uint64_t)kv.second.skin;
-                draw_list_skin.emplace_back(draw_info);
-            } else {
-                draw_list_solid.emplace_back(draw_info);
+                gl::DrawInfo draw_info = { 0 };
+                draw_info.vao = seg.mesh->mesh.getVao();
+                draw_info.index_count = seg.mesh->mesh.getIndexCount();
+                draw_info.offset = 0;
+                memcpy(draw_info.transform, (void*)&model->getObject()->get<Transform>()->getTransform(), sizeof(draw_info.transform));
+
+                draw_info.textures[0] = texture_white_px->GetGlName();
+                draw_info.textures[1] = texture_normal_px->GetGlName();
+                draw_info.textures[2] = texture_black_px->GetGlName();
+                draw_info.textures[3] = texture_white_px->GetGlName();
+
+                if(seg.material) {
+                    Texture2D* tex = seg.material->albedo.get();
+                    if(tex) {
+                        draw_info.textures[0] = tex->GetGlName();
+                    }
+                    tex = seg.material->normal.get();
+                    if(tex) {
+                        draw_info.textures[1] = tex->GetGlName();
+                    }
+                    tex = seg.material->metallic.get();
+                    if(tex) {
+                        draw_info.textures[2] = tex->GetGlName();
+                    }
+                    tex = seg.material->roughness.get();
+                    if(tex) {
+                        draw_info.textures[3] = tex->GetGlName();
+                    }
+                }
+
+                if(skin) {
+                    draw_info.user_ptr = (uint64_t)&skin->getSegment(i);
+                    draw_list_skin.emplace_back(draw_info);
+                } else {
+                    draw_list_solid.emplace_back(draw_info);
+                }
             }
         }
     }
@@ -255,7 +263,7 @@ public:
         glUniformMatrix4fv(prog->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
         for(size_t i = 0; i < draw_list.size(); ++i) {
             gl::DrawInfo& d = draw_list[i];
-            Skin* skin = (Skin*)d.user_ptr;
+            Skin::Segment* skin = (Skin::Segment*)d.user_ptr;
 
             for(unsigned t = 0; t < sizeof(d.textures) / sizeof(d.textures[0]); ++t) {
                 glActiveTexture(GL_TEXTURE0 + t);
@@ -274,14 +282,14 @@ public:
             GLuint loc = prog->getUniform("inverseBindPose[0]");
             glUniformMatrix4fv(
                 loc,
-                (std::min)((unsigned)100, (unsigned)inverse_bind_transforms.size()),
+                (std::min)((unsigned)SKIN_BONE_LIMIT, (unsigned)inverse_bind_transforms.size()),
                 GL_FALSE,
                 (GLfloat*)inverse_bind_transforms.data()
             );
             loc = prog->getUniform("bones[0]");
             glUniformMatrix4fv(
                 loc,
-                (std::min)((unsigned)100, (unsigned)skin_transforms.size()),
+                (std::min)((unsigned)SKIN_BONE_LIMIT, (unsigned)skin_transforms.size()),
                 GL_FALSE,
                 (GLfloat*)skin_transforms.data()
             );
@@ -399,22 +407,27 @@ public:
         }
     }
 
-    void drawPickBuffer(gl::FrameBuffer* fb, gfxm::mat4 projection, gfxm::mat4 view) {
+    void drawPickBuffer(gfxm::mat4 projection, gfxm::mat4 view) {
         int w = fb->getWidth();
         int h = fb->getHeight();
 
         std::vector<gl::DrawInfo> draw_list;
         for(auto kv : objects) {
-            if(!kv.second.mdl) continue;
-            if(!kv.second.mdl->mesh) continue;
-            
-            gl::DrawInfo draw_info = { 0 };
-            draw_info.vao = kv.second.mdl->mesh->mesh.getVao();
-            draw_info.index_count = kv.second.mdl->mesh->mesh.getIndexCount();
-            draw_info.offset = 0;
-            memcpy(draw_info.transform, (void*)&kv.second.mdl->getObject()->get<Transform>()->getTransform(), sizeof(draw_info.transform)); 
-            draw_info.user_ptr = (uint64_t)kv.second.mdl->getObject()->getId();
-            draw_list.emplace_back(draw_info);
+            Model* model = kv.second.mdl;
+            if(!model) continue;
+
+            for(size_t i = 0; i < model->segmentCount(); ++i) {
+                Model::Segment& seg = model->getSegment(i);
+                if(!seg.mesh) continue;
+                
+                gl::DrawInfo draw_info = { 0 };
+                draw_info.vao = seg.mesh->mesh.getVao();
+                draw_info.index_count = seg.mesh->mesh.getIndexCount();
+                draw_info.offset = 0;
+                memcpy(draw_info.transform, (void*)&model->getObject()->get<Transform>()->getTransform(), sizeof(draw_info.transform)); 
+                draw_info.user_ptr = (uint64_t)model->getObject()->getId();
+                draw_list.emplace_back(draw_info);
+            }
         }
 
         glEnable(GL_DEPTH_TEST);
@@ -474,6 +487,8 @@ private:
     std::set<LightOmni*> lights_omni;
 
     Texture2D tex_icon_light_64;
+
+    gl::FrameBuffer fb_pick;
 };
 
 #endif

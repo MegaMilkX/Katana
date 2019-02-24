@@ -40,6 +40,8 @@ public:
     template<typename T>
     T*              find();
     Component*      find(const std::string& type);
+    template<typename T>
+    void            findAllRecursive(std::vector<T*>& out);
     void            removeComponent(rttr::type t);
     void            removeComponents();
     SceneObject*    createChild();
@@ -86,6 +88,17 @@ T* SceneObject::find() {
         return 0;
     }
     return (T*)components[rttr::type::get<T>()];
+}
+
+template<typename T>
+void SceneObject::findAllRecursive(std::vector<T*>& out) {
+    if(!scene) return;
+    if(components.count(rttr::type::get<T>())) {
+        out.emplace_back((T*)components[rttr::type::get<T>()]);
+    }
+    for(auto c : children) {
+        c->findAllRecursive<T>(out);
+    }
 }
 
 #endif

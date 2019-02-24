@@ -10,14 +10,39 @@
 class Skin : public Component {
     CLONEABLE
 public:
-    // TODO: Change bone reference method?
-    SceneObject* skeleton_root = 0;
-    std::vector<Transform*> bones;
-    std::vector<gfxm::mat4> bind_pose;
+    struct Segment {
+        SceneObject* skeleton_root = 0;
+        std::vector<Transform*> bones;
+        std::vector<gfxm::mat4> bind_pose;
+    };
 
-    Skin() {}
+    std::vector<Segment> segments;
+
+    Segment& getSegment(size_t i) {
+        if(i >= segments.size()) {
+            segments.resize(i + 1);
+        }
+        return segments[i];
+    }
+
+    size_t segmentCount() const {
+        return segments.size();
+    }
 
     void onClone(Skin* other) {
+        segments.resize(other->segments.size());
+        for(size_t i = 0; i < other->segments.size(); ++i) {
+            segments[i].bind_pose = other->segments[i].bind_pose;
+            segments[i].skeleton_root = getScene()->getRootObject()->findObject(other->segments[i].skeleton_root->getName());
+            if(segments[i].skeleton_root) {
+                segments[i].bones.resize(other->segments[i].bones.size());
+                for(size_t j = 0; j < other->segments[i].bones.size(); ++j) {
+                    if(!other->segments[i].bones[j]) continue;
+                    segments[i].bones[j] = segments[i].skeleton_root->findObject(other->segments[i].bones[j]->getObject()->getName())->get<Transform>();
+                }
+            }
+        }
+        /*
         if(!other || !other->skeleton_root) return;
 
         LOG("OTHER SKEL ROOT: " << other->skeleton_root->getName());
@@ -30,10 +55,11 @@ public:
                 if(!other->bones[i]) continue;
                 bones[i] = skeleton_root->findObject(other->bones[i]->getObject()->getName())->get<Transform>();
             }
-        }
+        }*/
     }
 
     virtual void serialize(std::ostream& out) {
+        /*
         if(skeleton_root) {
             wt_string(out, skeleton_root->getName());
         } else {
@@ -48,9 +74,10 @@ public:
                 wt_string(out, "");
             }
             write(out, bind_pose[i]);
-        }
+        }*/
     }
     virtual void deserialize(std::istream& in, size_t sz) {
+        /*
         std::string skel_root_name = rd_string(in);
         skeleton_root = getObject()->getScene()->getRootObject()->findObject(skel_root_name);
 
@@ -63,10 +90,11 @@ public:
                 bones[i] = skeleton_root->findObject(bone_name)->get<Transform>();
             }
             bind_pose[i] = read<gfxm::mat4>(in);
-        }
+        }*/
     }
 
     virtual void _editorGui() {
+        /*
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
         ImGui::Text("Bones");
         ImGui::BeginChild("Bones", ImVec2(0, 260), false, window_flags);
@@ -74,6 +102,7 @@ public:
             ImGui::Text(t->getObject()->getName().c_str());
         }
         ImGui::EndChild();
+        */
     }
 };
 STATIC_RUN(Skin)
