@@ -75,6 +75,7 @@ void Scene::removeObject(SceneObject* so) {
         }
         (*it)->removeComponents();
         objects.erase(it);
+        refreshObjectIds();
     }
 }
 

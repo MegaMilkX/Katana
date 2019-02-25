@@ -105,6 +105,14 @@ void SceneObject::setParent(SceneObject* so) {
     }
 }
 
+SceneObject* SceneObject::getTopObject() {
+    if(getParent() == getScene()->getRootObject() || getParent() == 0) {
+        return this;
+    } else {
+        return getParent()->getTopObject();
+    }
+}
+
 void SceneObject::cloneFrom(SceneObject* other) {
     if(!scene) return;
     removeComponents();

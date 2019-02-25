@@ -32,30 +32,34 @@ public:
     }
 
     virtual void serialize(std::ostream& out) {
-        /*
-        std::string mesh_name = "";
-        std::string mat_name = "";
-        if(mesh) mesh_name = mesh->Name();
-        if(material) mat_name = material->Name();
+        write<uint32_t>(out, segmentCount());
+        for(size_t i = 0; i < segmentCount(); ++i) {
+            std::string mesh_name = "";
+            std::string mat_name = "";
+            if(getSegment(i).mesh) mesh_name = getSegment(i).mesh->Name();
+            if(getSegment(i).material) mat_name = getSegment(i).material->Name();
 
-        wt_string(out, mesh_name);
-        wt_string(out, mat_name);
-        */
+            wt_string(out, mesh_name);
+            write<uint64_t>(out, 0); // Reserved
+            wt_string(out, mat_name);
+        }
     }
     virtual void deserialize(std::istream& in, size_t sz) {
-        /*
-        std::string mesh_name = "";
-        std::string mat_name = "";
+        uint32_t seg_count = read<uint32_t>(in);
+        for(uint32_t i = 0; i < seg_count; ++i) {
+            std::string mesh_name = "";
+            std::string mat_name = "";
 
-        mesh_name = rd_string(in);
-        mat_name = rd_string(in);
-        if(!mesh_name.empty()) {
-            mesh = getResource<Mesh>(mesh_name);
+            mesh_name = rd_string(in);
+            uint64_t reserved = read<uint64_t>(in);
+            mat_name = rd_string(in);
+            if(!mesh_name.empty()) {
+                getSegment(i).mesh = getResource<Mesh>(mesh_name);
+            }
+            if(!mat_name.empty()) {
+                getSegment(i).material = getResource<Material>(mat_name);
+            }
         }
-        if(!mat_name.empty()) {
-            material = getResource<Material>(mat_name);
-        }
-        */
     }
 
     virtual void _editorGui() {

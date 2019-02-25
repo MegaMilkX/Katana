@@ -219,10 +219,39 @@ public:
             "ResetEditorCam",
             [this](){
                 gfxm::vec3 resetPos(0.0f, 0.0f, 0.0f);
+                float zoom = 1.0f;
                 if(editorState().selected_object) {
-                    resetPos = editorState().selected_object->get<Transform>()->worldPosition();
-                }
+                    std::vector<Model*> models;
+                    editorState().selected_object->findAllRecursive(models);
+                    gfxm::vec3 median_point;
+                    float radius = 1.0f;
+                    bool first = true;
+
+                    median_point = editorState().selected_object->get<Transform>()->getTransform() * gfxm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
+                    for(auto m : models) {
+                        for(size_t i = 0; i < m->segmentCount(); ++i) {
+                            if(!m->getSegment(i).mesh) continue;
+                            gfxm::mat4 world_transform = m->getObject()->get<Transform>()->getTransform();
+                            gfxm::vec3 mpt = gfxm::lerp(m->getSegment(i).mesh->aabb.from, m->getSegment(i).mesh->aabb.to, 0.5f);
+                            mpt = world_transform * gfxm::vec4(mpt.x, mpt.y, mpt.z, 1.0f);
+                            if(!first)
+                                median_point = gfxm::lerp(median_point, mpt, 0.5f);
+                            else 
+                                median_point = mpt;
+                            first = false;
+
+                            gfxm::vec3 diag = m->getSegment(i).mesh->aabb.to - m->getSegment(i).mesh->aabb.from;
+                            diag = world_transform * gfxm::vec4(diag.x, diag.y, diag.z, 0.0f);
+                            float r = gfxm::length(diag);
+                            if(radius < r) radius = r;
+                        }
+                    }
+                    resetPos = median_point;
+                    zoom = radius;
+                } 
                 cam_pivot = resetPos;
+                cam_zoom = zoom;
             }
         );
 
@@ -239,6 +268,9 @@ public:
     float cam_angle_x = gfxm::radian(-25.0f);
     float cam_zoom = 5.0f;
     gfxm::vec3 cam_pivot;
+
+    gfxm::vec3 cam_pos;
+    float cam_zoom_actual = 0.0f;
 
     ~EditorViewport() {
         input().removeListener(input_lis);
@@ -285,10 +317,12 @@ public:
 
         gfxm::mat4 proj = gfxm::perspective(gfxm::radian(45.0f), sz.x/(float)sz.y, 0.01f, 1000.0f);
         gfxm::transform tcam;
-        tcam.position(cam_pivot);
+        cam_pos = gfxm::lerp(cam_pos, cam_pivot, 0.2f);
+        cam_zoom_actual = gfxm::lerp(cam_zoom_actual, cam_zoom, 0.2f);
+        tcam.position(cam_pos);
         tcam.rotate(cam_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
         tcam.rotate(cam_angle_x, tcam.right());
-        tcam.translate(tcam.back() * cam_zoom);
+        tcam.translate(tcam.back() * cam_zoom_actual);
         gfxm::mat4 view = gfxm::inverse(tcam.matrix()); 
 
         renderer->draw(&g_buffer, &frame_buffer, proj, view);
@@ -357,11 +391,7 @@ public:
             sz.y - (cursor_pos.y - (int)imguiWindowCorner.y)
         );
         
-        renderer->drawPickBuffer(
-            &fb_pick,
-            proj,
-            view
-        );
+        renderer->drawPickBuffer(vp_size.x, vp_size.y, proj, view);
 
         ImGuizmo::SetRect((float)imguiWindowCorner.x, (float)imguiWindowCorner.y, (float)sz.x, (float)sz.y);
 
@@ -379,34 +409,22 @@ public:
             }
         }
 
-        SceneObject* pick_candidate = 0;
+        Renderer::PickInfo pick_info = { 0 };
         if(ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem | ImGuiHoveredFlags_AllowWhenOverlapped) &&
             (lcl_cursor.x >= 0 && lcl_cursor.y >= 0)
         ) {
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, fb_pick.getId());
-            glReadBuffer(GL_COLOR_ATTACHMENT0);
-            char pixel[3];
-            glReadPixels(lcl_cursor.x, lcl_cursor.y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, (void*)&pixel);
-            glReadBuffer(GL_NONE);
-
-            int picked_index = pixel[0] + pixel[1] * 256 + pixel[2] * 256 * 256;
-            if(picked_index != -65793) {
-                if(this->scene) {
-                    if(picked_index < this->scene->objectCount()) {
-                        pick_candidate = this->scene->getObject(picked_index);
-                    }
-                }
-            } else {
-                pick_candidate = 0;
-            }
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+            pick_info = renderer->pick(lcl_cursor.x, lcl_cursor.y);
         }
 
         if(io.MouseClicked[0] && !using_gizmo &&
             ImGui::IsWindowHovered() &&
-            (lcl_cursor.x >= 0 && lcl_cursor.y >= 0)) {
-            editorState().selected_object = pick_candidate;
+            (lcl_cursor.x >= 0 && lcl_cursor.y >= 0)) 
+        {
+            if(pick_info.object && (editorState().selected_object != pick_info.object->getTopObject())) {
+                editorState().selected_object = pick_info.object->getTopObject();
+            } else {
+                editorState().selected_object = pick_info.object;
+            }
         }
 
         GLuint color_tex = fb_fin.getTextureId(0);//frame_buffer.getTextureId(0);
@@ -456,13 +474,11 @@ public:
                 for(size_t i = 0; i < fname.size(); ++i) {
                     fname[i] = (std::tolower(fname[i]));
                 }
-                if(pick_candidate) {
-                    LOG("Pick candidate: " << pick_candidate);
-                    /*
+                if(pick_info.object) {
                     if(has_suffix(fname, ".mat")) {
-                        Model* mdl = pick_candidate->find<Model>();
+                        Model* mdl = pick_info.object->find<Model>();
                         if(mdl) {
-                            mdl->material = getResource<Material>(fname);
+                            mdl->getSegment(pick_info.mesh_segment).material = getResource<Material>(fname);
                         }
                     } else if(has_suffix(fname, ".jpg") ||
                         has_suffix(fname, ".jpeg") ||
@@ -485,12 +501,11 @@ public:
                             DataSourceRef(new DataSourceFilesystem(get_module_dir() + "\\" + fname + ".mat"))
                         );
 
-                        Model* mdl = pick_candidate->find<Model>();
+                        Model* mdl = pick_info.object->find<Model>();
                         if(mdl) {
-                            mdl->material = getResource<Material>(fname + ".mat");
+                            mdl->getSegment(pick_info.mesh_segment).material = getResource<Material>(fname + ".mat");
                         }
                     }
-                    */
                 }
                 if(has_suffix(fname, ".fbx")) {
                     SceneObject* new_so = scene->createObject();

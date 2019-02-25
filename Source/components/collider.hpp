@@ -68,6 +68,42 @@ public:
     }
 
     void makeFromModel(Model* mdl) {
+        vertices.clear();
+        indices.clear();
+        for(size_t i = 0; i < mdl->segmentCount(); ++i) {
+            Model::Segment& seg = mdl->getSegment(i);
+            std::vector<gfxm::vec3> temp_vertices;
+            std::vector<uint32_t> temp_indices;
+
+            if(!seg.mesh) continue;
+
+            auto msh = seg.mesh;
+            temp_vertices.resize(msh->mesh.getAttribDataSize(gl::POSITION) / sizeof(gfxm::vec3));
+            msh->mesh.copyAttribData(gl::POSITION, temp_vertices.data());
+
+            temp_indices.resize(msh->mesh.getIndexDataSize() / sizeof(uint32_t));
+            msh->mesh.copyIndexData(temp_indices.data());
+
+            for(size_t j = 0; j < temp_indices.size(); ++j) {
+                temp_indices[j] += vertices.size();
+            }
+
+            vertices.insert(vertices.end(), temp_vertices.begin(), temp_vertices.end());
+            indices.insert(indices.end(), temp_indices.begin(), temp_indices.end());
+        }
+
+        if(!indices.empty() && !vertices.empty()) {
+            gfxm::mat4 t = 
+                gfxm::to_mat4(
+                    gfxm::to_mat3(mdl->getObject()->get<Transform>()->getTransform())
+                );
+            for(auto& v : vertices) {
+                gfxm::vec4 v4 = gfxm::vec4(v.x, v.y, v.z, 1.0f);
+                v = t * v4;
+            }
+
+            makeMesh();
+        }
         /*
         if(mdl->mesh) {
             vertices.clear();

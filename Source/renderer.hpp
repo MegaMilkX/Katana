@@ -66,6 +66,11 @@ public:
         Skin* skin = 0;
     };
 
+    struct PickInfo {
+        SceneObject* object;
+        size_t mesh_segment;
+    };
+
     Renderer()
     : scene(0) {
         texture_white_px.reset(new Texture2D());
@@ -140,8 +145,10 @@ public:
             #include "shaders/f_pick.glsl"
         );
         if(!prog_pick) {
-            LOG_ERR("Failed to get SOLID shader program");
+            LOG_ERR("Failed to get prog_pick shader program");
         }
+
+        fb_pick.pushBuffer(GL_RGB, GL_UNSIGNED_BYTE);
     }
 
     virtual void onCreateComponent(Model* mdl) {
@@ -407,11 +414,19 @@ public:
         }
     }
 
-    void drawPickBuffer(gfxm::mat4 projection, gfxm::mat4 view) {
+    void drawPickBuffer(int width, int height, gfxm::mat4 projection, gfxm::mat4 view) {
+        pick_array.clear();
+
+        gl::FrameBuffer* fb = &fb_pick;
+
+        if(fb->getWidth() != width || fb->getHeight() != height) {
+            fb->reinitBuffers(width, height);
+        }
         int w = fb->getWidth();
         int h = fb->getHeight();
 
         std::vector<gl::DrawInfo> draw_list;
+        uint64_t pick_index = 0;
         for(auto kv : objects) {
             Model* model = kv.second.mdl;
             if(!model) continue;
@@ -425,9 +440,12 @@ public:
                 draw_info.index_count = seg.mesh->mesh.getIndexCount();
                 draw_info.offset = 0;
                 memcpy(draw_info.transform, (void*)&model->getObject()->get<Transform>()->getTransform(), sizeof(draw_info.transform)); 
-                draw_info.user_ptr = (uint64_t)model->getObject()->getId();
+                draw_info.user_ptr = pick_index;
                 draw_list.emplace_back(draw_info);
+
+                pick_array.emplace_back(PickInfo{model->getObject(), i});
             }
+            ++pick_index;
         }
 
         glEnable(GL_DEPTH_TEST);
@@ -460,12 +478,39 @@ public:
         gl::bindTexture2d(gl::TEXTURE_DIFFUSE, tex_icon_light_64.GetGlName());
         for(auto l : lights_omni) {
             glUniformMatrix4fv(prog_billboard_sprite_pick->getUniform("mat_model"), 1, GL_FALSE, (float*)&l->get<Transform>()->getTransform());
-            int r = (l->getObject()->getId() & 0x000000FF) >>  0;
-            int g = (l->getObject()->getId() & 0x0000FF00) >>  8;
-            int b = (l->getObject()->getId() & 0x00FF0000) >> 16;  
+            int r = (pick_index & 0x000000FF) >>  0;
+            int g = (pick_index & 0x0000FF00) >>  8;
+            int b = (pick_index & 0x00FF0000) >> 16;  
             glUniform4f(prog_billboard_sprite_pick->getUniform("object_ptr"), r/255.0f, g/255.0f, b/255.0f, 1.0f);
             drawQuad();
+            ++pick_index;
         }
+
+        for(auto l : lights_omni) {
+            pick_array.emplace_back(PickInfo{ l->getObject(), 0 });
+        }
+    }
+
+    PickInfo pick(unsigned x, unsigned y) {
+        PickInfo info = { 0 };
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, fb_pick.getId());
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        char pixel[3];
+        glReadPixels(x, y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, (void*)&pixel);
+        glReadBuffer(GL_NONE);
+
+        int picked_index = pixel[0] + pixel[1] * 256 + pixel[2] * 256 * 256;
+        if(picked_index != -65793) {
+            if(scene) {
+                if(picked_index < pick_array.size()) {
+                    info = pick_array[picked_index];
+                }
+            }
+        }
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        return info;
     }
 private:
     Scene* scene;
@@ -489,6 +534,7 @@ private:
     Texture2D tex_icon_light_64;
 
     gl::FrameBuffer fb_pick;
+    std::vector<PickInfo> pick_array;
 };
 
 #endif

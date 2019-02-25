@@ -157,6 +157,7 @@ public:
             if(vec[i].get() == c) {
                 triggerProbeOnRemoveRecursive(type, c);
                 vec.erase(vec.begin() + i);
+                refreshComponentIds(type);
                 return;
             }
         }
@@ -350,6 +351,17 @@ private:
     }
     Scene(const Scene& other) {}
     void operator=(const Scene& other) {}
+
+    void refreshObjectIds() {
+        for(size_t i = 0; i < objects.size(); ++i) {
+            objects[i]->id = i;
+        }
+    }
+    void refreshComponentIds(rttr::type type) {
+        for(size_t i = 0; i < components[type].size(); ++i) {
+            components[type][i]->id = i;
+        }
+    }
 
     void triggerProbeOnCreateRecursive(rttr::type type, Component* c) {
         auto types = type.get_base_classes();

@@ -7,12 +7,27 @@
 class Mesh : public Resource {
 public:
     gl::IndexedMesh mesh;
+    gfxm::aabb aabb;
 
     virtual void serialize(std::ostream& out) {
         mesh.serialize(out);
     }
     virtual bool deserialize(std::istream& in, size_t sz) { 
         mesh.deserialize(in);
+
+        std::vector<gfxm::vec3> vertices;
+        vertices.resize(mesh.getAttribDataSize(gl::POSITION) / sizeof(gfxm::vec3));
+        mesh.copyAttribData(gl::POSITION, vertices.data());
+
+        for(auto v : vertices) {
+            if(v.x < aabb.from.x) aabb.from.x = v.x;
+            if(v.y < aabb.from.y) aabb.from.y = v.y;
+            if(v.z < aabb.from.z) aabb.from.z = v.z;
+            if(v.x > aabb.to.x) aabb.to.x = v.x;
+            if(v.y > aabb.to.y) aabb.to.y = v.y;
+            if(v.z > aabb.to.z) aabb.to.z = v.z;
+        }
+
         return true; 
     }
 };

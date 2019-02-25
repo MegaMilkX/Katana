@@ -51,6 +51,8 @@ public:
     SceneObject*    getParent();
     void            setParent(SceneObject* so);
 
+    SceneObject*    getTopObject();
+
     void            cloneFrom(SceneObject* other);
 
     SceneObject*    findObject(const std::string& name);

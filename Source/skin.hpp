@@ -42,55 +42,45 @@ public:
                 }
             }
         }
-        /*
-        if(!other || !other->skeleton_root) return;
-
-        LOG("OTHER SKEL ROOT: " << other->skeleton_root->getName());
-
-        bind_pose = other->bind_pose;
-        skeleton_root = getScene()->getRootObject()->findObject(other->skeleton_root->getName());
-        if(skeleton_root) {
-            bones.resize(other->bones.size());
-            for(size_t i = 0; i < other->bones.size(); ++i) {
-                if(!other->bones[i]) continue;
-                bones[i] = skeleton_root->findObject(other->bones[i]->getObject()->getName())->get<Transform>();
-            }
-        }*/
     }
 
     virtual void serialize(std::ostream& out) {
-        /*
-        if(skeleton_root) {
-            wt_string(out, skeleton_root->getName());
-        } else {
-            wt_string(out, "");
-        }
-
-        write(out, (uint32_t)bones.size());
-        for(size_t i = 0; i < bones.size(); ++i) {
-            if(bones[i]) {
-                wt_string(out, bones[i]->getObject()->getName());
+        write<uint32_t>(out, segmentCount());
+        for(size_t i = 0; i < segmentCount(); ++i) {
+            if(getSegment(i).skeleton_root) {
+                wt_string(out, getSegment(i).skeleton_root->getName());
             } else {
                 wt_string(out, "");
             }
-            write(out, bind_pose[i]);
-        }*/
+
+            write(out, (uint32_t)getSegment(i).bones.size());
+            for(size_t j = 0; j < getSegment(i).bones.size(); ++j) {
+                if(getSegment(i).bones[j]) {
+                    wt_string(out, getSegment(i).bones[j]->getObject()->getName());
+                } else {
+                    wt_string(out, "");
+                }
+                write(out, getSegment(i).bind_pose[j]);
+            }    
+        }
     }
     virtual void deserialize(std::istream& in, size_t sz) {
-        /*
-        std::string skel_root_name = rd_string(in);
-        skeleton_root = getObject()->getScene()->getRootObject()->findObject(skel_root_name);
+        uint32_t seg_count = read<uint32_t>(in);
+        for(uint32_t i = 0; i < seg_count; ++i) {
+            std::string skel_root_name = rd_string(in);
+            getSegment(i).skeleton_root = getObject()->getScene()->getRootObject()->findObject(skel_root_name);
 
-        uint32_t bone_count = read<uint32_t>(in);
-        bones.resize(bone_count);
-        bind_pose.resize(bone_count);
-        for(uint32_t i = 0; i < bone_count; ++i) {
-            std::string bone_name = rd_string(in);
-            if(skeleton_root) {
-                bones[i] = skeleton_root->findObject(bone_name)->get<Transform>();
+            uint32_t bone_count = read<uint32_t>(in);
+            getSegment(i).bones.resize(bone_count);
+            getSegment(i).bind_pose.resize(bone_count);
+            for(uint32_t j = 0; j < bone_count; ++j) {
+                std::string bone_name = rd_string(in);
+                if(getSegment(i).skeleton_root) {
+                    getSegment(i).bones[j] = getSegment(i).skeleton_root->findObject(bone_name)->get<Transform>();
+                }
+                getSegment(i).bind_pose[j] = read<gfxm::mat4>(in);
             }
-            bind_pose[i] = read<gfxm::mat4>(in);
-        }*/
+        }
     }
 
     virtual void _editorGui() {

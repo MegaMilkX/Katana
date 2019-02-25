@@ -157,6 +157,19 @@ struct tray
 	tvec3<T> direction;
 };
 
+template<typename T>
+struct taabb 
+{
+    taabb(){}
+    taabb(const tvec3<T>& from, const tvec3<T>& to)
+    : from(from), to(to) {}
+    taabb(float ax, float ay, float az, float bx, float by, float bz)
+    : from(ax, ay, az), to(bx, by, bz) {}
+
+    tvec3<T> from;
+    tvec3<T> to;
+};
+
 typedef tvec2<float> vec2;
 typedef tvec2<int> ivec2;
 typedef tvec2<double> dvec2;
@@ -180,6 +193,9 @@ typedef tmat4<double> dmat4;
 
 typedef tray<float> ray;
 typedef tray<double> dray;
+
+typedef taabb<float> aabb;
+typedef taabb<double> daabb;
 
 // ====== Functions ======
 
