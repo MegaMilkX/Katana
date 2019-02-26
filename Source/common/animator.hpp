@@ -128,6 +128,7 @@ public:
             );
         }
 
+        /*
         if(layers.empty() || anims.empty()) {
             for(size_t i = 0; i < sample_buffer.size(); ++i) {
                 auto& m = bone_transforms[i];
@@ -142,14 +143,18 @@ public:
                     gfxm::to_mat4(s.r) * 
                     gfxm::scale(gfxm::mat4(1.0f), s.s);
             }
-        }
+        }*/
 
         // TODO: Optimize
         for(size_t i = 0; i < skeleton->boneCount(); ++i) {
             Skeleton::Bone& b = skeleton->getBone(i);
             auto so = getObject()->findObject(b.name);
             if(!so) continue;
-            so->get<Transform>()->setTransform(bone_transforms[i]);
+            Transform* trans = so->get<Transform>();
+            trans->position(sample_buffer[i].t);
+            trans->rotation(sample_buffer[i].r);
+            trans->scale(sample_buffer[i].s);
+            //so->get<Transform>()->setTransform(bone_transforms[i]);
         }
 
         // Update root motion target
@@ -348,6 +353,15 @@ public:
             }
             if(ImGui::Checkbox("Looping", &anims[selected_anim_index].looping)) {
             }
+            if(ImGui::Button("Remove anim")) {
+                anims.erase(anims.begin() + selected_anim_index);
+                for(auto l : layers) {
+                    if(l.anim_index == selected_anim_index) {
+                        l.anim_index = 0;
+                    }
+                    selected_anim_index = 0;
+                }
+            }
         }
     }
 private:
@@ -377,6 +391,18 @@ private:
         for(size_t i = 0; i < skeleton->boneCount(); ++i) {
             Skeleton::Bone& b = skeleton->getBone(i);
             bone_transforms[i] = b.bind_pose;
+
+            gfxm::vec3 _position = gfxm::vec3(b.bind_pose[3].x, b.bind_pose[3].y, b.bind_pose[3].z);
+            gfxm::mat3 rotMat = gfxm::to_orient_mat3(b.bind_pose);
+            gfxm::quat _rotation = gfxm::to_quat(rotMat);
+            gfxm::vec3 right = b.bind_pose[0];
+            gfxm::vec3 up = b.bind_pose[1];
+            gfxm::vec3 back = b.bind_pose[2];
+            gfxm::vec3 _scale = gfxm::vec3(right.length(), up.length(), back.length());
+
+            sample_buffer[i].t = _position;
+            sample_buffer[i].r = _rotation;
+            sample_buffer[i].s = _scale;
         }
     }
 };

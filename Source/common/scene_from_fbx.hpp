@@ -167,11 +167,14 @@ inline void finalizeSkeleton(const aiScene* ai_scene, std::shared_ptr<Skeleton> 
     std::function<void(aiNode*, std::shared_ptr<Skeleton>)> finalizeBone;
     finalizeBone = [&finalizeBone](aiNode* node, std::shared_ptr<Skeleton> skel) {
         for(unsigned i = 0; i < node->mNumChildren; ++i) {
-            skel->addBone(node->mChildren[i]->mName.C_Str());
+            //skel->addBone(node->mChildren[i]->mName.C_Str());
             finalizeBone(node->mChildren[i], skel);
+            gfxm::mat4 t = gfxm::transpose(*(gfxm::mat4*)&node->mChildren[i]->mTransformation);
+            //LOG(node->mChildren[i]->mName.C_Str());
+            //LOG(t);
             skel->setDefaultPose(
                 node->mChildren[i]->mName.C_Str(), 
-                gfxm::transpose(*(gfxm::mat4*)&node->mChildren[i]->mTransformation)
+                t
             );
             skel->setParent(node->mChildren[i]->mName.C_Str(), node->mName.C_Str());
         }

@@ -1,11 +1,11 @@
 #include <iostream>
-#include "util/log.hpp"
+#include "../common/util/log.hpp"
 #include <glfw/glfw3.h>
 
 //#include "input/input_device_glfw_kb_mouse.hpp"
-#include "editor.hpp"
-#include "game.hpp"
-#include "editor_state.hpp"
+#include "../common/editor.hpp"
+#include "../common/game.hpp"
+#include "../common/editor_state.hpp"
 
 GLFWwindow* window = 0;
 Editor* editor = 0;
@@ -60,16 +60,16 @@ void cleanupWindow() {
     glfwTerminate();
 }
 
-#include "util/init_filesystem_resources.hpp"
+#include "../common/util/init_filesystem_resources.hpp"
 
-#include "input/input_mgr.hpp"
-#include "input/input_glfw.hpp"
+#include "../common/input/input_mgr.hpp"
+#include "../common/input/input_glfw.hpp"
 
-#include "shader_factory.hpp"
+#include "../common/shader_factory.hpp"
 
-#include "debug_draw.hpp"
+#include "../common/debug_draw.hpp"
 
-#include "event.hpp"
+#include "../common/event.hpp"
 
 int main() {
     initFilesystemResources(get_module_dir());
@@ -79,12 +79,6 @@ int main() {
     ShaderFactory::init();
 
     DebugDraw::getInstance()->init();
-
-    /*
-    InputKeyboardMouseWin32* keyboardWin32 = new InputKeyboardMouseWin32(window);
-    gInput.AddDevice(keyboardWin32);
-    gInput.Init();
-    */
 
     input().getTable().load(get_module_dir() + "\\bindings.json");
     initGlfwInputCallbacks(window, &input());

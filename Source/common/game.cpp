@@ -21,6 +21,34 @@ Scene* Game::getScene() {
     return scene;
 }
 
+void ValidateScale(SceneObject* so) {
+    gfxm::vec3 scl = so->get<Transform>()->scale();
+    if(gfxm::length(scl) < 0.000001f) {
+        LOG_WARN("ZERO SCALE: " << so->getName());
+    }
+    for(size_t i = 0; i < so->childCount(); ++i) {
+        ValidateScale(so->getChild(i));
+    }
+}
+
+void ValidateTransformUpwards(SceneObject* so) {
+    gfxm::vec3 pos = so->get<Transform>()->position();
+    gfxm::quat rot = so->get<Transform>()->rotation();
+    gfxm::vec3 scl = so->get<Transform>()->scale();
+    LOG(so->getName());
+    LOG(pos);
+    LOG(rot);
+    LOG(scl);
+
+    
+    if(gfxm::length(scl) < 0.000001f) {
+        LOG_WARN("ZERO WORLD SCALE: " << so->getName());
+    }
+    if(so->getParent()) {
+        ValidateTransformUpwards(so->getParent());
+    }
+}
+
 void Game::update(int w, int h) {
     DebugDraw::getInstance()->clear();
 
@@ -46,6 +74,11 @@ void Game::update(int w, int h) {
 
     renderer.draw(&g_buffer, 0, w, h, proj, view);
     //scene->getSceneComponent<PhysicsWorld>()->debugDraw();
+
+    //SceneObject* so = scene->getRootObject()->findObject("Cube");
+    //ValidateTransformUpwards(so);
+
+    //ValidateScale(scene->getRootObject());
 
     DebugDraw::getInstance()->draw(proj, view);
 }

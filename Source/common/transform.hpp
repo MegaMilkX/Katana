@@ -5,10 +5,13 @@
 #include "gfxm.hpp"
 #include <vector>
 
+#include "scene_object.hpp"
+#include "util/log.hpp"
+
 class Transform : public Component
 {
-    CLONEABLE_AUTO
-    //RTTR_ENABLE(Component)
+    CLONEABLE
+    RTTR_ENABLE(Component)
 public:
     Transform()
     : _position(0.0f, 0.0f, 0.0f),
@@ -16,6 +19,14 @@ public:
     _scale(1.0f, 1.0f, 1.0f),
     _dirty(true) { }
     ~Transform() {
+    }
+
+    void onClone(Transform* other) {
+        _position = other->_position;
+        _rotation = other->_rotation;
+        _scale = other->_scale;
+        _dirty = other->_dirty;
+        _transform = other->_transform;
     }
 
     void dirty();

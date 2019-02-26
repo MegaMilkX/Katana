@@ -14,6 +14,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+#include "../gfxm.hpp"
+
 class Log {
 public:
     enum Type {
@@ -144,5 +146,35 @@ static_cast<std::ostringstream&>(std::ostringstream() << LINE).str()
 #define LOG_WARN(LINE) Log::Write(MKSTR(LINE), Log::LOG_WARN);
 #define LOG_ERR(LINE) Log::Write(MKSTR(LINE), Log::LOG_ERROR);
 #define LOG_DBG(LINE) Log::Write(MKSTR(LINE), Log::LOG_DEBUG_INFO);
+
+inline std::ostream& operator<< (std::ostream& stream, const gfxm::vec2& v) {
+    stream << "[" << v.x << ", " << v.y << "]";
+    return stream;
+}
+inline std::ostream& operator<< (std::ostream& stream, const gfxm::vec3& v) {
+    stream << "[" << v.x << ", " << v.y << ", " << v.z << "]";
+    return stream;
+}
+inline std::ostream& operator<< (std::ostream& stream, const gfxm::vec4& v) {
+    stream << "[" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << "]";
+    return stream;
+}
+inline std::ostream& operator<< (std::ostream& stream, const gfxm::quat& v) {
+    stream << "[" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << "]";
+    return stream;
+}
+inline std::ostream& operator<< (std::ostream& stream, const gfxm::mat3& v) {
+    stream << v[0] << "\n" 
+        << v[1] << "\n"
+        << v[2];
+    return stream;
+}
+inline std::ostream& operator<< (std::ostream& stream, const gfxm::mat4& v) {
+    stream << v[0] << "\n" 
+        << v[1] << "\n"
+        << v[2] << "\n"
+        << v[3];
+    return stream;
+}
 
 #endif

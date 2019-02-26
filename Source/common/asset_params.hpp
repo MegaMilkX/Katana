@@ -53,7 +53,7 @@ public:
         }
         json j;
         toJson(j);
-        file << j;
+        file << j.dump(4);
     }
 
     void toJson(nlohmann::json& j) {
