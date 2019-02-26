@@ -5,6 +5,7 @@
 #include <map>
 #include <GLFW/glfw3.h>
 #include "input_mgr.hpp"
+#include "../lib/imgui_wrap.hpp"
 
 int64_t getGlfwKey(const std::string& key) {
     static std::map<std::string, int64_t> keys = {
@@ -75,7 +76,7 @@ inline void initGlfwInputCallbacks(GLFWwindow* window, InputMgr* input_mgr) {
     //glfwSetCursorPosCallback(window, &onGlfwMouseMove);
 }
 
-inline void updateGlfwInput() {
+inline void updateGlfwInput(GLFWwindow* window) {
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
     static double prev_pos[2] = { xpos, ypos };

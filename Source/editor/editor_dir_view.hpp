@@ -3,24 +3,24 @@
 
 #include "editor_window.hpp"
 
-#include "util/log.hpp"
+#include "../common/util/log.hpp"
 
 #include <stdlib.h>
 
-#include "resource/texture2d.h"
+#include "../common/resource/texture2d.h"
 
-#include "data_headers/file.png.h"
-#include "data_headers/jpg.png.h"
-#include "data_headers/json_file.png.h"
-#include "data_headers/png.png.h"
-#include "data_headers/txt.png.h"
-#include "data_headers/file16.png.h"
-#include "data_headers/jpg16.png.h"
-#include "data_headers/json_file16.png.h"
-#include "data_headers/png16.png.h"
-#include "data_headers/txt16.png.h"
+#include "../common/data_headers/file.png.h"
+#include "../common/data_headers/jpg.png.h"
+#include "../common/data_headers/json_file.png.h"
+#include "../common/data_headers/png.png.h"
+#include "../common/data_headers/txt.png.h"
+#include "../common/data_headers/file16.png.h"
+#include "../common/data_headers/jpg16.png.h"
+#include "../common/data_headers/json_file16.png.h"
+#include "../common/data_headers/png16.png.h"
+#include "../common/data_headers/txt16.png.h"
 
-#include "util/init_filesystem_resources.hpp"
+#include "../common/util/init_filesystem_resources.hpp"
 
 #include <cctype>
 

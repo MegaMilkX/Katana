@@ -2,7 +2,7 @@
 #define EDITOR_OBJECT_INSPECTOR_HPP
 
 #include "editor_window.hpp"
-#include "scene.hpp"
+#include "../common/scene.hpp"
 
 class EditorObjectInspector : public EditorWindow {
 public:

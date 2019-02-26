@@ -4,7 +4,7 @@
 #include "editor_window.hpp"
 #include "editor_viewport.hpp"
 
-#include "renderer.hpp"
+#include "../common/renderer.hpp"
 
 class EditorScene : public EditorWindow {
 public:

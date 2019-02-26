@@ -5,7 +5,7 @@
 #include "editor_object_inspector.hpp"
 #include "editor_scene.hpp"
 #include "editor_state.hpp"
-#include "scene.hpp"
+#include "../common/scene.hpp"
 
 class EditorSceneTree : public EditorWindow {
 public:

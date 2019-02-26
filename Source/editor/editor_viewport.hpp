@@ -5,38 +5,38 @@
 
 #include "editor_window.hpp"
 
-#include "g_buffer.hpp"
+#include "../common/g_buffer.hpp"
 
-#include "gl/frame_buffer.hpp"
-#include "gl/vertex_buffer.hpp"
-#include "gl/shader_program.h"
+#include "../common/gl/frame_buffer.hpp"
+#include "../common/gl/vertex_buffer.hpp"
+#include "../common/gl/shader_program.h"
 
-#include "gl/indexed_mesh.hpp"
+#include "../common/gl/indexed_mesh.hpp"
 
-#include "gfxm.hpp"
+#include "../common/gfxm.hpp"
 
-#include "draw.hpp"
+#include "../common/draw.hpp"
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#include "renderer.hpp"
+#include "../common/renderer.hpp"
 
 #include <GLFW/glfw3.h>
 
-#include "input/input_mgr.hpp"
+#include "../common/input/input_mgr.hpp"
 
 #include "editor_state.hpp"
 
-#include "lib/imguizmo/ImGuizmo.h"
+#include "../common/lib/imguizmo/ImGuizmo.h"
 
-#include "util/has_suffix.hpp"
-#include "util/filesystem.hpp"
+#include "../common/util/has_suffix.hpp"
+#include "../common/util/filesystem.hpp"
 
-#include "scene_from_fbx.hpp"
+#include "../common/scene_from_fbx.hpp"
 
-#include "debug_draw.hpp"
+#include "../common/debug_draw.hpp"
 
 class EditorViewport : public EditorWindow {
 public:
