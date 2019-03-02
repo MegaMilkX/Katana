@@ -43,7 +43,9 @@ bool ShaderProgram::link()
     GL_LOG_ERROR("glValidateProgram");
 
     glGetProgramiv(id, GL_VALIDATE_STATUS, &res);
+    GL_LOG_ERROR("glGetProgramiv GL_VALIDATE_STATUS");
     glGetProgramiv(id, GL_INFO_LOG_LENGTH, &infoLogLen);
+    GL_LOG_ERROR("glGetProgramiv GL_INFO_LOG_LENGTH");
     if(infoLogLen > 1)
     {
         std::vector<char> errMsg(infoLogLen + 1);

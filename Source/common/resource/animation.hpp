@@ -66,6 +66,21 @@ public:
             result.s = n.s.at(cursor);
         }
     }
+    void sample_remapped(
+        std::vector<AnimSample>& samples,
+        float cursor,
+        const std::vector<size_t>& remap
+    ) {
+        for(size_t i = 0; i < nodes.size() && i < samples.size(); ++i) {
+            auto& n = nodes[i];
+            size_t out_index = remap[i];
+            AnimSample& result = samples[out_index];
+
+            result.t = n.t.at(cursor);
+            result.r = n.r.at(cursor);
+            result.s = n.s.at(cursor);
+        }
+    }
 
     void blend_remapped(
         std::vector<AnimSample>& in_out,
@@ -82,6 +97,21 @@ public:
             result.s = gfxm::lerp(result.s, n.s.at(cursor), weight);
         }
     }
+    void blend_remapped(
+        std::vector<AnimSample>& samples,
+        float cursor, float weight,
+        const std::vector<size_t>& remap
+    ) {
+        for(size_t i = 0; i < nodes.size() && i < samples.size(); ++i) {
+            auto& n = nodes[i];
+            size_t out_index = remap[i];
+            AnimSample& result = samples[out_index];
+
+            result.t = gfxm::lerp(result.t, n.t.at(cursor), weight);
+            result.r = gfxm::slerp(result.r, n.r.at(cursor), weight);
+            result.s = gfxm::lerp(result.s, n.s.at(cursor), weight);
+        }
+    }
 
     void additive_blend_remapped(
         std::vector<AnimSample>& in_out,
@@ -92,6 +122,32 @@ public:
             auto& n = nodes[i];
             size_t out_index = remap.at(i);
             AnimSample& result = in_out[out_index];
+
+            gfxm::vec3 t_base = n.t.at(0.0f);
+            gfxm::quat r_base = n.r.at(0.0f);
+            gfxm::vec3 s_base = n.s.at(0.0f);
+            gfxm::vec3 t_cur = n.t.at(cursor);
+            gfxm::quat r_cur = n.r.at(cursor);
+            gfxm::vec3 s_cur = n.s.at(cursor);
+
+            gfxm::vec3 t = t_cur - t_base;
+            gfxm::quat r = r_cur * gfxm::inverse(r_base);
+            gfxm::vec3 s = s_cur - s_base;
+
+            result.t += t * weight;
+            result.r = gfxm::slerp(gfxm::quat(), r, weight) * result.r;
+            result.s += s * weight;
+        }
+    }
+    void additive_blend_remapped(
+        std::vector<AnimSample>& samples,
+        float cursor, float weight,
+        const std::vector<size_t>& remap
+    ) {
+        for(size_t i = 0; i < nodes.size() && i < samples.size(); ++i) {
+            auto& n = nodes[i];
+            size_t out_index = remap[i];
+            AnimSample& result = samples[out_index];
 
             gfxm::vec3 t_base = n.t.at(0.0f);
             gfxm::quat r_base = n.r.at(0.0f);

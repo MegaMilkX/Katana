@@ -6,6 +6,7 @@
 #include <map>
 #include <cctype>
 #include "../util/log.hpp"
+#include "../util/filesystem.hpp"
 
 class DataRegistry {
 public:
@@ -49,6 +50,7 @@ public:
             }
         }
         dataSources[name] = dataSource;
+        LOG("Added data source '" << n << "'");
     }
 private:
     DataSourceMap_t dataSources;
@@ -57,6 +59,13 @@ private:
 inline DataRegistry& GlobalDataRegistry() {
     static DataRegistry reg;
     return reg;
+}
+
+inline void registerGlobalFileSource(const std::string& fname) {
+    GlobalDataRegistry().Add(
+        fname,
+        DataSourceRef(new DataSourceFilesystem(get_module_dir() + "\\" + fname))
+    );
 }
 
 #endif

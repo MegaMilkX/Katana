@@ -7,8 +7,8 @@
 #include "resource.h"
 #include "../gfxm.hpp"
 
-#include "util/log.hpp"
-#include "util/serialization.hpp"
+#include "../util/log.hpp"
+#include "../util/serialization.hpp"
 
 class Skeleton : public Resource {
 public:

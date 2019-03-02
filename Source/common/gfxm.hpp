@@ -2,6 +2,8 @@
 #define GFXM_MATH_H
 
 #include <math.h>
+#include <cmath>
+#include <limits>
 
 namespace gfxm{
 

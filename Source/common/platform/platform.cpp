@@ -48,6 +48,20 @@ void platformSwapBuffers() {
     glfwSwapBuffers(window);
 }
 
+void platformGetViewportSize(unsigned& width, unsigned& height) {
+    int w = 0, h = 0;
+    glfwGetWindowSize(window, &w, &h);
+    width = (unsigned)w;
+    height = (unsigned)h;
+}
+
+void platformGetMousePos(unsigned& x, unsigned& y) {
+    double cursor_x, cursor_y;
+    glfwGetCursorPos(window, &cursor_x, &cursor_y);
+    x = (unsigned)cursor_x;
+    y = (unsigned)cursor_y;
+}
+
 void* platformGetGlfwWindow() {
     return (void*)window;
 }

@@ -85,6 +85,7 @@ void ImGuiInit() {
     imGuiProgram->bindAttrib(2, "Color");
     imGuiProgram->bindFragData(0, "Out_Color");
     imGuiProgram->link();
+    imGuiProgram->use();
     glUniform1i(imGuiProgram->getUniform("Texture"), 0);
 
     // TODO: Create buffers
@@ -102,9 +103,10 @@ void ImGuiUpdate(float dt, int w, int h) {
     ImGui::NewFrame();
 }
 void ImGuiDraw() {
+    ImGui::Render();
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glActiveTexture(GL_TEXTURE0);
-    ImGui::Render();
 
     glEnable(GL_SCISSOR_TEST);
     glDisable(GL_DEPTH_TEST);
@@ -139,8 +141,8 @@ void ImGuiDraw() {
     proj[3][2] = -(zfar + znear) / (zfar - znear);
 
     imGuiProgram->use();
-    glUniform1i(imGuiProgram->getUniform("Texture"), 0);
     glUniformMatrix4fv(imGuiProgram->getUniform("ProjMtx"), 1, GL_FALSE, (const GLfloat*)proj);
+    GL_LOG_ERROR("glUniformMatrix4fv");
 
     GLuint vao_handle = 0;
     glGenVertexArrays(1, &vao_handle);
@@ -175,13 +177,16 @@ void ImGuiDraw() {
             else
             {
                 glBindTexture(GL_TEXTURE_2D, (GLuint)pcmd->TextureId);
+                GL_LOG_ERROR("glBindTexture");
                 glScissor((int)pcmd->ClipRect.x, (int)(fb_height - pcmd->ClipRect.w), (int)(pcmd->ClipRect.z - pcmd->ClipRect.x), (int)(pcmd->ClipRect.w - pcmd->ClipRect.y));
                 glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, idx_buffer_offset);
+                GL_LOG_ERROR("glDrawElements");
             }
             idx_buffer_offset += pcmd->ElemCount;
         }
     }
     glBindTexture(GL_TEXTURE_2D, 0);
+    glUseProgram(0);
 
     glDeleteVertexArrays(1, &vao_handle);
 

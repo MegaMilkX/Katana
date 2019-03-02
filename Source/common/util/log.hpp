@@ -68,7 +68,7 @@ private:
                     std::string str = static_cast<std::ostringstream&>(
                         std::ostringstream() << _typeToString(e.type) 
                         << " | " << buffer 
-                        << " | " << e.thread_id 
+                        << " | " << std::hex << e.thread_id 
                         << ": " << e.line 
                         << std::endl).str();
                     f << str;

@@ -2,6 +2,7 @@
 #define TEXTURE2D_H
 
 #include "../gl/glextutil.h"
+#include "../gl/error.hpp"
 //#include <aurora/gfx.h>
 //#include <util/load_asset.h>
 
@@ -70,17 +71,26 @@ private:
     void _initGlData()
     {
         glGenTextures(1, &glTexName);
+        GL_LOG_ERROR("glGenTextures");
+        glActiveTexture(GL_TEXTURE0);
+        GL_LOG_ERROR("glActiveTexture");
         glBindTexture(GL_TEXTURE_2D, glTexName);
-        
+        GL_LOG_ERROR("glBindTexture");
+
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        GL_LOG_ERROR("glTexParameteri GL_TEXTURE_MIN_FILTER");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        GL_LOG_ERROR("glTexParameteri GL_TEXTURE_MAG_FILTER");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        GL_LOG_ERROR("glTexParameteri GL_TEXTURE_WRAP_S");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        GL_LOG_ERROR("glTexParameteri GL_TEXTURE_WRAP_T");
+
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     void _reloadGlBuffer()
     {
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         GLenum format;
         if(bpp == 1) format = GL_RED;
         else if(bpp == 2) format = GL_RG;
@@ -89,8 +99,15 @@ private:
         else return;
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, glTexName);
+        GL_LOG_ERROR("glBindTexture");
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        GL_LOG_ERROR("glPixelStorei");
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, format, GL_UNSIGNED_BYTE, (const GLvoid*)_data.data());
+        GL_LOG_ERROR("glTexImage2D");
+        glGenerateMipmap(GL_TEXTURE_2D);
+        GL_LOG_ERROR("glGenerateMipmap");
         dirty = false;
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 };
 STATIC_RUN(Texture2D)

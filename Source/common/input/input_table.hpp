@@ -4,7 +4,9 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <fstream>
 #include "../lib/json.hpp"
+#include "../util/log.hpp"
 
 class InputTable {
 public:

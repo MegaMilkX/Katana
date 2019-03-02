@@ -24,7 +24,7 @@ public:
 
         DataSourceRef dataSrc = GlobalDataRegistry().Get(name);
         if(!dataSrc) {
-            LOG("Data source '" << name << "' doesn't exist.");
+            LOG_WARN("Data source '" << name << "' doesn't exist.");
             return std::shared_ptr<T>();
         }
         std::shared_ptr<T> ptr;
@@ -37,7 +37,7 @@ public:
 
             ptr.reset(new T());
             if(!ptr->deserialize(strm, sz)) {
-                LOG("Failed to build resource " << name);
+                LOG_WARN("Failed to build resource " << name);
                 dataSrc->close_stream();
                 return std::shared_ptr<T>();
             }
@@ -63,6 +63,11 @@ inline ResourceFactory& GlobalResourceFactory() {
 template<typename T>
 std::shared_ptr<T> getResource(const std::string& name) {
     return GlobalResourceFactory().Get<T>(name);
+}
+
+template<typename T>
+std::shared_ptr<T> retrieve(const std::string& name) {
+    return getResource<T>(name);
 }
 
 #endif
