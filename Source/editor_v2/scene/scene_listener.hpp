@@ -1,7 +1,7 @@
 #ifndef SCENE_LISTENER_HPP
 #define SCENE_LISTENER_HPP
 
-#include "scene_object.hpp"
+#include "game_object.hpp"
 
 #include "scene_events.hpp"
 

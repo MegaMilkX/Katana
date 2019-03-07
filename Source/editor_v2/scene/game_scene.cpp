@@ -9,6 +9,10 @@ SceneEventBroadcaster& GameScene::getEventMgr() {
     return event_broadcaster;
 }
 
+void GameScene::clear() {
+    removeAll();
+}
+
 void GameScene::copy(GameScene* other) {
     for(size_t i = 0; i < other->objectCount(); ++i) {
         copyObject(other->getObject(i));
@@ -52,7 +56,19 @@ GameObject* GameScene::copyObject(GameObject* o) {
 void GameScene::remove(GameObject* o) {
     for(size_t i = 0; i < objects.size(); ++i) {
         if(objects[i] == o) {
-            getEventMgr().post(o, EVT_OBJECT_REMOVED);
+            for(size_t i = 0; i < o->childCount(); ++i) {
+                auto n = create(o->getChild(i)->get_type());
+                n->copyRecursive(o->getChild(i).get());
+                n->copyComponentsRecursive(o->getChild(i).get());
+            }
+        }
+    }
+    removeRecursive(o);
+}
+void GameScene::removeRecursive(GameObject* o) {
+    for(size_t i = 0; i < objects.size(); ++i) {
+        if(objects[i] == o) {
+            getEventMgr().post(o, EVT_OBJECT_REMOVED, o->get_type());
             delete o;
             objects.erase(objects.begin() + i);
             break;
@@ -65,4 +81,10 @@ void GameScene::removeAll() {
         delete o;
     }
     objects.clear();
+}
+
+void GameScene::refreshAabbs() {
+    for(size_t i = 0; i < objectCount(); ++i) {
+        getObject(i)->refreshAabb();
+    }
 }

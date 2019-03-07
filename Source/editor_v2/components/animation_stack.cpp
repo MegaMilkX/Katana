@@ -1,6 +1,20 @@
 #include "animation_stack.hpp"
 
-#include "../scene/scene_object.hpp"
+#include "../scene/game_object.hpp"
+
+void AnimationStack::copy(ObjectComponent* other) {
+    if(other->get_type() != get_type()) {
+        LOG("Can't copy from " << other->get_type().get_name().to_string() << " to " <<
+            get_type().get_name().to_string());
+        return;
+    }
+    AnimationStack* o = (AnimationStack*)other;
+    skeleton = o->skeleton;
+    anims = o->anims;
+    layers = o->layers;
+    samples = o->samples;
+    root_motion_enabled = o->root_motion_enabled;
+}
 
 void AnimationStack::setSkeleton(std::shared_ptr<Skeleton> skel) {
     skeleton = skel;
@@ -74,6 +88,73 @@ void AnimationStack::update(float dt) {
 
         t->translate(t4);
     }
+}
+
+bool AnimationStack::serialize(std::ostream& out) {
+    write(out, root_motion_enabled);
+    
+    write(out, (uint32_t)layers.size());
+    for(size_t i = 0; i < layers.size(); ++i) {
+        auto& l = layers[i];
+        write(out, (uint32_t)l.anim_index);
+        write(out, (uint32_t)l.mode);
+        write(out, l.cursor);
+        write(out, l.speed);
+        write(out, l.weight);
+    }
+
+    write(out, (uint32_t)anims.size());
+    for(size_t i = 0; i < anims.size(); ++i) {
+        AnimInfo& a = anims[i];
+        wt_string(out, a.alias);
+        if(a.anim) {
+            wt_string(out, a.anim->Name());
+        } else {
+            wt_string(out, "");
+        }
+        write(out, (uint8_t)a.looping);
+        write(out, (uint32_t)a.bone_remap.size());
+        for(auto& v : a.bone_remap) {
+            write(out, (uint32_t)v);
+        }
+    }
+
+    if(skeleton) {
+        wt_string(out, skeleton->Name());
+    } else {
+        wt_string(out, "");
+    }
+    return true;
+}
+
+bool AnimationStack::deserialize(std::istream& in, size_t sz) {
+    root_motion_enabled = read<bool>(in);
+    
+    layers.resize(read<uint32_t>(in));
+    for(size_t i = 0; i < layers.size(); ++i) {
+        auto& l = layers[i];
+        l.anim_index = read<uint32_t>(in);
+        l.mode = (ANIM_BLEND_MODE)read<uint32_t>(in);
+        l.cursor = read<float>(in);
+        l.speed = read<float>(in);
+        l.weight = read<float>(in);
+    }
+
+    anims.resize(read<uint32_t>(in));
+    for(size_t i = 0; i < anims.size(); ++i) {
+        auto& a = anims[i];
+        a.alias = rd_string(in);
+        a.anim = getResource<Animation>(rd_string(in));
+        a.looping = (bool)read<uint8_t>(in);
+        uint32_t bone_remap_sz = read<uint32_t>(in);
+        for(uint32_t j = 0; j < bone_remap_sz; ++j) {
+            auto v = read<uint32_t>(in);
+            a.bone_remap.emplace_back(v);
+        }
+    }
+
+    setSkeleton(getResource<Skeleton>(rd_string(in)));
+    return true;
 }
 
 // ==== Private ===================

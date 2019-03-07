@@ -61,6 +61,8 @@ struct tvec4
     
     tvec4() : x(0), y(0), z(0), w(0) {}
     tvec4(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
+    tvec4(const tvec3<T>& v3, T w)
+    : x(v3.x), y(v3.y), z(v3.z), w(w) {}
 
     operator tvec3<T>() const { return tvec3<T>(x, y, z); }
 
@@ -1261,6 +1263,15 @@ inline tvec3<T> screenToWorldPlaneXY(
     );
 
     return ray_origin + v_to_target;
+}
+
+inline void expand_aabb(gfxm::aabb& box, const gfxm::vec3& pt) {
+    if(pt.x < box.from.x) box.from.x = pt.x;
+    if(pt.y < box.from.y) box.from.y = pt.y;
+    if(pt.z < box.from.z) box.from.z = pt.z;
+    if(pt.x > box.to.x) box.to.x = pt.x;
+    if(pt.y > box.to.y) box.to.y = pt.y;
+    if(pt.z > box.to.z) box.to.z = pt.z;
 }
 
 }

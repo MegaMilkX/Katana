@@ -6,6 +6,8 @@
 
 class TransformNode {
 public:
+    ~TransformNode();
+
     void dirty();
     bool isDirty();
 

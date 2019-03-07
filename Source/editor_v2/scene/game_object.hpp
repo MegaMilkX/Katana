@@ -16,6 +16,8 @@
 
 #include "../editor_object_desc.hpp"
 
+class GameScene;
+
 class GameObject;
 class EditorGameObjectDesc : public IEditorObjectDesc {
 public:
@@ -29,13 +31,13 @@ private:
     gfxm::vec3 s = gfxm::vec3(1.0f, 1.0f, 1.0f);
 };
 
-class GameScene;
 class GameObject {
     RTTR_ENABLE()
 
     friend GameScene;
 public:
     GameObject();
+    virtual ~GameObject();
 
     void                                setUid(uint64_t uid);
     uint64_t                            getUid() const;
@@ -45,6 +47,7 @@ public:
 
     GameScene*                          getScene();
     GameObject*                         getRoot();
+    GameObject*                         getParent();
 
     TransformNode*                      getTransform();
 
@@ -57,10 +60,13 @@ public:
     std::shared_ptr<GameObject>         createChild(rttr::type t);
     template<typename T>
     std::shared_ptr<T>                  createChild();
+    std::shared_ptr<GameObject>         createClone(GameObject* o);
     size_t                              childCount();
     std::shared_ptr<GameObject>         getChild(size_t i);
     std::shared_ptr<GameObject>         getChild(const std::string& name);
     GameObject*                         findObject(const std::string& name);
+    void                                removeChild(GameObject* o);
+    void                                removeChildRecursive(GameObject* o);
 
     std::shared_ptr<ObjectComponent>    find(rttr::type component_type);
     std::shared_ptr<ObjectComponent>    get(rttr::type component_type);
@@ -70,8 +76,18 @@ public:
     std::shared_ptr<COMPONENT_T>        find();
     size_t                              componentCount();
     std::shared_ptr<ObjectComponent>    getById(size_t id);
+    void                                deleteComponentById(size_t id);
+    void                                deleteAllComponents();
+
+    void                                refreshAabb();
+    void                                setAabb(const gfxm::aabb& box);
+    const gfxm::aabb&                   getAabb() const;
+
+    virtual void                        serialize(std::ostream& out);
+    virtual void                        deserialize(std::istream& in, size_t sz);
 
     virtual IEditorObjectDesc*          _newEditorObjectDesc();
+    bool                                serializeComponents(std::ostream& out);
 private:
     std::shared_ptr<ObjectComponent>    createComponent(rttr::type t);
 
@@ -79,6 +95,10 @@ private:
     GameScene* scene = 0;
     std::string name = "Object";
     TransformNode transform;
+    gfxm::aabb aabb = gfxm::aabb(
+        gfxm::vec3(-.5f, -.5f, -.5f),
+        gfxm::vec3(.5f, .5f, .5f)
+    );
     GameObject* parent = 0;
     std::set<std::shared_ptr<GameObject>> children;
     std::map<rttr::type, std::shared_ptr<ObjectComponent>> components;
@@ -123,12 +143,15 @@ inline void EditorGameObjectDesc::gui() {
     ImGui::Separator();
     if(ImGui::DragFloat3("Translation", (float*)&t, 0.001f)) {
         object->getTransform()->setPosition(t);
+        object->getRoot()->refreshAabb();
     }
     if(ImGui::DragFloat3("Rotation", (float*)&r, 0.001f)) {
         object->getTransform()->setRotation(r);
+        object->getRoot()->refreshAabb();
     }
     if(ImGui::DragFloat3("Scale", (float*)&s, 0.001f)) {
         object->getTransform()->setScale(s);
+        object->getRoot()->refreshAabb();
     }
 }
 

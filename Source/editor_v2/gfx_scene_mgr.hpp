@@ -35,7 +35,11 @@ public:
                 } else {
                     std::vector<gfxm::mat4> bone_transforms;
                     for(auto t : m->getSegment(i).skin_data->bone_nodes) {
-                        bone_transforms.emplace_back(t->getWorldTransform());
+                        if(t) {
+                            bone_transforms.emplace_back(t->getTransform()->getWorldTransform());
+                        } else {
+                            bone_transforms.emplace_back(gfxm::mat4(1.0f));
+                        }
                     }
                     dl.add(DrawList::Skin{
                         m->getSegment(i).mesh->mesh.getVao(),

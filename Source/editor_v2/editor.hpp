@@ -27,6 +27,8 @@ public:
     GameObject* getSelectedObject();
     void setSelectedObject(GameObject* o);
 private:
+    bool showOpenSceneDialog();
+    bool showSaveSceneDialog(GameScene* scene, bool forceDialog = false);
 
     EditorViewport viewport;
     EditorSceneInspector scene_inspector;
@@ -39,6 +41,8 @@ private:
     GameObject* selected_object = 0;
 
     std::shared_ptr<EditorScene> editor_scene;
+
+    std::string currentSceneFile;
 };
 
 #endif

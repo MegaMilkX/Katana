@@ -18,9 +18,10 @@ class EditorViewport {
 public:
     EditorViewport();
     ~EditorViewport();
-    void init(GameScene* scene);
+    void init(Editor* editor, GameScene* scene);
     void update(Editor* editor);
 private:
+    Editor* editor;
     RenderViewport vp;
     Renderer renderer;
     GfxSceneMgr gfx_mgr;

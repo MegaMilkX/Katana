@@ -25,7 +25,7 @@
 #include "components/model.hpp"
 #include "components/animation_stack.hpp"
 
-#include "scene/scene_object.hpp"
+#include "scene/game_object.hpp"
 
 inline gfxm::vec2 sampleSphericalMap(gfxm::vec3 v) {
     const gfxm::vec2 invAtan = gfxm::vec2(0.1591f, 0.3183f);
@@ -431,7 +431,7 @@ inline void finalizeObjectsFromAssimpNode(
 
                         GameObject* o = root_object->findObject(name);
                         if(o) {
-                            seg.skin_data->bone_nodes.emplace_back(o->getTransform());
+                            seg.skin_data->bone_nodes.emplace_back(o);
                             seg.skin_data->bind_transforms.emplace_back(
                                 gfxm::transpose(*(gfxm::mat4*)&ai_bone->mOffsetMatrix)
                             );
@@ -543,6 +543,8 @@ inline bool objectFromFbx(const std::string& filename, GameObject* o) {
         std::string name = MKSTR(dirname << "\\" << root_name << "_" << replace_reserved_chars(ai_scene->mAnimations[i]->mName.C_Str(), '_') << ".anm");
         anim_stack->addAnim(retrieve<Animation>(name));
     }
+
+    o->refreshAabb();
 
     // Cleanup
     for(auto m : meshes_with_fallback_uv) {

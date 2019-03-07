@@ -75,12 +75,17 @@ public:
         layer0.weight = 1.0f;
     }
 
+    virtual void copy(ObjectComponent* other);
+
     void setSkeleton(std::shared_ptr<Skeleton> skel);
     void addAnim(std::shared_ptr<Animation> anim);
     void reserveLayers(unsigned count);
     AnimLayer& addLayer();
     AnimLayer& getLayer(unsigned i);
     void update(float dt);
+
+    virtual bool serialize(std::ostream& out);
+    virtual bool deserialize(std::istream& in, size_t sz);
 
     IEditorComponentDesc* _newEditorDescriptor() {
         return new EditorComponentDesc<AnimationStack>(this);
@@ -189,7 +194,12 @@ inline void EditorComponentDesc<AnimationStack>::gui() {
             }
             ImGui::EndCombo();
         }
-        ImGui::SliderFloat("Cursor", &anim_stack->layers[selected_index].cursor, 0.0f, 1.0f);
+        ImGui::SliderFloat(
+            "Cursor", 
+            &anim_stack->layers[selected_index].cursor, 
+            0.0f, 
+            anim_stack->anims[anim_stack->layers[selected_index].anim_index].anim->length
+        );
         if(ImGui::DragFloat("Speed", &anim_stack->layers[selected_index].speed, 0.01f, 0.0f, 10.0f)) {}
         if(ImGui::DragFloat("Weight", &anim_stack->layers[selected_index].weight, 0.01f, 0.0f, 1.0f)) {}
         if(ImGui::Checkbox("Stopped", &anim_stack->layers[selected_index].stopped)) {

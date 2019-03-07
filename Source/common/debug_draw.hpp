@@ -27,6 +27,8 @@ public:
     void gridxz(const gfxm::vec3& from, const gfxm::vec3& to, float step, const gfxm::vec3& color);
     void grid3d(const gfxm::vec3& from, const gfxm::vec3& to, float step, const gfxm::vec3& color);
 
+    void aabb(const gfxm::aabb& aabb_, const gfxm::vec3& color);
+
     void draw(const gfxm::mat4& proj, const gfxm::mat4& view);
 
     void clear();

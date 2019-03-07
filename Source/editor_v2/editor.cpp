@@ -5,6 +5,12 @@
 #include "../common/lib/imguizmo/ImGuizmo.h"
 #include "../common/util/log.hpp"
 
+#include "../common/lib/nativefiledialog/nfd.h"
+
+#include "../common/util/has_suffix.hpp"
+
+#include "serialize_game_scene.hpp"
+
 int setupImguiLayout();
 
 Editor::Editor() {
@@ -44,7 +50,7 @@ void Editor::init() {
     editor_scene.reset(new EditorScene(scene.get()));
 
     dir_view.init(get_module_dir());
-    viewport.init(scene.get());
+    viewport.init(this, scene.get());
 
     LOG("Editor initialized");
 }
@@ -95,6 +101,24 @@ void Editor::update(unsigned width, unsigned height, unsigned cursor_x, unsigned
 
     static int once = setupImguiLayout();
 
+    if(ImGui::BeginMenuBar()) {
+        if(ImGui::BeginMenu("Scene")) {
+            if(ImGui::MenuItem("Open")) {
+                showOpenSceneDialog();
+            }
+            ImGui::Separator();
+            if(ImGui::MenuItem("Save")) {
+                showSaveSceneDialog(scene.get());
+            }
+            if(ImGui::MenuItem("Save As...")) {
+                showSaveSceneDialog(scene.get(), true);
+            }
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenuBar();
+    }
+
     //bool sdw = true;
     //ImGui::ShowDemoWindow(&sdw);
 
@@ -119,6 +143,57 @@ GameObject* Editor::getSelectedObject() {
 void Editor::setSelectedObject(GameObject* o) {
     selected_object = o;
 }
+
+bool Editor::showOpenSceneDialog() {
+    char* outPath;
+    auto r = NFD_OpenDialog("scn", NULL, &outPath);
+    if(r == NFD_OKAY) {
+        std::cout << outPath << std::endl;
+        std::string filePath(outPath);
+        setSelectedObject(0);
+        getScene()->clear();
+        deserializeScene(filePath, getScene());
+        currentSceneFile = filePath;
+    }
+    else if(r == NFD_CANCEL) {
+        std::cout << "cancelled" << std::endl;
+    }
+    else {
+        std::cout << "error " << NFD_GetError() << std::endl;
+    }
+}
+
+bool Editor::showSaveSceneDialog(GameScene* scene, bool forceDialog) {
+    if(currentSceneFile.empty() || forceDialog)
+    {
+        char* outPath;
+        auto r = NFD_SaveDialog("scn", NULL, &outPath);
+        if(r == NFD_OKAY) {
+            std::string filePath(outPath);
+            if(!has_suffix(filePath, ".scn")) {
+                filePath = filePath + ".scn";
+            }
+            std::cout << filePath << std::endl;
+            if(serializeScene(filePath, scene)) {
+                LOG("Scene saved");
+                currentSceneFile = filePath;
+            } else {
+                LOG_WARN("Failed to save scene");
+            }
+        }
+    }
+    else
+    {
+        if(serializeScene(currentSceneFile, scene)) {
+            LOG("Scene saved");
+        } else {
+            LOG_WARN("Failed to save scene");
+        }
+    }
+    
+    return true;
+}
+
 
 int setupImguiLayout() {
     ImGuiID dockspace_id = ImGui::GetID("MyDockspace");

@@ -5,7 +5,7 @@
 #include <map>
 #include <list>
 #include <set>
-#include "scene_object.hpp"
+#include "game_object.hpp"
 #include "scene_listener.hpp"
 
 class SceneEventBroadcaster {

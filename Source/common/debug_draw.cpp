@@ -95,6 +95,23 @@ void DebugDraw::grid3d(const gfxm::vec3& from, const gfxm::vec3& to, float step,
     }
 }
 
+void DebugDraw::aabb(const gfxm::aabb& aabb_, const gfxm::vec3& color) {
+    line(gfxm::vec3(aabb_.from.x, aabb_.from.y, aabb_.from.z), gfxm::vec3(aabb_.to.x, aabb_.from.y, aabb_.from.z), color);
+    line(gfxm::vec3(aabb_.from.x, aabb_.to.y, aabb_.from.z), gfxm::vec3(aabb_.to.x, aabb_.to.y, aabb_.from.z), color);
+    line(gfxm::vec3(aabb_.from.x, aabb_.from.y, aabb_.to.z), gfxm::vec3(aabb_.to.x, aabb_.from.y, aabb_.to.z), color);
+    line(gfxm::vec3(aabb_.from.x, aabb_.to.y, aabb_.to.z), gfxm::vec3(aabb_.to.x, aabb_.to.y, aabb_.to.z), color);
+
+    line(gfxm::vec3(aabb_.from.x, aabb_.from.y, aabb_.from.z), gfxm::vec3(aabb_.from.x, aabb_.to.y, aabb_.from.z), color);
+    line(gfxm::vec3(aabb_.to.x, aabb_.from.y, aabb_.from.z), gfxm::vec3(aabb_.to.x, aabb_.to.y, aabb_.from.z), color);
+    line(gfxm::vec3(aabb_.from.x, aabb_.from.y, aabb_.to.z), gfxm::vec3(aabb_.from.x, aabb_.to.y, aabb_.to.z), color);
+    line(gfxm::vec3(aabb_.to.x, aabb_.from.y, aabb_.to.z), gfxm::vec3(aabb_.to.x, aabb_.to.y, aabb_.to.z), color);
+
+    line(gfxm::vec3(aabb_.from.x, aabb_.from.y, aabb_.from.z), gfxm::vec3(aabb_.from.x, aabb_.from.y, aabb_.to.z), color);
+    line(gfxm::vec3(aabb_.to.x, aabb_.from.y, aabb_.from.z), gfxm::vec3(aabb_.to.x, aabb_.from.y, aabb_.to.z), color);
+    line(gfxm::vec3(aabb_.from.x, aabb_.to.y, aabb_.from.z), gfxm::vec3(aabb_.from.x, aabb_.to.y, aabb_.to.z), color);
+    line(gfxm::vec3(aabb_.to.x, aabb_.to.y, aabb_.from.z), gfxm::vec3(aabb_.to.x, aabb_.to.y, aabb_.to.z), color);
+}
+
 void DebugDraw::draw(const gfxm::mat4& proj, const gfxm::mat4& view) {
     if(line_buf.empty()) return;
 

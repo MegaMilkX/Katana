@@ -1,5 +1,9 @@
 #include "transform.hpp"
 
+TransformNode::~TransformNode() {
+    setParent(0);
+}
+
 void TransformNode::dirty() {
     _dirty = true;
     for(auto& c : _children) {

@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "scene_object.hpp"
+#include "game_object.hpp"
 #include "scene_event_mgr.hpp"
 
 class SpatialObject : public GameObject {
@@ -39,6 +39,8 @@ public:
 
     SceneEventBroadcaster& getEventMgr();
 
+    void clear();
+
     void copy(GameScene* other);
 
     size_t objectCount() const;
@@ -50,7 +52,10 @@ public:
     GameObject* create(rttr::type t);
     GameObject* copyObject(GameObject* o);
     void remove(GameObject* o);
+    void removeRecursive(GameObject* o);
     void removeAll();
+
+    void refreshAabbs();
 private:
     std::vector<GameObject*> objects;
     

@@ -19,13 +19,18 @@ public:
         vertices.resize(mesh.getAttribDataSize(gl::POSITION) / sizeof(gfxm::vec3));
         mesh.copyAttribData(gl::POSITION, vertices.data());
 
-        for(auto v : vertices) {
-            if(v.x < aabb.from.x) aabb.from.x = v.x;
-            if(v.y < aabb.from.y) aabb.from.y = v.y;
-            if(v.z < aabb.from.z) aabb.from.z = v.z;
-            if(v.x > aabb.to.x) aabb.to.x = v.x;
-            if(v.y > aabb.to.y) aabb.to.y = v.y;
-            if(v.z > aabb.to.z) aabb.to.z = v.z;
+        if(!vertices.empty()) {
+            aabb.from = vertices[0];
+            aabb.to = vertices[0];
+            for(size_t i = 0; i < vertices.size(); ++i) {
+                auto& v = vertices[i];
+                if(v.x < aabb.from.x) aabb.from.x = v.x;
+                if(v.y < aabb.from.y) aabb.from.y = v.y;
+                if(v.z < aabb.from.z) aabb.from.z = v.z;
+                if(v.x > aabb.to.x) aabb.to.x = v.x;
+                if(v.y > aabb.to.y) aabb.to.y = v.y;
+                if(v.z > aabb.to.z) aabb.to.z = v.z;
+            }
         }
 
         return true; 
