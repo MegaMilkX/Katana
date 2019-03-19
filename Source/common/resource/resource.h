@@ -10,6 +10,8 @@
 #include "../util/static_run.h"
 #include "../lib/imgui_wrap.hpp"
 
+#include "../../common/util/data_stream.hpp"
+
 class Resource {
     RTTR_ENABLE()
 public:
@@ -25,13 +27,15 @@ public:
     STORAGE Storage() const { return storage; }
     void Storage(STORAGE storage) { this->storage = storage; }
 
-    virtual void serialize(std::ostream& out) {}
+    virtual void serialize(out_stream& out) {}
     virtual bool deserialize(std::istream& in, size_t sz) { return false; }
 
     void write_to_file(const std::string& filename) {
         std::ofstream f(filename, std::ios::binary);
+        dstream out;
         if(f.is_open()) {
-            serialize(f);
+            serialize(out);
+            f.write(out.getBuffer().data(), out.getBuffer().size());
         }
     }
 

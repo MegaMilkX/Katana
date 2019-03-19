@@ -1,6 +1,6 @@
 #include "animation.hpp"
 
-#include "../../common/util/data_stream.hpp"
+
 
 size_t Animation::nodeCount() {
     return nodes.size();
@@ -165,7 +165,7 @@ void Animation::additive_blend_remapped(
     }
 }
 
-void Animation::serialize(std::ostream& out_) {
+void Animation::serialize(out_stream& out_) {
     ZipWriter zipw;
     std::stringstream out;    
 

@@ -9,7 +9,7 @@ public:
     gl::IndexedMesh mesh;
     gfxm::aabb aabb;
 
-    virtual void serialize(std::ostream& out) {
+    virtual void serialize(out_stream& out) {
         mesh.serialize(out);
     }
     virtual bool deserialize(std::istream& in, size_t sz) { 

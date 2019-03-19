@@ -73,7 +73,7 @@ public:
         const std::vector<size_t>& remap
     );
 
-    virtual void        serialize(std::ostream& out_);
+    virtual void        serialize(out_stream& out);
     virtual bool        deserialize(std::istream& in_, size_t sz);
 private:
     AnimNode root_motion_node;

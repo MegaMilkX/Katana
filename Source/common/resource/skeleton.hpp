@@ -84,21 +84,22 @@ public:
         return &bones[it->second];
     }
 
-    virtual void serialize(std::ostream& out) {
+    virtual void serialize(out_stream& out) {
         uint32_t bone_count = bones.size();
-        write(out, bone_count);
+        out.write(bone_count);
         for(uint32_t i = 0; i < bone_count; ++i) {
             int32_t id = bones[i].id;
             int32_t parent_id = bones[i].parent;
-            write(out, id);
-            write(out, parent_id);
-            wt_string(out, bones[i].name);
-            write(out, bones[i].bind_pose);
+            out.write(id);
+            out.write(parent_id);
+            out.write<uint64_t>(bones[i].name.size());
+            out.write(bones[i].name);
+            out.write(bones[i].bind_pose);
         }
         for(auto kv : name_to_bone) {
-            wt_string(out, kv.first);
-            uint32_t bone_id = (uint32_t)kv.second;
-            write(out, bone_id);
+            out.write<uint64_t>(kv.first.size());
+            out.write(kv.first);
+            out.write<uint32_t>(kv.second); // Bone id
         }
     }
     virtual bool deserialize(std::istream& in, size_t sz) { 

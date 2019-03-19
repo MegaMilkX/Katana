@@ -168,11 +168,11 @@ bool Scene::serialize(std::vector<char>& buf) {
             ss.write((char*)&count, sizeof(count));
 
             for(auto& r : kv.second) {
-                std::stringstream ss_r;
+                dstream ss_r;
                 r->serialize(ss_r);
-                uint64_t sz = ss_r.tellp();
+                uint64_t sz = (uint64_t)ss_r.getBuffer().size();
                 ss.write((char*)&sz, sizeof(sz));
-                if(sz) ss << ss_r.rdbuf();
+                if(sz) ss.write(ss_r.getBuffer().data(), ss_r.getBuffer().size());
             }
 
             zipAddFromStream(

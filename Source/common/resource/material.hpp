@@ -17,7 +17,7 @@ public:
     std::shared_ptr<Texture2D> metallic;
     std::shared_ptr<Texture2D> roughness;
 
-    virtual void serialize(std::ostream& out) {
+    virtual void serialize(out_stream& out) {
         using json = nlohmann::json;
         json j;
         if(albedo) {
@@ -33,7 +33,7 @@ public:
             j["roughness"] = roughness->Name();
         }
 
-        out << j;
+        out.write(j.dump());
     }
     virtual bool deserialize(std::istream& in, size_t sz) {
         std::vector<char> buf;

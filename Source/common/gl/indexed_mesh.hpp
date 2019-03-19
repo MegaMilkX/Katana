@@ -8,6 +8,8 @@
 #include <memory>
 #include <map>
 
+#include "../util/data_stream.hpp"
+
 namespace gl {
 
 enum ATTRIB_INDEX {
@@ -101,9 +103,8 @@ public:
         glBindVertexArray(id);
     }
 
-    void serialize(std::ostream& out) {
-        uint8_t attrib_count = (uint8_t)attribs.size();
-        out.write((char*)&attrib_count, sizeof(attrib_count));
+    void serialize(out_stream& out) {
+        out.write<uint8_t>(attribs.size());
 
         for(auto& kv : attribs) {
             auto ptr = kv.second;
