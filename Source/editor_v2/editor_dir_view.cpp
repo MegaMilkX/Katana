@@ -21,6 +21,8 @@
 
 #include "../common/util/has_suffix.hpp"
 
+#include "editor.hpp"
+
 #include <cctype>
 
 void EditorDirView::initDirWatch(const std::string& dir) {
@@ -66,7 +68,7 @@ void EditorDirView::init(const std::string& dir) {
     //updateFileList();
 }
 
-void EditorDirView::update() {
+void EditorDirView::update(Editor* editor) {
     checkDirChanges();
     if(ImGui::Begin("DirView")) {
         if(ImGui::BeginChild("Directories", ImVec2(250, 0))) {
@@ -78,16 +80,19 @@ void EditorDirView::update() {
             float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
             ImGui::BeginColumns("FileTable", (int)(window_visible_x2 / 400.0f), ImGuiColumnsFlags_NoBorder);
             for(auto& f : filenames) {
-                ImGui::Selectable(f.name.c_str());
-                if(ImGui::BeginDragDropSource()) {
-                    std::string res_name = f.full_path;
-                    if(res_name.compare(0, get_module_dir().length(), get_module_dir()) == 0) {
-                        res_name = res_name.substr(get_module_dir().length() + 1);
-                    }
-                    while(res_name[0] == '\\' && res_name.size() > 0) {
-                        res_name.erase(res_name.begin());
-                    }
+                std::string res_name = f.full_path;
+                if(res_name.compare(0, get_module_dir().length(), get_module_dir()) == 0) {
+                    res_name = res_name.substr(get_module_dir().length() + 1);
+                }
+                while(res_name[0] == '\\' && res_name.size() > 0) {
+                    res_name.erase(res_name.begin());
+                }
 
+                if(ImGui::Selectable(f.name.c_str(), selected_filename == f.name)) {
+                    selected_filename = f.name;
+                    editor->getAssetInspector()->setFile(res_name);
+                }
+                if(ImGui::BeginDragDropSource()) {
                     ImGui::SetDragDropPayload("DND_ASSET_FILE", res_name.data(), res_name.size() + 1 /* need to capture 0 char too */);
                     //ImGui::Image(icon_tex, button_sz, ImVec2(0, 1), ImVec2(1, 0), img_tint);
                     //ImGui::SameLine();

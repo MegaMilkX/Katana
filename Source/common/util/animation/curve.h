@@ -140,6 +140,10 @@ public:
     std::vector<keyframe<T>>& get_keyframes() {
         return keyframes;
     }
+    float get_length() {
+        if(keyframes.empty()) return .0f;
+        return keyframes.back().time;
+    }
 private:
     std::vector<keyframe<T>> keyframes;
 };

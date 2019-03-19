@@ -92,12 +92,12 @@ public:
     void addTransition(const std::string& from, const std::string& to, typename state_t::cond_fun_t condition) {
         auto it = name_to_state.find(from);
         if(it == name_to_state.end()) {
-            LOG_WARN("FROM state '" << from << "' doesn't exist");
+            LOG_WARN("Origin state '" << from << "' doesn't exist");
         }
         state_wrap_t* a = it->second;
         it = name_to_state.find(to);
         if(it == name_to_state.end()) {
-            LOG_WARN("TO state '" << to << "' doesn't exist");
+            LOG_WARN("Target state '" << to << "' doesn't exist");
         }
         state_wrap_t* b = it->second;
 

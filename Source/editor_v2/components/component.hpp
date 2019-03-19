@@ -16,6 +16,8 @@ class ObjectComponent {
 public:
     virtual ~ObjectComponent();
 
+    virtual rttr::type getRequiredOwnerType();
+
     // Basically a constructor for components
     virtual void onCreate();
 
@@ -31,6 +33,14 @@ public:
     virtual IEditorComponentDesc* _newEditorDescriptor();
 private:
     GameObject* owner = 0;
+};
+
+template<typename OBJECT_TYPE>
+class RestrictedComponent : public ObjectComponent {
+public:
+    virtual rttr::type getRequiredOwnerType() {
+        return rttr::type::get<OBJECT_TYPE>();
+    }
 };
 
 #endif

@@ -37,7 +37,7 @@ void TransformNode::translate(const gfxm::vec3& vec) {
     dirty();
 }
 void TransformNode::rotate(float angle, float axisX, float axisY, float axisZ) { 
-    rotate(angle, gfxm::vec3(axisX, axisY, axisZ)); 
+    rotate(angle, gfxm::vec3(axisX, axisY, axisZ));
 }
 void TransformNode::rotate(float angle, const gfxm::vec3& axis) {
     rotate(gfxm::angle_axis(angle, axis));
@@ -49,25 +49,31 @@ void TransformNode::rotate(const gfxm::quat& q) {
             _rotation
         );
     dirty();
+    _dirty_euler = true;
 }
 
 void TransformNode::setPosition(float x, float y, float z) { 
     setPosition(gfxm::vec3(x, y, z)); 
 }
 void TransformNode::setPosition(const gfxm::vec3& position) { 
-    _position = position; dirty(); 
+    _position = position; 
+    dirty(); 
 }
 void TransformNode::setRotation(float x, float y, float z) { 
-    _rotation = gfxm::euler_to_quat(gfxm::vec3(x, y, z)); dirty(); 
+    _rotation = gfxm::euler_to_quat(gfxm::vec3(x, y, z)); 
+    dirty(); 
 }
 void TransformNode::setRotation(gfxm::vec3 euler) { 
-    _rotation = gfxm::euler_to_quat(gfxm::vec3(euler.x, euler.y, euler.z)); dirty(); 
+    _rotation = gfxm::euler_to_quat(gfxm::vec3(euler.x, euler.y, euler.z)); 
+    dirty(); 
 }
 void TransformNode::setRotation(float x, float y, float z, float w) { 
     setRotation(gfxm::quat(x, y, z, w)); 
 }
 void TransformNode::setRotation(const gfxm::quat& rotation) { 
-    _rotation = rotation; dirty(); 
+    _rotation = rotation; 
+    dirty(); 
+    _dirty_euler = true;
 }
 void TransformNode::setScale(float s) { 
     setScale(gfxm::vec3(s, s, s)); 
@@ -87,6 +93,7 @@ void TransformNode::setTransform(gfxm::mat4 t) {
     gfxm::vec3 back = t[2];
     _scale = gfxm::vec3(right.length(), up.length(), back.length());
     dirty();
+    _dirty_euler = true;
 }
 
 void TransformNode::setParent(TransformNode* p) {
@@ -109,7 +116,11 @@ const gfxm::vec3& TransformNode::getScale() const {
     return _scale;
 }
 gfxm::vec3 TransformNode::getEulerAngles() {
-    return gfxm::to_euler(_rotation);
+    if(_dirty_euler) {
+        _euler = gfxm::to_euler(_rotation);
+        _dirty_euler = false;
+    }
+    return _euler;
 }
 gfxm::vec3 TransformNode::getWorldPosition() {
     return getWorldTransform()[3];

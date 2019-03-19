@@ -554,6 +554,7 @@ inline bool objectFromFbx(const std::string& filename, GameObject* o) {
     aiReleaseImport(ai_scene);
 
     asset_params.write(filename + ".asset_params");
+    return true;
 }
 
 #endif

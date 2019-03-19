@@ -74,6 +74,14 @@ public:
         layer0.anim_index = 0;
         layer0.weight = 1.0f;
     }
+    ~AnimationStack() {
+    }
+
+    void play(int layer, const std::string& anim_alias);
+    void blendOver(int layer, const std::string& anim_alias, float speed = 0.1f);
+    void blendOverFromCurrentPose(float blend_time = 0.1f);
+    bool layerStopped(int layer, float offset = 0.0f);
+    float getLengthProportion(int layer_a, int layer_b);
 
     virtual void copy(ObjectComponent* other);
 
@@ -83,6 +91,8 @@ public:
     AnimLayer& addLayer();
     AnimLayer& getLayer(unsigned i);
     void update(float dt);
+
+    float getCurveValue(const std::string& name);
 
     virtual bool serialize(std::ostream& out);
     virtual bool deserialize(std::istream& in, size_t sz);
@@ -118,6 +128,11 @@ private:
     std::vector<AnimInfo>     anims;
     std::vector<AnimLayer>    layers;
     std::vector<AnimSample>   samples;
+    std::vector<AnimSample>   blend_over_origin_samples;
+    float                     blend_over_speed = .0f;
+    float                     blend_over_weight = .0f;
+
+    std::map<std::string, float> curve_values;
 
     bool root_motion_enabled = true;
 };
@@ -174,7 +189,7 @@ inline void EditorComponentDesc<AnimationStack>::gui() {
     if(!anim_stack->layers.empty()) {
         std::string current_anim_name = "";
         if(!anim_stack->anims.empty()) {
-            current_anim_name = anim_stack->anims[anim_stack->layers[selected_index].anim_index].anim->Name();
+            current_anim_name = anim_stack->anims[anim_stack->layers[selected_index].anim_index].alias;
         }
 
         if (ImGui::BeginCombo("Current anim", current_anim_name.c_str(), 0)) {
@@ -194,11 +209,15 @@ inline void EditorComponentDesc<AnimationStack>::gui() {
             }
             ImGui::EndCombo();
         }
+        float anim_len = 1.0f;
+        if(anim_stack->anims.size() > anim_stack->layers[selected_index].anim_index) {
+            anim_len = anim_stack->anims[anim_stack->layers[selected_index].anim_index].anim->length;
+        }
         ImGui::SliderFloat(
             "Cursor", 
             &anim_stack->layers[selected_index].cursor, 
             0.0f, 
-            anim_stack->anims[anim_stack->layers[selected_index].anim_index].anim->length
+            anim_len
         );
         if(ImGui::DragFloat("Speed", &anim_stack->layers[selected_index].speed, 0.01f, 0.0f, 10.0f)) {}
         if(ImGui::DragFloat("Weight", &anim_stack->layers[selected_index].weight, 0.01f, 0.0f, 1.0f)) {}

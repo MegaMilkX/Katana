@@ -5,6 +5,7 @@
 #include "editor_scene_inspector.hpp"
 #include "editor_dir_view.hpp"
 #include "editor_object_inspector.hpp"
+#include "editor_asset_inspector.hpp"
 
 #include "../common/input/input_mgr.hpp"
 
@@ -13,6 +14,8 @@
 #include "scene/game_scene.hpp"
 
 #include "editor_scene.hpp"
+
+#include "editor_state.hpp"
 
 class Editor {
 public:
@@ -25,6 +28,7 @@ public:
     GameScene* getScene();
     EditorScene& getEditorScene();
     GameObject* getSelectedObject();
+    EditorAssetInspector* getAssetInspector();
     void setSelectedObject(GameObject* o);
 private:
     bool showOpenSceneDialog();
@@ -34,6 +38,7 @@ private:
     EditorSceneInspector scene_inspector;
     EditorDirView dir_view;
     EditorObjectInspector object_inspector;
+    EditorAssetInspector asset_inspector;
 
     InputListener* input_lis = 0;
 

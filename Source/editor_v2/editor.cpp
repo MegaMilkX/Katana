@@ -28,6 +28,7 @@ void Editor::init() {
     input().getTable().addActionKey("MouseLeft", "MOUSE_LEFT");
     input().getTable().addActionKey("MouseRight", "MOUSE_RIGHT");
     input().getTable().addActionKey("MouseMiddle", "MOUSE_MIDDLE");
+    input().getTable().addActionKey("ExitPlayMode", "KB_ESCAPE");
 
     input_lis = input().createListener();
     input_lis->bindActionPress("MouseLeft", [this](){
@@ -42,8 +43,8 @@ void Editor::init() {
     input_lis->bindActionRelease("MouseRight", [this](){
         ImGui::GetIO().MouseDown[1] = false;
     });
-    input_lis->bindActionPress("MouseMiddle", [this](){
-
+    input_lis->bindActionPress("ExitPlayMode", [this](){
+        editorState().is_play_mode = false;
     });
 
     scene.reset(new GameScene());
@@ -115,7 +116,11 @@ void Editor::update(unsigned width, unsigned height, unsigned cursor_x, unsigned
             }
             ImGui::EndMenu();
         }
-
+        if(ImGui::MenuItem("Play mode")) {
+            editorState().is_play_mode = true;
+            editorState().game_state->getScene()->clear();
+            editorState().game_state->getScene()->copy(getScene());
+        }
         ImGui::EndMenuBar();
     }
 
@@ -124,8 +129,9 @@ void Editor::update(unsigned width, unsigned height, unsigned cursor_x, unsigned
 
     viewport.update(this);
     scene_inspector.update(this);
-    dir_view.update();
+    dir_view.update(this);
     object_inspector.update(this);
+    asset_inspector.update(this);
     // TODO: 
 
     ImGuiDraw();
@@ -140,6 +146,10 @@ EditorScene& Editor::getEditorScene() {
 GameObject* Editor::getSelectedObject() {
     return selected_object;
 }
+EditorAssetInspector* Editor::getAssetInspector() {
+    return &asset_inspector;
+}
+
 void Editor::setSelectedObject(GameObject* o) {
     selected_object = o;
 }
@@ -205,6 +215,7 @@ int setupImguiLayout() {
 
     ImGui::DockBuilderDockWindow("Scene Inspector", dsid_left);
     ImGui::DockBuilderDockWindow("Object inspector", dsid_right);
+    ImGui::DockBuilderDockWindow("Resource inspector", dsid_right);
     ImGui::DockBuilderDockWindow("Console", dsid_down);
     ImGui::DockBuilderDockWindow("DirView", dsid_down);
     ImGui::DockBuilderDockWindow("Scene", dockspace_id);

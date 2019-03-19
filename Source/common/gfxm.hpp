@@ -989,15 +989,15 @@ inline float clamp(float f, float a, float b)
     return f;
 }
 
-inline float smoothstep(float a, float b, float x)
-{
-    x = clamp((x - a) / (b - a), 0.0f, 1.0f);
-    return x * x * (3 - 2 * x);
-}
-
 inline float lerp(float a, float b, float x)
 {
     return (a * (1.0f - x)) + (b * x);
+}
+
+inline float smoothstep(float a, float b, float x)
+{
+    x = x * x * (3 - 2 * x);
+    return lerp(a, b, x);
 }
 
 template<typename T>

@@ -148,14 +148,18 @@ public:
         }
     }
 
-    void draw(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view, const DrawList& draw_list) {
+    void draw(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen = false) {
         beginFrame(vp, proj, view);
         
         drawSolidObjects(draw_list);
         drawSkinObjects(draw_list);
 
         // ==== Light pass ===============
-        glBindFramebuffer(GL_FRAMEBUFFER, vp->getFinalBuffer()->getId());
+        if(draw_final_on_screen) {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        } else {
+            glBindFramebuffer(GL_FRAMEBUFFER, vp->getFinalBuffer()->getId());
+        }
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         prog_light_pass->use();
         

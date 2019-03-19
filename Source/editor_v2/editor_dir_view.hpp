@@ -7,6 +7,7 @@
 #define NOMINMAX
 #include <windows.h>
 
+class Editor;
 class EditorDirView {
 public:
     struct FileInfo {
@@ -20,7 +21,7 @@ public:
     };
 
     void init(const std::string& dir);
-    void update();
+    void update(Editor* editor);
 private:
     void initDirWatch(const std::string& dir);
     void checkDirChanges();
@@ -35,6 +36,8 @@ private:
     DirInfo root_dir;
     std::vector<FileInfo> filenames;
     HANDLE dwChangeHandle;
+
+    std::string selected_filename;
 };
 
 #endif

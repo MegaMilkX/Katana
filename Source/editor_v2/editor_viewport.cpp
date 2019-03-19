@@ -56,6 +56,7 @@ EditorViewport::EditorViewport() {
     input_lis->bindActionPress("MouseLookAlt", [this](){ mouse_look_alt = true; });
     input_lis->bindActionRelease("MouseLookAlt", [this](){ mouse_look_alt = false; });
     input_lis->bindAxis("MoveCamX", [this](float v){
+        if(editorState().is_play_mode) return;
         if(mouse_look && mouse_look_alt){
             cam_angle_y += (-v * 0.01f);
         } else if(mouse_look){
@@ -68,6 +69,7 @@ EditorViewport::EditorViewport() {
         }
     });
     input_lis->bindAxis("MoveCamY", [this](float v){
+        if(editorState().is_play_mode) return;
         if(mouse_look && mouse_look_alt){
             cam_angle_x += (-v * 0.01f);
         } else if(mouse_look){
@@ -80,10 +82,12 @@ EditorViewport::EditorViewport() {
         }
     });
     input_lis->bindAxis("CameraZoom", [this](float v){
+        if(editorState().is_play_mode) return;
         float mod = cam_zoom;
         cam_zoom += -v * mod * 0.15f;
     });
     input_lis->bindActionPress("ResetEditorCam", [this](){
+        if(editorState().is_play_mode) return;
         //cam_angle_y = gfxm::radian(45.0f);
         //cam_angle_x = gfxm::radian(-25.0f);
         if(editor->getSelectedObject()) {
@@ -102,12 +106,15 @@ EditorViewport::EditorViewport() {
         }
     });
     input_lis->bindActionPress("GizmoT", [this](){
+        if(editorState().is_play_mode) return;
         gizmo_mode = GIZMO_TRANSLATE;
     });
     input_lis->bindActionPress("GizmoR", [this](){
+        if(editorState().is_play_mode) return;
         gizmo_mode = GIZMO_ROTATE;
     });
     input_lis->bindActionPress("GizmoS", [this](){
+        if(editorState().is_play_mode) return;
         gizmo_mode = GIZMO_SCALE;
     });
 }
@@ -123,6 +130,7 @@ void EditorViewport::init(Editor* editor, GameScene* scene) {
 }
 
 void EditorViewport::update(Editor* editor) {
+    editor->getScene()->update();
     dd.clear();
 
     dd.line(

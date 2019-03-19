@@ -6,6 +6,10 @@ ObjectComponent::~ObjectComponent() {
     
 }
 
+rttr::type ObjectComponent::getRequiredOwnerType() {
+    return rttr::type::get<GameObject>();
+}
+
 void ObjectComponent::onCreate() {}
 
 void ObjectComponent::copy(ObjectComponent* other) {}

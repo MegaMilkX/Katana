@@ -2,6 +2,53 @@
 
 #include "../scene/game_object.hpp"
 
+void AnimationStack::play(int layer, const std::string& anim_alias) {
+    size_t anim_i = 0;
+    for(size_t i = 0; i < anims.size(); ++i) {
+        if(anims[i].alias == anim_alias) {
+            anim_i = i;
+        }
+    }
+
+    getLayer(layer).anim_index = anim_i;
+    getLayer(layer).cursor = 0.0f;
+    getLayer(layer).stopped = false;
+    getLayer(layer).blend_over_speed = 0.0f;
+}
+void AnimationStack::blendOver(int layer, const std::string& anim_alias, float speed) {
+    size_t anim_i = 0;
+    for(size_t i = 0; i < anims.size(); ++i) {
+        if(anims[i].alias == anim_alias) {
+            anim_i = i;
+        }
+    }
+
+    getLayer(layer).blend_target_index = anim_i;
+    getLayer(layer).blend_target_cursor = 0.0f;
+    getLayer(layer).blend_target_prev_cursor = 0.0f;
+    getLayer(layer).blend_over_weight = 0.0f;
+    getLayer(layer).blend_over_speed = 1.0f / speed;
+}
+void AnimationStack::blendOverFromCurrentPose(float blend_time) {
+    blend_over_origin_samples = samples;
+    blend_over_weight = .0f;
+    blend_over_speed = 1.0f / blend_time;
+}
+bool AnimationStack::layerStopped(int layer, float offset) {
+    if(!anims[layers[layer].anim_index].looping) {
+        return 
+            layers[layer].cursor >= anims[layers[layer].anim_index].anim->length + offset * anims[layers[layer].anim_index].anim->fps;
+    } else {
+        return false;
+    }
+}
+
+float AnimationStack::getLengthProportion(int layer_a, int layer_b) {
+    float a_len = anims[getLayer(layer_a).anim_index].anim->length;
+    float b_len = anims[getLayer(layer_b).anim_index].anim->length;
+    return a_len / b_len;
+}
+
 void AnimationStack::copy(ObjectComponent* other) {
     if(other->get_type() != get_type()) {
         LOG("Can't copy from " << other->get_type().get_name().to_string() << " to " <<
@@ -38,11 +85,17 @@ AnimLayer& AnimationStack::addLayer() {
     return layers.back();
 }
 AnimLayer& AnimationStack::getLayer(unsigned i) {
+    if(i >= layers.size()) {
+        layers.resize(i+1);
+    }
     return layers[i];
 }
 
 void AnimationStack::update(float dt) {
     if(!skeleton) return;
+    for(auto& c : curve_values) {
+        c.second = .0f;
+    }
 
     gfxm::vec3 root_motion_trans = gfxm::vec3(.0f, .0f, .0f);
     gfxm::quat root_motion_rot = gfxm::quat(.0f, .0f, .0f, 1.0f);
@@ -53,6 +106,21 @@ void AnimationStack::update(float dt) {
             root_motion_trans,
             root_motion_rot
         );
+    }
+
+    if(blend_over_speed > .0f) {
+        blend_over_weight += dt * blend_over_speed;
+        if(blend_over_weight > 1.0f) blend_over_weight = 1.0f;
+
+        for(size_t i = 0; i < samples.size() && i < blend_over_origin_samples.size(); ++i) {
+            samples[i].t = gfxm::lerp(blend_over_origin_samples[i].t, samples[i].t, blend_over_weight);
+            samples[i].r = gfxm::slerp(blend_over_origin_samples[i].r, samples[i].r, blend_over_weight);
+            samples[i].s = gfxm::lerp(blend_over_origin_samples[i].s, samples[i].s, blend_over_weight);
+        }
+
+        if(blend_over_weight >= 1.0f) {
+            blend_over_speed = .0f;
+        }
     }
 
     // Update transforms
@@ -88,6 +156,10 @@ void AnimationStack::update(float dt) {
 
         t->translate(t4);
     }
+}
+
+float AnimationStack::getCurveValue(const std::string& name) {
+    return curve_values[name];
 }
 
 bool AnimationStack::serialize(std::ostream& out) {
@@ -140,16 +212,25 @@ bool AnimationStack::deserialize(std::istream& in, size_t sz) {
         l.weight = read<float>(in);
     }
 
-    anims.resize(read<uint32_t>(in));
-    for(size_t i = 0; i < anims.size(); ++i) {
-        auto& a = anims[i];
-        a.alias = rd_string(in);
-        a.anim = getResource<Animation>(rd_string(in));
-        a.looping = (bool)read<uint8_t>(in);
+    uint32_t anim_count = read<uint32_t>(in);
+    for(size_t i = 0; i < anim_count; ++i) {
+        std::string alias = rd_string(in);
+        auto anim = getResource<Animation>(rd_string(in));
+        bool looping = (bool)read<uint8_t>(in);
+        std::vector<size_t> bone_remap;
+
         uint32_t bone_remap_sz = read<uint32_t>(in);
         for(uint32_t j = 0; j < bone_remap_sz; ++j) {
             auto v = read<uint32_t>(in);
-            a.bone_remap.emplace_back(v);
+            bone_remap.emplace_back(v);
+        }
+
+        if(anim) {
+            anims.emplace_back(AnimInfo());
+            anims.back().alias = alias;
+            anims.back().anim = anim;
+            anims.back().looping = looping;
+            anims.back().bone_remap = bone_remap;
         }
     }
 
@@ -165,7 +246,6 @@ void AnimationStack::updateLayer(
     gfxm::vec3& rm_pos_final,
     gfxm::quat& rm_rot_final
 ) {
-    if(l.weight == 0.0f) return;
     if(l.anim_index >= anims.size()) return;
 
     auto& anim_info = anims[l.anim_index];
@@ -185,6 +265,7 @@ void AnimationStack::updateLayer(
             }
         }
     }
+    if(l.weight == 0.0f) return;
 
     blendAnim(
         anim_info.anim.get(),
@@ -255,12 +336,20 @@ void AnimationStack::blendAnim(
             rm_pos_final = root_motion_pos_delta;
             rm_rot_final = root_motion_rot_delta;
         }
+        for(size_t i = 0; i < anim->curveCount(); ++i) {
+            curve_values[anim->getCurveName(i)] = anim->getCurve(i).at(cursor);
+        }
         break;
     case ANIM_MODE_BLEND:
         anim->blend_remapped(samples, cursor, weight, bone_remap);
         if(enable_root_motion) {
             rm_pos_final = gfxm::lerp(rm_pos_final, root_motion_pos_delta, weight);
             rm_rot_final = gfxm::slerp(rm_rot_final, root_motion_rot_delta, weight);
+        }
+        for(size_t i = 0; i < anim->curveCount(); ++i) {
+            float b = anim->getCurve(i).at(cursor);
+            float a = curve_values[anim->getCurveName(i)];
+            curve_values[anim->getCurveName(i)] = gfxm::lerp(a, b, weight);
         }
         break;
     case ANIM_MODE_ADD:
@@ -269,6 +358,11 @@ void AnimationStack::blendAnim(
         if(enable_root_motion) {
             rm_pos_final = gfxm::lerp(rm_pos_final, rm_pos_final + root_motion_pos_delta, weight);
             rm_rot_final = gfxm::slerp(rm_rot_final, root_motion_rot_delta * rm_rot_final, weight);
+        }
+        for(size_t i = 0; i < anim->curveCount(); ++i) {
+            float b = anim->getCurve(i).at(cursor);
+            float a = curve_values[anim->getCurveName(i)];
+            curve_values[anim->getCurveName(i)] = a + b * weight;
         }
         break;
     }

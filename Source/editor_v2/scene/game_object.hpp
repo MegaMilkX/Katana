@@ -55,6 +55,8 @@ public:
     void                                copyRecursive(GameObject* o);
     void                                copyComponents(GameObject* other);
     void                                copyComponentsRecursive(GameObject* other);
+    void                                copyEmptyTree(GameObject* other);
+    void                                cloneExistingTree(GameObject* other);
 
     std::shared_ptr<GameObject>         createChild();
     std::shared_ptr<GameObject>         createChild(rttr::type t);
@@ -145,6 +147,7 @@ inline void EditorGameObjectDesc::gui() {
         object->getTransform()->setPosition(t);
         object->getRoot()->refreshAabb();
     }
+    r = object->getTransform()->getEulerAngles();
     if(ImGui::DragFloat3("Rotation", (float*)&r, 0.001f)) {
         object->getTransform()->setRotation(r);
         object->getRoot()->refreshAabb();

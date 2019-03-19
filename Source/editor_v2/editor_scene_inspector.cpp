@@ -6,6 +6,8 @@
 
 #include "editor.hpp"
 
+#include "scene/third_person_camera.hpp"
+
 static void imguiRecursiveDerivedMenu(GameScene* scene, rttr::type t) {
     auto derived_array = t.get_derived_classes();
     if(derived_array.empty()) {
@@ -33,16 +35,35 @@ void EditorSceneInspector::update(Editor* editor) {
         if(ImGui::BeginMenuBar()) {
             if(ImGui::BeginMenu("Create...")) {
                 rttr::type t = rttr::type::get<GameObject>();
-                imguiRecursiveDerivedMenu(scene, t);
+                auto derived_array = t.get_derived_classes();
+                for(auto& d : derived_array) {
+                    if(ImGui::MenuItem(d.get_name().to_string().c_str())) {
+                        editor->getScene()->create(d);
+                    }
+                }   
+                //imguiRecursiveDerivedMenu(scene, t);
                 ImGui::EndMenu();
             }
             ImGui::EndMenuBar();
         }
 
         for(unsigned i = 0; i < scene->objectCount(); ++i) {
-            sceneTreeViewNode(scene->getObject(i), editor);
+            sceneTreeViewNode(scene->getObject(i), editor);            
+        }
 
-            
+        ImGui::Separator();
+        ImGui::Text("Default camera");
+        auto dcam = editor->getScene()->getDefaultCamera();
+        ImGui::Button(dcam ? dcam->getOwner()->getName().c_str() : "empty");
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
+                GameObject* tgt_dnd_so = *(GameObject**)payload->Data;
+                auto cam = tgt_dnd_so->find<CmCamera>();
+                if(cam) {
+                    editor->getScene()->setDefaultCamera(cam.get());
+                }
+            }
+            ImGui::EndDragDropTarget();
         }
 
         ImGui::End();
@@ -51,10 +72,42 @@ void EditorSceneInspector::update(Editor* editor) {
 
 static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
     if (ImGui::BeginPopupContextItem()) {
-        if(ImGui::MenuItem("Create child")) {
-            o->createChild();
+        if(ImGui::BeginMenu("Create child...")) {
+            rttr::type t = rttr::type::get<GameObject>();
+            auto derived_array = t.get_derived_classes();
+            for(auto& d : derived_array) {
+                if(ImGui::MenuItem(d.get_name().to_string().c_str())) {
+                    o->createChild(d);
+                }
+            }
+            ImGui::EndMenu();
         }
-        if(o->getParent() != 0) {
+        if(ImGui::BeginMenu("Replace with...")) {
+            rttr::type t = rttr::type::get<GameObject>();
+            auto derived_array = t.get_derived_classes();
+            for(auto& d : derived_array) {
+                if(ImGui::MenuItem(d.get_name().to_string().c_str())) {
+                    if(o->getParent() == 0) {
+                        auto new_o = o->getScene()->create(d);
+                        new_o->copyRecursive(o);
+                        new_o->copyComponentsRecursive(o);
+                        o->getScene()->removeRecursive(o);
+                        editor->setSelectedObject(new_o);
+                        new_o->refreshAabb();
+                    } else {
+                        auto new_o = o->getParent()->createChild(d);
+                        new_o->copyRecursive(o);
+                        new_o->copyComponentsRecursive(o);
+                        o->getParent()->removeChildRecursive(o);
+                        editor->setSelectedObject(new_o.get());
+                        new_o->refreshAabb();
+                    }
+                    o = 0;
+                }
+            }
+            ImGui::EndMenu();
+        }
+        if(o && (o->getParent() != 0)) {
             ImGui::Separator();
             if(ImGui::MenuItem("Move to top")) {
                 o->getScene()->copyObject(o);
@@ -96,16 +149,27 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
 } 
 
 void EditorSceneInspector::sceneTreeViewNode(GameObject* o, Editor* editor) {
+    std::string type_name = o->get_derived_info().m_type.get_name().to_string();
+    std::string name;
+    std::string name_with_uid;
+    if(rttr::type::get<GameObject>() != o->get_type()) {
+        name = MKSTR(o->getName() << " [" << type_name << "]");
+        name_with_uid = MKSTR(o->getName() << " [" << type_name << "]" << "##" << o->getUid());
+    } else {
+        name = o->getName();
+        name_with_uid = MKSTR(o->getName() << "##" << o->getUid());
+    }
+
+    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
     if(o->childCount() == 0) {
-        std::string type_name = o->get_derived_info().m_type.get_name().to_string();
-        std::string name = MKSTR("[" << type_name << "] " << o->getName() << "##" << o);
-        ImGui::PushID(name.c_str());
-        if(ImGui::Selectable(name.c_str(), o == editor->getSelectedObject())) {
+        ImGui::PushID(name_with_uid.c_str());
+        ImGui::TreeAdvanceToLabelPos();
+        if(ImGui::Selectable(name_with_uid.c_str(), o == editor->getSelectedObject())) {
             editor->setSelectedObject(o);
         }
         if(ImGui::BeginDragDropSource(0)) {
             ImGui::SetDragDropPayload("DND_OBJECT", &o, sizeof(o));
-            ImGui::Text(name.c_str());
+            ImGui::Text(name_with_uid.c_str());
             ImGui::EndDragDropSource();
         }
         if (ImGui::BeginDragDropTarget()) {
@@ -128,12 +192,12 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, Editor* editor) {
         ImGui::PushID(o);
         bool node_open = ImGui::TreeNodeEx(
             (void*)o, 
-            (editor->getSelectedObject() == o ? ImGuiTreeNodeFlags_Selected : 0) | 
             ImGuiTreeNodeFlags_OpenOnDoubleClick |
             ImGuiTreeNodeFlags_OpenOnArrow, 
-            o->getName().c_str()
+            ""
         );
-        if(ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {
+        ImGui::SameLine();
+        if(ImGui::Selectable(name_with_uid.c_str(), o == editor->getSelectedObject())) {
             editor->setSelectedObject(o);
         }
         if(ImGui::BeginDragDropSource(0)) {

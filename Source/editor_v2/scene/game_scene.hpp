@@ -9,6 +9,8 @@
 #include "game_object.hpp"
 #include "scene_event_mgr.hpp"
 
+#include "../components/camera.hpp"
+
 class SpatialObject : public GameObject {
     RTTR_ENABLE(GameObject)
 public:
@@ -33,8 +35,13 @@ STATIC_RUN(StaticMesh) {
         );
 }
 
-class GameScene {
+void notifyObjectEvent(GameScene* scn, GameObject* o, SCENE_EVENT evt, rttr::type t);
+
+#include "actor_object.hpp"
+
+class GameScene : public SceneListener {
 public:
+    GameScene();
     ~GameScene();
 
     SceneEventBroadcaster& getEventMgr();
@@ -45,7 +52,12 @@ public:
 
     size_t objectCount() const;
     GameObject* getObject(size_t i);
+    GameObject* getObject(const std::string& name);
+    GameObject* getObject(const std::string& name, rttr::type type);
     GameObject* findObject(const std::string& name);
+    GameObject* findObject(const std::string& name, rttr::type type);
+    template<typename T>
+    T*          findObject(const std::string& name);
 
     template<typename T>
     T* create();
@@ -56,8 +68,21 @@ public:
     void removeAll();
 
     void refreshAabbs();
+
+    void setDefaultCamera(CmCamera* c);
+    CmCamera* getDefaultCamera();
+
+    void resetActors();
+    void update();
 private:
+    void onSceneEvent(GameObject* sender, SCENE_EVENT e, rttr::variant payload);
+
+    GameObject* createEmptyCopy(GameObject* o);
+    GameObject* copyToExistingObject(GameObject* o);
+
     std::vector<GameObject*> objects;
+    CmCamera* default_camera = 0;
+    std::set<ActorObject*> actors;
     
     SceneEventBroadcaster event_broadcaster;
 };
@@ -67,8 +92,13 @@ T* GameScene::create() {
     T* o = new T();
     o->scene = this;
     objects.emplace_back(o);
-    getEventMgr().post(o, EVT_OBJECT_CREATED);
+    notifyObjectEvent(this, o, EVT_OBJECT_CREATED, o->get_type());
     return o;
+}
+
+template<typename T>
+T* GameScene::findObject(const std::string& name) {
+    return (T*)findObject(name, rttr::type::get<T>());
 }
 
 #endif

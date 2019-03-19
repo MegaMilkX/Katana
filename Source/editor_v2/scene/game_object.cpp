@@ -13,11 +13,7 @@ GameObject::~GameObject() {
     // Tell parent transform that this one doesn't exist anymore
     transform.setParent(0);
     for(auto c : children) {
-        getScene()->getEventMgr().post(
-            c.get(),
-            EVT_OBJECT_REMOVED,
-            c->get_type()
-        );
+        notifyObjectEvent(getScene(), c.get(), EVT_OBJECT_REMOVED, c->get_type());
     }
     deleteAllComponents();
 }
@@ -61,16 +57,16 @@ void GameObject::copy(GameObject* other) {
     getTransform()->setScale(other->getTransform()->getScale());
 }
 void GameObject::copyRecursive(GameObject* o) {
-    copy(o);
     for(size_t i = 0; i < o->childCount(); ++i) {
         auto n = createChild(o->getChild(i)->get_type());
         n->copyRecursive(o->getChild(i).get());
     }
+    copy(o);
 }
 void GameObject::copyComponents(GameObject* other) {
     for(size_t i = 0; i < other->componentCount(); ++i) {
         auto c = other->getById(i);
-        auto new_c = createComponent(c->get_type());
+        auto new_c = get(c->get_type());
         new_c->copy(c.get());
     }
 }
@@ -81,6 +77,21 @@ void GameObject::copyComponentsRecursive(GameObject* other) {
         child->copyComponentsRecursive(other->getChild(i).get());
     }
     copyComponents(other);
+}
+void GameObject::copyEmptyTree(GameObject* other) {
+    for(size_t i = 0; i < other->childCount(); ++i) {
+        auto n = createChild(other->getChild(i)->get_type());
+        n->copyEmptyTree(other->getChild(i).get());
+    }
+    setName(other->getName());
+}
+void GameObject::cloneExistingTree(GameObject* other) {
+    for(size_t i = 0; i < other->childCount(); ++i) {
+        auto child = getChild(other->getChild(i)->getName());
+        if(!child) continue;
+        child->cloneExistingTree(other->getChild(i).get());
+    }
+    copy(other);
 }
 
 std::shared_ptr<GameObject> GameObject::createChild() {
@@ -106,7 +117,7 @@ std::shared_ptr<GameObject> GameObject::createChild(rttr::type t) {
     o->parent = this;
     o->getTransform()->setParent(&transform);
     children.insert(o);
-    scene->getEventMgr().post(o.get(), EVT_OBJECT_CREATED);
+    notifyObjectEvent(scene, o.get(), EVT_OBJECT_CREATED, o->get_type());
     return o;
 }
 std::shared_ptr<GameObject> GameObject::createClone(GameObject* o) {
@@ -155,7 +166,7 @@ void GameObject::removeChild(GameObject* o) {
 void GameObject::removeChildRecursive(GameObject* o) {
     for(auto it = children.begin(); it != children.end(); ++it) {
         if((*it).get() == o) {
-            getScene()->getEventMgr().post(o, EVT_OBJECT_REMOVED, o->get_type());
+            notifyObjectEvent(getScene(), o, EVT_OBJECT_REMOVED, o->get_type());
             children.erase(it);
             break;
         }
@@ -186,20 +197,12 @@ std::shared_ptr<ObjectComponent> GameObject::getById(size_t id) {
 void GameObject::deleteComponentById(size_t id) {
     auto it = components.begin();
     std::advance(it, id);
-    getScene()->getEventMgr().post(
-        this,
-        EVT_COMPONENT_REMOVED,
-        it->second->get_type()
-    );
+    notifyObjectEvent(getScene(), this, EVT_COMPONENT_REMOVED, it->second->get_type());
     components.erase(it);
 }
 void GameObject::deleteAllComponents() {
     for(auto& kv : components) {
-        getScene()->getEventMgr().post(
-            this,
-            EVT_COMPONENT_REMOVED,
-            kv.second->get_type()
-        );
+        notifyObjectEvent(getScene(), this, EVT_COMPONENT_REMOVED, kv.second->get_type());
     }
     components.clear();
 }
@@ -336,9 +339,16 @@ std::shared_ptr<ObjectComponent> GameObject::createComponent(rttr::type t) {
     }
     c->owner = this;
     auto ptr = std::shared_ptr<ObjectComponent>(c);
+
+    if(!get_type().is_derived_from(ptr->getRequiredOwnerType()) 
+        && get_type() != ptr->getRequiredOwnerType()) {
+        LOG_WARN("Can't create component of type " << t.get_name().to_string() << " for object of type " << get_type().get_name().to_string());
+        return std::shared_ptr<ObjectComponent>();
+    }
+
     components[t] = ptr;
     ptr->onCreate();
-    scene->getEventMgr().post(this, EVT_COMPONENT_CREATED, t);
+    notifyObjectEvent(getScene(), this, EVT_COMPONENT_CREATED, t);
     return ptr;
 }
 
