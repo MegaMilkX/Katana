@@ -36,7 +36,13 @@ inline gfxm::vec2 sampleSphericalMap(gfxm::vec3 v) {
 }
 
 inline std::shared_ptr<Skeleton> skeletonFromAssimpScene(const aiScene* ai_scene, const std::string& dirname, const std::string& root_name) {
-    std::shared_ptr<Skeleton> skel(new Skeleton());
+    std::string fname = MKSTR("data\\skel\\" << dirname << "\\" << root_name << ".skl");
+
+    std::shared_ptr<Skeleton> skel = retrieve<Skeleton>(fname);
+    if(!skel) {
+        skel.reset(new Skeleton());
+    }
+    skel->clearBones();
 
     unsigned int mesh_count = ai_scene->mNumMeshes;
     for(unsigned int i = 0; i < mesh_count; ++i) {
@@ -71,7 +77,6 @@ inline std::shared_ptr<Skeleton> skeletonFromAssimpScene(const aiScene* ai_scene
     };
     finalizeBone(ai_scene->mRootNode, skel);
 
-    std::string fname = MKSTR(dirname << "\\" << root_name << ".skl");
     skel->write_to_file(fname);
     registerGlobalFileSource(fname);
 
@@ -168,6 +173,7 @@ inline void meshesFromAssimpScene(
             }
         }        
 
+        // TODO: Preload before building to retain extra data
         std::shared_ptr<Mesh> mesh_ref(new Mesh());
         mesh_ref->mesh.setAttribData(gl::POSITION, vertices.data(), vertices.size() * sizeof(float));
         if(normal_layers.size() > 0) {
@@ -185,8 +191,8 @@ inline void meshesFromAssimpScene(
 
         mesh_ref->mesh.setIndices(indices.data(), indices.size());
 
-        std::string fname = MKSTR(dirname << "\\" << root_name << i << ".msh");
-        mesh_ref->write_to_file(MKSTR(dirname << "\\" << root_name << i << ".msh"));
+        std::string fname = MKSTR("data\\mesh\\" << dirname << "\\" << root_name << i << ".msh");
+        mesh_ref->write_to_file(fname);
         registerGlobalFileSource(fname);
     }
 }
@@ -331,7 +337,12 @@ inline void animFromAssimpScene(
         bool root_rotation = anim_asset_params.get_bool("RootRotation", false);
         bool root_translation = anim_asset_params.get_bool("RootTranslation", false);
 
-        std::shared_ptr<Animation> anim(new Animation());
+        std::string fname = MKSTR("data\\anim\\" << dirname << "\\" << root_name << "_" << replace_reserved_chars(ai_anim->mName.C_Str(), '_') << ".anm");
+        std::shared_ptr<Animation> anim = retrieve<Animation>(fname);
+        if(!anim) {
+            anim.reset(new Animation());
+        }
+        anim->clearNodes();
         anim->Storage(Resource::GLOBAL);
         anim->Name(ai_anim->mName.C_Str());
 
@@ -365,7 +376,6 @@ inline void animFromAssimpScene(
             // TODO: Convert to additive?
         }
 
-        std::string fname = MKSTR(dirname << "\\" << root_name << "_" << replace_reserved_chars(ai_anim->mName.C_Str(), '_') << ".anm");
         anim->write_to_file(fname);
         registerGlobalFileSource(fname);
     }
@@ -420,7 +430,7 @@ inline void finalizeObjectsFromAssimpNode(
         if(m) {
             for(unsigned i = 0; i < node->mNumMeshes; ++i) {
                 auto& seg = m->getSegment(i);
-                seg.mesh = getResource<Mesh>(MKSTR(dirname << "\\" << root_name << node->mMeshes[i] << ".msh"));
+                seg.mesh = getResource<Mesh>(MKSTR("data\\mesh\\" << dirname << "\\" << root_name << node->mMeshes[i] << ".msh"));
             
                 aiMesh* ai_mesh = ai_scene->mMeshes[node->mMeshes[i]];
                 if(ai_mesh->mNumBones) {
@@ -443,10 +453,21 @@ inline void finalizeObjectsFromAssimpNode(
     }
 }
 
-inline bool objectFromFbx(const std::string& filename, GameObject* o) {
-    std::string dirname = filename;
-    std::replace( dirname.begin(), dirname.end(), '.', '_'); 
-    CreateDirectoryA(dirname.c_str(), 0);
+inline bool objectFromFbx(const std::vector<char>& buffer, GameObject* o, const std::string& filename = "") {
+    std::string fname = filename;
+    while(fname[fname.size() - 1] == '\\') {
+        fname = std::string(fname.begin(), fname.begin() + fname.size() - 1);
+    }
+    //std::replace( dirname.begin(), dirname.end(), '.', '_');
+    fname = fname.substr(fname.find_last_of("\\") + 1);
+    fname = fname.substr(0, fname.find_first_of('.')); 
+    //CreateDirectoryA(dirname.c_str(), 0);
+
+    createDirRecursive(get_module_dir() + "\\data\\anim\\" + fname);
+    createDirRecursive(get_module_dir() + "\\data\\mesh\\" + fname);
+    createDirRecursive(get_module_dir() + "\\data\\skel\\" + fname);
+    std::string asset_param_path = get_module_dir() + "\\asset_params\\" + filename + ".asset_params";
+    createDirRecursive(cut_dirpath(asset_param_path));
 
     std::string root_name = "object";
     std::vector<std::string> tokens = split(filename, '\\');
@@ -457,16 +478,17 @@ inline bool objectFromFbx(const std::string& filename, GameObject* o) {
     }
 
     AssetParams asset_params;
-    asset_params.load(filename + ".asset_params");
+    asset_params.load(asset_param_path);
 
-    const aiScene* ai_scene = aiImportFile(
-        filename.c_str(), 
+    const aiScene* ai_scene = aiImportFileFromMemory(
+        buffer.data(), buffer.size(),
         aiProcess_GenSmoothNormals |
         aiProcess_GenUVCoords |
         aiProcess_Triangulate |
         aiProcess_JoinIdenticalVertices |
         aiProcess_LimitBoneWeights |
-        aiProcess_GlobalScale
+        aiProcess_GlobalScale,
+        filename.c_str()
     );
 
     std::vector<aiMesh*> meshes_with_fallback_uv;
@@ -529,18 +551,18 @@ inline bool objectFromFbx(const std::string& filename, GameObject* o) {
     createGraphFromAssimpNode(ai_rootNode, o);
     o->setName(root_name);
     o->getTransform()->setScale((float)scaleFactor);
-    resourcesFromAssimpScene(ai_scene, asset_params, dirname, root_name);
-    finalizeObjectsFromAssimpNode(ai_scene, ai_rootNode, o, dirname, root_name);
+    resourcesFromAssimpScene(ai_scene, asset_params, fname, root_name);
+    finalizeObjectsFromAssimpNode(ai_scene, ai_rootNode, o, fname, root_name);
 
     if(ai_scene->mNumAnimations > 0) {
         auto anim_stack = o->get<AnimationStack>();
         anim_stack->setSkeleton(retrieve<Skeleton>(
-            MKSTR(dirname << "\\" << root_name << ".skl")
+            MKSTR("data\\skel\\" << fname << "\\" << root_name << ".skl")
         ));
     }
     for(unsigned i = 0; i < ai_scene->mNumAnimations; ++i) {
         auto anim_stack = o->get<AnimationStack>();
-        std::string name = MKSTR(dirname << "\\" << root_name << "_" << replace_reserved_chars(ai_scene->mAnimations[i]->mName.C_Str(), '_') << ".anm");
+        std::string name = MKSTR("data\\anim\\" << fname << "\\" << root_name << "_" << replace_reserved_chars(ai_scene->mAnimations[i]->mName.C_Str(), '_') << ".anm");
         anim_stack->addAnim(retrieve<Animation>(name));
     }
 
@@ -553,8 +575,24 @@ inline bool objectFromFbx(const std::string& filename, GameObject* o) {
     }
     aiReleaseImport(ai_scene);
 
-    asset_params.write(filename + ".asset_params");
+    asset_params.write(asset_param_path);
     return true;
+}
+
+inline bool objectFromFbx(const std::string& filename, GameObject* o) {
+    std::ifstream f(filename, std::ios::binary | std::ios::ate);
+    if(!f.is_open()) {
+        LOG_WARN("Failed to open " << filename);
+        return false;
+    }
+    std::streamsize size = f.tellg();
+    f.seekg(0, std::ios::beg);
+    std::vector<char> buffer((unsigned int)size);
+    if(!f.read(buffer.data(), (unsigned int)size)) {
+        f.close();
+        return false;
+    }
+    return objectFromFbx(buffer, o, filename);
 }
 
 #endif

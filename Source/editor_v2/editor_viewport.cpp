@@ -13,6 +13,8 @@
 
 #include "editor.hpp"
 
+#include "scene/controllers/render_controller.hpp"
+
 bool mouse_look = false;
 bool mouse_look_alt = false;
 float cam_angle_y = gfxm::radian(45.0f);
@@ -117,6 +119,8 @@ EditorViewport::EditorViewport() {
         if(editorState().is_play_mode) return;
         gizmo_mode = GIZMO_SCALE;
     });
+
+    oct_o = oct.createObject();
 }
 EditorViewport::~EditorViewport() {
     dd.cleanup();
@@ -125,13 +129,12 @@ EditorViewport::~EditorViewport() {
 
 void EditorViewport::init(Editor* editor, GameScene* scene) {
     this->editor = editor;
-    gfx_mgr.setScene(scene);
-    anim_mgr.setScene(scene);
 }
 
 void EditorViewport::update(Editor* editor) {
-    editor->getScene()->update();
+    //editor->getScene()->update();
     dd.clear();
+    editor->getScene()->debugDraw(dd);
 
     dd.line(
         gfxm::vec3(.0f, .0f, .0f),
@@ -154,13 +157,17 @@ void EditorViewport::update(Editor* editor) {
             gfxm::vec3(1.0f, 1.0f, 1.0f)
         );
     }
-    /*
-    dd.grid3d(
-        gfxm::vec3(-5.0f, -5.0f, -5.0f),
-        gfxm::vec3(5.0f, 5.0f, 5.0f),
-        2.0f,
-        gfxm::vec3(0.5f, 0.5f, 0.5f)
-    );*/
+
+    auto speco = editor->getScene()->findObject("sp");
+    if(speco) {
+        gfxm::vec3 pt = speco->getTransform()->getWorldPosition();
+        oct_o->pos = pt;
+        oct.fit(oct_o);
+        dd.point(pt, gfxm::vec3(1,0,0));
+        dd.aabb(gfxm::aabb(oct_o->box.from + oct_o->pos, oct_o->box.from + oct_o->pos), gfxm::vec3(1,0,0));
+        
+    }
+    oct.debugDraw(&dd);
 
     if(ImGui::Begin("Scene")) {
         ImVec2 sz = ImGui::GetWindowSize();
@@ -220,11 +227,9 @@ void EditorViewport::update(Editor* editor) {
                 }
             }
         }
-
-        anim_mgr.update(1.0f/60.0f);
         
         DrawList dl;
-        gfx_mgr.getDrawList(dl);
+        editor->getScene()->getController<RenderController>()->getDrawList(dl);
         renderer.draw(&vp, proj, view, dl);
 
         vp.getFinalBuffer()->bind();

@@ -14,13 +14,7 @@ public:
     
     template<typename T>
     std::shared_ptr<T> Get(const std::string& n) {
-        std::string name = n;
-        for(size_t i = 0; i < name.size(); ++i) {
-            name[i] = (std::tolower(name[i]));
-            if(name[i] == '\\') {
-                name[i] = '/';
-            }
-        }
+        std::string name = sanitizeString(n);
 
         DataSourceRef dataSrc = GlobalDataRegistry().Get(name);
         if(!dataSrc) {
@@ -30,18 +24,20 @@ public:
         std::shared_ptr<T> ptr;
         res_weak_ptr_t& weak = resources[name];
         if(weak.expired()) {
+            /*
             auto& strm = dataSrc->open_stream();
             strm.seekg(0, std::ios::end);
             size_t sz = (size_t)strm.tellg();
-            strm.seekg(0, std::ios::beg);
+            strm.seekg(0, std::ios::beg);*/
+
+            std::shared_ptr<base_stream> strm = dataSrc->make_stream();
 
             ptr.reset(new T());
-            if(!ptr->deserialize(strm, sz)) {
+            if(!ptr->deserialize(*strm.get(), strm->size())) {
                 LOG_WARN("Failed to build resource " << name);
-                dataSrc->close_stream();
+                //dataSrc->close_stream();
                 return std::shared_ptr<T>();
             }
-            dataSrc->close_stream();
 
             weak = ptr;
             ptr->Name(name);
@@ -51,7 +47,42 @@ public:
         }
         return ptr;
     }
+
+    void forceReload(const std::string& name) {
+        auto& it = resources.find(name);
+        if(it == resources.end()) {
+            LOG_WARN("Force reload failed: no resource to reload: " << name);
+            return;
+        }
+        auto ptr = it->second.lock();
+        if(!ptr) {
+            LOG_WARN("Force reload failed: resource expired: " << name);
+            return;
+        }
+        DataSourceRef data_src = GlobalDataRegistry().Get(ptr->Name());
+        if(!data_src) {
+            LOG_WARN("Force reload failed: no data source '" << ptr->Name() << "'");
+            return;
+        }
+
+        std::shared_ptr<base_stream> strm = data_src->make_stream();
+        if(!ptr->deserialize(*strm.get(), strm->size())) {
+            LOG_WARN("Force reload failed: deserialize func failed: " << name);
+            return;
+        }
+    }
 private:
+    std::string sanitizeString(const std::string& str) {
+        std::string name = str;
+        for(size_t i = 0; i < name.size(); ++i) {
+            name[i] = (std::tolower(name[i]));
+            if(name[i] == '\\') {
+                name[i] = '/';
+            }
+        }
+        return name;
+    }
+
     resource_map_t resources;
 };
 

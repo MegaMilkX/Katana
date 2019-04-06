@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "exception": "cpp",
+        "memory": "cpp",
+        "system_error": "cpp",
+        "thread": "cpp"
+    }
+}

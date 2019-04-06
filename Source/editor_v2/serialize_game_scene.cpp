@@ -41,7 +41,6 @@ static void serializeObject(std::ostream& out, GameObject* o) {
     zipw.add("object_data", ss);
 
     std::vector<char> buf = zipw.finalize();
-
     out.write(buf.data(), buf.size());
 }
 
@@ -71,6 +70,19 @@ static bool serializeObjects(std::vector<char>& buf, GameScene* scn) {
     return true;
 }
 
+static bool serializeControllers(out_stream& out, GameScene* scn) {
+    ZipWriter zw;
+    for(size_t i = 0; i < scn->controllerCount(); ++i) {
+        SceneController* con = scn->getController(i);
+        dstream cstrm;
+        con->serialize(cstrm);
+        zw.add(con->get_type().get_name().to_string(), cstrm.getBuffer());
+    }
+
+    out.write(zw.finalize());
+    return true;
+}
+
 static bool serializeScene(std::vector<char>& buf, GameScene* scn) {
     LOG("Serializing scene...");
 
@@ -80,11 +92,9 @@ static bool serializeScene(std::vector<char>& buf, GameScene* scn) {
     serializeObjects(objects_buf, scn);
     zip_writer.add("objects", objects_buf);
 
-    auto cam = scn->getDefaultCamera();
-    if(cam) {
-        auto& cam_name = cam->getOwner()->getName();
-        zip_writer.add("default_camera", (void*)cam_name.data(), cam_name.size());
-    }
+    dstream ctrl_stream;
+    serializeControllers(ctrl_stream, scn);
+    zip_writer.add("controllers", ctrl_stream.getBuffer());
 
     buf = zip_writer.finalize();
     LOG("Done");
@@ -156,9 +166,9 @@ static void deserializeComponents(GameObject* o, std::vector<char>& data) {
         
         std::vector<char> file_data = zipr.extractFile(i);
         
-        std::stringstream ss;
-        ss.write(file_data.data(), file_data.size());
-        comp->deserialize(ss, file_data.size());
+        dstream ds;
+        ds.setBuffer(file_data);
+        comp->deserialize(ds, ds.bytes_available());
     }
 }
 
@@ -235,24 +245,36 @@ static bool deserializeObjects(const std::vector<char>& buf, GameScene* scn) {
     fillObjects(objects);
 }
 
+static bool deserializeControllers(const std::vector<char>& buf, GameScene* scn) {
+    ZipReader zr(buf);
+    for(size_t i = 0; i < zr.fileCount(); ++i) {
+        std::string tname = zr.getFileName(i);
+        rttr::type t = rttr::type::get_by_name(tname);
+        if(!t.is_valid()) {
+            LOG_WARN("Invalid controller type: " << tname);
+            continue;
+        }
+        SceneController* ctrl = scn->getController(t);
+        if(!ctrl) {
+            LOG_WARN("Failed to get controller " << tname);
+            continue;
+        }
+        dstream cstrm;
+        cstrm.setBuffer(zr.extractFile(tname));
+        ctrl->deserialize(cstrm);
+    }
+
+    return true;
+}
+
 bool deserializeScene(const std::vector<char>& buf, GameScene* scn) {
     ZipReader zipr(buf);
 
     std::vector<char> objects_buf = zipr.extractFile("objects");
     deserializeObjects(objects_buf, scn);
 
-    std::string cam_name = zipr.extractString("default_camera");
-    auto o = scn->findObject(cam_name);
-    if(o) {
-        auto c = o->find<CmCamera>();
-        if(c) {
-            scn->setDefaultCamera(c.get());
-        } else {
-            LOG_WARN("Default camera object has no camera component");
-        }
-    } else {
-        LOG_WARN("Failed to find default camera object");
-    }
+    deserializeControllers(zipr.extractFile("controllers"), scn);
+    
     return true;
 }
 
@@ -271,8 +293,7 @@ bool deserializeScene(const std::string& fname, GameScene* scn) {
     }
 
     deserializeScene(buffer, scn);
-    scn->resetActors();
-    
+        
     f.close();
     return true;
 }

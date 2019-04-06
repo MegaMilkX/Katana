@@ -1,6 +1,17 @@
 #include "animation_stack.hpp"
 
 #include "../scene/game_object.hpp"
+#include "../scene/game_scene.hpp"
+
+#include "../scene/controllers/anim_controller.hpp"
+
+AnimationStack::~AnimationStack() {
+    getOwner()->getScene()->getController<AnimController>()->_unregStack(this);
+}
+
+void AnimationStack::onCreate() {
+    getOwner()->getScene()->getController<AnimController>()->_regStack(this);
+}
 
 void AnimationStack::play(int layer, const std::string& anim_alias) {
     size_t anim_i = 0;
@@ -148,80 +159,82 @@ void AnimationStack::update(float dt) {
             0.0f
         );
         gfxm::mat4 root_m4 = t->getWorldTransform();
-        root_m4[3] = gfxm::vec4(.0f, .0f, .0f, 1.0f);
-        root_m4[0] = gfxm::normalize(root_m4[0]);
-        root_m4[1] = gfxm::normalize(root_m4[1]);
-        root_m4[2] = gfxm::normalize(root_m4[2]);
         t4 = (root_m4) * t4;
 
         t->translate(t4);
     }
 }
 
+void AnimationStack::setEventCallback(const std::string& name, std::function<void(void)> cb) {
+    callbacks[name] = cb;
+}
 float AnimationStack::getCurveValue(const std::string& name) {
     return curve_values[name];
 }
 
-bool AnimationStack::serialize(std::ostream& out) {
-    write(out, root_motion_enabled);
+bool AnimationStack::serialize(out_stream& out) {
+    DataWriter w(&out);
+    w.write<uint8_t>(root_motion_enabled);
     
-    write(out, (uint32_t)layers.size());
+    w.write<uint32_t>(layers.size());
     for(size_t i = 0; i < layers.size(); ++i) {
         auto& l = layers[i];
-        write(out, (uint32_t)l.anim_index);
-        write(out, (uint32_t)l.mode);
-        write(out, l.cursor);
-        write(out, l.speed);
-        write(out, l.weight);
+        w.write<uint32_t>(l.anim_index);
+        w.write<uint32_t>(l.mode);
+        w.write(l.cursor);
+        w.write(l.speed);
+        w.write(l.weight);
     }
 
-    write(out, (uint32_t)anims.size());
+    w.write<uint32_t>(anims.size());
     for(size_t i = 0; i < anims.size(); ++i) {
         AnimInfo& a = anims[i];
-        wt_string(out, a.alias);
+        w.write(a.alias);
         if(a.anim) {
-            wt_string(out, a.anim->Name());
+            w.write(a.anim->Name());
         } else {
-            wt_string(out, "");
+            w.write(std::string());
         }
-        write(out, (uint8_t)a.looping);
-        write(out, (uint32_t)a.bone_remap.size());
+        w.write<uint8_t>(a.looping);
+        w.write<uint32_t>(a.bone_remap.size());
         for(auto& v : a.bone_remap) {
-            write(out, (uint32_t)v);
+            w.write<uint32_t>(v);
         }
     }
 
     if(skeleton) {
-        wt_string(out, skeleton->Name());
+        w.write(skeleton->Name());
     } else {
-        wt_string(out, "");
+        w.write(std::string());
     }
     return true;
 }
 
-bool AnimationStack::deserialize(std::istream& in, size_t sz) {
-    root_motion_enabled = read<bool>(in);
+bool AnimationStack::deserialize(in_stream& in, size_t sz) {
+    DataReader r(&in);
+
+    root_motion_enabled = r.read<uint8_t>();
     
-    layers.resize(read<uint32_t>(in));
+    layers.resize(r.read<uint32_t>());
     for(size_t i = 0; i < layers.size(); ++i) {
         auto& l = layers[i];
-        l.anim_index = read<uint32_t>(in);
-        l.mode = (ANIM_BLEND_MODE)read<uint32_t>(in);
-        l.cursor = read<float>(in);
-        l.speed = read<float>(in);
-        l.weight = read<float>(in);
+        l.anim_index = r.read<uint32_t>();
+        l.mode = (ANIM_BLEND_MODE)r.read<uint32_t>();
+        l.cursor = r.read<float>();
+        l.speed = r.read<float>();
+        l.weight = r.read<float>();
     }
 
-    uint32_t anim_count = read<uint32_t>(in);
+    uint32_t anim_count = r.read<uint32_t>();
     for(size_t i = 0; i < anim_count; ++i) {
-        std::string alias = rd_string(in);
-        auto anim = getResource<Animation>(rd_string(in));
-        bool looping = (bool)read<uint8_t>(in);
+        std::string alias = r.readStr();
+        auto anim = getResource<Animation>(r.readStr());
+        bool looping = (bool)r.read<uint8_t>();
         std::vector<size_t> bone_remap;
 
-        uint32_t bone_remap_sz = read<uint32_t>(in);
+        uint32_t bone_remap_sz = r.read<uint32_t>();
         for(uint32_t j = 0; j < bone_remap_sz; ++j) {
-            auto v = read<uint32_t>(in);
+            auto v = r.read<uint32_t>();
             bone_remap.emplace_back(v);
         }
 
@@ -234,7 +247,7 @@ bool AnimationStack::deserialize(std::istream& in, size_t sz) {
         }
     }
 
-    setSkeleton(getResource<Skeleton>(rd_string(in)));
+    setSkeleton(getResource<Skeleton>(r.readStr()));
     return true;
 }
 
@@ -275,7 +288,13 @@ void AnimationStack::updateLayer(
         samples,
         root_motion_enabled,
         rm_pos_final,
-        rm_rot_final
+        rm_rot_final,
+        [this](const std::string& evt){
+            auto it = callbacks.find(evt);
+            if(it != callbacks.end()) {
+                it->second();
+            }
+        }, 0.0f
     );
 
     if(l.blend_over_speed > 0.0f) {
@@ -315,7 +334,9 @@ void AnimationStack::blendAnim(
     std::vector<AnimSample>& samples,
     bool enable_root_motion,
     gfxm::vec3& rm_pos_final,
-    gfxm::quat& rm_rot_final
+    gfxm::quat& rm_rot_final,
+    std::function<void(const std::string&)> evt_callback,
+    float event_threshold
 ) {
     gfxm::vec3 root_motion_pos_delta;
     gfxm::quat root_motion_rot_delta;
@@ -365,6 +386,9 @@ void AnimationStack::blendAnim(
             curve_values[anim->getCurveName(i)] = a + b * weight;
         }
         break;
+    }
+    if(weight >= event_threshold) {
+        anim->fireEvents(cursor_prev, cursor, evt_callback, weight);
     }
 }
 

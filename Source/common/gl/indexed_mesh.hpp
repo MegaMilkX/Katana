@@ -128,7 +128,7 @@ public:
         indices.copyData((void*)buf.data(), index_data_size);
         out.write(buf.data(), buf.size());
     }
-    void deserialize(std::istream& in) {
+    void deserialize(in_stream& in) {
         uint8_t attrib_count = 0;
         in.read((char*)&attrib_count, sizeof(attrib_count));
         for(uint8_t i = 0; i < attrib_count; ++i) {

@@ -6,6 +6,7 @@ TransformNode::~TransformNode() {
 
 void TransformNode::dirty() {
     _dirty = true;
+    _frame_dirty = true;
     for(auto& c : _children) {
         c->dirty();
     }
@@ -126,15 +127,22 @@ gfxm::vec3 TransformNode::getWorldPosition() {
     return getWorldTransform()[3];
 }
 gfxm::quat TransformNode::getWorldRotation() {
-    gfxm::mat3 m3 = gfxm::to_mat3(getWorldTransform());
-    m3[0] /= gfxm::length(m3[0]);
-    m3[1] /= gfxm::length(m3[1]);
-    m3[2] /= gfxm::length(m3[2]);
-    return gfxm::to_quat(m3);
+    gfxm::quat q;
+    if(getParent())
+        q = getParent()->getWorldRotation() * _rotation;
+    else
+        q = _rotation;
+    return q;
 }
 gfxm::vec3 TransformNode::getWorldScale() {
-    gfxm::mat3 m3 = gfxm::to_mat3(getWorldTransform());
-    return gfxm::vec3(gfxm::length(m3[0]), gfxm::length(m3[1]), gfxm::length(m3[2]));
+    gfxm::vec3 s;
+    if(getParent()) {
+        auto ps = getParent()->getWorldScale();
+        s = gfxm::vec3(ps.x * _scale.x, ps.y * _scale.y, ps.z * _scale.z);
+    }
+    else
+        s = _scale;
+    return s;
 }
 
 gfxm::vec3 TransformNode::right()
@@ -177,4 +185,14 @@ const gfxm::mat4& TransformNode::getWorldTransform() {
 
 TransformNode* TransformNode::getParent() const {
     return _parent;
+}
+
+void TransformNode::_frameClean() {
+    _frame_dirty = false;
+    for(auto& c : _children) {
+        c->_frameClean();
+    }
+}
+bool TransformNode::_isFrameDirty() const {
+    return _frame_dirty;
 }

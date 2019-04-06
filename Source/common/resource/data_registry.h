@@ -7,6 +7,7 @@
 #include <cctype>
 #include "../util/log.hpp"
 #include "../util/filesystem.hpp"
+#include "../util/has_suffix.hpp"
 
 class DataRegistry {
 public:
@@ -17,6 +18,7 @@ public:
 
     void Clear() {
         dataSources.clear();
+        name_list.clear();
     }
 
     DataSourceRef Get(const std::string& n) {
@@ -49,11 +51,29 @@ public:
                 name[i] = '/';
             }
         }
+        if(!dataSources.count(name)) {
+            name_list.emplace_back(name);
+        }
         dataSources[name] = dataSource;
+        
         LOG("Added data source '" << n << "'");
+    }
+
+    const std::vector<std::string>& getList() const {
+        return name_list;
+    }
+    std::vector<std::string> makeList(const std::string& prefix) const {
+        std::vector<std::string> names;
+        for(auto n : name_list) {
+            if(has_suffix(n, prefix)) {
+                names.emplace_back(n);
+            }
+        }
+        return names;
     }
 private:
     DataSourceMap_t dataSources;
+    std::vector<std::string> name_list;
 };
 
 inline DataRegistry& GlobalDataRegistry() {

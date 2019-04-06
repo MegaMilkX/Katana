@@ -492,9 +492,9 @@ public:
                     ) {
                         Material material;
                         material.albedo = getResource<Texture2D>(fname);
-                        std::ofstream file(fname + ".mat");
-                        material.serialize(file);
-                        file.close();
+                        file_stream strm(fname + ".mat");
+                        material.serialize(strm);
+
                         LOG(fname + ".mat");
                         GlobalDataRegistry().Add(
                             fname + ".mat",

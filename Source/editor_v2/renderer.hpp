@@ -10,7 +10,6 @@
 
 #include "../common/resource/resource_factory.h"
 
-#include "gfx_draw_object.hpp"
 #include "draw_list.hpp"
 
 #define SKIN_BONE_LIMIT 110
@@ -92,18 +91,34 @@ public:
         prog->use();
         glUniformMatrix4fv(prog->getUniform("mat_projection"), 1, GL_FALSE, (float*)&proj);
         glUniformMatrix4fv(prog->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
-        glActiveTexture(GL_TEXTURE0 + 0);
-        glBindTexture(GL_TEXTURE_2D, texture_white_px->GetGlName());
-        glActiveTexture(GL_TEXTURE0 + 1);
-        glBindTexture(GL_TEXTURE_2D, texture_normal_px->GetGlName());
-        glActiveTexture(GL_TEXTURE0 + 2);
-        glBindTexture(GL_TEXTURE_2D, texture_black_px->GetGlName());
-        glActiveTexture(GL_TEXTURE0 + 3);
-        glBindTexture(GL_TEXTURE_2D, texture_white_px->GetGlName());
-        glUniform3f(prog->getUniform("u_tint"), 1.0f, 1.0f, 1.0f);
 
         for(size_t i = 0; i < draw_list.solidCount(); ++i) {
             auto o = draw_list.getSolid(i);
+            
+            GLuint textures[4] = {
+                texture_white_px->GetGlName(),
+                texture_normal_px->GetGlName(),
+                texture_black_px->GetGlName(),
+                texture_white_px->GetGlName()
+            };
+            gfxm::vec3 tint(1,1,1);
+            if(o->material) {
+                if(o->material->albedo) textures[0] = o->material->albedo->GetGlName();
+                if(o->material->normal) textures[1] = o->material->normal->GetGlName();
+                if(o->material->metallic) textures[2] = o->material->metallic->GetGlName();
+                if(o->material->roughness) textures[3] = o->material->roughness->GetGlName();
+                tint = o->material->tint;
+            }
+            glActiveTexture(GL_TEXTURE0 + 0);
+            glBindTexture(GL_TEXTURE_2D, textures[0]);
+            glActiveTexture(GL_TEXTURE0 + 1);
+            glBindTexture(GL_TEXTURE_2D, textures[1]);
+            glActiveTexture(GL_TEXTURE0 + 2);
+            glBindTexture(GL_TEXTURE_2D, textures[2]);
+            glActiveTexture(GL_TEXTURE0 + 3);
+            glBindTexture(GL_TEXTURE_2D, textures[3]);
+            glUniform3f(prog->getUniform("u_tint"), tint.x, tint.y, tint.z);
+
             glBindVertexArray(o->vao);
             glUniformMatrix4fv(prog->getUniform("mat_model"), 1, GL_FALSE, (float*)&o->transform);    
             glDrawElements(GL_TRIANGLES, o->indexCount, GL_UNSIGNED_INT, 0);
@@ -115,18 +130,33 @@ public:
         p->use();
         glUniformMatrix4fv(p->getUniform("mat_projection"), 1, GL_FALSE, (float*)&proj);
         glUniformMatrix4fv(p->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
-        glActiveTexture(GL_TEXTURE0 + 0);
-        glBindTexture(GL_TEXTURE_2D, texture_white_px->GetGlName());
-        glActiveTexture(GL_TEXTURE0 + 1);
-        glBindTexture(GL_TEXTURE_2D, texture_normal_px->GetGlName());
-        glActiveTexture(GL_TEXTURE0 + 2);
-        glBindTexture(GL_TEXTURE_2D, texture_black_px->GetGlName());
-        glActiveTexture(GL_TEXTURE0 + 3);
-        glBindTexture(GL_TEXTURE_2D, texture_white_px->GetGlName());
-        glUniform3f(p->getUniform("u_tint"), 1.0f, 1.0f, 1.0f);
 
         for(size_t i = 0; i < dl.skinCount(); ++i) {
             auto o = dl.getSkin(i);
+
+            GLuint textures[4] = {
+                texture_white_px->GetGlName(),
+                texture_normal_px->GetGlName(),
+                texture_black_px->GetGlName(),
+                texture_white_px->GetGlName()
+            };
+            gfxm::vec3 tint(1,1,1);
+            if(o->material) {
+                if(o->material->albedo) textures[0] = o->material->albedo->GetGlName();
+                if(o->material->normal) textures[1] = o->material->normal->GetGlName();
+                if(o->material->metallic) textures[2] = o->material->metallic->GetGlName();
+                if(o->material->roughness) textures[3] = o->material->roughness->GetGlName();
+                tint = o->material->tint;
+            }
+            glActiveTexture(GL_TEXTURE0 + 0);
+            glBindTexture(GL_TEXTURE_2D, textures[0]);
+            glActiveTexture(GL_TEXTURE0 + 1);
+            glBindTexture(GL_TEXTURE_2D, textures[1]);
+            glActiveTexture(GL_TEXTURE0 + 2);
+            glBindTexture(GL_TEXTURE_2D, textures[2]);
+            glActiveTexture(GL_TEXTURE0 + 3);
+            glBindTexture(GL_TEXTURE_2D, textures[3]);
+            glUniform3f(p->getUniform("u_tint"), tint.x, tint.y, tint.z);
 
             GLuint loc = p->getUniform("inverseBindPose[0]");
             glUniformMatrix4fv(
@@ -178,12 +208,19 @@ public:
         //light_omni_pos[0] = gfxm::vec3(0.0f, 0.0f, 0.5f);
         //light_omni_pos[0] = gfxm::vec3(1.0f, 1.0f, 1.0f);
         //light_omni_radius[0] = 50.0f;
-        int light_omni_count = 0;
-        glUniform3fv(prog_light_pass->getUniform("light_omni_pos"), light_omni_count, (float*)light_omni_pos);
-        glUniform3fv(prog_light_pass->getUniform("light_omni_col"), light_omni_count, (float*)light_omni_col);
-        glUniform1fv(prog_light_pass->getUniform("light_omni_radius"), light_omni_count, (float*)light_omni_radius);
-        glUniform1i(prog_light_pass->getUniform("light_omni_count"), light_omni_count);
-        
+        {
+            int count = std::min((int)draw_list.omniLightCount(), MAX_OMNI_LIGHT);
+            for(size_t i = 0; i < count && i < MAX_OMNI_LIGHT; ++i) {
+                OmniLight* l = (OmniLight*)draw_list.getOmniLight(i);
+                light_omni_pos[i] = l->getOwner()->getTransform()->getWorldPosition();
+                light_omni_col[i] = l->color * l->intensity;
+                light_omni_radius[i] = l->radius;
+            }
+            glUniform3fv(prog_light_pass->getUniform("light_omni_pos"), count, (float*)light_omni_pos);
+            glUniform3fv(prog_light_pass->getUniform("light_omni_col"), count, (float*)light_omni_col);
+            glUniform1fv(prog_light_pass->getUniform("light_omni_radius"), count, (float*)light_omni_radius);
+            glUniform1i(prog_light_pass->getUniform("light_omni_count"), count);
+        }
         gl::bindTexture2d(gl::TEXTURE_ALBEDO, g_buffer->getAlbedoTexture());
         gl::bindTexture2d(gl::TEXTURE_NORMAL, g_buffer->getNormalTexture());
         gl::bindTexture2d(gl::TEXTURE_METALLIC, g_buffer->getMetallicTexture());

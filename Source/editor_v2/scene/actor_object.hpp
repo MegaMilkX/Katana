@@ -6,6 +6,9 @@
 class ActorObject : public GameObject {
     RTTR_ENABLE(GameObject)
 public:
+    ~ActorObject();
+    virtual void _onCreate();
+
     virtual void init() {}
     virtual void reset() {}
     virtual void update() = 0;

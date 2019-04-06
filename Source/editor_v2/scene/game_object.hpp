@@ -39,6 +39,11 @@ public:
     GameObject();
     virtual ~GameObject();
 
+    virtual void                        _onCreate() {
+        onCreate();
+    }
+    virtual void                        onCreate() {}
+
     void                                setUid(uint64_t uid);
     uint64_t                            getUid() const;
 
@@ -67,6 +72,7 @@ public:
     std::shared_ptr<GameObject>         getChild(size_t i);
     std::shared_ptr<GameObject>         getChild(const std::string& name);
     GameObject*                         findObject(const std::string& name);
+    void                                getAllObjects(std::vector<GameObject*>& result);
     void                                removeChild(GameObject* o);
     void                                removeChildRecursive(GameObject* o);
 

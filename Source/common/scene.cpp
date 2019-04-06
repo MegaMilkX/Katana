@@ -326,7 +326,12 @@ bool Scene::deserialize(std::vector<char>& data) {
             std::shared_ptr<Resource> res_ptr(res);
             res_ptr->Storage(Resource::LOCAL);
             res_ptr->Name(MKSTR(res_name << "#" << i));
-            res_ptr->deserialize(ss, (size_t)sz);
+
+            std::vector<char> buf_(sz);
+            ss.read(buf_.data(), sz);
+            dstream dstr;
+            dstr.setBuffer(buf_);
+            res_ptr->deserialize(dstr, (size_t)sz);
             addLocalResource(type, res_ptr);
         }
     }

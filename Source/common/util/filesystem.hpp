@@ -95,4 +95,15 @@ inline std::vector<std::string> find_all_files(const std::string& dir, const std
     return names;
 }
 
+inline void createDirRecursive(const std::string& path) {
+    size_t offset = 0;
+    offset = path.find_first_of("\\", offset);
+    while(offset != path.npos) {
+        std::string part(path.begin(), path.begin() + offset);
+        CreateDirectoryA(part.c_str(), 0);
+        offset = path.find_first_of("\\", offset + 1); 
+    }
+    CreateDirectoryA(path.c_str(), 0);
+}
+
 #endif

@@ -49,24 +49,24 @@ public:
         return view;
     }
 
-    virtual bool serialize(std::ostream& out) {
-        write(out, projection);
-        write(out, view);
-        write<uint8_t>(out, ptype);
-        write(out, vp);
-        write(out, fov);
-        write(out, znear);
-        write(out, zfar);
+    virtual bool serialize(out_stream& out) {
+        out.write(projection);
+        out.write(view);
+        out.write<uint8_t>(ptype);
+        out.write(vp);
+        out.write(fov);
+        out.write(znear);
+        out.write(zfar);
         return true;
     }
-    virtual bool deserialize(std::istream& in, size_t sz) {
-        projection = read<gfxm::mat4>(in);
-        view = read<gfxm::mat4>(in);
-        ptype = (PROJECTION)read<uint8_t>(in);
-        vp = read<gfxm::vec2>(in);
-        fov = read<float>(in);
-        znear = read<float>(in);
-        zfar = read<float>(in);
+    virtual bool deserialize(in_stream& in, size_t sz) {
+        projection = in.read<gfxm::mat4>();
+        view = in.read<gfxm::mat4>();
+        ptype = (PROJECTION)in.read<uint8_t>();
+        vp = in.read<gfxm::vec2>();
+        fov = in.read<float>();
+        znear = in.read<float>();
+        zfar = in.read<float>();
         return true;
     }
 

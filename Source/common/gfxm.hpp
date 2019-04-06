@@ -378,6 +378,42 @@ inline tquat<T> operator/=(tquat<T>& a, const M& f) {
     return a / f;
 }
 
+template<typename T, typename T2>
+inline bool operator>(const tvec2<T>& a, const tvec2<T2>& b) {
+    return a.x > b.x && a.y > b.y;
+}
+template<typename T, typename T2>
+inline bool operator>(const tvec3<T>& a, const tvec3<T2>& b) {
+    return a.x > b.x && a.y > b.y && a.z > b.z;
+}
+
+template<typename T, typename T2>
+inline bool operator<(const tvec2<T>& a, const tvec2<T2>& b) {
+    return a.x < b.x && a.y < b.y;
+}
+template<typename T, typename T2>
+inline bool operator<(const tvec3<T>& a, const tvec3<T2>& b) {
+    return a.x < b.x && a.y < b.y && a.z < b.z;
+}
+
+template<typename T, typename T2>
+inline bool operator>=(const tvec2<T>& a, const tvec2<T2>& b) {
+    return a.x >= b.x && a.y >= b.y;
+}
+template<typename T, typename T2>
+inline bool operator>=(const tvec3<T>& a, const tvec3<T2>& b) {
+    return a.x >= b.x && a.y >= b.y && a.z >= b.z;
+}
+
+template<typename T, typename T2>
+inline bool operator<=(const tvec2<T>& a, const tvec2<T2>& b) {
+    return a.x <= b.x && a.y <= b.y;
+}
+template<typename T, typename T2>
+inline bool operator<=(const tvec3<T>& a, const tvec3<T2>& b) {
+    return a.x <= b.x && a.y <= b.y && a.z <= b.z;
+}
+
 inline float qrsqrt(const float &n)
 {
     long i;
@@ -740,15 +776,31 @@ template<typename T>
 inline tmat3<T> to_mat3(const tquat<T>& q)
 {
     tmat3<T> m;
-    m[0].x = 1 - 2 * q.y * q.y - 2 * q.z * q.z;
-    m[0].y = q.z * 2 * q.w + 2 * q.x * q.y;
-    m[0].z = -q.y * 2 * q.w + 2 * q.x * q.z;
-    m[1].x = -q.z * 2 * q.w + 2 * q.x * q.y;
-    m[1].y = 1 - 2 * q.x * q.x - 2 * q.z * q.z;
-    m[1].z = q.x * 2 * q.w + 2 * q.y * q.z;
-    m[2].x = q.y * 2 * q.w + 2 * q.x * q.z;
-    m[2].y = -q.x * 2 * q.w + 2 * q.y * q.z;
-    m[2].z = 1 - 2 * q.x * q.x - 2 * q.y * q.y;
+    float x = q.x;
+    float y = q.y;
+    float z = q.z;
+    float w = q.w;
+    float _2x2 = 2 * x * x;
+    float _2y2 = 2 * y * y;
+    float _2z2 = 2 * z * z;
+    float _2xy = 2 * x * y;
+    float _2wz = 2 * w * z;
+    float _2xz = 2 * x * z;
+    float _2wy = 2 * w * y;
+    float _2wx = 2 * w * x;
+    float _2yz = 2 * y * z;
+
+
+    m[0][0] = 1 - _2y2 - _2z2;
+    m[0][1] = _2xy + _2wz;
+    m[0][2] = _2xz - _2wy;
+    m[1][0] = _2xy - _2wz;
+    m[1][1] = 1 - _2x2 - _2z2;
+    m[1][2] = _2yz + _2wx;
+    m[2][0] = _2xz + _2wy;
+    m[2][1] = _2yz - _2wx;
+    m[2][2] = 1 - _2x2 - _2y2;
+
     return m;
 }
 template<typename T>
@@ -1272,6 +1324,13 @@ inline void expand_aabb(gfxm::aabb& box, const gfxm::vec3& pt) {
     if(pt.x > box.to.x) box.to.x = pt.x;
     if(pt.y > box.to.y) box.to.y = pt.y;
     if(pt.z > box.to.z) box.to.z = pt.z;
+}
+
+inline bool point_in_aabb(const gfxm::aabb& box, const gfxm::vec3& pt) {
+    return pt >= box.from && pt <= box.to;
+}
+inline bool aabb_in_aabb(const gfxm::aabb& a, const gfxm::aabb& enclosing) {
+    return a.from >= enclosing.from && a.to <= enclosing.to;
 }
 
 }

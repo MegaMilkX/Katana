@@ -10,7 +10,7 @@
 
 class Material : public Resource {
 public:
-    gfxm::vec3 tint;
+    gfxm::vec3 tint = gfxm::vec3(1,1,1);
 
     std::shared_ptr<Texture2D> albedo;
     std::shared_ptr<Texture2D> normal;
@@ -20,6 +20,10 @@ public:
     virtual void serialize(out_stream& out) {
         using json = nlohmann::json;
         json j;
+        j = json::object();
+
+        j["tint"] = { tint.x, tint.y, tint.z };
+        
         if(albedo) {
             j["albedo"] = albedo->Name();
         }
@@ -35,7 +39,7 @@ public:
 
         out.write(j.dump());
     }
-    virtual bool deserialize(std::istream& in, size_t sz) {
+    virtual bool deserialize(in_stream& in, size_t sz) {
         std::vector<char> buf;
         buf.resize(sz);
         in.read((char*)buf.data(), buf.size());
@@ -47,6 +51,11 @@ public:
         } catch(std::exception& e) {
             LOG_WARN("Material json parse error: " << e.what());
             return false;
+        }
+
+        json jtint = j["tint"];
+        if(jtint.is_array()) {
+            tint = gfxm::vec3(jtint[0].get<float>(), jtint[1].get<float>(), jtint[2].get<float>());
         }
 
         getMap(j, "albedo", albedo);

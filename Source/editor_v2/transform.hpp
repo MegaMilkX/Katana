@@ -52,8 +52,12 @@ public:
     const gfxm::mat4& getWorldTransform();
 
     TransformNode* getParent() const;
+
+    void _frameClean();
+    bool _isFrameDirty() const;
 private:
     bool _dirty = true;
+    bool _frame_dirty = true;
     gfxm::vec3 _position;
     gfxm::quat _rotation = gfxm::quat(.0f, .0f, .0f, 1.0f);
     bool _dirty_euler = true;

@@ -8,6 +8,9 @@
 #include "../util/init_filesystem_resources.hpp"
 #include "../input/input_mgr.hpp"
 #include "../input/input_glfw.hpp"
+#include "../audio.hpp"
+#include "../lib/imgui_wrap.hpp"
+
 
 static GLFWwindow* window = 0;
 
@@ -25,10 +28,42 @@ bool platformInit() {
 
     input().getTable().load(get_module_dir() + "\\bindings.json");
     initGlfwInputCallbacks(window, &input());
+
+    audio().init(44100, 16);
+
+    // ImGui ========
+    ImGuiInit();
+    auto& io = ImGui::GetIO();
+    io.KeyMap[ImGuiKey_Tab] = GLFW_KEY_TAB;
+    io.KeyMap[ImGuiKey_LeftArrow] = GLFW_KEY_LEFT;
+    io.KeyMap[ImGuiKey_RightArrow] = GLFW_KEY_RIGHT;
+    io.KeyMap[ImGuiKey_UpArrow] = GLFW_KEY_UP;
+    io.KeyMap[ImGuiKey_DownArrow] = GLFW_KEY_DOWN;
+    io.KeyMap[ImGuiKey_PageUp] = GLFW_KEY_PAGE_UP;
+    io.KeyMap[ImGuiKey_PageDown] = GLFW_KEY_PAGE_DOWN;
+    io.KeyMap[ImGuiKey_Home] = GLFW_KEY_HOME;
+    io.KeyMap[ImGuiKey_End] = GLFW_KEY_END;
+    io.KeyMap[ImGuiKey_Insert] = GLFW_KEY_INSERT;
+    io.KeyMap[ImGuiKey_Delete] = GLFW_KEY_DELETE;
+    io.KeyMap[ImGuiKey_Backspace] = GLFW_KEY_BACKSPACE;
+    io.KeyMap[ImGuiKey_Space] = GLFW_KEY_SPACE;
+    io.KeyMap[ImGuiKey_Enter] = GLFW_KEY_ENTER;
+    io.KeyMap[ImGuiKey_Escape] = GLFW_KEY_ESCAPE;
+    io.KeyMap[ImGuiKey_A] = GLFW_KEY_A;
+    io.KeyMap[ImGuiKey_C] = GLFW_KEY_C;
+    io.KeyMap[ImGuiKey_V] = GLFW_KEY_V;
+    io.KeyMap[ImGuiKey_X] = GLFW_KEY_X;
+    io.KeyMap[ImGuiKey_Y] = GLFW_KEY_Y;
+    io.KeyMap[ImGuiKey_Z] = GLFW_KEY_Z;
+    // ==============
+
     return true;
 }
 
 void platformCleanup() {
+    ImGuiCleanup();
+
+    audio().cleanup();
     DebugDraw::getInstance()->cleanup();
     ShaderFactory::cleanup();
     cleanupWindow();
@@ -42,9 +77,19 @@ void platformUpdate() {
     glfwPollEvents();
     updateGlfwInput(window);
     eventMgr().pollEvents();
+
+    unsigned w, h;
+    unsigned cx, cy;
+    platformGetViewportSize(w, h);
+    platformGetMousePos(cx, cy);
+    ImGuiUpdate(1.0f/60.0f, w, h);
+    ImGuiIO& io = ImGui::GetIO();
+    io.MousePos = ImVec2((float)cx, (float)cy);
 }
 
 void platformSwapBuffers() {
+    ImGuiDraw();
+
     glfwSwapBuffers(window);
 }
 
@@ -107,6 +152,8 @@ bool initWindow() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
+
+    glDisable(GL_LINE_SMOOTH);
 
     GL_LOG_ERROR("");
 

@@ -1,6 +1,10 @@
 #include "animation.hpp"
 
-
+void Animation::clearNodes() {
+    nodes.clear();
+    node_names.clear();
+    // TOOD Clear root motion node
+}
 
 size_t Animation::nodeCount() {
     return nodes.size();
@@ -48,6 +52,43 @@ const std::string& Animation::getCurveName(size_t i) {
 }
 void Animation::removeCurve(const std::string& name) {
     extra_curves.erase(name);
+}
+
+void Animation::setEvent(const std::string& name, float t, float threshold) {
+    if(t > length) {
+        t = length;
+    }
+    events[name] = event{t, threshold};
+}
+size_t Animation::eventCount() {
+    return events.size();
+}
+std::string Animation::getEventName(size_t i) {
+    auto it = events.begin();
+    std::advance(it, i);
+    return it->first;
+}
+Animation::event& Animation::getEvent(size_t i) {
+    auto it = events.begin();
+    std::advance(it, i);
+    return it->second;
+}
+void Animation::removeEvent(const std::string& e) {
+    events.erase(e);
+}
+void Animation::fireEvents(float from, float to, std::function<void(const std::string& name)> cb, float threshold) {
+    for(auto& kv : events) {
+        float t = kv.second.time;
+        float thresh = kv.second.threshold;
+        if(thresh > threshold) {
+            continue;
+        }
+        if(from > to && t >= from) {
+            cb(kv.first);
+        } else if(t >= from && t < to) {
+            cb(kv.first);
+        }
+    }
 }
 
 void Animation::sample_remapped(
@@ -167,129 +208,183 @@ void Animation::additive_blend_remapped(
 
 void Animation::serialize(out_stream& out_) {
     ZipWriter zipw;
-    std::stringstream out;    
+    {
+        std::stringstream out;    
 
-    out.write((char*)&length, sizeof(length));
-    out.write((char*)&fps, sizeof(fps));
+        out.write((char*)&length, sizeof(length));
+        out.write((char*)&fps, sizeof(fps));
 
-    uint32_t node_count = nodes.size();
-    out.write((char*)&node_count, sizeof(node_count));
+        uint32_t node_count = nodes.size();
+        out.write((char*)&node_count, sizeof(node_count));
 
-    auto write_node = [](std::ostream& out, AnimNode& n) {
-        auto& t_kfs = n.t.get_keyframes();
-        uint64_t t_count = t_kfs.size();
-        out.write((char*)&t_count, sizeof(t_count));
-        out.write((char*)t_kfs.data(), t_kfs.size() * sizeof(keyframe<gfxm::vec3>));
-        auto& r_kfs = n.r.get_keyframes();
-        uint64_t r_count = r_kfs.size();
-        out.write((char*)&r_count, sizeof(r_count));
-        out.write((char*)r_kfs.data(), r_kfs.size() * sizeof(keyframe<gfxm::quat>));
-        auto& s_kfs = n.s.get_keyframes();
-        uint64_t s_count = s_kfs.size();
-        out.write((char*)&s_count, sizeof(s_count));
-        out.write((char*)s_kfs.data(), s_kfs.size() * sizeof(keyframe<gfxm::vec3>));
-    };
+        auto write_node = [](std::ostream& out, AnimNode& n) {
+            auto& t_kfs = n.t.get_keyframes();
+            uint64_t t_count = t_kfs.size();
+            out.write((char*)&t_count, sizeof(t_count));
+            out.write((char*)t_kfs.data(), t_kfs.size() * sizeof(keyframe<gfxm::vec3>));
+            auto& r_kfs = n.r.get_keyframes();
+            uint64_t r_count = r_kfs.size();
+            out.write((char*)&r_count, sizeof(r_count));
+            out.write((char*)r_kfs.data(), r_kfs.size() * sizeof(keyframe<gfxm::quat>));
+            auto& s_kfs = n.s.get_keyframes();
+            uint64_t s_count = s_kfs.size();
+            out.write((char*)&s_count, sizeof(s_count));
+            out.write((char*)s_kfs.data(), s_kfs.size() * sizeof(keyframe<gfxm::vec3>));
+        };
 
-    for(auto& n : nodes) {
-        write_node(out, n);
+        for(auto& n : nodes) {
+            write_node(out, n);
+        }
+        write_node(out, root_motion_node);
+
+        for(auto& kv : node_names) {
+            const std::string& name = kv.first;
+            size_t id = kv.second;
+
+            uint32_t name_sz = name.size();
+            out.write((char*)&name_sz, sizeof(name_sz));
+            out.write((char*)name.data(), name_sz);
+            uint64_t node_id = (uint64_t)id;
+            out.write((char*)&node_id, sizeof(node_id));
+        }
+
+        out.write((char*)&root_motion_enabled, sizeof(root_motion_enabled));
+
+        uint32_t rm_name_sz = root_motion_node_name.size();
+        out.write((char*)&rm_name_sz, sizeof(rm_name_sz));
+        out.write((char*)root_motion_node_name.data(), root_motion_node_name.size());
+
+        out.seekg(0, std::ios::beg);
+        zipw.add("nodes", out);
     }
-    write_node(out, root_motion_node);
-
-    for(auto& kv : node_names) {
-        const std::string& name = kv.first;
-        size_t id = kv.second;
-
-        uint32_t name_sz = name.size();
-        out.write((char*)&name_sz, sizeof(name_sz));
-        out.write((char*)name.data(), name_sz);
-        uint64_t node_id = (uint64_t)id;
-        out.write((char*)&node_id, sizeof(node_id));
+    {
+        dstream out;
+        DataWriter w(&out);
+        w.write<uint32_t>(events.size());
+        for(auto& kv : events) {
+            w.write(kv.first);
+            w.write(kv.second.time);
+            w.write(kv.second.threshold);
+        }
+        zipw.add("events", out.getBuffer());
+    }
+    {
+        dstream out;
+        DataWriter w(&out);
+        w.write<uint32_t>(extra_curves.size());
+        for(auto& kv : extra_curves) {
+            w.write(kv.first);
+            auto& curve = kv.second;
+            w.write(curve.get_keyframes());
+        }
+        zipw.add("ex_curves", out.getBuffer());
     }
 
-    out.write((char*)&root_motion_enabled, sizeof(root_motion_enabled));
-
-    uint32_t rm_name_sz = root_motion_node_name.size();
-    out.write((char*)&rm_name_sz, sizeof(rm_name_sz));
-    out.write((char*)root_motion_node_name.data(), root_motion_node_name.size());
-
-    out.seekg(0, std::ios::beg);
-    zipw.add("nodes", out);
     auto buf = zipw.finalize();
     out_.write((char*)buf.data(), buf.size());
 }
-bool Animation::deserialize(std::istream& in_, size_t sz) { 
+bool Animation::deserialize(in_stream& in_, size_t sz) { 
+    clearNodes();
+
     std::vector<char> inbuf(sz);
     in_.read(inbuf.data(), sz);
     
     ZipReader zipr(inbuf);
     auto buf = zipr.extractFile("nodes");
-    std::stringstream in;
-    in.write((char*)buf.data(), buf.size());
-    in.seekg(0, std::ios::beg);
+    if(!buf.empty()) {
+        std::stringstream in;
+        in.write((char*)buf.data(), buf.size());
+        in.seekg(0, std::ios::beg);
 
-    in.read((char*)&length, sizeof(length));
-    in.read((char*)&fps, sizeof(fps));
+        in.read((char*)&length, sizeof(length));
+        in.read((char*)&fps, sizeof(fps));
 
-    uint32_t node_count = 0;
-    in.read((char*)&node_count, sizeof(node_count));
+        uint32_t node_count = 0;
+        in.read((char*)&node_count, sizeof(node_count));
 
-    auto read_node = [](std::istream& in, AnimNode& n) {
-        uint64_t t_count = 0;
-        uint64_t r_count = 0;
-        uint64_t s_count = 0;
-        std::vector<keyframe<gfxm::vec3>> t_kfs;
-        std::vector<keyframe<gfxm::quat>> r_kfs;
-        std::vector<keyframe<gfxm::vec3>> s_kfs;
+        auto read_node = [](std::istream& in, AnimNode& n) {
+            uint64_t t_count = 0;
+            uint64_t r_count = 0;
+            uint64_t s_count = 0;
+            std::vector<keyframe<gfxm::vec3>> t_kfs;
+            std::vector<keyframe<gfxm::quat>> r_kfs;
+            std::vector<keyframe<gfxm::vec3>> s_kfs;
 
-        in.read((char*)&t_count, sizeof(t_count));
-        if(t_count) {
-            t_kfs.resize(t_count);
-            in.read((char*)t_kfs.data(), t_count * sizeof(keyframe<gfxm::vec3>));
+            in.read((char*)&t_count, sizeof(t_count));
+            if(t_count) {
+                t_kfs.resize(t_count);
+                in.read((char*)t_kfs.data(), t_count * sizeof(keyframe<gfxm::vec3>));
+                
+                n.t.set_keyframes(t_kfs);
+            }
+
+            in.read((char*)&r_count, sizeof(r_count));
+            if(r_count) {
+                r_kfs.resize(r_count);
+                in.read((char*)r_kfs.data(), r_count * sizeof(keyframe<gfxm::quat>));
+                
+                n.r.set_keyframes(r_kfs);
+            }
             
-            n.t.set_keyframes(t_kfs);
+            in.read((char*)&s_count, sizeof(s_count));
+            if(s_count) {
+                s_kfs.resize(s_count);
+                in.read((char*)s_kfs.data(), s_count * sizeof(keyframe<gfxm::vec3>));
+
+                n.s.set_keyframes(s_kfs);
+            }
+        };
+
+        for(uint32_t i = 0; i < node_count; ++i) {
+            nodes.emplace_back(AnimNode());
+            AnimNode& n = nodes.back();
+            read_node(in, n);
+        }
+        read_node(in, root_motion_node);
+
+        for(uint32_t i = 0; i < node_count; ++i) {
+            std::string name;
+            uint32_t name_sz = 0;
+            in.read((char*)&name_sz, sizeof(name_sz));
+            name.resize(name_sz);
+            in.read((char*)name.data(), name.size());
+            uint64_t node_id = 0;
+            in.read((char*)&node_id, sizeof(node_id));
+
+            node_names[name] = (size_t)node_id;
         }
 
-        in.read((char*)&r_count, sizeof(r_count));
-        if(r_count) {
-            r_kfs.resize(r_count);
-            in.read((char*)r_kfs.data(), r_count * sizeof(keyframe<gfxm::quat>));
-            
-            n.r.set_keyframes(r_kfs);
-        }
-        
-        in.read((char*)&s_count, sizeof(s_count));
-        if(s_count) {
-            s_kfs.resize(s_count);
-            in.read((char*)s_kfs.data(), s_count * sizeof(keyframe<gfxm::vec3>));
+        in.read((char*)&root_motion_enabled, sizeof(root_motion_enabled));
 
-            n.s.set_keyframes(s_kfs);
-        }
-    };
-
-    for(uint32_t i = 0; i < node_count; ++i) {
-        nodes.emplace_back(AnimNode());
-        AnimNode& n = nodes.back();
-        read_node(in, n);
+        uint32_t rm_name_sz = 0;
+        in.read((char*)&rm_name_sz, sizeof(rm_name_sz));
+        root_motion_node_name.resize(rm_name_sz);
+        in.read((char*)root_motion_node_name.data(), rm_name_sz);
     }
-    read_node(in, root_motion_node);
-
-    for(uint32_t i = 0; i < node_count; ++i) {
-        std::string name;
-        uint32_t name_sz = 0;
-        in.read((char*)&name_sz, sizeof(name_sz));
-        name.resize(name_sz);
-        in.read((char*)name.data(), name.size());
-        uint64_t node_id = 0;
-        in.read((char*)&node_id, sizeof(node_id));
-
-        node_names[name] = (size_t)node_id;
+    buf = zipr.extractFile("events");
+    if(!buf.empty()) {
+        dstream in;
+        in.setBuffer(buf);
+        DataReader r(&in);
+        uint32_t evt_count = r.read<uint32_t>();
+        for(uint32_t i = 0; i < evt_count; ++i) {
+            std::string name = r.readStr();
+            float t = r.read<float>();
+            float thresh = r.read<float>();
+            setEvent(name, t, thresh);
+        }
     }
-
-    in.read((char*)&root_motion_enabled, sizeof(root_motion_enabled));
-
-    uint32_t rm_name_sz = 0;
-    in.read((char*)&rm_name_sz, sizeof(rm_name_sz));
-    root_motion_node_name.resize(rm_name_sz);
-    in.read((char*)root_motion_node_name.data(), rm_name_sz);
+    buf = zipr.extractFile("ex_curves");
+    if(!buf.empty()) {
+        dstream in;
+        in.setBuffer(buf);
+        DataReader r(&in);
+        uint32_t curve_count = r.read<uint32_t>();
+        for(uint32_t i = 0; i < curve_count; ++i) {
+            std::string name = r.readStr();
+            std::vector<keyframe<float>> kfs = r.readArray<keyframe<float>>();
+            extra_curves[name].set_keyframes(kfs);
+        }
+    }
     return true;
 }

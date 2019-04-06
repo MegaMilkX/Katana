@@ -17,6 +17,8 @@
 
 #include "editor_state.hpp"
 
+#include "../common/util/audio/audio_mixer.hpp"
+
 class Editor {
 public:
     Editor();

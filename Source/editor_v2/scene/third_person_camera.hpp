@@ -75,6 +75,20 @@ public:
         tcam.rotate(_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
         tcam.rotate(_angle_x, tcam.right());
 
+        gfxm::vec3 hit;
+        float sweepRad = 0.3f;
+        if(getScene()->getController<DynamicsCtrl>()
+            ->sweepSphere(
+                sweepRad,
+                pivot,
+                pivot + tcam.back() * _distance,
+                hit
+            )
+        ) {
+            float len = gfxm::length(pivot - hit);
+            _distance = len;
+        }
+
         tcam.translate(tcam.back() * _distance);
         getTransform()->setTransform(tcam.matrix());
     }

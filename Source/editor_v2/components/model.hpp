@@ -8,7 +8,7 @@
 
 #include "../scene/game_scene.hpp"
 
-#include "../../common/util/serialization.hpp"
+#include "../../common/util/imgui_helpers.hpp"
 
 class CmModel : public ObjectComponent, public SceneListener {
     RTTR_ENABLE(ObjectComponent)
@@ -23,13 +23,9 @@ public:
         std::shared_ptr<SkinData> skin_data;
     };
 
-    ~CmModel() {
-        getOwner()->getScene()->getEventMgr().unsubscribeAll(this);
-    }
+    ~CmModel();
 
-    virtual void onCreate() {
-        getOwner()->getScene()->getEventMgr().subscribe(this, EVT_OBJECT_REMOVED);
-    }
+    virtual void onCreate();
 
     virtual void copy(ObjectComponent* other) {
         if(other->get_type() != get_type()) {
@@ -91,48 +87,53 @@ public:
         }
         return segments[i];
     }
+    void removeSegment(size_t i) {
+        segments.erase(segments.begin() + i);
+    }
     size_t segmentCount() const {
         return segments.size();
     }
 
-    virtual bool serialize(std::ostream& out) {
-        write<uint32_t>(out, segmentCount());
+    virtual bool serialize(out_stream& out) {
+        DataWriter w(&out);
+        w.write<uint32_t>(segmentCount());
         for(size_t i = 0; i < segmentCount(); ++i) {
             std::string mesh_name = "";
             std::string mat_name = "";
             if(getSegment(i).mesh) mesh_name = getSegment(i).mesh->Name();
             if(getSegment(i).material) mat_name = getSegment(i).material->Name();
 
-            wt_string(out, mesh_name);
-            write<uint64_t>(out, 0); // Reserved
-            wt_string(out, mat_name);
+            w.write(mesh_name);
+            w.write<uint64_t>(0); // reserved
+            w.write(mat_name);
 
             if(getSegment(i).skin_data) {
                 auto& skin_data = getSegment(i).skin_data;
-                write<uint32_t>(out, skin_data->bone_nodes.size());
+                w.write<uint32_t>(skin_data->bone_nodes.size());
                 for(size_t j = 0; j < skin_data->bone_nodes.size(); ++j) {
                     if(skin_data->bone_nodes[j]) {
-                        wt_string(out, skin_data->bone_nodes[j]->getName());
+                        w.write(skin_data->bone_nodes[j]->getName());
                     } else {
-                        wt_string(out, "");
+                        w.write(std::string(""));
                     }
-                    write<gfxm::mat4>(out, skin_data->bind_transforms[j]);
+                    w.write<gfxm::mat4>(skin_data->bind_transforms[j]);
                 }
             } else {
-                write<uint32_t>(out, 0);
+                w.write<uint32_t>(0);
             }
         }
         return true;
     }
-    virtual bool deserialize(std::istream& in, size_t sz) {
-        uint32_t seg_count = read<uint32_t>(in);
+    virtual bool deserialize(in_stream& in, size_t sz) {
+        DataReader r(&in);
+        uint32_t seg_count = r.read<uint32_t>();
         for(uint32_t i = 0; i < seg_count; ++i) {
             std::string mesh_name = "";
             std::string mat_name = "";
 
-            mesh_name = rd_string(in);
-            uint64_t reserved = read<uint64_t>(in);
-            mat_name = rd_string(in);
+            mesh_name = r.readStr();
+            uint64_t reserved = r.read<uint64_t>();
+            mat_name = r.readStr();
             if(!mesh_name.empty()) {
                 getSegment(i).mesh = getResource<Mesh>(mesh_name);
             }
@@ -140,12 +141,12 @@ public:
                 getSegment(i).material = getResource<Material>(mat_name);
             }
 
-            uint32_t bone_count = read<uint32_t>(in);
+            uint32_t bone_count = r.read<uint32_t>();
             if(bone_count) {
                 getSegment(i).skin_data.reset(new SkinData());
                 for(uint32_t j = 0; j < bone_count; ++j) {
-                    std::string bone_name = rd_string(in);
-                    gfxm::mat4 t = read<gfxm::mat4>(in);
+                    std::string bone_name = r.readStr();
+                    gfxm::mat4 t = r.read<gfxm::mat4>();
                     GameObject* bo = getOwner()->getRoot()->findObject(bone_name);
                     getSegment(i).skin_data->bone_nodes.emplace_back(bo);
                     getSegment(i).skin_data->bind_transforms.emplace_back(t);
@@ -154,22 +155,48 @@ public:
         }
         return true;
     }
+
+    virtual IEditorComponentDesc* _newEditorDescriptor();
+    virtual void onGui() {
+        for(size_t i = 0; i < segmentCount(); ++i) {
+            auto& seg = getSegment(i);
+            ImGui::Text(MKSTR("Segment " << i).c_str());
+            imguiResourceCombo<Mesh>(
+                MKSTR("mesh##" << i).c_str(),
+                seg.mesh,
+                ".msh",
+                [](){
+                    LOG("Mesh changed");
+                }
+            );
+            imguiResourceCombo<Material>(
+                MKSTR("material##" << i).c_str(),
+                seg.material,
+                ".mat",
+                [](){
+                    LOG("Material changed")
+                }
+            );
+            if(ImGui::SmallButton(MKSTR("- remove segment##" << i).c_str())) {
+                removeSegment(i);
+            }
+        }
+        if(ImGui::Button("+ Add segment")) {
+            getSegment(segmentCount());
+        }
+    }
 private:
-    void onSceneEvent(GameObject* sender, SCENE_EVENT e, rttr::variant payload) {
-        switch(e) {
-        case EVT_OBJECT_REMOVED:
-            for(size_t i = 0; i < segmentCount(); ++i) {
-                auto& seg = getSegment(i);
-                if(seg.skin_data) {
-                    for(size_t j = 0; j < seg.skin_data->bone_nodes.size(); ++j) {
-                        if(sender == seg.skin_data->bone_nodes[j]) {
-                            seg.skin_data->bone_nodes[j] = 0;
-                        }
+    virtual void onObjectRemoved(GameObject* sender) {
+        for(size_t i = 0; i < segmentCount(); ++i) {
+            auto& seg = getSegment(i);
+            if(seg.skin_data) {
+                for(size_t j = 0; j < seg.skin_data->bone_nodes.size(); ++j) {
+                    if(sender == seg.skin_data->bone_nodes[j]) {
+                        seg.skin_data->bone_nodes[j] = 0;
                     }
                 }
             }
-            break;
-        };
+        }
     }
 
     std::vector<Segment> segments;
@@ -179,6 +206,21 @@ STATIC_RUN(CmModel) {
         .constructor<>()(
             rttr::policy::ctor::as_raw_ptr
         );
+}
+
+class ModelDesc : public IEditorComponentDesc {
+public:
+    ModelDesc(CmModel* s)
+    : model(s) {}
+    virtual void gui() {
+        model->onGui();
+    }
+private:
+    CmModel* model;
+};
+
+inline IEditorComponentDesc* CmModel::_newEditorDescriptor() {
+    return new ModelDesc(this);
 }
 
 #endif

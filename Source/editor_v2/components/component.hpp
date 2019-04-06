@@ -3,10 +3,14 @@
 
 #include <rttr/type>
 #include <rttr/registration>
+#include "../../common/util/static_run.h"
 
 #include "../editor_component_desc.hpp"
 
 #include "../../common/gfxm.hpp"
+
+#include "../../common/util/data_stream.hpp"
+#include "../../common/util/data_writer.hpp"
 
 class GameObject;
 class ObjectComponent {
@@ -27,8 +31,8 @@ public:
 
     virtual bool buildAabb(gfxm::aabb& out);
 
-    virtual bool serialize(std::ostream& out);
-    virtual bool deserialize(std::istream& in, size_t sz);
+    virtual bool serialize(out_stream& out);
+    virtual bool deserialize(in_stream& in, size_t sz);
 
     virtual IEditorComponentDesc* _newEditorDescriptor();
 private:

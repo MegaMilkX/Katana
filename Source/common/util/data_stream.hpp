@@ -5,37 +5,50 @@
 #include <string>
 #include <vector>
 #include <sstream>
-
-class data_stream {
-public:
-    template<typename T>
-    void write(const T& value);
-};
+#include <fstream>
 
 class in_stream {
 public:
-    bool read(void* data, size_t sz) {
-        if(buf.size() - cur < sz) {
-            return false;
-        }
-        memcpy(data, buf.data() + cur, sz);
-        cur += sz;
-        return true;
+    virtual ~in_stream() {}
+    virtual bool read(void* data, size_t sz) = 0;
+    template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
+    bool read(T& value) {
+        return read(&value, sizeof(value));
+    }
+    template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
+    bool read(std::vector<T>& value, size_t count) {
+        value.resize(count);
+        return read((void*)value.data(), count * sizeof(T));
+    }
+    bool read(std::string& value, size_t count) {
+        value.resize(count);
+        return read((void*)value.data(), count);
+    }
+    template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
+    T read() {
+        T v;
+        read(v);
+        return v;
+    }
+    template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
+    std::vector<T> read(size_t sz) {
+        std::vector<T> v;
+        read(v, sz);
+        return v;
+    }
+    std::string readStr(size_t sz) {
+        std::string v;
+        read(v, sz);
+        return v;
     }
 
-    bool eof() {
-        return buf.size() == cur;
-    }
-private:
-    std::vector<char> buf;
-    size_t cur = 0;
+    virtual size_t bytes_available() = 0;
 };
 
 class out_stream {
 public:
-    void write(const void* data, size_t sz) {
-        buf.insert(buf.end(), (char*)data, (char*)data + sz);
-    }
+    virtual ~out_stream() {}
+    virtual void write(const void* data, size_t sz) = 0;
     template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
     void write(const T& value) {
         write(&value, sizeof(value));
@@ -47,12 +60,61 @@ public:
     void write(const std::string& value) {
         write(value.data(), value.size());
     }
+};
 
-    std::vector<char>& getBuffer() {
-        return buf;
-    }
+class base_stream : public in_stream, public out_stream {
+public:
+    virtual ~base_stream() {}
+
+    virtual void seek(size_t sz) = 0;
+    virtual void jump(size_t pos) = 0;
+
+    virtual bool eof() = 0;
+
+    virtual size_t size() = 0;
+protected:
+    std::vector<char> buf;
+    size_t cur = 0;
+};
+
+class dstream : public base_stream {
+public:
+    virtual void seek(size_t sz);
+    virtual void jump(size_t pos);
+
+    virtual bool eof();
+
+    virtual size_t size();
+
+    void setBuffer(const std::vector<char>& buf);
+    std::vector<char>& getBuffer();
+
+    virtual bool read(void* data, size_t sz);
+    
+    virtual void write(const void* data, size_t sz);
+
+    virtual size_t bytes_available();
+    
 private:
     std::vector<char> buf;
+    size_t cur = 0;
+};
+
+class file_stream : public base_stream {
+public:
+    file_stream(const std::string& path);
+    virtual void seek(size_t sz);
+    virtual void jump(size_t pos);
+    virtual bool eof();
+    virtual size_t size();
+
+    virtual bool read(void* data, size_t sz);
+    virtual void write(const void* data, size_t sz);
+
+    virtual size_t bytes_available();
+private:
+    std::fstream f;
+    size_t sz = 0;
 };
 
 #endif

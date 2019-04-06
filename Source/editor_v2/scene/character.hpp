@@ -9,6 +9,11 @@
 
 #include <list>
 
+#include "controllers/render_controller.hpp"
+#include "controllers/dynamics_ctrl.hpp"
+
+#include "../components/ghost_object.hpp"
+
 class StatefulActor : public ActorObject {
     RTTR_ENABLE(ActorObject)
 public:
@@ -81,14 +86,30 @@ private:
 };
 
 #include "../components/animation_stack.hpp"
+#include "../../common/resource/audio_clip.hpp"
+#include "../../common/audio.hpp"
 
 class CharacterActor 
 : public StatefulActor, public InputListenerWrap
 {
     RTTR_ENABLE(StatefulActor)
 public:
+    std::shared_ptr<AudioClip> clip_footstep;
+    std::shared_ptr<AudioClip> clip_swoosh;
     virtual void init() {
         anim_stack = get<AnimationStack>().get();
+
+        clip_footstep = retrieve<AudioClip>("assets/audio/footstep.ogg");
+        clip_swoosh = retrieve<AudioClip>("assets/audio/swoosh.ogg");
+        anim_stack->setEventCallback("footstep.L", [this](){
+            audio().playOnce3d(clip_footstep->getBuffer(), getTransform()->getWorldPosition());
+        });
+        anim_stack->setEventCallback("footstep.R", [this](){
+            audio().playOnce3d(clip_footstep->getBuffer(), getTransform()->getWorldPosition());
+        });
+        anim_stack->setEventCallback("swoosh", [this](){
+            audio().playOnce3d(clip_swoosh->getBuffer(), getTransform()->getWorldPosition());
+        });
         
         bindAxis("MoveHori", [this](float v){
             desired_direction.x = v;
@@ -98,6 +119,12 @@ public:
         });
         bindActionPress("Attack", [this](){
             attacking = true;
+        });
+        bindActionPress("SlowWalk", [this](){
+            walk_mod = 0.5f;
+        });
+        bindActionRelease("SlowWalk", [this](){
+            walk_mod = 1.0f;
         });
 
         addState("idle", [this](){
@@ -125,8 +152,9 @@ public:
         }, [this](){
             if(gfxm::length(desired_direction) > 0.01f) {
                 gfxm::mat4 cam_transform = gfxm::mat4(1.0f);
-                if(getScene()->getDefaultCamera()) {
-                    cam_transform = getScene()->getDefaultCamera()->getOwner()->getTransform()->getWorldTransform();
+                auto cam = getScene()->getController<RenderController>()->getDefaultCamera();
+                if(cam) {
+                    cam_transform = cam->getOwner()->getTransform()->getWorldTransform();
                 }
                 gfxm::vec4 dir = cam_transform * gfxm::vec4(desired_direction, .0f);
                 getTransform()->lookAt(
@@ -163,6 +191,15 @@ public:
                 LOG("HITBOX_ACTIVE");
             }
         });
+        addState("fall", [this](){
+            anim_stack->blendOverFromCurrentPose(.1f);
+            anim_stack->play(0, "Bind");
+            anim_stack->getLayer(0).weight = 1.0f;
+            anim_stack->getLayer(1).weight = 0.0f;
+            anim_stack->getLayer(2).weight = 0.0f;
+        }, [this](){
+            getTransform()->translate(gfxm::vec3(.0f, -10.0f * (1.0f/60.0f), .0f));
+        });
 
         addTransition("idle", "run", [this]()->bool{
             if(velocity > 0.01f)
@@ -183,6 +220,13 @@ public:
             }
             return false;
         });
+        addTransitions({"idle", "run", "attack"}, "fall", [this]()->bool{
+            if(!grounded) return true;
+            return false;
+        });
+        addTransition("fall", "idle", [this]()->bool{
+            return grounded;
+        });
     }
     virtual void reset() {
         switchState("idle");
@@ -191,10 +235,30 @@ public:
         StatefulActor::update();
 
         if(gfxm::length(desired_direction) > 0.01f) {
-            velocity = gfxm::lerp(velocity, 1.0f, 0.05f);
+            velocity = gfxm::lerp(velocity, 1.0f * walk_mod, 0.05f);
         } else {
             velocity = gfxm::lerp(velocity, 0.0f, 0.05f);
         }
+
+        gfxm::vec3 pos = getTransform()->getWorldPosition();
+        gfxm::vec3 grnd_hit;
+        float sweepRad = 0.2f;
+        if(getScene()->getController<DynamicsCtrl>()
+            ->sweepSphere(
+                sweepRad,
+                pos + gfxm::vec3(.0f, 1.0f, .0f),
+                pos + gfxm::vec3(.0f,-0.5f, .0f),
+                grnd_hit
+            )
+        ) {
+            getTransform()->setPosition(gfxm::lerp(pos, grnd_hit + gfxm::vec3(.0f, -sweepRad, .0f), 0.2f));
+            grounded = true;
+        } else {
+            grounded = false;
+        }
+        /*
+        gfxm::vec3 new_pos = get<GhostObject>()->getCollisionAdjustedPosition();
+        getTransform()->setPosition(new_pos);*/
     }
 
     void setCameraHeight(float v) {
@@ -208,7 +272,10 @@ private:
 
     float camera_height = 1.4f;
 
+    bool grounded = false;
+
     float velocity = 0.0f;
+    float walk_mod = 1.0f;
 
     gfxm::vec3 desired_direction;
 

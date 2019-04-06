@@ -6,6 +6,8 @@
 #include <vector>
 #include <fstream>
 
+#include "../util/data_stream.hpp"
+
 template<typename Byte = char>
 class streambuf_view : public std::streambuf {
 public:
@@ -66,16 +68,18 @@ typedef streambuf_view<> charbuf_view;
 
 class DataSource {
 public:
-    virtual                 ~DataSource() {}
+    virtual                         ~DataSource() {}
 
-    virtual bool            ReadAll(char* dest) = 0;
-    virtual uint64_t        Size() const = 0;
+    virtual bool                    ReadAll(char* dest) = 0;
+    virtual uint64_t                Size() const = 0;
 
-    virtual std::istream&   open_stream() = 0;
-    virtual void            close_stream() = 0;
+    virtual std::istream&           open_stream() = 0;
+    virtual void                    close_stream() = 0;
 
-    void                    SetName(const std::string& name) { this->name = name; }
-    const                   std::string& Name() const { return name; }
+    virtual std::shared_ptr<base_stream>    make_stream() = 0;
+
+    void                            SetName(const std::string& name) { this->name = name; }
+    const std::string&              Name() const { return name; }
 private:
     std::string name;
 };
@@ -112,6 +116,20 @@ public:
     virtual void            close_stream() {
         buf_view = charbuf_view();
         data.clear();
+    }
+
+    virtual std::shared_ptr<base_stream>    make_stream() {
+        std::shared_ptr<dstream> pstrm(new dstream());
+
+        std::vector<char> data;
+        mz_zip_archive_file_stat f_stat;
+        mz_zip_reader_file_stat(archive.get(), file_index, &f_stat);
+        data.resize(f_stat.m_uncomp_size);
+        mz_zip_reader_extract_file_to_mem(archive.get(), f_stat.m_filename, (char*)data.data(), data.size(), 0);
+
+        pstrm->setBuffer(data);
+        pstrm->jump(0);
+        return pstrm;
     }
 private:
     uint32_t file_index;
@@ -151,6 +169,13 @@ public:
         return istr;
     }
     virtual void            close_stream() {}
+
+    virtual std::shared_ptr<base_stream>    make_stream() {
+        std::shared_ptr<dstream> pstrm(new dstream());
+        pstrm->setBuffer(data);
+        pstrm->jump(0);
+        return pstrm;
+    }
 private:
     charbuf_view buf_view;
     std::istream istr;
@@ -187,6 +212,10 @@ public:
     }
     virtual void            close_stream() {
         f_in.close();
+    }
+
+    virtual std::shared_ptr<base_stream>    make_stream() {
+        return std::shared_ptr<file_stream>(new file_stream(path));
     }
 private:
     std::string path;

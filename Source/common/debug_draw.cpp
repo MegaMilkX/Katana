@@ -112,6 +112,12 @@ void DebugDraw::aabb(const gfxm::aabb& aabb_, const gfxm::vec3& color) {
     line(gfxm::vec3(aabb_.to.x, aabb_.to.y, aabb_.from.z), gfxm::vec3(aabb_.to.x, aabb_.to.y, aabb_.to.z), color);
 }
 
+void DebugDraw::point(const gfxm::vec3& pt, const gfxm::vec3& color) {
+    line(gfxm::vec3(-0.5f,0,0) + pt, gfxm::vec3(0.5f,0,0) + pt, color);
+    line(gfxm::vec3(0,-0.5f,0) + pt, gfxm::vec3(0,0.5f,0) + pt, color);
+    line(gfxm::vec3(0,0,-0.5f) + pt, gfxm::vec3(0,0,0.5f) + pt, color);
+}
+
 void DebugDraw::draw(const gfxm::mat4& proj, const gfxm::mat4& view) {
     if(line_buf.empty()) return;
 
@@ -120,7 +126,7 @@ void DebugDraw::draw(const gfxm::mat4& proj, const gfxm::mat4& view) {
     
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, vbuf);
-    glBufferData(GL_ARRAY_BUFFER, line_buf.size() * sizeof(Vertex), line_buf.data(), GL_STREAM_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, line_buf.size() * sizeof(Vertex), line_buf.data(), GL_DYNAMIC_DRAW);
 
     glBindVertexArray(vao_handle);
 

@@ -76,10 +76,9 @@ public:
 
         auto make_icon_texture = [](const unsigned char* data, size_t sz, Texture2D& tex) {
             std::shared_ptr<DataSourceMemory> ds_mem(new DataSourceMemory((char*)data, (sz)));
-            if(!tex.deserialize(ds_mem->open_stream(), sz)) {
+            if(!tex.deserialize(*ds_mem->make_stream().get(), sz)) {
                 LOG_ERR("Failed to build file icon texture");
             }
-            ds_mem->close_stream();
         };
 
         make_icon_texture(file_png, sizeof(file_png), file_icons64[0]);

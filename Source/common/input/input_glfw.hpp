@@ -61,6 +61,16 @@ float& getMouseScrollAccum() {
     return v;
 }
 
+static const char* ImGui_ImplGlfw_GetClipboardText(void* user_data)
+{
+    return glfwGetClipboardString((GLFWwindow*)user_data);
+}
+
+static void ImGui_ImplGlfw_SetClipboardText(void* user_data, const char* text)
+{
+    glfwSetClipboardString((GLFWwindow*)user_data, text);
+}
+
 inline void onGlfwKey(GLFWwindow*, int, int, int, int);
 inline void onGlfwMouseKey(GLFWwindow*, int, int, int);
 inline void onGlfwMouseMove(GLFWwindow*, double, double);
@@ -98,20 +108,31 @@ inline void onGlfwKey(GLFWwindow* window, int key, int scancode, int action, int
     auto& io = ImGui::GetIO();
     io.KeysDown[key] = action == GLFW_PRESS;
 
-    InputMgr* ptr = (InputMgr*)glfwGetWindowUserPointer(window);    
-    if(action == GLFW_PRESS)
+    InputMgr* ptr = (InputMgr*)glfwGetWindowUserPointer(window); 
+    if(action == GLFW_PRESS) {
         ptr->set(getGlfwKeyName(key), 1.0f);
-    else if(action == GLFW_RELEASE)
+    }
+    else if(action == GLFW_RELEASE) {
         ptr->set(getGlfwKeyName(key), 0.0f);
+    }
+
+    io.KeyCtrl = io.KeysDown[GLFW_KEY_LEFT_CONTROL] || io.KeysDown[GLFW_KEY_RIGHT_CONTROL];
+    io.KeyShift = io.KeysDown[GLFW_KEY_LEFT_SHIFT] || io.KeysDown[GLFW_KEY_RIGHT_SHIFT];
+    io.KeyAlt = io.KeysDown[GLFW_KEY_LEFT_ALT] || io.KeysDown[GLFW_KEY_RIGHT_ALT];
+    io.KeySuper = io.KeysDown[GLFW_KEY_LEFT_SUPER] || io.KeysDown[GLFW_KEY_RIGHT_SUPER];
 }
 
 inline void onGlfwMouseKey(GLFWwindow* window, int button, int action, int mods)
 {
     InputMgr* ptr = (InputMgr*)glfwGetWindowUserPointer(window);
-    if(action == GLFW_PRESS)
+    if(action == GLFW_PRESS) {
         ptr->set(getGlfwKeyName(button), 1.0f);
-    else if(action == GLFW_RELEASE)
+        ImGui::GetIO().MouseDown[button] = true;
+    }
+    else if(action == GLFW_RELEASE) {
         ptr->set(getGlfwKeyName(button), 0.0f);
+        ImGui::GetIO().MouseDown[button] = false;
+    }
 }
 
 inline void onGlfwMouseMove(GLFWwindow* window, double xpos, double ypos)
@@ -131,11 +152,15 @@ inline void onGlfwMouseScroll(GLFWwindow* window, double xoffset, double yoffset
 {
     InputMgr* ptr = (InputMgr*)glfwGetWindowUserPointer(window);
     getMouseScrollAccum() += (float)yoffset;
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.MouseWheelH += (float)xoffset;
+    io.MouseWheel += (float)yoffset;
 }
 
-inline void onGlfwChar(GLFWwindow* window, unsigned int character) {
+inline void onGlfwChar(GLFWwindow* window, unsigned int c) {
     auto& io = ImGui::GetIO();
-    io.AddInputCharacter((ImWchar)character);
+    if (c > 0 && c < 0x10000) io.AddInputCharacter((ImWchar)c);
 }
 
 #endif

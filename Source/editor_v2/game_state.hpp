@@ -5,26 +5,31 @@
 
 #include "scene/character.hpp"
 
+#include "scene/controllers/render_controller.hpp"
+#include "scene/controllers/dynamics_ctrl.hpp"
+
 class GameState {
 public:
     GameState() {
         scene.reset(new GameScene());
         vp.init(640, 480);
-        gfx_mgr.setScene(scene.get());
-        anim_mgr.setScene(scene.get());
+        dd.init();
+    }
+    ~GameState() {
+        dd.cleanup();
     }
 
     void reset() {
-        scene->resetActors();
     }
 
     void update(unsigned x, unsigned y) {
-        anim_mgr.update(1.0f/60.0f);
+        dd.clear();
+        scene->getController<DynamicsCtrl>()->setDebugDraw(&dd);
         scene->update();
 
         gfxm::mat4 proj;
         gfxm::mat4 view;
-        CmCamera* cam = scene->getDefaultCamera();
+        CmCamera* cam = scene->getController<RenderController>()->getDefaultCamera();
         if(cam) {
             proj = cam->getProjection(x, y);
             view = cam->getView();
@@ -36,8 +41,12 @@ public:
         vp.resize(x, y);
 
         DrawList dl;
-        gfx_mgr.getDrawList(dl);
+        scene->getController<RenderController>()->getDrawList(dl);
         renderer.draw(&vp, proj, view, dl, true);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        scene->debugDraw(dd);
+        //dd.draw(proj, view);
     }
 
     GameScene* getScene() {
@@ -48,8 +57,7 @@ private:
 
     RenderViewport vp;
     Renderer renderer;
-    GfxSceneMgr gfx_mgr;
-    AnimationSceneMgr anim_mgr;
+    DebugDraw dd;
 };
 
 #endif

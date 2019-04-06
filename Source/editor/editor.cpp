@@ -18,9 +18,6 @@ Editor::Editor()
 }
 
 void Editor::Init() {
-    ImGuiInit();
-    auto& io = ImGui::GetIO();
-    io.KeyMap[ImGuiKey_Backspace] = GLFW_KEY_BACKSPACE;
 
     dir_view.init(get_module_dir() + "\\");
 
@@ -53,8 +50,6 @@ void Editor::Cleanup() {
     input().removeListener(input_lis);
 
     scene->destroy();
-    
-    ImGuiCleanup();
 }
 
 void Editor::Update(GLFWwindow* window) {
@@ -94,7 +89,7 @@ void Editor::_updateEditor(GLFWwindow* window) {
     cursor_pos.y = (int)cursor_y;
     int w, h;
     glfwGetWindowSize(window, &w, &h);
-    ImGuiUpdate(1.0f/60.0f, w, h);
+
     ImGuizmo::BeginFrame();
 
     double xcpos, ycpos;
@@ -313,8 +308,6 @@ void Editor::_updateEditor(GLFWwindow* window) {
     }
 
     ImGui::End();
-
-    ImGuiDraw();
 }
 void Editor::_updatePlayMode(GLFWwindow* window) {
     int w, h;

@@ -28,48 +28,6 @@ static void imguiRecursiveDerivedMenu(GameScene* scene, rttr::type t) {
     }
 }
 
-void EditorSceneInspector::update(Editor* editor) {
-    GameScene* scene = editor->getScene();
-
-    if(ImGui::Begin("Scene Inspector", 0, ImGuiWindowFlags_MenuBar)) {
-        if(ImGui::BeginMenuBar()) {
-            if(ImGui::BeginMenu("Create...")) {
-                rttr::type t = rttr::type::get<GameObject>();
-                auto derived_array = t.get_derived_classes();
-                for(auto& d : derived_array) {
-                    if(ImGui::MenuItem(d.get_name().to_string().c_str())) {
-                        editor->getScene()->create(d);
-                    }
-                }   
-                //imguiRecursiveDerivedMenu(scene, t);
-                ImGui::EndMenu();
-            }
-            ImGui::EndMenuBar();
-        }
-
-        for(unsigned i = 0; i < scene->objectCount(); ++i) {
-            sceneTreeViewNode(scene->getObject(i), editor);            
-        }
-
-        ImGui::Separator();
-        ImGui::Text("Default camera");
-        auto dcam = editor->getScene()->getDefaultCamera();
-        ImGui::Button(dcam ? dcam->getOwner()->getName().c_str() : "empty");
-        if (ImGui::BeginDragDropTarget()) {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
-                GameObject* tgt_dnd_so = *(GameObject**)payload->Data;
-                auto cam = tgt_dnd_so->find<CmCamera>();
-                if(cam) {
-                    editor->getScene()->setDefaultCamera(cam.get());
-                }
-            }
-            ImGui::EndDragDropTarget();
-        }
-
-        ImGui::End();
-    }
-}
-
 static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
     if (ImGui::BeginPopupContextItem()) {
         if(ImGui::BeginMenu("Create child...")) {
@@ -77,7 +35,7 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
             auto derived_array = t.get_derived_classes();
             for(auto& d : derived_array) {
                 if(ImGui::MenuItem(d.get_name().to_string().c_str())) {
-                    o->createChild(d);
+                    editor->setSelectedObject(o->createChild(d).get());
                 }
             }
             ImGui::EndMenu();
@@ -122,7 +80,7 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
         }
         ImGui::Separator();
         if(ImGui::MenuItem("Duplicate")) {
-            editor->getScene()->copyObject(o);
+            editor->setSelectedObject(editor->getScene()->copyObject(o));
         }
         ImGui::Separator();
         if(ImGui::MenuItem("Delete")) {
@@ -147,6 +105,84 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
     }
     return o;
 } 
+
+void EditorSceneInspector::update(Editor* editor) {
+    GameScene* scene = editor->getScene();
+
+    if(ImGui::Begin("Scene Inspector", 0, ImGuiWindowFlags_MenuBar)) {
+        if(ImGui::BeginMenuBar()) {
+            if(ImGui::BeginMenu("Create...")) {
+                rttr::type t = rttr::type::get<GameObject>();
+                auto derived_array = t.get_derived_classes();
+                for(auto& d : derived_array) {
+                    if(ImGui::MenuItem(d.get_name().to_string().c_str())) {
+                        editor->setSelectedObject(editor->getScene()->create(d));
+                    }
+                }   
+                //imguiRecursiveDerivedMenu(scene, t);
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
+        }
+
+        if(ImGui::InputText("Find", search_string_buf, 256)) {
+
+        }
+        std::string find_str = search_string_buf;
+        if(find_str.empty()) {
+            for(unsigned i = 0; i < scene->objectCount(); ++i) {
+                sceneTreeViewNode(scene->getObject(i), editor);            
+            }
+        } else {
+            ImGui::Text("Search results:");
+            auto objects = scene->findObjectsFuzzy(find_str);
+            for(auto o : objects) {
+                std::string type_name = o->get_derived_info().m_type.get_name().to_string();
+                std::string name_with_uid;
+                if(rttr::type::get<GameObject>() != o->get_type()) {
+                    name_with_uid = MKSTR(o->getName() << " [" << type_name << "]" << "##" << o->getUid());
+                } else {
+                    name_with_uid = MKSTR(o->getName() << "##" << o->getUid());
+                }
+
+                if(ImGui::Selectable(name_with_uid.c_str(), o == editor->getSelectedObject())) {
+                    editor->setSelectedObject(o);
+                }
+                if(ImGui::BeginDragDropSource(0)) {
+                    ImGui::SetDragDropPayload("DND_OBJECT", &o, sizeof(o));
+                    ImGui::Text(o->getName().c_str());
+                    ImGui::EndDragDropSource();
+                }
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
+                        GameObject* tgt_dnd_so = *(GameObject**)payload->Data;
+                        auto clone = o->createClone(tgt_dnd_so);
+                        if(tgt_dnd_so->getParent() == 0) {
+                            tgt_dnd_so->getScene()->removeRecursive(tgt_dnd_so);
+                        } else {
+                            tgt_dnd_so->getParent()->removeChildRecursive(tgt_dnd_so);
+                        }
+                        editor->setSelectedObject(clone.get());
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+                o = guiGameObjectContextMenu(o, editor);
+            }
+        }
+
+        ImGui::Separator();
+        ImGui::Text("Scene controllers:");
+        ImGui::Separator();
+        for(size_t i = 0; i < scene->controllerCount(); ++i) {
+            SceneController* c = scene->getController(i);
+            if(ImGui::CollapsingHeader(c->get_type().get_name().to_string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                c->onGui();
+            }            
+        }
+
+        ImGui::End();
+    }
+}
 
 void EditorSceneInspector::sceneTreeViewNode(GameObject* o, Editor* editor) {
     std::string type_name = o->get_derived_info().m_type.get_name().to_string();

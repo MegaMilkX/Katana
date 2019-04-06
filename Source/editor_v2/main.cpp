@@ -15,6 +15,7 @@ int main() {
     input().getTable().addAxisKey("MoveVert", "KB_W", 1.0f);
     input().getTable().addAxisKey("MoveVert", "KB_S", -1.0f);
     input().getTable().addActionKey("Attack", "KB_SPACE");
+    input().getTable().addActionKey("SlowWalk", "KB_LEFT_ALT");
     //
 
     editorState().game_state.reset(new GameState());

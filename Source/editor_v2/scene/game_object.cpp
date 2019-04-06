@@ -13,7 +13,8 @@ GameObject::~GameObject() {
     // Tell parent transform that this one doesn't exist anymore
     transform.setParent(0);
     for(auto c : children) {
-        notifyObjectEvent(getScene(), c.get(), EVT_OBJECT_REMOVED, c->get_type());
+        getScene()->_unregObject(c.get());
+        getScene()->getEventMgr().postObjectRemoved(c.get());
     }
     deleteAllComponents();
 }
@@ -117,7 +118,8 @@ std::shared_ptr<GameObject> GameObject::createChild(rttr::type t) {
     o->parent = this;
     o->getTransform()->setParent(&transform);
     children.insert(o);
-    notifyObjectEvent(scene, o.get(), EVT_OBJECT_CREATED, o->get_type());
+    scene->_regObject(o.get());
+    scene->getEventMgr().postObjectCreated(o.get());
     return o;
 }
 std::shared_ptr<GameObject> GameObject::createClone(GameObject* o) {
@@ -151,6 +153,12 @@ GameObject* GameObject::findObject(const std::string& name) {
     }
     return 0;
 }
+void GameObject::getAllObjects(std::vector<GameObject*>& result) {
+    for(auto o : children) {
+        o->getAllObjects(result);
+    }
+    result.emplace_back(this);
+}
 void GameObject::removeChild(GameObject* o) {
     for(auto it = children.begin(); it != children.end(); ++it) {
         if((*it).get() == o) {
@@ -166,7 +174,8 @@ void GameObject::removeChild(GameObject* o) {
 void GameObject::removeChildRecursive(GameObject* o) {
     for(auto it = children.begin(); it != children.end(); ++it) {
         if((*it).get() == o) {
-            notifyObjectEvent(getScene(), o, EVT_OBJECT_REMOVED, o->get_type());
+            getScene()->_unregObject(o);
+            getScene()->getEventMgr().postObjectRemoved(o);
             children.erase(it);
             break;
         }
@@ -197,12 +206,14 @@ std::shared_ptr<ObjectComponent> GameObject::getById(size_t id) {
 void GameObject::deleteComponentById(size_t id) {
     auto it = components.begin();
     std::advance(it, id);
-    notifyObjectEvent(getScene(), this, EVT_COMPONENT_REMOVED, it->second->get_type());
+    getScene()->getEventMgr().postComponentRemoved(it->second.get());
+    getScene()->_unregisterComponent(it->second.get());
     components.erase(it);
 }
 void GameObject::deleteAllComponents() {
     for(auto& kv : components) {
-        notifyObjectEvent(getScene(), this, EVT_COMPONENT_REMOVED, kv.second->get_type());
+        getScene()->getEventMgr().postComponentRemoved(kv.second.get());
+        getScene()->_unregisterComponent(kv.second.get());
     }
     components.clear();
 }
@@ -288,13 +299,10 @@ static bool zipAdd(void* data, size_t sz, mz_zip_archive& archive, const std::st
     return true;
 }
 
-static bool zipAddFromStream(std::istream& in, mz_zip_archive& archive, const std::string& name) {
-    in.seekg(0, std::ios::end);
-    size_t sz = in.tellg();
-    in.seekg(0, std::ios::beg);
+static bool zipAddFromStream(in_stream& in, mz_zip_archive& archive, const std::string& name) {
     std::vector<char> buf;
-    buf.resize(sz);
-    in.read((char*)buf.data(), sz);
+    buf.resize(in.bytes_available());
+    in.read((char*)buf.data(), in.bytes_available());
     
     if(!mz_zip_writer_add_mem(
         &archive, 
@@ -346,9 +354,11 @@ std::shared_ptr<ObjectComponent> GameObject::createComponent(rttr::type t) {
         return std::shared_ptr<ObjectComponent>();
     }
 
+    getScene()->_registerComponent(c);
+
     components[t] = ptr;
     ptr->onCreate();
-    notifyObjectEvent(getScene(), this, EVT_COMPONENT_CREATED, t);
+    getScene()->getEventMgr().postComponentCreated(c);
     return ptr;
 }
 
@@ -362,8 +372,9 @@ bool GameObject::serializeComponents(std::ostream& out) {
 
     for(auto& kv : components) {
         auto& c = kv.second;
-        std::stringstream strm;
+        dstream strm;
         if(c->serialize(strm)) {
+            strm.jump(0);
             zipAddFromStream(strm, archive, c->get_type().get_name().to_string());
         }
     }

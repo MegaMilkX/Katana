@@ -10,6 +10,43 @@
 
 class SceneEventBroadcaster {
 public:
+    void postObjectCreated(GameObject* o) {
+        auto it = listeners.find(EVT_OBJECT_CREATED);
+        if(it != listeners.end()) {
+            auto& list = it->second;
+            for(auto lit = list.begin(); lit != list.end(); ++lit) {
+                (*lit)->onObjectCreated(o);
+            }
+        } 
+    }
+    void postObjectRemoved(GameObject* o) {
+        auto it = listeners.find(EVT_OBJECT_REMOVED);
+        if(it != listeners.end()) {
+            auto& list = it->second;
+            for(auto lit = list.begin(); lit != list.end(); ++lit) {
+                (*lit)->onObjectRemoved(o);
+            }
+        } 
+    }
+    void postComponentCreated(ObjectComponent* o) {
+        auto it = listeners.find(EVT_COMPONENT_CREATED);
+        if(it != listeners.end()) {
+            auto& list = it->second;
+            for(auto lit = list.begin(); lit != list.end(); ++lit) {
+                (*lit)->onComponentCreated(o);
+            }
+        } 
+    }
+    void postComponentRemoved(ObjectComponent* o) {
+        auto it = listeners.find(EVT_COMPONENT_REMOVED);
+        if(it != listeners.end()) {
+            auto& list = it->second;
+            for(auto lit = list.begin(); lit != list.end(); ++lit) {
+                (*lit)->onComponentRemoved(o);
+            }
+        } 
+    }
+
     void post(GameObject* sender, SCENE_EVENT evt, rttr::variant payload = rttr::variant()) {
         auto it = listeners.find(evt);
         if(it != listeners.end()) {

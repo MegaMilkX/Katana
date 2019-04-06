@@ -74,8 +74,9 @@ public:
         layer0.anim_index = 0;
         layer0.weight = 1.0f;
     }
-    ~AnimationStack() {
-    }
+    ~AnimationStack();
+
+    virtual void onCreate();
 
     void play(int layer, const std::string& anim_alias);
     void blendOver(int layer, const std::string& anim_alias, float speed = 0.1f);
@@ -92,10 +93,11 @@ public:
     AnimLayer& getLayer(unsigned i);
     void update(float dt);
 
+    void setEventCallback(const std::string& name, std::function<void(void)> cb);
     float getCurveValue(const std::string& name);
 
-    virtual bool serialize(std::ostream& out);
-    virtual bool deserialize(std::istream& in, size_t sz);
+    virtual bool serialize(out_stream& out);
+    virtual bool deserialize(in_stream& in, size_t sz);
 
     IEditorComponentDesc* _newEditorDescriptor() {
         return new EditorComponentDesc<AnimationStack>(this);
@@ -117,7 +119,9 @@ private:
         std::vector<AnimSample>& samples,
         bool enable_root_motion,
         gfxm::vec3& rm_pos_final,
-        gfxm::quat& rm_rot_final
+        gfxm::quat& rm_rot_final,
+        std::function<void(const std::string&)> evt_callback = nullptr,
+        float event_threshold = 0.0f
     );
 
     void resetSkeletonMapping();
@@ -133,6 +137,7 @@ private:
     float                     blend_over_weight = .0f;
 
     std::map<std::string, float> curve_values;
+    std::map<std::string, std::function<void(void)>> callbacks;
 
     bool root_motion_enabled = true;
 };

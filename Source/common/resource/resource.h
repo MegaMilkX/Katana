@@ -11,6 +11,8 @@
 #include "../lib/imgui_wrap.hpp"
 
 #include "../../common/util/data_stream.hpp"
+#include "../../common/util/data_reader.hpp"
+#include "../../common/util/data_writer.hpp"
 
 class Resource {
     RTTR_ENABLE()
@@ -28,7 +30,7 @@ public:
     void Storage(STORAGE storage) { this->storage = storage; }
 
     virtual void serialize(out_stream& out) {}
-    virtual bool deserialize(std::istream& in, size_t sz) { return false; }
+    virtual bool deserialize(in_stream& in, size_t sz) { return false; }
 
     void write_to_file(const std::string& filename) {
         std::ofstream f(filename, std::ios::binary);

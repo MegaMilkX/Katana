@@ -47,7 +47,7 @@ public:
     int Width() { return width; }
     int Height() { return height; }
 
-    virtual bool deserialize(std::istream& in, size_t sz) { 
+    virtual bool deserialize(in_stream& in, size_t sz) { 
         std::vector<char> buf;
         buf.resize(sz);
         in.read((char*)buf.data(), buf.size());

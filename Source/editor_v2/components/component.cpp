@@ -24,10 +24,10 @@ bool ObjectComponent::buildAabb(gfxm::aabb& out) {
     return false;
 }
 
-bool ObjectComponent::serialize(std::ostream& out) {
+bool ObjectComponent::serialize(out_stream& out) {
     return false;
 }
-bool ObjectComponent::deserialize(std::istream& in, size_t sz) {
+bool ObjectComponent::deserialize(in_stream& in, size_t sz) {
     return false;
 }
 

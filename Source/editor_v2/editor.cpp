@@ -11,6 +11,8 @@
 
 #include "serialize_game_scene.hpp"
 
+#include "../common/audio.hpp"
+
 int setupImguiLayout();
 
 Editor::Editor() {
@@ -21,10 +23,6 @@ Editor::~Editor() {
 }
 
 void Editor::init() {
-    ImGuiInit();
-    auto& io = ImGui::GetIO();
-    io.KeyMap[ImGuiKey_Backspace] = GLFW_KEY_BACKSPACE;
-
     input().getTable().addActionKey("MouseLeft", "MOUSE_LEFT");
     input().getTable().addActionKey("MouseRight", "MOUSE_RIGHT");
     input().getTable().addActionKey("MouseMiddle", "MOUSE_MIDDLE");
@@ -45,6 +43,7 @@ void Editor::init() {
     });
     input_lis->bindActionPress("ExitPlayMode", [this](){
         editorState().is_play_mode = false;
+        editorState().game_state->getScene()->stopSession();
     });
 
     scene.reset(new GameScene());
@@ -58,14 +57,10 @@ void Editor::init() {
 
 void Editor::cleanup() {
     input().removeListener(input_lis);
-    ImGuiCleanup();
 }
 
 void Editor::update(unsigned width, unsigned height, unsigned cursor_x, unsigned cursor_y) {
-    ImGuiUpdate(1.0f/60.0f, width, height);
     ImGuizmo::BeginFrame();
-    ImGuiIO& io = ImGui::GetIO();
-    io.MousePos = ImVec2((float)cursor_x, (float)cursor_y);
 
     bool p_open = true;
     static bool opt_fullscreen_persistant = true;
@@ -120,6 +115,7 @@ void Editor::update(unsigned width, unsigned height, unsigned cursor_x, unsigned
             editorState().is_play_mode = true;
             editorState().game_state->getScene()->clear();
             editorState().game_state->getScene()->copy(getScene());
+            editorState().game_state->getScene()->startSession();
         }
         ImGui::EndMenuBar();
     }
@@ -127,14 +123,14 @@ void Editor::update(unsigned width, unsigned height, unsigned cursor_x, unsigned
     //bool sdw = true;
     //ImGui::ShowDemoWindow(&sdw);
 
+    audio().debugGui();
+
     viewport.update(this);
     scene_inspector.update(this);
     dir_view.update(this);
     object_inspector.update(this);
     asset_inspector.update(this);
     // TODO: 
-
-    ImGuiDraw();
 }
 
 GameScene* Editor::getScene() {
@@ -208,11 +204,13 @@ bool Editor::showSaveSceneDialog(GameScene* scene, bool forceDialog) {
 int setupImguiLayout() {
     ImGuiID dockspace_id = ImGui::GetID("MyDockspace");
 
+    //ImGuiID dsid_top = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Up, 0.05f, NULL, &dockspace_id);
     ImGuiID dsid_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.15f, NULL, &dockspace_id);
     ImGuiID dsid_right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.20f, NULL, &dockspace_id);
     ImGuiID dsid_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.30f, NULL, &dockspace_id);
     //ImGuiID dsid_down_right = ImGui::DockBuilderSplitNode(dsid_down, ImGuiDir_Right, 0.40f, NULL, &dsid_down);
 
+    //ImGui::DockBuilderDockWindow("Toolbar", dsid_top);
     ImGui::DockBuilderDockWindow("Scene Inspector", dsid_left);
     ImGui::DockBuilderDockWindow("Object inspector", dsid_right);
     ImGui::DockBuilderDockWindow("Resource inspector", dsid_right);

@@ -10,8 +10,7 @@
 
 #include "../common/debug_draw.hpp"
 
-#include "gfx_scene_mgr.hpp"
-#include "anim_scene_mgr.hpp"
+#include "octree.hpp"
 
 class Editor;
 class EditorViewport {
@@ -24,11 +23,12 @@ private:
     Editor* editor;
     RenderViewport vp;
     Renderer renderer;
-    GfxSceneMgr gfx_mgr;
-    AnimationSceneMgr anim_mgr;
 
     DebugDraw dd;
     InputListener* input_lis = 0;
+
+    Octree oct;
+    OctreeObject* oct_o;
 };
 
 #endif

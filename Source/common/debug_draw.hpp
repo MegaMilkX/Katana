@@ -29,6 +29,8 @@ public:
 
     void aabb(const gfxm::aabb& aabb_, const gfxm::vec3& color);
 
+    void point(const gfxm::vec3& pt, const gfxm::vec3& color);
+
     void draw(const gfxm::mat4& proj, const gfxm::mat4& view);
 
     void clear();

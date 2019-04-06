@@ -16,6 +16,8 @@
 
 #include "../gfxm.hpp"
 
+#include "filesystem.hpp"
+
 class Log {
 public:
     enum Type {
@@ -42,8 +44,11 @@ private:
             time_t t = time(0);
             localtime_s(&ptm, &t);
             char buffer[32];
-            strftime(buffer, 32, "%d%m%Y", &ptm); 
-            std::ofstream f(std::string(buffer) + ".log", std::ios::out | std::ios::app);
+            strftime(buffer, 32, "%d%m%Y", &ptm);
+
+            createDirRecursive(get_module_dir() + "\\log");
+
+            std::ofstream f(get_module_dir() + "\\log\\" + std::string(buffer) + ".log", std::ios::out | std::ios::app);
 
             do {
                 std::queue<entry> lines_copy;

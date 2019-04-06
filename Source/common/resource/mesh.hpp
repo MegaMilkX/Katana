@@ -9,10 +9,15 @@ public:
     gl::IndexedMesh mesh;
     gfxm::aabb aabb;
 
+    const float* getPermanentVertexData();
+    const uint32_t* getPermanentIndexData();
+    size_t vertexCount();
+    size_t indexCount();
+
     virtual void serialize(out_stream& out) {
         mesh.serialize(out);
     }
-    virtual bool deserialize(std::istream& in, size_t sz) { 
+    virtual bool deserialize(in_stream& in, size_t sz) { 
         mesh.deserialize(in);
 
         std::vector<gfxm::vec3> vertices;
@@ -35,6 +40,9 @@ public:
 
         return true; 
     }
+private:
+    std::vector<float> vertices;
+    std::vector<uint32_t> indices;
 };
 STATIC_RUN(Mesh) {
     rttr::registration::class_<Mesh>("Mesh")

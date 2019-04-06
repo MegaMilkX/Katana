@@ -33,23 +33,17 @@ public:
         comp_desc_map[c]->gui();
     }
 private:
-    void onSceneEvent(GameObject* sender, SCENE_EVENT e, rttr::variant payload) {
-        switch(e) {
-        case EVT_OBJECT_CREATED:
-            object_desc_map[sender].reset(sender->_newEditorObjectDesc());
-            break;
-        case EVT_OBJECT_REMOVED:
-            object_desc_map.erase(sender);
-            break;
-        case EVT_COMPONENT_CREATED: {
-            ObjectComponent* c = sender->get(payload.get_value<rttr::type>()).get();
-            comp_desc_map[c].reset(c->_newEditorDescriptor());
-        }
-            break;
-        case EVT_COMPONENT_REMOVED:
-            comp_desc_map.erase(sender->get(payload.get_value<rttr::type>()).get());
-            break;
-        };
+    virtual void onComponentCreated(ObjectComponent* c) {
+        comp_desc_map[c].reset(c->_newEditorDescriptor());
+    }
+    virtual void onComponentRemoved(ObjectComponent* c) {
+        comp_desc_map.erase(c);
+    }
+    virtual void onObjectCreated(GameObject* o) {
+        object_desc_map[o].reset(o->_newEditorObjectDesc());
+    }
+    virtual void onObjectRemoved(GameObject* o) {
+        object_desc_map.erase(o);
     }
 
     GameScene* scene = 0;

@@ -1,25 +1,19 @@
 #include "game_scene.hpp"
 
+#include "../../common/util/levenshtein_distance.hpp"
+
 void notifyObjectEvent(GameScene* scn, GameObject* o, SCENE_EVENT evt, rttr::type t) {
     scn->getEventMgr().post(
         o,
         evt,
         t
-    );/*
-    auto base = t.get_base_classes();
-    for(auto& b : base) {
-        scn->getEventMgr().post(o, evt, b);
-    }*/
+    );
 }
 
 GameScene::GameScene() {
-    getEventMgr().subscribe(this, EVT_OBJECT_CREATED);
-    getEventMgr().subscribe(this, EVT_OBJECT_REMOVED);
-    getEventMgr().subscribe(this, EVT_COMPONENT_REMOVED);
 }
 
 GameScene::~GameScene() {
-    getEventMgr().unsubscribeAll(this);
     getEventMgr().post(0, EVT_SCENE_DESTROYED);
     removeAll();
 }
@@ -29,8 +23,9 @@ SceneEventBroadcaster& GameScene::getEventMgr() {
 }
 
 void GameScene::clear() {
-    default_camera = 0;
     removeAll();
+    controllers.clear();
+    updatable_controllers.clear();
 }
 
 void GameScene::copy(GameScene* other) {
@@ -40,13 +35,9 @@ void GameScene::copy(GameScene* other) {
     for(size_t i = 0; i < other->objectCount(); ++i) {
         copyToExistingObject(other->getObject(i));
     }
-    if(other->default_camera) {
-        auto o = findObject(other->default_camera->getOwner()->getName());
-        if(o) 
-            default_camera = o->find<CmCamera>().get();
+    for(size_t i = 0; i < other->controllerCount(); ++i) {
+        getController(other->getController(i)->get_type())->copy(*other->getController(i));
     }
-
-    resetActors();
 }
 
 size_t GameScene::objectCount() const {
@@ -86,6 +77,74 @@ GameObject* GameScene::findObject(const std::string& name, rttr::type type) {
         return 0;
     }
 }
+std::vector<GameObject*> GameScene::findObjectsFuzzy(const std::string& name) {
+    std::vector<GameObject*> r;
+    for(auto o : objects) {
+        o->getAllObjects(r);
+    }
+    std::vector<GameObject*> result;
+    struct tmp {
+        GameObject* o;
+        size_t cost;
+    };
+    std::vector<tmp> sorted;
+    for(auto o : r) {
+        size_t cost = levenshteinDistance(name, o->getName());
+        size_t pos = o->name.find_first_of(name);
+        if(pos != o->name.npos) {
+            //cost = 0;
+        }
+        sorted.emplace_back(tmp{o, cost});
+    }
+    std::sort(sorted.begin(), sorted.end(), [](const tmp& a, const tmp& b)->bool{
+        return a.cost < b.cost;
+    });
+    for(size_t i = 0; i < sorted.size() && i < 10; ++i) {
+
+        result.emplace_back(sorted[i].o);
+    }
+    return result;
+}
+
+ObjectComponent* GameScene::findComponent(const std::string& object_name, rttr::type component_type) {
+    ObjectComponent* c = 0;
+    auto o = findObject(object_name);
+    if(o) {
+        c = o->find(component_type).get();
+        if(!c) {
+            LOG_WARN("Object '" << object_name << "' has no component '" << component_type.get_name().to_string() << "'");
+        }
+    } else {
+        LOG_WARN("Failed to find object '" << object_name << "'");
+    }
+    return c;
+}
+
+std::vector<GameObject*>& GameScene::getObjects(rttr::type t) {
+    return typed_objects[t];
+}
+
+std::vector<ObjectComponent*>& GameScene::getAllComponents(rttr::type t) {
+    return object_components[t];
+}
+
+SceneController* GameScene::getController(rttr::type t) {
+    if(!hasController(t)) {
+        createController(t);
+    }
+    return controllers[t].get();
+}
+bool GameScene::hasController(rttr::type t) {
+    return controllers.count(t) != 0;
+}
+size_t GameScene::controllerCount() const {
+    return controllers.size();
+}
+SceneController* GameScene::getController(size_t i) {
+    auto it = controllers.begin();
+    std::advance(it, i);
+    return it->second.get();
+}
 
 GameObject* GameScene::create(rttr::type t) {
     rttr::variant v = t.create();
@@ -96,7 +155,9 @@ GameObject* GameScene::create(rttr::type t) {
     GameObject* o = v.get_value<GameObject*>();
     o->scene = this;
     objects.emplace_back(o);
-    notifyObjectEvent(this, o, EVT_OBJECT_CREATED, t);
+    o->_onCreate();
+    _regObject(o);
+    getEventMgr().postObjectCreated(o);
     return o;
 }
 GameObject* GameScene::copyObject(GameObject* o) {
@@ -120,7 +181,8 @@ void GameScene::remove(GameObject* o) {
 void GameScene::removeRecursive(GameObject* o) {
     for(size_t i = 0; i < objects.size(); ++i) {
         if(objects[i] == o) {
-            notifyObjectEvent(this, o, EVT_OBJECT_REMOVED, o->get_type());
+            _unregObject(o);
+            getEventMgr().postObjectRemoved(o);
             delete o;
             objects.erase(objects.begin() + i);
             break;
@@ -129,7 +191,8 @@ void GameScene::removeRecursive(GameObject* o) {
 }
 void GameScene::removeAll() {
     for(auto o : objects) {
-        notifyObjectEvent(this, o, EVT_OBJECT_REMOVED, o->get_type());
+        _unregObject(o);
+        getEventMgr().postObjectRemoved(o);
         delete o;
     }
     objects.clear();
@@ -141,47 +204,72 @@ void GameScene::refreshAabbs() {
     }
 }
 
-void GameScene::setDefaultCamera(CmCamera* c) {
-    default_camera = c;
-}
-CmCamera* GameScene::getDefaultCamera() {
-    return default_camera;
-}
-
-void GameScene::resetActors() {
-    for(auto a : actors) {
-        a->reset();
+void GameScene::startSession() {
+    for(auto& kv : controllers) {
+        kv.second->onStart();
     }
 }
+void GameScene::stopSession() {
+    for(auto& kv : controllers) {
+        kv.second->onEnd();
+    }
+}
+
 void GameScene::update() {
-    for(auto a : actors) {
-        a->update();
+    for(auto c : updatable_controllers) {
+        c->onUpdate();
+    }
+
+    for(auto o : objects) {
+        o->getTransform()->_frameClean();
+    }
+}
+void GameScene::debugDraw(DebugDraw& dd) {
+    for(auto& kv : controllers) {
+        kv.second->debugDraw(dd);
     }
 }
 
-void GameScene::onSceneEvent(GameObject* sender, SCENE_EVENT e, rttr::variant payload) {
-    switch(e) {
-    case EVT_OBJECT_CREATED:
-        if(payload.get_value<rttr::type>().is_derived_from<ActorObject>()) {
-            ((ActorObject*)sender)->init();
-            actors.insert((ActorObject*)sender);
+void GameScene::_registerComponent(ObjectComponent* c) {
+    object_components[c->get_type()].emplace_back(c);
+}
+void GameScene::_unregisterComponent(ObjectComponent* c) {
+    auto& vec = object_components[c->get_type()];
+    for(size_t i = 0; i < vec.size(); ++i) {
+        if(vec[i] == c) {
+            vec.erase(vec.begin() + i);
+            break;
         }
-        break;
-    case EVT_OBJECT_REMOVED:
-        if(payload.get_value<rttr::type>().is_derived_from<ActorObject>()) {
-            actors.erase((ActorObject*)sender);
+    }
+}
+void GameScene::_regObject(GameObject* o) {
+    auto t = o->get_type();
+    typed_objects[o->get_type()].emplace_back(o);
+    auto derived = t.get_base_classes();
+    for(auto tt : derived) {
+        typed_objects[tt].emplace_back(o);
+    }
+}
+void GameScene::_unregObject(GameObject* o) {
+    auto t = o->get_type();
+    auto& vec = typed_objects[t];
+    for(size_t i = 0; i < vec.size(); ++i) {
+        if(vec[i] == o) {
+            vec.erase(vec.begin() + i);
+            break;
         }
-        break;
-    case EVT_COMPONENT_CREATED:
-        break;
-    case EVT_COMPONENT_REMOVED:
-        if(payload.get_value<rttr::type>() == rttr::type::get<CmCamera>()) {
-            if(sender->get<CmCamera>().get() == default_camera) {
-                default_camera = 0;
+    }
+
+    auto derived = t.get_base_classes();
+    for(auto tt : derived) {
+        auto& vec = typed_objects[tt];
+        for(size_t i = 0; i < vec.size(); ++i) {
+            if(vec[i] == o) {
+                vec.erase(vec.begin() + i);
+                break;
             }
         }
-        break;
-    };
+    }
 }
 
 GameObject* GameScene::createEmptyCopy(GameObject* o) {
@@ -196,4 +284,35 @@ GameObject* GameScene::copyToExistingObject(GameObject* o) {
         n->copyComponentsRecursive(o);
     }
     return n;
+}
+
+SceneController* GameScene::createController(rttr::type t) {
+    if(!t.is_valid()) {
+        LOG_WARN("Scene controller type is not valid: " << t.get_name().to_string());
+        return 0;
+    }
+    rttr::variant v = t.create();
+    if(!v.get_type().is_pointer()) {
+        LOG_WARN(t.get_name().to_string() << " - rttr constructor policy must be pointer");
+        return 0;
+    }
+    SceneController* sc = v.get_value<SceneController*>();
+    if(!sc) {
+        LOG_WARN("Failed to create scene controller: " << t.get_name().to_string());
+        return 0;
+    }
+    controllers[t].reset(sc);
+
+    if(sc->getInfo().auto_update) {
+        updatable_controllers.emplace_back(sc);
+        std::sort(
+            updatable_controllers.begin(),
+            updatable_controllers.end(),
+            [](const SceneController* a, const SceneController* b)->bool{
+                return a->getInfo().priority < b->getInfo().priority;
+            }
+        );
+    }
+
+    sc->init(this);
 }

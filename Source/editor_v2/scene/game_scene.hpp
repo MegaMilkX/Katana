@@ -11,6 +11,8 @@
 
 #include "../components/camera.hpp"
 
+#include "../../common/debug_draw.hpp"
+
 class SpatialObject : public GameObject {
     RTTR_ENABLE(GameObject)
 public:
@@ -39,7 +41,9 @@ void notifyObjectEvent(GameScene* scn, GameObject* o, SCENE_EVENT evt, rttr::typ
 
 #include "actor_object.hpp"
 
-class GameScene : public SceneListener {
+#include "scene_controller.hpp"
+
+class GameScene {
 public:
     GameScene();
     ~GameScene();
@@ -50,6 +54,7 @@ public:
 
     void copy(GameScene* other);
 
+    // Objects
     size_t objectCount() const;
     GameObject* getObject(size_t i);
     GameObject* getObject(const std::string& name);
@@ -58,6 +63,11 @@ public:
     GameObject* findObject(const std::string& name, rttr::type type);
     template<typename T>
     T*          findObject(const std::string& name);
+    std::vector<GameObject*> findObjectsFuzzy(const std::string& name);
+
+    ObjectComponent* findComponent(const std::string& object_name, rttr::type component_type);
+    template<typename T>
+    T*               findComponent(const std::string& object_name);
 
     template<typename T>
     T* create();
@@ -69,20 +79,53 @@ public:
 
     void refreshAabbs();
 
-    void setDefaultCamera(CmCamera* c);
-    CmCamera* getDefaultCamera();
+    template<typename T>
+    std::vector<GameObject*>& getObjects() { return getObjects(rttr::type::get<T>()); }
+    std::vector<GameObject*>& getObjects(rttr::type t);
 
-    void resetActors();
+    // Components
+    template<typename T>
+    std::vector<ObjectComponent*>& getAllComponents() { return getAllComponents(rttr::type::get<T>()); }
+    std::vector<ObjectComponent*>& getAllComponents(rttr::type t);
+
+    // Controllers
+    template<typename T>
+    T* getController();
+    SceneController* getController(rttr::type t);
+    template<typename T>
+    bool hasController();
+    bool hasController(rttr::type t);
+    size_t controllerCount() const;
+    SceneController* getController(size_t i);
+
+    void startSession();
+    void stopSession();
+
     void update();
-private:
-    void onSceneEvent(GameObject* sender, SCENE_EVENT e, rttr::variant payload);
+    void debugDraw(DebugDraw& dd);
 
+    void _registerComponent(ObjectComponent* c);
+    void _unregisterComponent(ObjectComponent* c);
+    void _regObject(GameObject* o);
+    void _unregObject(GameObject* o);
+private:
     GameObject* createEmptyCopy(GameObject* o);
     GameObject* copyToExistingObject(GameObject* o);
 
+    SceneController* createController(rttr::type t);
+
     std::vector<GameObject*> objects;
-    CmCamera* default_camera = 0;
-    std::set<ActorObject*> actors;
+    std::map<
+        rttr::type, 
+        std::vector<ObjectComponent*>
+    > object_components;
+    std::map<
+        rttr::type,
+        std::vector<GameObject*>
+    > typed_objects;
+
+    std::map<rttr::type, std::shared_ptr<SceneController>> controllers;
+    std::vector<SceneController*> updatable_controllers;
     
     SceneEventBroadcaster event_broadcaster;
 };
@@ -92,13 +135,29 @@ T* GameScene::create() {
     T* o = new T();
     o->scene = this;
     objects.emplace_back(o);
-    notifyObjectEvent(this, o, EVT_OBJECT_CREATED, o->get_type());
+    o->_onCreate();
+    _regObject(o);
+    getEventMgr().postObjectCreated(o);
     return o;
 }
 
 template<typename T>
 T* GameScene::findObject(const std::string& name) {
     return (T*)findObject(name, rttr::type::get<T>());
+}
+
+template<typename T>
+T* GameScene::findComponent(const std::string& object_name) {
+    return (T*)findComponent(object_name, rttr::type::get<T>());
+}
+
+template<typename T>
+T* GameScene::getController() {
+    return (T*)getController(rttr::type::get<T>());
+}
+template<typename T>
+bool GameScene::hasController() {
+    return hasController(rttr::type::get<T>());
 }
 
 #endif

@@ -22,6 +22,11 @@ public:
     ~Skeleton() {
     }
 
+    void clearBones() {
+        bones.clear();
+        name_to_bone.clear();
+    }
+
     void addBone(const std::string& name) {
         auto it = name_to_bone.find(name);
         if(it == name_to_bone.end()) {
@@ -85,30 +90,32 @@ public:
     }
 
     virtual void serialize(out_stream& out) {
-        uint32_t bone_count = bones.size();
-        out.write(bone_count);
-        for(uint32_t i = 0; i < bone_count; ++i) {
-            int32_t id = bones[i].id;
-            int32_t parent_id = bones[i].parent;
-            out.write(id);
-            out.write(parent_id);
-            out.write<uint64_t>(bones[i].name.size());
-            out.write(bones[i].name);
-            out.write(bones[i].bind_pose);
+        DataWriter w(&out);
+
+        w.write<uint32_t>(bones.size());
+        for(uint32_t i = 0; i < bones.size(); ++i) {
+            w.write<int32_t>(bones[i].id);
+            w.write<int32_t>(bones[i].parent);
+            w.write(bones[i].name);
+            w.write(bones[i].bind_pose);
         }
         for(auto kv : name_to_bone) {
-            out.write<uint64_t>(kv.first.size());
-            out.write(kv.first);
-            out.write<uint32_t>(kv.second); // Bone id
+            w.write(kv.first); // Bone name
+            w.write<uint32_t>(kv.second); // Bone id
         }
     }
-    virtual bool deserialize(std::istream& in, size_t sz) { 
-        uint32_t bone_count = read<uint32_t>(in);
+    virtual bool deserialize(in_stream& in, size_t sz) { 
+        clearBones();
+
+        uint32_t bone_count;
+        in.read(bone_count);
         for(uint32_t i = 0; i < bone_count; ++i) {
-            int32_t id = read<int32_t>(in);
-            int32_t parent_id = read<int32_t>(in);
-            std::string name = rd_string(in);
-            gfxm::mat4 pose = read<gfxm::mat4>(in);
+            int32_t id;
+            in.read(id);
+            int32_t parent_id;
+            in.read(parent_id);
+            std::string name = in.readStr(in.read<uint64_t>());
+            gfxm::mat4 pose = in.read<gfxm::mat4>();
             bones.emplace_back(
                 Bone {
                     id, parent_id, name, pose
@@ -116,8 +123,8 @@ public:
             );
         }
         for(uint32_t i = 0; i < bone_count; ++i) {
-            std::string name = rd_string(in);
-            uint32_t bone_id = read<uint32_t>(in);
+            std::string name = in.readStr(in.read<uint64_t>());
+            uint32_t bone_id = in.read<uint32_t>();
             name_to_bone[name] = bone_id;
         }
         
