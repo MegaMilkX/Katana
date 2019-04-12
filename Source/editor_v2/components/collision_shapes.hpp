@@ -88,7 +88,7 @@ public:
     }
     virtual void deserialize(in_stream& in) {
         auto s = (btBoxShape*)bt_shape.get();
-        gfxm::vec3 extents = in.read<gfxm::vec3>();
+        extents = in.read<gfxm::vec3>();
         *s = btBoxShape(btVector3(extents.x, extents.y, extents.z));
     }
 private:
@@ -154,6 +154,21 @@ public:
             need_rebuild = true;
         }
         return need_rebuild;
+    }
+    virtual void serialize(out_stream& out) {
+        DataWriter w(&out);
+        if(mesh) {
+            w.write(mesh->Name());
+        } else {
+            w.write(std::string());
+        }
+    }
+    virtual void deserialize(in_stream& in) {
+        DataReader r(&in);
+        std::string mesh_name = r.readStr();
+        if(!mesh_name.empty()) {
+            setMesh(mesh_name);
+        }
     }
 private:
     void makeFromModel(std::shared_ptr<Model> mdl) {

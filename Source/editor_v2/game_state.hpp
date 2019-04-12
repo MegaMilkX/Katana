@@ -71,7 +71,7 @@ public:
         renderer.draw(&vp, proj, view, dl, true);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        scene->debugDraw(dd);
+        //scene->debugDraw(dd);
         //dd.draw(proj, view);
     }
 

@@ -2,10 +2,7 @@
 
 #include "../game_object.hpp"
 
-#include "../../components/collision_shape.hpp"
-#include "../../components/collision_object.hpp"
 #include "../../components/rigid_body.hpp"
-#include "../../components/ghost_object.hpp"
 
 class ConvexSweepCallback_ : public btCollisionWorld::ConvexResultCallback {
 public:
@@ -181,20 +178,6 @@ bool DynamicsCtrl::getAdjustedPosition(Collider* c, gfxm::vec3& pos, uint32_t ma
     return getAdjustedPosition(btco, pos, mask);
 }
 
-void DynamicsCtrl::sweepTest(GhostObject* go, const gfxm::mat4& from, const gfxm::mat4& to) {
-    btTransform tfrom;
-    btTransform tto;
-    tfrom.setFromOpenGLMatrix((float*)&from);
-    tto.setFromOpenGLMatrix((float*)&to);
-
-    ConvexSweepCallback_ cb(this, .2f, from[3], to[3], 0);
-    
-    world->convexSweepTest(
-        (btConvexShape*)go->getBtObject()->getCollisionShape(),
-        tfrom, tto, cb
-    );
-}
-
 bool DynamicsCtrl::sweepSphere(float radius, const gfxm::vec3& from, const gfxm::vec3& to, gfxm::vec3& hit, uint32_t mask) {
     btSphereShape shape(radius);
     btTransform tfrom;
@@ -266,16 +249,6 @@ void DynamicsCtrl::update(float dt) {
     }
 
     // =================================
-    for(auto g : ghosts) {
-        if(g->getOwner()->getTransform()->_isFrameDirty()) {
-            g->_updateTransform();
-        }
-    }
-    for(auto c : colliders) {
-        if(c->getOwner()->getTransform()->_isFrameDirty()) {
-            c->_updateTransform();
-        }
-    }
     world->stepSimulation(dt);
     // =================================
 
@@ -330,42 +303,4 @@ void DynamicsCtrl::update(float dt) {
 void DynamicsCtrl::debugDraw(DebugDraw& dd) {
     debugDrawer.setDD(&dd);
     world->debugDrawWorld();
-    
-    for(auto s : shapes) {
-        s->debugDraw(world->getDebugDrawer());
-    }
-}
-
-void DynamicsCtrl::_addCollider(CollisionObject* col) {
-    colliders.insert(col);
-    if(!col->getBtObject()) return;
-    world->addCollisionObject(col->getBtObject(), 1);
-}
-void DynamicsCtrl::_removeCollider(CollisionObject* col) {
-    colliders.erase(col);
-    if(!col->getBtObject()) return;
-    world->removeCollisionObject(col->getBtObject());
-}
-
-void DynamicsCtrl::_addGhost(GhostObject* col) {
-    ghosts.insert(col);
-    if(!col->getBtObject()) return;
-    world->addCollisionObject(col->getBtObject());
-}
-void DynamicsCtrl::_removeGhost(GhostObject* col) {
-    ghosts.erase(col);
-    if(!col->getBtObject()) return;
-    world->removeCollisionObject(col->getBtObject());
-}
-
-void DynamicsCtrl::_shapeChanged(CollisionShape* s) {
-    GameObject* o = s->getOwner();
-    auto cobj = o->find<CollisionObject>();
-    if(cobj) {
-        cobj->_shapeChanged();
-    }
-    auto gobj = o->find<GhostObject>();
-    if(gobj) {
-        gobj->_shapeChanged();
-    }
 }

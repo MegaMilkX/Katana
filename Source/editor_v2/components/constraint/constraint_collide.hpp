@@ -8,10 +8,8 @@
 #include "../../../common/util/imgui_helpers.hpp"
 
 #include "../../scene/controllers/dynamics_ctrl.hpp"
-#include "../collision_shape.hpp"
 
-#include "../ghost_object.hpp"
-#include "../collision_shape.hpp"
+#include "../../components/collider.hpp"
 
 namespace Constraint {
 

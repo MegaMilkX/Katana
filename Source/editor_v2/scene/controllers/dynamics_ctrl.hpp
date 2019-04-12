@@ -6,15 +6,6 @@
 
 #include "../../../common/util/bullet_debug_draw.hpp"
 
-class CollisionShape;
-class CollisionObject;
-class RigidBody;
-class GhostObject;
-
-#include "../../components/collision_shape.hpp"
-#include "../../components/collision_object.hpp"
-#include "../../components/ghost_object.hpp"
-
 #include "../../components/rigid_body.hpp"
 #include "../../components/collider.hpp"
 #include "../../components/collision_listener.hpp"
@@ -30,7 +21,7 @@ enum COLLISION_GROUP {
     COLLISION_GROUP_5
 };
 
-class DynamicsCtrl : public SceneControllerEventFilter<Collider, RigidBody, CollisionListener, CollisionShape, CollisionObject, GhostObject> {
+class DynamicsCtrl : public SceneControllerEventFilter<Collider, RigidBody, CollisionListener> {
     RTTR_ENABLE(SceneController)
 public:
     struct ColliderInfo {
@@ -113,9 +104,6 @@ public:
         col_listeners.erase(l->getOwner());
     }
 
-    virtual void onAttribCreated(CollisionShape* s) { shapes.insert(s); }
-    virtual void onAttribRemoved(CollisionShape* s) { shapes.erase(s); }
-
     DynamicsCtrl();
     ~DynamicsCtrl();
 
@@ -126,7 +114,6 @@ public:
     bool getAdjustedPosition(btCollisionObject* o, gfxm::vec3& pos, uint32_t mask = 1);
     bool getAdjustedPosition(Collider* c, gfxm::vec3& pos, uint32_t mask = 1);
 
-    void sweepTest(GhostObject* go, const gfxm::mat4& from, const gfxm::mat4& to);
     bool sweepSphere(
         float radius, 
         const gfxm::vec3& from, 
@@ -152,13 +139,6 @@ public:
 
     void update(float dt);
 
-    void _addCollider(CollisionObject* col);
-    void _removeCollider(CollisionObject* col);
-    void _addGhost(GhostObject* col);
-    void _removeGhost(GhostObject* col);
-
-    void _shapeChanged(CollisionShape* s);
-
     virtual void onGui() {
         ImGui::Text("Collision groups");
         char buf[256];
@@ -179,10 +159,6 @@ private:
     std::string col_group_names[6];
 
     std::set<std::pair<GameObject*, GameObject*>> pair_cache;
-
-    std::set<CollisionObject*> colliders;
-    std::set<GhostObject*> ghosts;
-    std::set<CollisionShape*> shapes;
 
     btDefaultCollisionConfiguration* collisionConf;
     btCollisionDispatcher* dispatcher;
