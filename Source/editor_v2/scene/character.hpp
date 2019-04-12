@@ -248,7 +248,8 @@ public:
                 sweepRad,
                 pos + gfxm::vec3(.0f, 1.0f, .0f),
                 pos + gfxm::vec3(.0f,-0.5f, .0f),
-                grnd_hit
+                grnd_hit,
+                1
             )
         ) {
             getTransform()->setPosition(gfxm::lerp(pos, grnd_hit + gfxm::vec3(.0f, -sweepRad, .0f), 0.2f));

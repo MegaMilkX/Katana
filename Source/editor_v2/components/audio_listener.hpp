@@ -7,8 +7,8 @@
 
 #include "../../common/audio.hpp"
 
-class AudioListener : public ObjectComponent {
-    RTTR_ENABLE(ObjectComponent)
+class AudioListener : public Attribute {
+    RTTR_ENABLE(Attribute)
 public:
 
 

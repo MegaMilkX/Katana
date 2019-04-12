@@ -60,7 +60,7 @@ float AnimationStack::getLengthProportion(int layer_a, int layer_b) {
     return a_len / b_len;
 }
 
-void AnimationStack::copy(ObjectComponent* other) {
+void AnimationStack::copy(Attribute* other) {
     if(other->get_type() != get_type()) {
         LOG("Can't copy from " << other->get_type().get_name().to_string() << " to " <<
             get_type().get_name().to_string());

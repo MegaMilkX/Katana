@@ -24,21 +24,10 @@ public:
     }
 
     virtual void update(GameObject* t) {
-        if(!obj) {
-            obj = t;
-            t_prev = t->get<GhostObject>()->getBtObject()->getWorldTransform();
-            t->get<CmCollisionShape>()->getOffset();
-        }
-        btTransform trans = t->get<GhostObject>()->getBtObject()->getWorldTransform();
-        gfxm::mat4 mf;
-        gfxm::mat4 mt;
-        t_prev.getOpenGLMatrix((float*)&mf);
-        trans.getOpenGLMatrix((float*)&mt);
-        //gfxm::vec3 new_pos = t->get<GhostObject>()->sweep(mf, mt);
-
-        gfxm::vec3 new_pos = t->get<GhostObject>()->getCollisionAdjustedPosition();
+        gfxm::vec3 new_pos = t->getTransform()->getWorldPosition();
+        auto col = t->find<Collider>();
+        t->getScene()->getController<DynamicsCtrl>()->getAdjustedPosition(col.get(), new_pos, 1);
         t->getTransform()->setPosition(new_pos);
-        t_prev = trans;
     }
     virtual void onGui() {
 
@@ -53,7 +42,6 @@ public:
 private:
     float weight = 1.0f;
     GameObject* obj = 0;
-    btTransform t_prev;
 };
 
 }

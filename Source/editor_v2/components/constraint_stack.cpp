@@ -10,8 +10,7 @@ STATIC_RUN(ConstraintStack) {
 }
 
 ConstraintStack::~ConstraintStack() {
-    getOwner()->getScene()->getController<ConstraintCtrl>()->_unregStack(this);
 }
 void ConstraintStack::onCreate() {
-    getOwner()->getScene()->getController<ConstraintCtrl>()->_regStack(this);
+    getOwner()->getScene()->getController<ConstraintCtrl>();
 }

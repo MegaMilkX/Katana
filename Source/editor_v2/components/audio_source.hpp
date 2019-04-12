@@ -11,8 +11,8 @@
 
 #include "../../common/audio.hpp"
 
-class AudioSource : public ObjectComponent {
-    RTTR_ENABLE(ObjectComponent)
+class AudioSource : public Attribute {
+    RTTR_ENABLE(Attribute)
 public:
     AudioSource() {
         emid = audio().createChannel();
@@ -21,7 +21,7 @@ public:
 
     virtual void onCreate();
 
-    virtual void copy(ObjectComponent* other) {
+    virtual void copy(Attribute* other) {
         if(other->get_type() != get_type()) {
             LOG("Can't copy from " << other->get_type().get_name().to_string() << " to " <<
                 get_type().get_name().to_string());
@@ -65,7 +65,6 @@ public:
         audio().setPosition(emid, getOwner()->getTransform()->getWorldPosition());
     }
 
-    virtual IEditorComponentDesc* _newEditorDescriptor();
     virtual void onGui() {
         auto clip_list = GlobalDataRegistry().makeList(".ogg");
         std::string clip_name = "<null>";
@@ -127,20 +126,5 @@ private:
     float volume = 1.0f;
     bool looping = false;
 };
-
-class AudioSourceDesc : public IEditorComponentDesc {
-public:
-    AudioSourceDesc(AudioSource* s)
-    : component(s) {}
-    virtual void gui() {
-        component->onGui();
-    }
-private:
-    AudioSource* component;
-};
-
-inline IEditorComponentDesc* AudioSource::_newEditorDescriptor() {
-    return new AudioSourceDesc(this);
-}
 
 #endif

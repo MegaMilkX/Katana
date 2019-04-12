@@ -8,8 +8,8 @@
 
 #include "constraint/constraint.hpp"
 
-class ConstraintStack : public ObjectComponent {
-    RTTR_ENABLE(ObjectComponent)
+class ConstraintStack : public Attribute {
+    RTTR_ENABLE(Attribute)
 public:
     void update() {
         for(size_t i = 0; i < stack.size(); ++i) {
@@ -20,7 +20,7 @@ public:
     virtual ~ConstraintStack();
     virtual void onCreate();
 
-    virtual void copy(ObjectComponent* other) {
+    virtual void copy(Attribute* other) {
         if(other->get_type() != get_type()) {
             LOG("Can't copy from " << other->get_type().get_name().to_string() << " to " <<
                 get_type().get_name().to_string());
@@ -73,7 +73,6 @@ public:
             ImGui::EndCombo();
         }
     }
-    virtual IEditorComponentDesc* _newEditorDescriptor();
 
     virtual bool serialize(out_stream& out) {
         DataWriter w(&out);
@@ -112,20 +111,5 @@ public:
 private:
     std::vector<std::shared_ptr<Constraint::Constraint>> stack;
 };
-
-class ConstraintStackDesc : public IEditorComponentDesc {
-public:
-    ConstraintStackDesc(ConstraintStack* cs)
-    : cs(cs) {}
-    virtual void gui() {
-        cs->onGui();
-    }
-private:
-    ConstraintStack* cs;
-};
-
-IEditorComponentDesc* ConstraintStack::_newEditorDescriptor() {
-    return new ConstraintStackDesc(this);
-}
 
 #endif

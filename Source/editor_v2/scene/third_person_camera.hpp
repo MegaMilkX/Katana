@@ -22,7 +22,7 @@ class ThirdPersonCamera : public ActorObject, public InputListenerWrap {
     RTTR_ENABLE(ActorObject)
 public:
     virtual void init() {
-        get<CmCamera>();
+        get<Camera>();
         bindAxis("MoveCamX", [this](float v){
             angle_y -= v * 0.01f;
         });

@@ -10,7 +10,7 @@ void EditorObjectInspector::update(Editor* editor) {
     if(ImGui::Begin("Object inspector", 0, ImGuiWindowFlags_MenuBar)) {
         if(ImGui::BeginMenuBar()) {
             if(ImGui::BeginMenu("Add component...")) {
-                rttr::type t = rttr::type::get<ObjectComponent>();
+                rttr::type t = rttr::type::get<Attribute>();
                 auto derived_array = t.get_derived_classes();
                 for(auto& d : derived_array) {
                     if(ImGui::MenuItem(d.get_name().to_string().c_str())) {
@@ -34,7 +34,7 @@ void EditorObjectInspector::update(Editor* editor) {
                 auto c = so->getById(i);
                 bool exists = true;
                 if(ImGui::CollapsingHeader(c->get_type().get_name().to_string().c_str(), &exists, ImGuiTreeNodeFlags_DefaultOpen)) {
-                    editor->getEditorScene().componentGui(c.get());
+                    c->onGui();
                 }
                 if(!exists) {
                     // TODO: Delete component

@@ -10,9 +10,9 @@ foreach(flag_var
 endforeach(flag_var)
 
 file(GLOB_RECURSE SRCFILES 
-../common/*.cpp;
-../common/*.c;
-../common/*.cxx;
+../common_old/*.cpp;
+../common_old/*.c;
+../common_old/*.cxx;
 *.cpp;
 *.c;
 *.cxx)

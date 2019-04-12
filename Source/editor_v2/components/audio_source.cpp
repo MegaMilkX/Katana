@@ -3,12 +3,11 @@
 #include "../scene/controllers/audio_controller.hpp"
 
 AudioSource::~AudioSource() {
-    getOwner()->getScene()->getController<AudioController>()->_unregSource(this);
     audio().freeChannel(emid);
 }
 
 void AudioSource::onCreate() {
-    getOwner()->getScene()->getController<AudioController>()->_regSource(this);
+    getOwner()->getScene()->getController<AudioController>();
 }
 
 STATIC_RUN(AudioSource) {

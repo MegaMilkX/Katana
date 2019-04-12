@@ -9,9 +9,17 @@
 
 #include "../../../common/util/imgui_helpers.hpp"
 
-class AudioController : public SceneController, public SceneListener {
+class AudioController : public SceneControllerEventFilter<AudioSource, AudioListener> {
     RTTR_ENABLE(SceneController)
 public:
+    virtual void onAttribCreated(AudioSource* s) { sources.insert(s); }
+    virtual void onAttribDeleted(AudioSource* s) { sources.erase(s); }
+    virtual void onAttribDeleted(AudioListener* l) { 
+        if(l == listener) {
+            listener = 0;
+        } 
+    }
+
     virtual SceneCtrlInfo getInfo() const {
         return SceneCtrlInfo{ true, FRAME_PRIORITY_DYNAMICS + 1 };
     }
@@ -25,10 +33,8 @@ public:
 
     virtual void init(GameScene* scn) {
         scene = scn;
-        scene->getEventMgr().subscribe(this, EVT_COMPONENT_REMOVED);
     }
     ~AudioController() {
-        scene->getEventMgr().unsubscribeAll(this);
     }
 
     virtual void onStart() {
@@ -84,15 +90,8 @@ public:
         DataReader r(&in);
         listener = scene->findComponent<AudioListener>(r.readStr());
     }
-
-    void _regSource(AudioSource* s) {
-        sources.insert(s);
-    }
-    void _unregSource(AudioSource* s) {
-        sources.erase(s);
-    }
 private:
-    virtual void onComponentRemoved(ObjectComponent* c) {
+    virtual void onComponentRemoved(Attribute* c) {
         if(c == listener) {
             listener = 0;
         }

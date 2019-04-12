@@ -11,12 +11,14 @@
 #include "../../common/util/data_reader.hpp"
 #include "../../common/util/data_writer.hpp"
 
+#include "../components/component.hpp"
+
 enum FRAME_PRIORITY {
     FRAME_PRIORITY_FIRST,
     FRAME_PRIORITY_ANIM = 1000,
-    FRAME_PRIORITY_CONSTRAINT = 2000,
-    FRAME_PRIORITY_ACTORS = 3000,
-    FRAME_PRIORITY_DYNAMICS = 4000,
+    FRAME_PRIORITY_DYNAMICS = 2000,
+    FRAME_PRIORITY_CONSTRAINT = 3000,
+    FRAME_PRIORITY_ACTORS = 4000,
     FRAME_PRIORITY_DRAW = 5000,
     FRAME_PRIORITY_LAST = 10000
 };
@@ -52,12 +54,56 @@ public:
 
     }
 
+    virtual void attribCreated(rttr::type t, Attribute* attr) {}
+    virtual void attribDeleted(rttr::type t, Attribute* attr) {}
+
     virtual void debugDraw(DebugDraw& dd) {}
 
     virtual void onGui() {}
 
     virtual void serialize(out_stream& out) {}
     virtual void deserialize(in_stream& in) {}
+};
+
+template<typename ...Ts>
+class SceneControllerEventFilter;
+
+template<typename TA>
+class SceneControllerEventFilter<TA> : public SceneController {
+public:
+    virtual void attribCreated(rttr::type t, Attribute* attr) {
+        if(t == rttr::type::get<TA>()) {
+            onAttribCreated((TA*)attr);
+        }
+    }
+    virtual void attribDeleted(rttr::type t, Attribute* attr) {
+        if(t == rttr::type::get<TA>()) {
+            onAttribRemoved((TA*)attr);
+        }
+    }
+    
+    virtual void onAttribCreated(TA* attrib) {}
+    virtual void onAttribRemoved(TA* attrib) {}
+};
+
+template<typename TA, typename ...Ts>
+class SceneControllerEventFilter<TA, Ts...> : public SceneControllerEventFilter<Ts...> {
+public:
+    virtual void attribCreated(rttr::type t, Attribute* attr) {
+        SceneControllerEventFilter<Ts...>::attribCreated(t, attr);
+        if(t == rttr::type::get<TA>()) {
+            onAttribCreated((TA*)attr);
+        }
+    }
+    virtual void attribDeleted(rttr::type t, Attribute* attr) {
+        SceneControllerEventFilter<Ts...>::attribDeleted(t, attr);
+        if(t == rttr::type::get<TA>()) {
+            onAttribRemoved((TA*)attr);
+        }
+    }
+    
+    virtual void onAttribCreated(TA* attrib) {}
+    virtual void onAttribRemoved(TA* attrib) {}
 };
 
 #endif

@@ -182,13 +182,13 @@ void GameObject::removeChildRecursive(GameObject* o) {
     }
 }
 
-std::shared_ptr<ObjectComponent> GameObject::find(rttr::type component_type) {
+std::shared_ptr<Attribute> GameObject::find(rttr::type component_type) {
     if(components.count(component_type) == 0) {
-        return std::shared_ptr<ObjectComponent>();
+        return std::shared_ptr<Attribute>();
     }
     return components[component_type];
 }
-std::shared_ptr<ObjectComponent> GameObject::get(rttr::type component_type) {
+std::shared_ptr<Attribute> GameObject::get(rttr::type component_type) {
     auto c = find(component_type);
     if(!c) {
         return createComponent(component_type);
@@ -198,7 +198,7 @@ std::shared_ptr<ObjectComponent> GameObject::get(rttr::type component_type) {
 size_t GameObject::componentCount() {
     return components.size();
 }
-std::shared_ptr<ObjectComponent> GameObject::getById(size_t id) {
+std::shared_ptr<Attribute> GameObject::getById(size_t id) {
     auto it = components.begin();
     std::advance(it, id);
     return it->second;
@@ -330,34 +330,33 @@ IEditorObjectDesc* GameObject::_newEditorObjectDesc() {
 
 // ==== Private ====================================
 
-std::shared_ptr<ObjectComponent> GameObject::createComponent(rttr::type t) {
+std::shared_ptr<Attribute> GameObject::createComponent(rttr::type t) {
     if(!t.is_valid()) {
         LOG_WARN(t.get_name().to_string() << " - not a valid type");
-        return std::shared_ptr<ObjectComponent>();
+        return std::shared_ptr<Attribute>();
     }
     rttr::variant v = t.create();
     if(!v.get_type().is_pointer()) {
         LOG_WARN(t.get_name().to_string() << " - rttr constructor policy must be pointer");
-        return std::shared_ptr<ObjectComponent>();
+        return std::shared_ptr<Attribute>();
     }
-    ObjectComponent* c = v.get_value<ObjectComponent*>();
+    Attribute* c = v.get_value<Attribute*>();
     if(!c) {
         LOG_WARN("Failed to create component " << t.get_name().to_string());
-        return std::shared_ptr<ObjectComponent>();
+        return std::shared_ptr<Attribute>();
     }
     c->owner = this;
-    auto ptr = std::shared_ptr<ObjectComponent>(c);
+    auto ptr = std::shared_ptr<Attribute>(c);
 
     if(!get_type().is_derived_from(ptr->getRequiredOwnerType()) 
         && get_type() != ptr->getRequiredOwnerType()) {
         LOG_WARN("Can't create component of type " << t.get_name().to_string() << " for object of type " << get_type().get_name().to_string());
-        return std::shared_ptr<ObjectComponent>();
+        return std::shared_ptr<Attribute>();
     }
-
-    getScene()->_registerComponent(c);
 
     components[t] = ptr;
     ptr->onCreate();
+    getScene()->_registerComponent(c);
     getScene()->getEventMgr().postComponentCreated(c);
     return ptr;
 }

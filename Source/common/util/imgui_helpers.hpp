@@ -14,6 +14,47 @@
 #include "../../editor_v2/scene/game_object.hpp"
 #include "../../editor_v2/scene/game_scene.hpp"
 
+template<typename BASE_T>
+inline void imguiHeapObjectCombo(
+    const char* label,
+    std::shared_ptr<BASE_T>& ptr,
+    bool allow_null = true,
+    std::function<void(void)> callback = nullptr
+) {
+    static const char* null_str = "<null>";
+    auto derived_array = rttr::type::get<BASE_T>().get_derived_classes();
+    if(ImGui::BeginCombo(label, ptr ? ptr->get_type().get_name().to_string().c_str() : null_str)) {
+        if(allow_null) {
+            if(ImGui::Selectable(null_str, !ptr)) {
+                ptr = std::shared_ptr<BASE_T>();
+            }
+        }
+        for(auto d : derived_array) {
+            if(ImGui::Selectable(
+                d.get_name().to_string().c_str(),
+                ptr ? (d == ptr->get_type()) : false
+                )
+            ) {
+                if(!d.is_valid()) {
+                    LOG_WARN("Invalid type: " << d.get_name());
+                    continue;
+                }
+                rttr::variant v = d.create();
+                if(!v.is_valid() || !v.get_type().is_pointer()) {
+                    LOG_WARN("Failed to create value of type " << d.get_name());
+                    continue;
+                }
+                BASE_T* nptr = v.get_value<BASE_T*>();
+                ptr.reset(nptr);
+                callback();
+            }
+        }
+        
+        
+        ImGui::EndCombo();
+    }
+}
+
 template<typename RES_T>
 inline void imguiResourceCombo(
     const char* label,
@@ -118,6 +159,48 @@ inline void imguiObjectCombo(
         }
         ImGui::EndDragDropTarget();
     }
+}
+
+namespace ImGui {
+
+inline bool DragFloat3Autospeed(const char* label, float* v, float v_min = .0f, float v_max = .0f, const char* format = "%.3f", float power = 1.0f) {
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    int components = 3;
+
+    ImGuiContext& g = *GImGui;
+    bool value_changed = false;
+    BeginGroup();
+    PushID(label);
+    PushMultiItemsWidths(components);
+    size_t type_size = sizeof(float);
+    for (int i = 0; i < components; i++)
+    {
+        PushID(i);
+        value_changed |= DragScalar(
+            "##v", 
+            ImGuiDataType_Float, 
+            v, 
+            std::max(std::abs(*(float*)v * 0.01f), 0.00001f), 
+            &v_min, 
+            &v_max, 
+            format, 
+            power
+        );
+        SameLine(0, g.Style.ItemInnerSpacing.x);
+        PopID();
+        PopItemWidth();
+        v = (float*)((char*)v + type_size);
+    }
+    PopID();
+
+    TextUnformatted(label, FindRenderedTextEnd(label));
+    EndGroup();
+    return value_changed;
+}
+
 }
 
 #endif

@@ -25,13 +25,6 @@ gfxm::vec3 cam_pivot;
 gfxm::vec3 cam_pos;
 float cam_zoom_actual = 0.0f;
 
-enum GIZMO_MODE {
-    GIZMO_TRANSLATE,
-    GIZMO_ROTATE,
-    GIZMO_SCALE
-};
-static GIZMO_MODE gizmo_mode = GIZMO_TRANSLATE;
-
 EditorViewport::EditorViewport() {
     vp.init(640, 480);
     dd.init();
@@ -41,12 +34,6 @@ EditorViewport::EditorViewport() {
     input().getTable().addActionKey("MouseMiddle", "MOUSE_MIDDLE");
     input().getTable().addActionKey("MouseLookAlt", "KB_LEFT_ALT");
     input().getTable().addActionKey("ResetEditorCam", "KB_Z");
-    input().getTable().addActionKey("GizmoT", "KB_W");
-    input().getTable().addActionKey("GizmoR", "KB_E");
-    input().getTable().addActionKey("GizmoS", "KB_R");
-    input().getTable().addAxisKey("MoveCamX", "MOUSE_X", 1.0);
-    input().getTable().addAxisKey("MoveCamY", "MOUSE_Y", 1.0);
-    input().getTable().addAxisKey("CameraZoom", "MOUSE_SCROLL", 1.0);
 
     input_lis = input().createListener();
     input_lis->bindActionPress("MouseMiddle", [this](){
@@ -58,7 +45,7 @@ EditorViewport::EditorViewport() {
     input_lis->bindActionPress("MouseLookAlt", [this](){ mouse_look_alt = true; });
     input_lis->bindActionRelease("MouseLookAlt", [this](){ mouse_look_alt = false; });
     input_lis->bindAxis("MoveCamX", [this](float v){
-        if(editorState().is_play_mode) return;
+        if(!mouse_is_over_vp) return;
         if(mouse_look && mouse_look_alt){
             cam_angle_y += (-v * 0.01f);
         } else if(mouse_look){
@@ -71,7 +58,7 @@ EditorViewport::EditorViewport() {
         }
     });
     input_lis->bindAxis("MoveCamY", [this](float v){
-        if(editorState().is_play_mode) return;
+        if(!mouse_is_over_vp) return;
         if(mouse_look && mouse_look_alt){
             cam_angle_x += (-v * 0.01f);
         } else if(mouse_look){
@@ -84,12 +71,12 @@ EditorViewport::EditorViewport() {
         }
     });
     input_lis->bindAxis("CameraZoom", [this](float v){
-        if(editorState().is_play_mode) return;
+        if(!mouse_is_over_vp) return;
         float mod = cam_zoom;
         cam_zoom += -v * mod * 0.15f;
     });
     input_lis->bindActionPress("ResetEditorCam", [this](){
-        if(editorState().is_play_mode) return;
+        if(!window_in_focus) return;
         //cam_angle_y = gfxm::radian(45.0f);
         //cam_angle_x = gfxm::radian(-25.0f);
         if(editor->getSelectedObject()) {
@@ -107,18 +94,6 @@ EditorViewport::EditorViewport() {
             cam_pivot = gfxm::vec3(.0f, .0f, .0f);
         }
     });
-    input_lis->bindActionPress("GizmoT", [this](){
-        if(editorState().is_play_mode) return;
-        gizmo_mode = GIZMO_TRANSLATE;
-    });
-    input_lis->bindActionPress("GizmoR", [this](){
-        if(editorState().is_play_mode) return;
-        gizmo_mode = GIZMO_ROTATE;
-    });
-    input_lis->bindActionPress("GizmoS", [this](){
-        if(editorState().is_play_mode) return;
-        gizmo_mode = GIZMO_SCALE;
-    });
 
     oct_o = oct.createObject();
 }
@@ -132,7 +107,7 @@ void EditorViewport::init(Editor* editor, GameScene* scene) {
 }
 
 void EditorViewport::update(Editor* editor) {
-    //editor->getScene()->update();
+    editor->getScene()->update();
     dd.clear();
     editor->getScene()->debugDraw(dd);
 
@@ -170,6 +145,9 @@ void EditorViewport::update(Editor* editor) {
     oct.debugDraw(&dd);
 
     if(ImGui::Begin("Scene")) {
+        mouse_is_over_vp = ImGui::IsWindowHovered();
+        window_in_focus = ImGui::IsRootWindowFocused();
+
         ImVec2 sz = ImGui::GetWindowSize();
         ImVec2 pad = ImVec2(
             ImGui::GetWindowPos().x - ImGui::GetCursorScreenPos().x,
@@ -202,26 +180,42 @@ void EditorViewport::update(Editor* editor) {
             );
             gfxm::mat4 model = editor->getSelectedObject()->getTransform()->getWorldTransform();
             gfxm::mat4 dModel(1.0f);
+
+            ImGuizmo::MODE space_mode = ImGuizmo::MODE::LOCAL;
+            if(editor->getState().tgizmo_space == TGIZMO_WORLD) {
+                space_mode = ImGuizmo::MODE::WORLD;
+            }
             
-            if(gizmo_mode == GIZMO_TRANSLATE) {
-                ImGuizmo::Manipulate((float*)&view, (float*)&proj, ImGuizmo::OPERATION::TRANSLATE, ImGuizmo::MODE::LOCAL, (float*)&model, (float*)&dModel, 0);
+            if(editor->getState().tgizmo_mode == TGIZMO_T) {
+                ImGuizmo::Manipulate((float*)&view, (float*)&proj, ImGuizmo::OPERATION::TRANSLATE, space_mode, (float*)&model, (float*)&dModel, 0);
                 if(ImGuizmo::IsUsing()){
                     gfxm::vec4 dT = dModel[3];
-                    editor->getSelectedObject()->getTransform()->translate(dT);
+                    editor->getSelectedObject()->getTransform()->translate(
+                        gfxm::inverse(editor->getSelectedObject()->getTransform()->getParentTransform()) * dT
+                    );
                     editor->getEditorScene().getObjectDesc(editor->getSelectedObject())->updateData();
                     editor->getSelectedObject()->getRoot()->refreshAabb();
                 }
-            } else if(gizmo_mode == GIZMO_ROTATE) {
-                ImGuizmo::Manipulate((float*)&view, (float*)&proj, ImGuizmo::OPERATION::ROTATE, ImGuizmo::MODE::LOCAL, (float*)&model, (float*)&dModel, 0);
+            } else if(editor->getState().tgizmo_mode == TGIZMO_R) {
+                ImGuizmo::Manipulate((float*)&view, (float*)&proj, ImGuizmo::OPERATION::ROTATE, space_mode, (float*)&model, (float*)&dModel, 0);
                 if(ImGuizmo::IsUsing()){
-                    editor->getSelectedObject()->getTransform()->setTransform(model);
+                    gfxm::quat q = gfxm::to_quat(gfxm::to_mat3(dModel));
+                    editor->getSelectedObject()->getTransform()->rotate(q);
                     editor->getEditorScene().getObjectDesc(editor->getSelectedObject())->updateData();
                     editor->getSelectedObject()->getRoot()->refreshAabb();
                 }
-            } else if(gizmo_mode == GIZMO_SCALE) {
-                ImGuizmo::Manipulate((float*)&view, (float*)&proj, ImGuizmo::OPERATION::SCALE, ImGuizmo::MODE::LOCAL, (float*)&model, (float*)&dModel, 0);
+            } else if(editor->getState().tgizmo_mode == TGIZMO_S) {
+                ImGuizmo::Manipulate((float*)&view, (float*)&proj, ImGuizmo::OPERATION::SCALE, space_mode, (float*)&model, (float*)&dModel, 0);
                 if(ImGuizmo::IsUsing()){
-                    editor->getSelectedObject()->getTransform()->setTransform(model);
+                    gfxm::mat4 m4 = model;
+                    m4 = gfxm::inverse(editor->getSelectedObject()->getTransform()->getParentTransform()) * m4;
+                    gfxm::vec3 dscl(
+                        gfxm::length(m4[0]),
+                        gfxm::length(m4[1]),
+                        gfxm::length(m4[2])
+                    );
+
+                    editor->getSelectedObject()->getTransform()->setScale(dscl);
                     editor->getEditorScene().getObjectDesc(editor->getSelectedObject())->updateData();
                     editor->getSelectedObject()->getRoot()->refreshAabb();
                 }
@@ -234,7 +228,11 @@ void EditorViewport::update(Editor* editor) {
 
         vp.getFinalBuffer()->bind();
         glViewport(0, 0, (GLsizei)sz.x, (GLsizei)sz.y);
-        dd.draw(proj, view);
+        
+        if(editor->getState().debug_draw) {
+            dd.draw(proj, view);
+        }
+        
         glBindFramebuffer(GL_FRAMEBUFFER, 0);        
 
         ImGui::GetWindowDrawList()->AddImage((void*)vp.getFinalImage(), 

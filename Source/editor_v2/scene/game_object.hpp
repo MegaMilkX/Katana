@@ -76,14 +76,14 @@ public:
     void                                removeChild(GameObject* o);
     void                                removeChildRecursive(GameObject* o);
 
-    std::shared_ptr<ObjectComponent>    find(rttr::type component_type);
-    std::shared_ptr<ObjectComponent>    get(rttr::type component_type);
+    std::shared_ptr<Attribute>    find(rttr::type component_type);
+    std::shared_ptr<Attribute>    get(rttr::type component_type);
     template<typename COMPONENT_T>
     std::shared_ptr<COMPONENT_T>        get();
     template<typename COMPONENT_T>
     std::shared_ptr<COMPONENT_T>        find();
     size_t                              componentCount();
-    std::shared_ptr<ObjectComponent>    getById(size_t id);
+    std::shared_ptr<Attribute>    getById(size_t id);
     void                                deleteComponentById(size_t id);
     void                                deleteAllComponents();
 
@@ -97,7 +97,7 @@ public:
     virtual IEditorObjectDesc*          _newEditorObjectDesc();
     bool                                serializeComponents(std::ostream& out);
 private:
-    std::shared_ptr<ObjectComponent>    createComponent(rttr::type t);
+    std::shared_ptr<Attribute>    createComponent(rttr::type t);
 
     uint64_t uid;
     GameScene* scene = 0;
@@ -109,7 +109,7 @@ private:
     );
     GameObject* parent = 0;
     std::set<std::shared_ptr<GameObject>> children;
-    std::map<rttr::type, std::shared_ptr<ObjectComponent>> components;
+    std::map<rttr::type, std::shared_ptr<Attribute>> components;
 };
 STATIC_RUN(GameObject) {
     rttr::registration::class_<GameObject>("GameObject")
@@ -142,6 +142,16 @@ inline void EditorGameObjectDesc::updateData() {
     s = object->getTransform()->getScale();
 }
 inline void EditorGameObjectDesc::gui() {
+    static TransformNode* last_transform = 0;
+    static int t_sync = -1;
+    static gfxm::vec3 euler;
+
+    if(last_transform != object->getTransform() || t_sync != object->getTransform()->getSyncId()) {
+        last_transform = object->getTransform();
+        t_sync = object->getTransform()->getSyncId();
+        euler = object->getTransform()->getEulerAngles();
+    }
+
     char buf[256];
     memset(buf, 0, 256);
     memcpy(buf, object->getName().c_str(), object->getName().size());
@@ -152,15 +162,17 @@ inline void EditorGameObjectDesc::gui() {
     if(ImGui::DragFloat3("Translation", (float*)&t, 0.001f)) {
         object->getTransform()->setPosition(t);
         object->getRoot()->refreshAabb();
+        t_sync = object->getTransform()->getSyncId();
     }
-    r = object->getTransform()->getEulerAngles();
-    if(ImGui::DragFloat3("Rotation", (float*)&r, 0.001f)) {
-        object->getTransform()->setRotation(r);
+    if(ImGui::DragFloat3("Rotation", (float*)&euler, 0.001f)) {
+        object->getTransform()->setRotation(euler);
         object->getRoot()->refreshAabb();
+        t_sync = object->getTransform()->getSyncId();
     }
     if(ImGui::DragFloat3("Scale", (float*)&s, 0.001f)) {
         object->getTransform()->setScale(s);
         object->getRoot()->refreshAabb();
+        t_sync = object->getTransform()->getSyncId();
     }
 }
 

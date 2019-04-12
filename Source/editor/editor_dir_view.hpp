@@ -3,24 +3,24 @@
 
 #include "editor_window.hpp"
 
-#include "../common/util/log.hpp"
+#include "../common_old/util/log.hpp"
 
 #include <stdlib.h>
 
-#include "../common/resource/texture2d.h"
+#include "../common_old/resource/texture2d.h"
 
-#include "../common/data_headers/file.png.h"
-#include "../common/data_headers/jpg.png.h"
-#include "../common/data_headers/json_file.png.h"
-#include "../common/data_headers/png.png.h"
-#include "../common/data_headers/txt.png.h"
-#include "../common/data_headers/file16.png.h"
-#include "../common/data_headers/jpg16.png.h"
-#include "../common/data_headers/json_file16.png.h"
-#include "../common/data_headers/png16.png.h"
-#include "../common/data_headers/txt16.png.h"
+#include "../common_old/data_headers/file.png.h"
+#include "../common_old/data_headers/jpg.png.h"
+#include "../common_old/data_headers/json_file.png.h"
+#include "../common_old/data_headers/png.png.h"
+#include "../common_old/data_headers/txt.png.h"
+#include "../common_old/data_headers/file16.png.h"
+#include "../common_old/data_headers/jpg16.png.h"
+#include "../common_old/data_headers/json_file16.png.h"
+#include "../common_old/data_headers/png16.png.h"
+#include "../common_old/data_headers/txt16.png.h"
 
-#include "../common/util/init_filesystem_resources.hpp"
+#include "../common_old/util/init_filesystem_resources.hpp"
 
 #include <cctype>
 

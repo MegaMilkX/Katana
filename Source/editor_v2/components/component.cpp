@@ -2,21 +2,24 @@
 
 #include "../scene/game_scene.hpp"
 
-ObjectComponent::~ObjectComponent() {
+Attribute::~Attribute() {
     
 }
 
-rttr::type ObjectComponent::getRequiredOwnerType() {
+rttr::type Attribute::getRequiredOwnerType() {
     return rttr::type::get<GameObject>();
 }
 
-void ObjectComponent::onCreate() {}
+void Attribute::onCreate() {}
 
-void ObjectComponent::copy(ObjectComponent* other) {}
+void Attribute::copy(Attribute* other) {}
 
-GameObject* ObjectComponent::getOwner() { return owner; }
+GameObject* Attribute::getOwner() { return owner; }
+void Attribute::resetAttribute() {
+    getOwner()->getScene()->resetAttribute(this);
+}
 
-bool ObjectComponent::buildAabb(gfxm::aabb& out) {
+bool Attribute::buildAabb(gfxm::aabb& out) {
     out = gfxm::aabb(
         gfxm::vec3(.0f, .0f, .0f),
         gfxm::vec3(.0f, .0f, .0f)
@@ -24,13 +27,13 @@ bool ObjectComponent::buildAabb(gfxm::aabb& out) {
     return false;
 }
 
-bool ObjectComponent::serialize(out_stream& out) {
-    return false;
-}
-bool ObjectComponent::deserialize(in_stream& in, size_t sz) {
-    return false;
+void Attribute::onGui() {
+
 }
 
-IEditorComponentDesc* ObjectComponent::_newEditorDescriptor() {
-    return new EditorComponentDesc<ObjectComponent>(this);
+bool Attribute::serialize(out_stream& out) {
+    return false;
+}
+bool Attribute::deserialize(in_stream& in, size_t sz) {
+    return false;
 }

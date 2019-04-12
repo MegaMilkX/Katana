@@ -1,7 +1,7 @@
 #ifndef EDITOR_STATE_HPP
 #define EDITOR_STATE_HPP
 
-#include "../common/scene.hpp"
+#include "../common_old/scene.hpp"
 
 struct EditorState {
     SceneObject* selected_object = 0;

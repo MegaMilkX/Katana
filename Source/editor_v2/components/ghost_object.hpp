@@ -8,45 +8,17 @@
 
 #include "../scene/game_object.hpp"
 #include "../scene/game_scene.hpp"
-#include "../scene/controllers/dynamics_ctrl.hpp"
 
-class GhostObject : public ObjectComponent {
-    RTTR_ENABLE(ObjectComponent)
+class GhostObject : public Attribute {
+    RTTR_ENABLE(Attribute)
 public:
 
-    gfxm::vec3 getCollisionAdjustedPosition() {
-        gfxm::vec3 p = getOwner()->getTransform()->getWorldPosition();
-        if(getOwner()->getScene()
-            ->getController<DynamicsCtrl>()->getAdjustedPosition(
-                cobj.get(), p
-            )
-        ) {
-            return p;
-        }
-        return getOwner()->getTransform()->getWorldPosition();
-    }
+    gfxm::vec3 getCollisionAdjustedPosition();
 
-    void sweep(const gfxm::mat4& from, const gfxm::mat4& to) {
-        //auto btWorld = getOwner()->getScene()->getController<DynamicsCtrl>()->getBtWorld();
-        getOwner()->getScene()->getController<DynamicsCtrl>()->sweepTest(this, from, to);
-    }
+    void sweep(const gfxm::mat4& from, const gfxm::mat4& to);
 
-    virtual void onCreate() {
-        shape = getOwner()->get<CmCollisionShape>();
-        cobj.reset(new btGhostObject());
-        cobj->setCustomDebugColor(
-            btVector3(1, 0, 1)
-        );
-        cobj->setCollisionFlags(
-            cobj->getCollisionFlags()
-            | btCollisionObject::CF_HAS_CUSTOM_DEBUG_RENDERING_COLOR
-        );
-        _shapeChanged();
-    }
-    ~GhostObject() {
-        getOwner()->getScene()
-            ->getController<DynamicsCtrl>()->_removeGhost(this);
-    }
+    virtual void onCreate();
+    ~GhostObject();
 
     void _updateTransform() {
         if(!shape) return;
@@ -61,15 +33,7 @@ public:
         cobj->setWorldTransform(btt);
     }
 
-    void _shapeChanged() {
-        getOwner()->getScene()
-            ->getController<DynamicsCtrl>()->_removeGhost(this);
-        cobj->setCollisionShape(shape->getBtShape());
-        if(shape->getBtShape()) {
-            getOwner()->getScene()
-                ->getController<DynamicsCtrl>()->_addGhost(this);
-        }
-    }
+    void _shapeChanged();
 
     btGhostObject* getBtObject() {
         return cobj.get();
@@ -83,7 +47,7 @@ public:
     }
 private:
     std::shared_ptr<btGhostObject> cobj;
-    std::shared_ptr<CmCollisionShape> shape = 0;
+    std::shared_ptr<CollisionShape> shape = 0;
 };
 
 #endif

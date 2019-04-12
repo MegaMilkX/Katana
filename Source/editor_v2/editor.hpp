@@ -15,26 +15,49 @@
 
 #include "editor_scene.hpp"
 
-#include "editor_state.hpp"
-
 #include "../common/util/audio/audio_mixer.hpp"
 
-class Editor {
+#include "../common/application_state.hpp"
+
+enum TRANSFORM_GIZMO_MODE {
+    TGIZMO_T,
+    TGIZMO_R,
+    TGIZMO_S
+};
+
+enum TRANSFORM_GIZMO_SPACE {
+    TGIZMO_LOCAL,
+    TGIZMO_WORLD
+};
+
+struct EditorState {
+    TRANSFORM_GIZMO_MODE tgizmo_mode = TGIZMO_T;
+    TRANSFORM_GIZMO_SPACE tgizmo_space = TGIZMO_LOCAL;
+
+    bool debug_draw = true;
+};
+
+class Editor : public AppState {
 public:
     Editor();
     ~Editor();
-    void init();
-    void cleanup();
-    void update(unsigned width, unsigned height, unsigned cursor_x, unsigned cursor_y);
-    
+    virtual void onInit();
+    virtual void onCleanup();
+    virtual void onUpdate();
+    virtual void onGui();
+
     GameScene* getScene();
     EditorScene& getEditorScene();
     GameObject* getSelectedObject();
     EditorAssetInspector* getAssetInspector();
     void setSelectedObject(GameObject* o);
+
+    EditorState& getState();
 private:
     bool showOpenSceneDialog();
     bool showSaveSceneDialog(GameScene* scene, bool forceDialog = false);
+
+    EditorState editor_state;
 
     EditorViewport viewport;
     EditorSceneInspector scene_inspector;

@@ -6,8 +6,8 @@
 
 #include <glfw/glfw3.h>
 
-#include "../common/resource/resource_factory.h"
-#include "../common/resource/texture2d.h"
+#include "../common_old/resource/resource_factory.h"
+#include "../common_old/resource/texture2d.h"
 
 #include "editor_window.hpp"
 #include "editor_viewport.hpp"
@@ -17,13 +17,13 @@
 #include "editor_console.hpp"
 #include "editor_dir_view.hpp"
 
-#include "../common/scene.hpp"
+#include "../common_old/scene.hpp"
 
-#include "../common/input/input_mgr.hpp"
+#include "../common_old/input/input_mgr.hpp"
 
-#include "../common/animator_sys.hpp"
+#include "../common_old/animator_sys.hpp"
 
-#include "../common/game.hpp"
+#include "../common_old/game.hpp"
 
 class Editor {
 public:

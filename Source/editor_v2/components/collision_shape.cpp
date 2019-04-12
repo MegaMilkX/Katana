@@ -6,14 +6,14 @@
 #include "model.hpp"
 #include "../../common/resource/mesh.hpp"
 
-STATIC_RUN(CmCollisionShape) {
-    rttr::registration::class_<CmCollisionShape>("CmCollisionShape")
+STATIC_RUN(CollisionShape) {
+    rttr::registration::class_<CollisionShape>("CollisionShape")
         .constructor<>()(
             rttr::policy::ctor::as_raw_ptr
         );
 }
 
-void MeshShape_::onGui() {
+void MeshShape::onGui() {
     ImGui::Text("Debug display for collision meshes is disabled for performance");
     imguiResourceCombo<Mesh>(
         "Collision mesh",
@@ -28,10 +28,10 @@ void MeshShape_::onGui() {
     }
 }
 
-void MeshShape_::makeFromModel() {
-    makeFromModel(shape_wrapper->getOwner()->find<CmModel>());
+void MeshShape::makeFromModel() {
+    makeFromModel(shape_wrapper->getOwner()->find<Model>());
 }
-void MeshShape_::makeFromModel(std::shared_ptr<CmModel> mdl) {
+void MeshShape::makeFromModel(std::shared_ptr<Model> mdl) {
     if(!mdl) return;
     if(mdl->segmentCount() == 0) return;
     auto& seg = mdl->getSegment(0);
@@ -60,7 +60,7 @@ void MeshShape_::makeFromModel(std::shared_ptr<CmModel> mdl) {
         makeMesh();
     }*/
 }/*
-void MeshShape_::makeMesh() {
+void MeshShape::makeMesh() {
     indexVertexArray.reset(new btTriangleIndexVertexArray(
         indices.size() / 3,
         (int32_t*)indices.data(),
@@ -77,7 +77,7 @@ void MeshShape_::makeMesh() {
     shape_wrapper->_shapeChanged();
 }*/
 
-void MeshShape_::serialize(out_stream& out) {
+void MeshShape::serialize(out_stream& out) {
     DataWriter w(&out);
     if(mesh) {
         w.write(mesh->Name());
@@ -85,7 +85,7 @@ void MeshShape_::serialize(out_stream& out) {
         w.write(std::string());
     }
 }
-void MeshShape_::deserialize(in_stream& in) {
+void MeshShape::deserialize(in_stream& in) {
     DataReader r(&in);
     std::string m_name = r.readStr();
     if(!m_name.empty()) {
@@ -93,10 +93,10 @@ void MeshShape_::deserialize(in_stream& in) {
     }
 }
 
-void MeshShape_::setMesh(const std::string& res_name) {
+void MeshShape::setMesh(const std::string& res_name) {
     setMesh(retrieve<Mesh>(res_name));
 }
-void MeshShape_::setMesh(std::shared_ptr<Mesh> mesh) {
+void MeshShape::setMesh(std::shared_ptr<Mesh> mesh) {
     if(!mesh) return;
     if(!(mesh->vertexCount() && mesh->indexCount())) {
         LOG_WARN("Can't use mesh without position or indices as collision mesh");
@@ -119,19 +119,18 @@ void MeshShape_::setMesh(std::shared_ptr<Mesh> mesh) {
     shape_wrapper->_shapeChanged();
 }
 
-CmCollisionShape::~CmCollisionShape() {
-    getOwner()->getScene()->getController<DynamicsCtrl>()->_removeCollisionShape(this);
+CollisionShape::~CollisionShape() {
 }
 
-void CmCollisionShape::onCreate() {
-    getOwner()->getScene()->getController<DynamicsCtrl>()->_addCollisionShape(this);
+void CollisionShape::onCreate() {
+    getOwner()->getScene()->getController<DynamicsCtrl>();
 }
 
-void CmCollisionShape::debugDraw(btIDebugDraw* dd) {
+void CollisionShape::debugDraw(btIDebugDraw* dd) {
     if(!shape) return;
     shape->debugDraw(dd, getOwner()->getTransform()->getWorldTransform());
 }
 
-void CmCollisionShape::_shapeChanged() {
+void CollisionShape::_shapeChanged() {
     getOwner()->getScene()->getController<DynamicsCtrl>()->_shapeChanged(this);
 }

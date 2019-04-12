@@ -5,6 +5,9 @@ TransformNode::~TransformNode() {
 }
 
 void TransformNode::dirty() {
+    if(!_dirty) {
+        _sync_id++;
+    }
     _dirty = true;
     _frame_dirty = true;
     for(auto& c : _children) {
@@ -50,7 +53,6 @@ void TransformNode::rotate(const gfxm::quat& q) {
             _rotation
         );
     dirty();
-    _dirty_euler = true;
 }
 
 void TransformNode::setPosition(float x, float y, float z) { 
@@ -74,7 +76,6 @@ void TransformNode::setRotation(float x, float y, float z, float w) {
 void TransformNode::setRotation(const gfxm::quat& rotation) { 
     _rotation = rotation; 
     dirty(); 
-    _dirty_euler = true;
 }
 void TransformNode::setScale(float s) { 
     setScale(gfxm::vec3(s, s, s)); 
@@ -94,7 +95,6 @@ void TransformNode::setTransform(gfxm::mat4 t) {
     gfxm::vec3 back = t[2];
     _scale = gfxm::vec3(right.length(), up.length(), back.length());
     dirty();
-    _dirty_euler = true;
 }
 
 void TransformNode::setParent(TransformNode* p) {
@@ -117,11 +117,7 @@ const gfxm::vec3& TransformNode::getScale() const {
     return _scale;
 }
 gfxm::vec3 TransformNode::getEulerAngles() {
-    if(_dirty_euler) {
-        _euler = gfxm::to_euler(_rotation);
-        _dirty_euler = false;
-    }
-    return _euler;
+    return gfxm::to_euler(_rotation);
 }
 gfxm::vec3 TransformNode::getWorldPosition() {
     return getWorldTransform()[3];

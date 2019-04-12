@@ -426,7 +426,7 @@ inline void finalizeObjectsFromAssimpNode(
     GameObject* root_object = object->getRoot();
 
     if(node->mNumMeshes) {
-        auto m = object->get<CmModel>();
+        auto m = object->get<Model>();
         if(m) {
             for(unsigned i = 0; i < node->mNumMeshes; ++i) {
                 auto& seg = m->getSegment(i);
@@ -434,7 +434,7 @@ inline void finalizeObjectsFromAssimpNode(
             
                 aiMesh* ai_mesh = ai_scene->mMeshes[node->mMeshes[i]];
                 if(ai_mesh->mNumBones) {
-                    seg.skin_data.reset(new CmModel::SkinData());
+                    seg.skin_data.reset(new Model::SkinData());
                     for(unsigned j = 0; j < ai_mesh->mNumBones; ++j) {
                         aiBone* ai_bone = ai_mesh->mBones[j];
                         std::string name(ai_bone->mName.data, ai_bone->mName.length);

@@ -26,20 +26,6 @@ inline std::string blendModeString(ANIM_BLEND_MODE m) {
     return r;
 }
 
-class AnimationStack;
-template<>
-class EditorComponentDesc<AnimationStack> : public IEditorComponentDesc {
-public:
-    EditorComponentDesc(AnimationStack* anim_stack)
-    : anim_stack(anim_stack) {}
-
-    virtual void gui();
-private:
-    AnimationStack* anim_stack = 0;
-    int selected_index = 0;
-    int selected_anim_index = 0;
-};
-
 class AnimLayer {
 public:
     int             anim_index = 0;
@@ -57,10 +43,8 @@ public:
     bool            stopped = false;
 };
 
-class AnimationStack : public ObjectComponent {
-    RTTR_ENABLE(ObjectComponent)
-
-    friend EditorComponentDesc<AnimationStack>;
+class AnimationStack : public Attribute {
+    RTTR_ENABLE(Attribute)
 public:
     struct AnimInfo {
         std::string                 alias;
@@ -84,7 +68,7 @@ public:
     bool layerStopped(int layer, float offset = 0.0f);
     float getLengthProportion(int layer_a, int layer_b);
 
-    virtual void copy(ObjectComponent* other);
+    virtual void copy(Attribute* other);
 
     void setSkeleton(std::shared_ptr<Skeleton> skel);
     void addAnim(std::shared_ptr<Animation> anim);
@@ -99,8 +83,134 @@ public:
     virtual bool serialize(out_stream& out);
     virtual bool deserialize(in_stream& in, size_t sz);
 
-    IEditorComponentDesc* _newEditorDescriptor() {
-        return new EditorComponentDesc<AnimationStack>(this);
+    void onGui() {
+        auto anim_stack = this;
+        static int selected_index = 0;
+        static int selected_anim_index = 0;
+
+        ImGui::Text("Skeleton "); ImGui::SameLine();
+        std::string button_label = "! No skeleton !";
+        if(anim_stack->skeleton) {
+            button_label = anim_stack->skeleton->Name();
+        }
+        if(ImGui::SmallButton(button_label.c_str())) {
+
+        }
+        ImGui::PushID(button_label.c_str());
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
+                std::string fname = (char*)payload->Data;
+                LOG("Payload received: " << fname);
+                anim_stack->setSkeleton(getResource<Skeleton>(fname));
+            }
+            ImGui::EndDragDropTarget();
+        }
+        ImGui::PopID();
+
+        
+
+        ImGui::Checkbox("Enable root motion", &anim_stack->root_motion_enabled);
+
+        ImGui::Text("Layers");
+        ImGui::BeginChild("Layers", ImVec2(0, 100), false, 0);
+        
+        for(size_t i = 0; i < anim_stack->layers.size(); ++i) {
+            if(ImGui::Selectable(MKSTR("Layer " << i).c_str(), selected_index == i)) {
+                selected_index = i;
+            }
+        }
+        ImGui::EndChild();
+        if(ImGui::Button("Add")) {
+            anim_stack->addLayer();
+            selected_index = anim_stack->layers.size() - 1;
+        } ImGui::SameLine(); 
+        if(ImGui::Button("Remove") && !anim_stack->layers.empty()) {
+            anim_stack->layers.erase(anim_stack->layers.begin() + selected_index);
+            if(selected_index >= anim_stack->layers.size()) {
+                selected_index = anim_stack->layers.size() - 1;
+            }
+        }
+        if(!anim_stack->layers.empty()) {
+            std::string current_anim_name = "";
+            if(!anim_stack->anims.empty()) {
+                current_anim_name = anim_stack->anims[anim_stack->layers[selected_index].anim_index].alias;
+            }
+
+            if (ImGui::BeginCombo("Current anim", current_anim_name.c_str(), 0)) {
+                for(size_t i = 0; i < anim_stack->anims.size(); ++i) {
+                    if(ImGui::Selectable(anim_stack->anims[i].alias.c_str(), anim_stack->layers[selected_index].anim_index == i)) {
+                        anim_stack->layers[selected_index].anim_index = i;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            if(ImGui::BeginCombo("Mode", blendModeString(anim_stack->layers[selected_index].mode).c_str())) {
+                for(size_t i = 0; i < ANIM_MODE_LAST; ++i) {
+                    if(ImGui::Selectable(blendModeString((ANIM_BLEND_MODE)i).c_str(), anim_stack->layers[selected_index].mode == i)) {
+                        anim_stack->layers[selected_index].mode = (ANIM_BLEND_MODE)i;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            float anim_len = 1.0f;
+            if(anim_stack->anims.size() > anim_stack->layers[selected_index].anim_index) {
+                anim_len = anim_stack->anims[anim_stack->layers[selected_index].anim_index].anim->length;
+            }
+            ImGui::SliderFloat(
+                "Cursor", 
+                &anim_stack->layers[selected_index].cursor, 
+                0.0f, 
+                anim_len
+            );
+            if(ImGui::DragFloat("Speed", &anim_stack->layers[selected_index].speed, 0.01f, 0.0f, 10.0f)) {}
+            if(ImGui::DragFloat("Weight", &anim_stack->layers[selected_index].weight, 0.01f, 0.0f, 1.0f)) {}
+            if(ImGui::Checkbox("Stopped", &anim_stack->layers[selected_index].stopped)) {
+            }
+        }
+        ImGui::Separator();
+
+        ImGui::BeginChild("Animations", ImVec2(0, 100), false, 0);
+        for(size_t i = 0; i < anim_stack->anims.size(); ++i) {
+            if(ImGui::Selectable(anim_stack->anims[i].alias.c_str(), selected_anim_index == i)) {
+                selected_anim_index = i;
+            }
+        }
+        ImGui::EndChild();
+        ImGui::PushID("Animations");
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
+                std::string fname = (char*)payload->Data;
+                LOG("Payload received: " << fname);
+                auto anim = getResource<Animation>(fname);
+                anim_stack->addAnim(anim);
+            }
+            ImGui::EndDragDropTarget();
+        }
+        ImGui::PopID();
+
+        if(!anim_stack->anims.empty()) {
+            std::string current_anim_name = "";
+            if(!anim_stack->anims.empty()) {
+                current_anim_name = anim_stack->anims[selected_anim_index].alias;
+            }
+            char buf[256];
+            memcpy(buf, anim_stack->anims[selected_anim_index].alias.data(), anim_stack->anims[selected_anim_index].alias.size());
+            if(ImGui::InputText("Alias", buf, 256)) {
+                anim_stack->anims[selected_anim_index].alias = buf;
+            }
+            if(ImGui::Checkbox("Looping", &anim_stack->anims[selected_anim_index].looping)) {
+            }
+            if(ImGui::Button("Remove anim")) {
+                anim_stack->anims.erase(anim_stack->anims.begin() + selected_anim_index);
+                for(auto l : anim_stack->layers) {
+                    if(l.anim_index == selected_anim_index) {
+                        l.anim_index = 0;
+                    }
+                    selected_anim_index = 0;
+                }
+            }
+        }
     }
 private:
     void updateLayer(
@@ -146,132 +256,6 @@ STATIC_RUN(AnimationStack) {
         .constructor<>()(
             rttr::policy::ctor::as_raw_ptr
         );
-}
-
-inline void EditorComponentDesc<AnimationStack>::gui() {
-    ImGui::Text("Skeleton "); ImGui::SameLine();
-    std::string button_label = "! No skeleton !";
-    if(anim_stack->skeleton) {
-        button_label = anim_stack->skeleton->Name();
-    }
-    if(ImGui::SmallButton(button_label.c_str())) {
-
-    }
-    ImGui::PushID(button_label.c_str());
-    if (ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
-            std::string fname = (char*)payload->Data;
-            LOG("Payload received: " << fname);
-            anim_stack->setSkeleton(getResource<Skeleton>(fname));
-        }
-        ImGui::EndDragDropTarget();
-    }
-    ImGui::PopID();
-
-    
-
-    ImGui::Checkbox("Enable root motion", &anim_stack->root_motion_enabled);
-
-    ImGui::Text("Layers");
-    ImGui::BeginChild("Layers", ImVec2(0, 100), false, 0);
-    
-    for(size_t i = 0; i < anim_stack->layers.size(); ++i) {
-        if(ImGui::Selectable(MKSTR("Layer " << i).c_str(), selected_index == i)) {
-            selected_index = i;
-        }
-    }
-    ImGui::EndChild();
-    if(ImGui::Button("Add")) {
-        anim_stack->addLayer();
-        selected_index = anim_stack->layers.size() - 1;
-    } ImGui::SameLine(); 
-    if(ImGui::Button("Remove") && !anim_stack->layers.empty()) {
-        anim_stack->layers.erase(anim_stack->layers.begin() + selected_index);
-        if(selected_index >= anim_stack->layers.size()) {
-            selected_index = anim_stack->layers.size() - 1;
-        }
-    }
-    if(!anim_stack->layers.empty()) {
-        std::string current_anim_name = "";
-        if(!anim_stack->anims.empty()) {
-            current_anim_name = anim_stack->anims[anim_stack->layers[selected_index].anim_index].alias;
-        }
-
-        if (ImGui::BeginCombo("Current anim", current_anim_name.c_str(), 0)) {
-            for(size_t i = 0; i < anim_stack->anims.size(); ++i) {
-                if(ImGui::Selectable(anim_stack->anims[i].alias.c_str(), anim_stack->layers[selected_index].anim_index == i)) {
-                    anim_stack->layers[selected_index].anim_index = i;
-                }
-            }
-            ImGui::EndCombo();
-        }
-
-        if(ImGui::BeginCombo("Mode", blendModeString(anim_stack->layers[selected_index].mode).c_str())) {
-            for(size_t i = 0; i < ANIM_MODE_LAST; ++i) {
-                if(ImGui::Selectable(blendModeString((ANIM_BLEND_MODE)i).c_str(), anim_stack->layers[selected_index].mode == i)) {
-                    anim_stack->layers[selected_index].mode = (ANIM_BLEND_MODE)i;
-                }
-            }
-            ImGui::EndCombo();
-        }
-        float anim_len = 1.0f;
-        if(anim_stack->anims.size() > anim_stack->layers[selected_index].anim_index) {
-            anim_len = anim_stack->anims[anim_stack->layers[selected_index].anim_index].anim->length;
-        }
-        ImGui::SliderFloat(
-            "Cursor", 
-            &anim_stack->layers[selected_index].cursor, 
-            0.0f, 
-            anim_len
-        );
-        if(ImGui::DragFloat("Speed", &anim_stack->layers[selected_index].speed, 0.01f, 0.0f, 10.0f)) {}
-        if(ImGui::DragFloat("Weight", &anim_stack->layers[selected_index].weight, 0.01f, 0.0f, 1.0f)) {}
-        if(ImGui::Checkbox("Stopped", &anim_stack->layers[selected_index].stopped)) {
-        }
-    }
-    ImGui::Separator();
-
-    ImGui::BeginChild("Animations", ImVec2(0, 100), false, 0);
-    for(size_t i = 0; i < anim_stack->anims.size(); ++i) {
-        if(ImGui::Selectable(anim_stack->anims[i].alias.c_str(), selected_anim_index == i)) {
-            selected_anim_index = i;
-        }
-    }
-    ImGui::EndChild();
-    ImGui::PushID("Animations");
-    if (ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
-            std::string fname = (char*)payload->Data;
-            LOG("Payload received: " << fname);
-            auto anim = getResource<Animation>(fname);
-            anim_stack->addAnim(anim);
-        }
-        ImGui::EndDragDropTarget();
-    }
-    ImGui::PopID();
-
-    if(!anim_stack->anims.empty()) {
-        std::string current_anim_name = "";
-        if(!anim_stack->anims.empty()) {
-            current_anim_name = anim_stack->anims[selected_anim_index].alias;
-        }
-        char buf[256];
-        memcpy(buf, anim_stack->anims[selected_anim_index].alias.data(), anim_stack->anims[selected_anim_index].alias.size());
-        if(ImGui::InputText("Alias", buf, 256)) {
-            anim_stack->anims[selected_anim_index].alias = buf;
-        }
-        if(ImGui::Checkbox("Looping", &anim_stack->anims[selected_anim_index].looping)) {
-        }
-        if(ImGui::Button("Remove anim")) {
-            anim_stack->anims.erase(anim_stack->anims.begin() + selected_anim_index);
-            for(auto l : anim_stack->layers) {
-                if(l.anim_index == selected_anim_index) {
-                    l.anim_index = 0;
-                }
-                selected_anim_index = 0;
-            }
-        }
-    }
-}
+};
 
 #endif

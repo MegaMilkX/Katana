@@ -14,15 +14,21 @@
 
 #include "../scene_listener.hpp"
 
-class RenderController : public SceneController, public SceneListener {
+class RenderController : public SceneControllerEventFilter<Model, Camera, OmniLight> {
     RTTR_ENABLE(SceneController)
 public:
     virtual void init(GameScene* s) {
         scene = s;
-        scene->getEventMgr().subscribe(this, EVT_COMPONENT_REMOVED);
     }
-    ~RenderController() {
-        scene->getEventMgr().unsubscribeAll(this);
+
+    virtual void onAttribCreated(Model* m) { models.insert(m); }
+    virtual void onAttribDeleted(Model* m) { models.erase(m); }
+    virtual void onAttribCreated(OmniLight* l) { omnis.insert(l); }
+    virtual void onAttribDeleted(OmniLight* l) { omnis.erase(l); }
+    virtual void onAttribDeleted(Camera* c) {
+        if(c == default_camera) {
+            default_camera = 0;
+        }
     }
 
     virtual void copy(SceneController& other) {
@@ -31,7 +37,7 @@ public:
             std::string cam_name = o.default_camera->getOwner()->getName();
             auto obj = scene->findObject(cam_name);
             if(obj) {
-                auto c = obj->find<CmCamera>();
+                auto c = obj->find<Camera>();
                 if(c) {
                     default_camera = c.get();
                 } else {
@@ -79,25 +85,11 @@ public:
         }
     }
 
-    CmCamera* getDefaultCamera() {
+    Camera* getDefaultCamera() {
         return default_camera;
     }
-    void setDefaultCamera(CmCamera* c) {
+    void setDefaultCamera(Camera* c) {
         default_camera = c;
-    }
-
-    void _regModel(CmModel* m) {
-        models.insert(m);
-    }
-    void _unregModel(CmModel* m) {
-        models.erase(m);
-    }
-
-    void _regOmniLight(OmniLight* l) {
-        omnis.insert(l);
-    }
-    void _unregOmniLight(OmniLight* l) {
-        omnis.erase(l);
     }
 
     virtual void onGui() {
@@ -118,18 +110,12 @@ public:
     }
     virtual void deserialize(in_stream& in) {
         DataReader r(&in);
-        default_camera = scene->findComponent<CmCamera>(r.readStr());
+        default_camera = scene->findComponent<Camera>(r.readStr());
     }
 private:
-    virtual void onComponentRemoved(ObjectComponent* c) {
-        if(c == default_camera) {
-            default_camera = 0;
-        }
-    }
-
-    std::set<CmModel*> models;
+    std::set<Model*> models;
     std::set<OmniLight*> omnis;
-    CmCamera* default_camera = 0;
+    Camera* default_camera = 0;
     GameScene* scene = 0;
 };
 STATIC_RUN(RenderController) {

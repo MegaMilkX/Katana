@@ -3,8 +3,8 @@
 
 #include <string>
 
-#include "../common/lib/imgui_wrap.hpp"
-#include "../common/lib/imgui/imgui_internal.h"
+#include "../common_old/lib/imgui_wrap.hpp"
+#include "../common_old/lib/imgui/imgui_internal.h"
 
 class EditorWindow {
 public:

@@ -7,29 +7,55 @@
 
 #include "scene/controllers/render_controller.hpp"
 #include "scene/controllers/dynamics_ctrl.hpp"
+#include "scene/controllers/actor_ctrl.hpp"
+#include "scene/controllers/anim_controller.hpp"
+#include "scene/controllers/audio_controller.hpp"
+#include "scene/controllers/constraint_ctrl.hpp"
 
-class GameState {
+#include "../common/application_state.hpp"
+
+#include "serialize_game_scene.hpp"
+
+class GameState : public AppState {
 public:
     GameState() {
         scene.reset(new GameScene());
+    }
+    GameState(const std::string& scene_path) {
+        scene.reset(new GameScene());
+        deserializeScene(scene_path, scene.get());
+    }
+
+    virtual void onInit() {
         vp.init(640, 480);
         dd.init();
+
+        scene->getController<RenderController>();
+        scene->getController<ConstraintCtrl>();
+        scene->getController<AnimController>();
+        scene->getController<DynamicsCtrl>();
+        scene->getController<AudioController>();
+        scene->getController<ActorCtrl>();
+        scene->startSession();
     }
-    ~GameState() {
+    virtual void onCleanup() {
+        scene->stopSession();
+
         dd.cleanup();
     }
 
-    void reset() {
-    }
-
-    void update(unsigned x, unsigned y) {
+    virtual void onUpdate() {
         dd.clear();
         scene->getController<DynamicsCtrl>()->setDebugDraw(&dd);
         scene->update();
 
+        
+    }
+
+    virtual void onRender(int x, int y) {
         gfxm::mat4 proj;
         gfxm::mat4 view;
-        CmCamera* cam = scene->getController<RenderController>()->getDefaultCamera();
+        Camera* cam = scene->getController<RenderController>()->getDefaultCamera();
         if(cam) {
             proj = cam->getProjection(x, y);
             view = cam->getView();

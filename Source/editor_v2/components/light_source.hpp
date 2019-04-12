@@ -4,8 +4,8 @@
 #include "component.hpp"
 #include "../../common/util/log.hpp"
 
-class OmniLight : public ObjectComponent {
-    RTTR_ENABLE(ObjectComponent)
+class OmniLight : public Attribute {
+    RTTR_ENABLE(Attribute)
 public:
     gfxm::vec3 color = gfxm::vec3(1,1,1);
     float intensity = 1.0f;
@@ -14,7 +14,7 @@ public:
     ~OmniLight();
     virtual void onCreate();
 
-    virtual void copy(ObjectComponent* other) {
+    virtual void copy(Attribute* other) {
         if(other->get_type() != get_type()) {
             LOG("Can't copy from " << other->get_type().get_name().to_string() << " to " <<
                 get_type().get_name().to_string());
@@ -42,28 +42,12 @@ public:
         ImGui::DragFloat("intensity", &intensity, 0.001f);
         ImGui::DragFloat("radius", &radius, 0.001f);
     }
-    virtual IEditorComponentDesc* _newEditorDescriptor();
 };
 STATIC_RUN(OmniLight) {
     rttr::registration::class_<OmniLight>("OmniLight")
         .constructor<>()(
             rttr::policy::ctor::as_raw_ptr
         );
-}
-
-class OmniLightDesc : public IEditorComponentDesc {
-public:
-    OmniLightDesc(OmniLight* l)
-    : light(l) {}
-    virtual void gui() {
-        light->onGui();
-    }
-private:
-    OmniLight* light;
-};
-
-inline IEditorComponentDesc* OmniLight::_newEditorDescriptor() {
-    return new OmniLightDesc(this);
 }
 
 #endif

@@ -1,4 +1,4 @@
-#include "../common/platform/platform.hpp"
+#include "../common_old/platform/platform.hpp"
 #include "editor.hpp"
 
 Editor* editor = 0;

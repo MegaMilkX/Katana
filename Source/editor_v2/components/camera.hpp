@@ -6,8 +6,8 @@
 #include "../scene/game_object.hpp"
 #include "../../common/util/serialization.hpp"
 
-class CmCamera : public ObjectComponent {
-    RTTR_ENABLE(ObjectComponent)
+class Camera : public Attribute {
+    RTTR_ENABLE(Attribute)
 public:
     enum PROJECTION {
         PERSPECTIVE,
@@ -79,8 +79,8 @@ private:
     float znear = 0.01f;
     float zfar = 1000.0f;
 };
-STATIC_RUN(CmCamera) {
-    rttr::registration::class_<CmCamera>("CmCamera")
+STATIC_RUN(Camera) {
+    rttr::registration::class_<Camera>("Camera")
         .constructor<>()(
             rttr::policy::ctor::as_raw_ptr
         );

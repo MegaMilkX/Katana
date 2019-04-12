@@ -28,7 +28,7 @@ public:
             }
         } 
     }
-    void postComponentCreated(ObjectComponent* o) {
+    void postComponentCreated(Attribute* o) {
         auto it = listeners.find(EVT_COMPONENT_CREATED);
         if(it != listeners.end()) {
             auto& list = it->second;
@@ -37,7 +37,7 @@ public:
             }
         } 
     }
-    void postComponentRemoved(ObjectComponent* o) {
+    void postComponentRemoved(Attribute* o) {
         auto it = listeners.find(EVT_COMPONENT_REMOVED);
         if(it != listeners.end()) {
             auto& list = it->second;

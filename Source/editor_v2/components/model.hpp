@@ -10,8 +10,8 @@
 
 #include "../../common/util/imgui_helpers.hpp"
 
-class CmModel : public ObjectComponent, public SceneListener {
-    RTTR_ENABLE(ObjectComponent)
+class Model : public Attribute, public SceneListener {
+    RTTR_ENABLE(Attribute)
 public:
     struct SkinData {
         std::vector<GameObject*> bone_nodes;
@@ -23,17 +23,17 @@ public:
         std::shared_ptr<SkinData> skin_data;
     };
 
-    ~CmModel();
+    ~Model();
 
     virtual void onCreate();
 
-    virtual void copy(ObjectComponent* other) {
+    virtual void copy(Attribute* other) {
         if(other->get_type() != get_type()) {
             LOG("Can't copy from " << other->get_type().get_name().to_string() << " to " <<
                 get_type().get_name().to_string());
             return;
         }
-        CmModel* o = (CmModel*)other;
+        Model* o = (Model*)other;
         for(size_t i = 0; i < o->segmentCount(); ++i) {
             auto& this_seg = getSegment(i);
             auto& other_seg = o->getSegment(i);
@@ -156,7 +156,6 @@ public:
         return true;
     }
 
-    virtual IEditorComponentDesc* _newEditorDescriptor();
     virtual void onGui() {
         for(size_t i = 0; i < segmentCount(); ++i) {
             auto& seg = getSegment(i);
@@ -201,26 +200,11 @@ private:
 
     std::vector<Segment> segments;
 };
-STATIC_RUN(CmModel) {
-    rttr::registration::class_<CmModel>("CmModel")
+STATIC_RUN(Model) {
+    rttr::registration::class_<Model>("Model")
         .constructor<>()(
             rttr::policy::ctor::as_raw_ptr
         );
-}
-
-class ModelDesc : public IEditorComponentDesc {
-public:
-    ModelDesc(CmModel* s)
-    : model(s) {}
-    virtual void gui() {
-        model->onGui();
-    }
-private:
-    CmModel* model;
-};
-
-inline IEditorComponentDesc* CmModel::_newEditorDescriptor() {
-    return new ModelDesc(this);
 }
 
 #endif

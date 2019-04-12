@@ -33,12 +33,17 @@ inline std::string cut_dirpath(const std::string& path)
     );
 }
 
-inline std::string get_module_dir()
-{
+inline std::string get_module_path() {
     std::string filename;
     char buf[512];
     GetModuleFileNameA(this_module_handle(), buf, 512);
     filename = buf;
+    return filename;
+}
+
+inline std::string get_module_dir()
+{
+    std::string filename = get_module_path();
     filename = cut_dirpath(filename);
     return filename;
 }

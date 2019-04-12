@@ -55,13 +55,14 @@ public:
 
     void _frameClean();
     bool _isFrameDirty() const;
+
+    int getSyncId() { return _sync_id; }
 private:
     bool _dirty = true;
     bool _frame_dirty = true;
+    int _sync_id = 1;
     gfxm::vec3 _position;
     gfxm::quat _rotation = gfxm::quat(.0f, .0f, .0f, 1.0f);
-    bool _dirty_euler = true;
-    gfxm::vec3 _euler;
     gfxm::vec3 _scale = gfxm::vec3(1.0f, 1.0f, 1.0f);
     gfxm::mat4 _transform = gfxm::mat4(1.0f);
     TransformNode* _parent = 0;

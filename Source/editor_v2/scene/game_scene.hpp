@@ -65,7 +65,7 @@ public:
     T*          findObject(const std::string& name);
     std::vector<GameObject*> findObjectsFuzzy(const std::string& name);
 
-    ObjectComponent* findComponent(const std::string& object_name, rttr::type component_type);
+    Attribute* findComponent(const std::string& object_name, rttr::type component_type);
     template<typename T>
     T*               findComponent(const std::string& object_name);
 
@@ -85,8 +85,8 @@ public:
 
     // Components
     template<typename T>
-    std::vector<ObjectComponent*>& getAllComponents() { return getAllComponents(rttr::type::get<T>()); }
-    std::vector<ObjectComponent*>& getAllComponents(rttr::type t);
+    std::vector<Attribute*>& getAllComponents() { return getAllComponents(rttr::type::get<T>()); }
+    std::vector<Attribute*>& getAllComponents(rttr::type t);
 
     // Controllers
     template<typename T>
@@ -104,8 +104,9 @@ public:
     void update();
     void debugDraw(DebugDraw& dd);
 
-    void _registerComponent(ObjectComponent* c);
-    void _unregisterComponent(ObjectComponent* c);
+    void resetAttribute(Attribute* attrib);
+    void _registerComponent(Attribute* c);
+    void _unregisterComponent(Attribute* c);
     void _regObject(GameObject* o);
     void _unregObject(GameObject* o);
 private:
@@ -117,7 +118,7 @@ private:
     std::vector<GameObject*> objects;
     std::map<
         rttr::type, 
-        std::vector<ObjectComponent*>
+        std::vector<Attribute*>
     > object_components;
     std::map<
         rttr::type,

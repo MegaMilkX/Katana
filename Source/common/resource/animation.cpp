@@ -3,7 +3,9 @@
 void Animation::clearNodes() {
     nodes.clear();
     node_names.clear();
-    // TOOD Clear root motion node
+    root_motion_node.t.set_keyframes(std::vector<keyframe<gfxm::vec3>>());
+    root_motion_node.r.set_keyframes(std::vector<keyframe<gfxm::quat>>());
+    root_motion_node.s.set_keyframes(std::vector<keyframe<gfxm::vec3>>());
 }
 
 size_t Animation::nodeCount() {

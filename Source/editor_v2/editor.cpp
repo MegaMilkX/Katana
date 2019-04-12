@@ -13,6 +13,12 @@
 
 #include "../common/audio.hpp"
 
+#include "../common/util/system.hpp"
+
+#include "scene/controllers/render_controller.hpp"
+#include "scene/controllers/constraint_ctrl.hpp"
+#include "scene/controllers/anim_controller.hpp"
+
 int setupImguiLayout();
 
 Editor::Editor() {
@@ -22,11 +28,15 @@ Editor::~Editor() {
     
 }
 
-void Editor::init() {
+void Editor::onInit() {
     input().getTable().addActionKey("MouseLeft", "MOUSE_LEFT");
     input().getTable().addActionKey("MouseRight", "MOUSE_RIGHT");
     input().getTable().addActionKey("MouseMiddle", "MOUSE_MIDDLE");
     input().getTable().addActionKey("ExitPlayMode", "KB_ESCAPE");
+    input().getTable().addActionKey("GizmoT", "KB_W");
+    input().getTable().addActionKey("GizmoR", "KB_E");
+    input().getTable().addActionKey("GizmoS", "KB_R");
+    input().getTable().addActionKey("DebugDrawToggle", "KB_Q");
 
     input_lis = input().createListener();
     input_lis->bindActionPress("MouseLeft", [this](){
@@ -42,11 +52,30 @@ void Editor::init() {
         ImGui::GetIO().MouseDown[1] = false;
     });
     input_lis->bindActionPress("ExitPlayMode", [this](){
-        editorState().is_play_mode = false;
-        editorState().game_state->getScene()->stopSession();
+    });
+    input_lis->bindActionPress("GizmoT", [this](){
+        if(ImGui::GetIO().WantTextInput) return;
+        editor_state.tgizmo_mode = TGIZMO_T;
+    });
+    input_lis->bindActionPress("GizmoR", [this](){
+        if(ImGui::GetIO().WantTextInput) return;
+        editor_state.tgizmo_mode = TGIZMO_R;
+    });
+    input_lis->bindActionPress("GizmoS", [this](){
+        if(ImGui::GetIO().WantTextInput) return;
+        editor_state.tgizmo_mode = TGIZMO_S;
+    });
+    input_lis->bindActionPress("DebugDrawToggle", [this](){
+        if(ImGui::GetIO().WantTextInput) return;
+        editor_state.debug_draw = !editor_state.debug_draw;
     });
 
     scene.reset(new GameScene());
+    scene->getController<RenderController>();
+    scene->getController<ConstraintCtrl>();
+    scene->getController<AnimController>();
+    scene->startSession();
+
     editor_scene.reset(new EditorScene(scene.get()));
 
     dir_view.init(get_module_dir());
@@ -55,11 +84,13 @@ void Editor::init() {
     LOG("Editor initialized");
 }
 
-void Editor::cleanup() {
+void Editor::onCleanup() {
+    scene->stopSession();
+
     input().removeListener(input_lis);
 }
 
-void Editor::update(unsigned width, unsigned height, unsigned cursor_x, unsigned cursor_y) {
+void Editor::onUpdate() {
     ImGuizmo::BeginFrame();
 
     bool p_open = true;
@@ -112,10 +143,14 @@ void Editor::update(unsigned width, unsigned height, unsigned cursor_x, unsigned
             ImGui::EndMenu();
         }
         if(ImGui::MenuItem("Play mode")) {
+            std::string play_cache_path = get_module_dir() + "\\play_cache.scn";
+            serializeScene(play_cache_path, getScene());
+            create_process(get_module_path(), "play \"" + play_cache_path + "\"");
+            /*
             editorState().is_play_mode = true;
             editorState().game_state->getScene()->clear();
             editorState().game_state->getScene()->copy(getScene());
-            editorState().game_state->getScene()->startSession();
+            editorState().game_state->getScene()->startSession();*/
         }
         ImGui::EndMenuBar();
     }
@@ -130,7 +165,29 @@ void Editor::update(unsigned width, unsigned height, unsigned cursor_x, unsigned
     dir_view.update(this);
     object_inspector.update(this);
     asset_inspector.update(this);
+    if(ImGui::Begin("Toolbox")) {
+        ImGui::Text("Transform:");
+        int gizmo_mode = (int)editor_state.tgizmo_mode;
+        int gizmo_space = (int)editor_state.tgizmo_space;
+        ImGui::RadioButton("T", &gizmo_mode, TGIZMO_T);
+        ImGui::SameLine(); ImGui::RadioButton("Local", &gizmo_space, TGIZMO_LOCAL);
+        ImGui::RadioButton("R", &gizmo_mode, TGIZMO_R);
+        ImGui::SameLine(); ImGui::RadioButton("World", &gizmo_space, TGIZMO_WORLD);
+        ImGui::RadioButton("S", &gizmo_mode, TGIZMO_S);
+        
+        ImGui::Separator();
+        ImGui::Checkbox("Debug draw", &editor_state.debug_draw);
+
+        ImGui::End();
+
+        editor_state.tgizmo_mode = (TRANSFORM_GIZMO_MODE)gizmo_mode;
+        editor_state.tgizmo_space = (TRANSFORM_GIZMO_SPACE)gizmo_space;
+    }
     // TODO: 
+}
+
+void Editor::onGui() {
+
 }
 
 GameScene* Editor::getScene() {
@@ -148,6 +205,10 @@ EditorAssetInspector* Editor::getAssetInspector() {
 
 void Editor::setSelectedObject(GameObject* o) {
     selected_object = o;
+}
+
+EditorState& Editor::getState() {
+    return editor_state;
 }
 
 bool Editor::showOpenSceneDialog() {
@@ -204,13 +265,13 @@ bool Editor::showSaveSceneDialog(GameScene* scene, bool forceDialog) {
 int setupImguiLayout() {
     ImGuiID dockspace_id = ImGui::GetID("MyDockspace");
 
-    //ImGuiID dsid_top = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Up, 0.05f, NULL, &dockspace_id);
     ImGuiID dsid_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.15f, NULL, &dockspace_id);
     ImGuiID dsid_right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.20f, NULL, &dockspace_id);
     ImGuiID dsid_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.30f, NULL, &dockspace_id);
+    ImGuiID dsid_center_right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.15f, NULL, &dockspace_id);
     //ImGuiID dsid_down_right = ImGui::DockBuilderSplitNode(dsid_down, ImGuiDir_Right, 0.40f, NULL, &dsid_down);
 
-    //ImGui::DockBuilderDockWindow("Toolbar", dsid_top);
+    ImGui::DockBuilderDockWindow("Toolbox", dsid_center_right);
     ImGui::DockBuilderDockWindow("Scene Inspector", dsid_left);
     ImGui::DockBuilderDockWindow("Object inspector", dsid_right);
     ImGui::DockBuilderDockWindow("Resource inspector", dsid_right);
@@ -221,3 +282,4 @@ int setupImguiLayout() {
     ImGui::DockBuilderFinish(dockspace_id);
     return 0;
 }
+

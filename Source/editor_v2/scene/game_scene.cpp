@@ -106,8 +106,8 @@ std::vector<GameObject*> GameScene::findObjectsFuzzy(const std::string& name) {
     return result;
 }
 
-ObjectComponent* GameScene::findComponent(const std::string& object_name, rttr::type component_type) {
-    ObjectComponent* c = 0;
+Attribute* GameScene::findComponent(const std::string& object_name, rttr::type component_type) {
+    Attribute* c = 0;
     auto o = findObject(object_name);
     if(o) {
         c = o->find(component_type).get();
@@ -124,7 +124,7 @@ std::vector<GameObject*>& GameScene::getObjects(rttr::type t) {
     return typed_objects[t];
 }
 
-std::vector<ObjectComponent*>& GameScene::getAllComponents(rttr::type t) {
+std::vector<Attribute*>& GameScene::getAllComponents(rttr::type t) {
     return object_components[t];
 }
 
@@ -230,16 +230,40 @@ void GameScene::debugDraw(DebugDraw& dd) {
     }
 }
 
-void GameScene::_registerComponent(ObjectComponent* c) {
-    object_components[c->get_type()].emplace_back(c);
+void GameScene::resetAttribute(Attribute* attrib) {
+    _unregisterComponent(attrib);
+    _registerComponent(attrib);   
 }
-void GameScene::_unregisterComponent(ObjectComponent* c) {
+void GameScene::_registerComponent(Attribute* c) {
+    object_components[c->get_type()].emplace_back(c);
+
+    for(auto& kv : controllers) {
+        kv.second->attribCreated(c->get_type(), c);
+    }
+    auto bases = c->get_type().get_base_classes();
+    for(auto b : bases) {
+        for(auto& kv : controllers) {
+            kv.second->attribCreated(b, c);
+        }   
+    }
+}
+void GameScene::_unregisterComponent(Attribute* c) {
     auto& vec = object_components[c->get_type()];
     for(size_t i = 0; i < vec.size(); ++i) {
         if(vec[i] == c) {
             vec.erase(vec.begin() + i);
             break;
         }
+    }
+    
+    for(auto& kv : controllers) {
+        kv.second->attribDeleted(c->get_type(), c);
+    }
+    auto bases = c->get_type().get_base_classes();
+    for(auto b : bases) {
+        for(auto& kv : controllers) {
+            kv.second->attribDeleted(b, c);
+        }   
     }
 }
 void GameScene::_regObject(GameObject* o) {

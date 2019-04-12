@@ -1,16 +1,16 @@
 #include "editor.hpp"
 
-#include "../common/scene_from_fbx.hpp"
+#include "../common_old/scene_from_fbx.hpp"
 
-#include "../common/lib/nativefiledialog/nfd.h"
+#include "../common_old/lib/nativefiledialog/nfd.h"
 
-#include "../common/lib/imguizmo/ImGuizmo.h"
+#include "../common_old/lib/imguizmo/ImGuizmo.h"
 
-#include "../common/util/has_suffix.hpp"
+#include "../common_old/util/has_suffix.hpp"
 
-#include "../common/util/filesystem.hpp"
+#include "../common_old/util/filesystem.hpp"
 
-#include "../common/scene_components/scene_physics_world.hpp"
+#include "../common_old/scene_components/scene_physics_world.hpp"
 
 Editor::Editor()
 : scene_tree(&object_inspector, &scene_window) {

@@ -5,9 +5,12 @@
 #include "../game_scene.hpp"
 #include "../../components/constraint_stack.hpp"
 
-class ConstraintCtrl : public SceneController {
+class ConstraintCtrl : public SceneControllerEventFilter<ConstraintStack> {
     RTTR_ENABLE(SceneController)
 public:
+    virtual void onAttribCreated(ConstraintStack* s) { stacks.insert(s); }
+    virtual void onAttribDeleted(ConstraintStack* s) { stacks.erase(s); }
+
     virtual SceneCtrlInfo getInfo() const {
         return SceneCtrlInfo{ true, FRAME_PRIORITY_CONSTRAINT };
     }
@@ -16,13 +19,6 @@ public:
         for(auto s : stacks) {
             s->update();
         }
-    }
-
-    void _regStack(ConstraintStack* s) {
-        stacks.insert(s);
-    }
-    void _unregStack(ConstraintStack* s) {
-        stacks.erase(s);
     }
 private:
     std::set<ConstraintStack*> stacks;

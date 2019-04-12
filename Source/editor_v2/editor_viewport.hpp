@@ -29,6 +29,9 @@ private:
 
     Octree oct;
     OctreeObject* oct_o;
+
+    bool mouse_is_over_vp = false;
+    bool window_in_focus = false;
 };
 
 #endif
