@@ -83,7 +83,7 @@ public:
     }
     
     virtual void onAttribCreated(TA* attrib) {}
-    virtual void onAttribRemoved(TA* attrib) {}
+    virtual void onAttribRemoved(TA* attrib) = 0;
 };
 
 template<typename TA, typename ...Ts>
@@ -103,7 +103,7 @@ public:
     }
     
     virtual void onAttribCreated(TA* attrib) {}
-    virtual void onAttribRemoved(TA* attrib) {}
+    virtual void onAttribRemoved(TA* attrib) = 0;
 };
 
 #endif

@@ -24,7 +24,6 @@ public:
         }
     }
     void onLeave(GameObject* other) {
-        getOwner()->get<AudioSource>()->play(true);
         getOwner()->get<OmniLight>()->color = gfxm::vec3(1, .2f, .0f);
     }
 

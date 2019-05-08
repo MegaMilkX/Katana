@@ -69,4 +69,7 @@ void Collider::onGui() {
     if(ImGui::DragFloat3Autospeed(MKSTR("offset##" << this).c_str(), (float*)&offset_)) {
         setOffset(offset_);
     }
+    if(ImGui::ColorEdit3("debug color", (float*)&debug_color)) {
+        resetAttribute();
+    }
 }

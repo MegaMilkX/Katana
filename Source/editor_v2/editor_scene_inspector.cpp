@@ -140,9 +140,9 @@ void EditorSceneInspector::update(Editor* editor) {
                 std::string type_name = o->get_derived_info().m_type.get_name().to_string();
                 std::string name_with_uid;
                 if(rttr::type::get<GameObject>() != o->get_type()) {
-                    name_with_uid = MKSTR(o->getName() << " [" << type_name << "]" << "##" << o->getUid());
+                    name_with_uid = MKSTR(o->getName() << " [" << type_name << "]" << "##" << o);
                 } else {
-                    name_with_uid = MKSTR(o->getName() << "##" << o->getUid());
+                    name_with_uid = MKSTR(o->getName() << "##" << o);
                 }
 
                 if(ImGui::Selectable(name_with_uid.c_str(), o == editor->getSelectedObject())) {
@@ -190,10 +190,10 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, Editor* editor) {
     std::string name_with_uid;
     if(rttr::type::get<GameObject>() != o->get_type()) {
         name = MKSTR(o->getName() << " [" << type_name << "]");
-        name_with_uid = MKSTR(o->getName() << " [" << type_name << "]" << "##" << o->getUid());
+        name_with_uid = MKSTR(o->getName() << " [" << type_name << "]" << "##" << o);
     } else {
         name = o->getName();
-        name_with_uid = MKSTR(o->getName() << "##" << o->getUid());
+        name_with_uid = MKSTR(o->getName() << "##" << o);
     }
 
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;

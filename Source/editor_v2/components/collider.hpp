@@ -50,6 +50,14 @@ public:
         return offset;
     }
 
+    void setDebugColor(const gfxm::vec3& col) {
+        debug_color = col;
+        resetAttribute();
+    }
+    const gfxm::vec3 getDebugColor() const {
+        return debug_color;
+    }
+
     virtual void copy(const Collider& other) {
 
     }
@@ -60,6 +68,7 @@ public:
         w.write(col_mask);
         w.write<uint8_t>((uint8_t)is_ghost);
         w.write(offset);
+        w.write(debug_color);
         w.write(shape->get_type().get_name().to_string());
         shape->serialize(out);
         return true;
@@ -70,6 +79,7 @@ public:
         r.read(col_mask);
         is_ghost = (bool)r.read<uint8_t>();
         r.read(offset);
+        r.read(debug_color);
         
         std::string typestr = r.readStr();
         rttr::type t = rttr::type::get_by_name(typestr);
@@ -93,6 +103,7 @@ private:
     uint32_t col_mask = 1;
     std::shared_ptr<BaseShape_> shape;
     gfxm::vec3 offset;
+    gfxm::vec3 debug_color = gfxm::vec3(1,1,1);
 };
 REG_ATTRIB(Collider);
 

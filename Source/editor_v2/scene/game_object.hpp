@@ -31,6 +31,8 @@ private:
     gfxm::vec3 s = gfxm::vec3(1.0f, 1.0f, 1.0f);
 };
 
+class Behavior;
+
 class GameObject {
     RTTR_ENABLE()
 
@@ -43,9 +45,6 @@ public:
         onCreate();
     }
     virtual void                        onCreate() {}
-
-    void                                setUid(uint64_t uid);
-    uint64_t                            getUid() const;
 
     void                                setName(const std::string& name);
     const std::string&                  getName() const;
@@ -63,6 +62,12 @@ public:
     void                                copyEmptyTree(GameObject* other);
     void                                cloneExistingTree(GameObject* other);
 
+    template<typename BHVR_T>
+    void                                setBehavior();
+    void                                setBehavior(rttr::type t);
+    Behavior*                           getBehavior();
+    void                                clearBehavior();
+
     std::shared_ptr<GameObject>         createChild();
     std::shared_ptr<GameObject>         createChild(rttr::type t);
     template<typename T>
@@ -76,14 +81,14 @@ public:
     void                                removeChild(GameObject* o);
     void                                removeChildRecursive(GameObject* o);
 
-    std::shared_ptr<Attribute>    find(rttr::type component_type);
-    std::shared_ptr<Attribute>    get(rttr::type component_type);
+    std::shared_ptr<Attribute>          find(rttr::type component_type);
+    std::shared_ptr<Attribute>          get(rttr::type component_type);
     template<typename COMPONENT_T>
     std::shared_ptr<COMPONENT_T>        get();
     template<typename COMPONENT_T>
     std::shared_ptr<COMPONENT_T>        find();
     size_t                              componentCount();
-    std::shared_ptr<Attribute>    getById(size_t id);
+    std::shared_ptr<Attribute>          getById(size_t id);
     void                                deleteComponentById(size_t id);
     void                                deleteAllComponents();
 
@@ -97,9 +102,8 @@ public:
     virtual IEditorObjectDesc*          _newEditorObjectDesc();
     bool                                serializeComponents(std::ostream& out);
 private:
-    std::shared_ptr<Attribute>    createComponent(rttr::type t);
+    std::shared_ptr<Attribute>          createComponent(rttr::type t);
 
-    uint64_t uid;
     GameScene* scene = 0;
     std::string name = "Object";
     TransformNode transform;
@@ -116,6 +120,11 @@ STATIC_RUN(GameObject) {
         .constructor<>()(
             rttr::policy::ctor::as_raw_ptr
         );
+}
+
+template<typename BHVR_T>
+void GameObject::setBehavior() {
+    setBehavior(rttr::type::get<T>());
 }
 
 template<typename T>

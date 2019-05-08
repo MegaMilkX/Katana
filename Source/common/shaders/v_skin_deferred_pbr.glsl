@@ -1,5 +1,7 @@
 R"(#version 450
-#define MAX_BONE_COUNT 110
+
+#define MAX_BONE_COUNT 256
+
 in vec3 Position;
 in vec2 UV;
 in vec3 Normal;
@@ -16,15 +18,19 @@ out vec3 view_pos;
 out mat3 mat_tbn;
 
 uniform mat4 mat_model;
-uniform mat4 mat_view;
-uniform mat4 mat_projection;
 
-uniform mat4 inverseBindPose[MAX_BONE_COUNT];
-uniform mat4 bones[MAX_BONE_COUNT];
+layout (std140) uniform uCommon3d_t {
+    mat4 view;
+    mat4 projection;
+} uCommon3d;
+
+layout (std140) uniform uBones_t {
+    mat4 pose[MAX_BONE_COUNT];
+} uBones;
 
 void main()
 {
-    view_pos = (inverse(mat_view) * vec4(0,0,0,1)).xyz;
+    view_pos = (inverse(uCommon3d.view) * vec4(0,0,0,1)).xyz;
 
     ivec4 bi = ivec4(
         int(BoneIndex4.x), int(BoneIndex4.y),
@@ -35,23 +41,28 @@ void main()
         w = normalize(w);
     }
 
+    mat4 m0 = uBones.pose[bi.x];
+    mat4 m1 = uBones.pose[bi.y];
+    mat4 m2 = uBones.pose[bi.z];
+    mat4 m3 = uBones.pose[bi.w];
+
     vec3 norm_skinned = (
-        (bones[bi.x] * inverseBindPose[bi.x]) * vec4(Normal, 0.0) * w.x +
-        (bones[bi.y] * inverseBindPose[bi.y]) * vec4(Normal, 0.0) * w.y +
-        (bones[bi.z] * inverseBindPose[bi.z]) * vec4(Normal, 0.0) * w.z +
-        (bones[bi.w] * inverseBindPose[bi.w]) * vec4(Normal, 0.0) * w.w
+        m0 * vec4(Normal, 0.0) * w.x +
+        m1 * vec4(Normal, 0.0) * w.y +
+        m2 * vec4(Normal, 0.0) * w.z +
+        m3 * vec4(Normal, 0.0) * w.w
     ).xyz;
     vec3 tan_skinned = (
-        (bones[bi.x] * inverseBindPose[bi.x]) * vec4(Tangent, 0.0) * w.x +
-        (bones[bi.y] * inverseBindPose[bi.y]) * vec4(Tangent, 0.0) * w.y +
-        (bones[bi.z] * inverseBindPose[bi.z]) * vec4(Tangent, 0.0) * w.z +
-        (bones[bi.w] * inverseBindPose[bi.w]) * vec4(Tangent, 0.0) * w.w
+        m0 * vec4(Tangent, 0.0) * w.x +
+        m1 * vec4(Tangent, 0.0) * w.y +
+        m2 * vec4(Tangent, 0.0) * w.z +
+        m3 * vec4(Tangent, 0.0) * w.w
     ).xyz;
     vec3 bitan_skinned = (
-        (bones[bi.x] * inverseBindPose[bi.x]) * vec4(Bitangent, 0.0) * w.x +
-        (bones[bi.y] * inverseBindPose[bi.y]) * vec4(Bitangent, 0.0) * w.y +
-        (bones[bi.z] * inverseBindPose[bi.z]) * vec4(Bitangent, 0.0) * w.z +
-        (bones[bi.w] * inverseBindPose[bi.w]) * vec4(Bitangent, 0.0) * w.w
+        m0 * vec4(Bitangent, 0.0) * w.x +
+        m1 * vec4(Bitangent, 0.0) * w.y +
+        m2 * vec4(Bitangent, 0.0) * w.z +
+        m3 * vec4(Bitangent, 0.0) * w.w
     ).xyz;
     //normal_model = normalize(vec4(norm_skinned, 0.0)).xyz;
     norm_skinned = normalize(norm_skinned);
@@ -64,13 +75,13 @@ void main()
     mat_tbn = mat3(T, B, N);
 
     vec4 pos_model = (
-        (bones[bi.x] * inverseBindPose[bi.x]) * vec4(Position, 1.0) * w.x +
-        (bones[bi.y] * inverseBindPose[bi.y]) * vec4(Position, 1.0) * w.y +
-        (bones[bi.z] * inverseBindPose[bi.z]) * vec4(Position, 1.0) * w.z +
-        (bones[bi.w] * inverseBindPose[bi.w]) * vec4(Position, 1.0) * w.w
+        m0 * vec4(Position, 1.0) * w.x +
+        m1 * vec4(Position, 1.0) * w.y +
+        m2 * vec4(Position, 1.0) * w.z +
+        m3 * vec4(Position, 1.0) * w.w
     );
 
-    vec4 pos_screen = mat_projection * mat_view * pos_model; 
+    vec4 pos_screen = uCommon3d.projection * uCommon3d.view * pos_model; 
 
     frag_pos_screen = vec3(pos_screen);  
     uv_frag = UV;  

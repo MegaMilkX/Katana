@@ -91,6 +91,10 @@ void Editor::onCleanup() {
 }
 
 void Editor::onUpdate() {
+    
+}
+
+void Editor::onGui() {
     ImGuizmo::BeginFrame();
 
     bool p_open = true;
@@ -140,6 +144,17 @@ void Editor::onUpdate() {
             if(ImGui::MenuItem("Save As...")) {
                 showSaveSceneDialog(scene.get(), true);
             }
+            ImGui::Separator(); ImGui::Separator();
+            if(ImGui::MenuItem("Open [v2]")) {
+                showOpenSceneDialog_v2();
+            }
+            ImGui::Separator();
+            if(ImGui::MenuItem("Save [v2]")) {
+                showSaveSceneDialog_v2(scene.get());
+            }
+            if(ImGui::MenuItem("Save As... [v2]")) {
+                showSaveSceneDialog_v2(scene.get(), true);
+            }
             ImGui::EndMenu();
         }
         if(ImGui::MenuItem("Play mode")) {
@@ -184,10 +199,6 @@ void Editor::onUpdate() {
         editor_state.tgizmo_space = (TRANSFORM_GIZMO_SPACE)gizmo_space;
     }
     // TODO: 
-}
-
-void Editor::onGui() {
-
 }
 
 GameScene* Editor::getScene() {
@@ -252,6 +263,56 @@ bool Editor::showSaveSceneDialog(GameScene* scene, bool forceDialog) {
     else
     {
         if(serializeScene(currentSceneFile, scene)) {
+            LOG("Scene saved");
+        } else {
+            LOG_WARN("Failed to save scene");
+        }
+    }
+    
+    return true;
+}
+
+bool Editor::showOpenSceneDialog_v2() {
+    char* outPath;
+    auto r = NFD_OpenDialog("scn", NULL, &outPath);
+    if(r == NFD_OKAY) {
+        std::cout << outPath << std::endl;
+        std::string filePath(outPath);
+        setSelectedObject(0);
+        getScene()->clear();
+        getScene()->deserialize(filePath);
+        currentSceneFile = filePath;
+    }
+    else if(r == NFD_CANCEL) {
+        std::cout << "cancelled" << std::endl;
+    }
+    else {
+        std::cout << "error " << NFD_GetError() << std::endl;
+    }
+}
+
+bool Editor::showSaveSceneDialog_v2(GameScene* scene, bool forceDialog) {
+    if(currentSceneFile.empty() || forceDialog)
+    {
+        char* outPath;
+        auto r = NFD_SaveDialog("scn", NULL, &outPath);
+        if(r == NFD_OKAY) {
+            std::string filePath(outPath);
+            if(!has_suffix(filePath, ".scn")) {
+                filePath = filePath + ".scn";
+            }
+            std::cout << filePath << std::endl;
+            if(scene->serialize(filePath)) {
+                LOG("Scene saved");
+                currentSceneFile = filePath;
+            } else {
+                LOG_WARN("Failed to save scene");
+            }
+        }
+    }
+    else
+    {
+        if(scene->serialize(currentSceneFile)) {
             LOG("Scene saved");
         } else {
             LOG_WARN("Failed to save scene");

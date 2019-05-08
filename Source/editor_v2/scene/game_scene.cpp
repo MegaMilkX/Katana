@@ -1,6 +1,11 @@
 #include "game_scene.hpp"
 
+#include "../behavior/behavior.hpp"
+
 #include "../../common/util/levenshtein_distance.hpp"
+
+#include "../../common/util/zip_writer.hpp"
+#include "../../common/util/zip_reader.hpp"
 
 void notifyObjectEvent(GameScene* scn, GameObject* o, SCENE_EVENT evt, rttr::type t) {
     scn->getEventMgr().post(
@@ -44,7 +49,7 @@ size_t GameScene::objectCount() const {
     return objects.size();
 }
 GameObject* GameScene::getObject(size_t i) {
-    return objects[i];
+    return objects[i].get();
 }
 GameObject* GameScene::getObject(const std::string& name) {
     return getObject(name, rttr::type::get<GameObject>());
@@ -52,7 +57,7 @@ GameObject* GameScene::getObject(const std::string& name) {
 GameObject* GameScene::getObject(const std::string& name, rttr::type type) {
     for(auto o : objects) {
         if(o->getName() == name && o->get_type().is_derived_from(type)) {
-            return o;
+            return o.get();
         }
     }
     return 0;
@@ -60,7 +65,7 @@ GameObject* GameScene::getObject(const std::string& name, rttr::type type) {
 GameObject* GameScene::findObject(const std::string& name) {
     for(auto o : objects) {
         if(o->getName() == name) {
-            return o;
+            return o.get();
         }
         GameObject* r = 0;
         if(r = o->findObject(name)) {
@@ -168,7 +173,7 @@ GameObject* GameScene::copyObject(GameObject* o) {
 }
 void GameScene::remove(GameObject* o) {
     for(size_t i = 0; i < objects.size(); ++i) {
-        if(objects[i] == o) {
+        if(objects[i].get() == o) {
             for(size_t i = 0; i < o->childCount(); ++i) {
                 auto n = create(o->getChild(i)->get_type());
                 n->copyRecursive(o->getChild(i).get());
@@ -180,7 +185,7 @@ void GameScene::remove(GameObject* o) {
 }
 void GameScene::removeRecursive(GameObject* o) {
     for(size_t i = 0; i < objects.size(); ++i) {
-        if(objects[i] == o) {
+        if(objects[i].get() == o) {
             _unregObject(o);
             getEventMgr().postObjectRemoved(o);
             delete o;
@@ -191,11 +196,48 @@ void GameScene::removeRecursive(GameObject* o) {
 }
 void GameScene::removeAll() {
     for(auto o : objects) {
-        _unregObject(o);
-        getEventMgr().postObjectRemoved(o);
-        delete o;
+        _unregObject(o.get());
+        getEventMgr().postObjectRemoved(o.get());
     }
     objects.clear();
+}
+
+void GameScene::createBehavior(GameObject* owner, rttr::type t) {
+    if(!t.is_valid()) {
+        LOG_WARN(t.get_name().to_string() << " - not a valid Behavior type");
+        return;
+    }
+    rttr::variant v = t.create();
+    if(!v.get_type().is_pointer()) {
+        LOG_WARN(t.get_name().to_string() << " - rttr construction policy must be pointer");
+        return;
+    }
+    Behavior* b = v.get_value<Behavior*>();
+    if(!b) {
+        LOG_WARN(
+            "Failed to create behavior of type " <<
+            t.get_name().to_string()
+        );
+        return;
+    }
+    b->object = owner;
+
+    behaviors[owner].reset(b);
+    b->onInit();
+}
+Behavior* GameScene::findBehavior(GameObject* owner) {
+    auto it = behaviors.find(owner);
+    if(it == behaviors.end()) {
+        return 0;
+    }
+    return it->second.get();
+}
+void GameScene::eraseBehavior(GameObject* owner) {
+    auto b = findBehavior(owner);
+    if(b) {
+        b->onCleanup();
+        behaviors.erase(owner);
+    }
 }
 
 void GameScene::refreshAabbs() {
@@ -208,14 +250,22 @@ void GameScene::startSession() {
     for(auto& kv : controllers) {
         kv.second->onStart();
     }
+
+    for(auto& kv : behaviors) {
+        kv.second->onStart();
+    }
 }
-void GameScene::stopSession() {
+void GameScene::stopSession() {    
     for(auto& kv : controllers) {
         kv.second->onEnd();
     }
 }
 
 void GameScene::update() {
+    for(auto& kv : behaviors) {
+        kv.second->onUpdate();
+    }
+    
     for(auto c : updatable_controllers) {
         c->onUpdate();
     }
@@ -294,6 +344,152 @@ void GameScene::_unregObject(GameObject* o) {
             }
         }
     }
+}
+
+struct GOPlain {
+    std::string name;
+    uint64_t parent;
+    gfxm::vec3 t;
+    gfxm::quat r;
+    gfxm::vec3 s;
+};
+struct AttribPlain {
+    uint64_t owner;
+    std::vector<char> buf;
+};
+struct AttribPlainPack {
+    rttr::type t;
+    std::vector<AttribPlain> attribs;
+};
+
+struct ScenePlainPack {
+    std::vector<GOPlain> objects;
+    std::vector<AttribPlainPack> attribs;
+
+    std::map<GameObject*, uint64_t> oid_map;
+    std::map<Attribute*, uint64_t> aid_map;
+};
+
+static void first_pass(GameObject* o, ScenePlainPack& pack) {
+    for(size_t i = 0; i < o->childCount(); ++i) {
+        first_pass(o->getChild(i).get(), pack);
+    }
+    size_t id = pack.oid_map.size();
+    pack.oid_map[o] = id;
+}
+
+static void second_pass(GameObject* o, ScenePlainPack& pack) {
+    for(size_t i = 0; i < o->childCount(); ++i) {
+        second_pass(o->getChild(i).get(), pack);
+    }
+    size_t id = pack.oid_map[o];
+    auto& obj = pack.objects[id];
+    obj.name = o->getName();
+    if(o->getParent()) {
+        obj.parent = pack.oid_map[o->getParent()];
+    } else {
+        obj.parent = -1;
+    }
+    obj.t = o->getTransform()->getPosition();
+    obj.r = o->getTransform()->getRotation();
+    obj.s = o->getTransform()->getScale();
+}
+
+void GameScene::serialize(out_stream& out) {
+    ScenePlainPack scene_pack;
+    for(auto o : objects) {
+        first_pass(o.get(), scene_pack);
+    }
+    scene_pack.objects.resize(scene_pack.oid_map.size());
+    for(auto o : objects) {
+        second_pass(o.get(), scene_pack);
+    }
+    
+    ZipWriter zw;
+    if(!zw.isValid()) {
+        LOG_WARN("GameScene::serialize: zip writer is invalid");
+        return;
+    }
+    {
+        dstream objects_strm;
+        DataWriter dw(&objects_strm);
+        dw.write<uint64_t>(scene_pack.objects.size());
+        for(auto& o : scene_pack.objects) {
+            dw.write(o.name);
+            dw.write(o.parent);
+            dw.write(o.t);
+            dw.write(o.r);
+            dw.write(o.s);
+        }
+        zw.add("objects", objects_strm.getBuffer());
+    }
+
+    std::vector<char> buf = zw.finalize();
+    out.write(buf.data(), buf.size());
+}
+void GameScene::deserialize(in_stream& in) {
+    std::vector<char> buf = in.read<char>(in.bytes_available());
+    ZipReader zr(buf.data(), buf.size());
+    std::vector<char> objects_buf = zr.extractFile("objects");
+    dstream objects_strm;
+    objects_strm.setBuffer(objects_buf);
+    objects_buf.clear();
+
+    DataReader dr(&objects_strm);
+    uint64_t object_count = dr.read<uint64_t>();
+    
+    std::vector<std::shared_ptr<GameObject>> objects;
+    objects.resize(object_count);
+    for(uint64_t i = 0; i < object_count; ++i) {
+        objects[i].reset(new GameObject());
+        objects[i]->scene = this;
+    }
+
+    for(uint64_t i = 0; i < object_count; ++i) {
+        objects[i]->setName(dr.readStr());
+        uint64_t p = dr.read<uint64_t>();
+        if(p != -1) {
+            objects[i]->parent = objects[p].get();
+            objects[i]->getTransform()->setParent(
+                objects[p]->getTransform()
+            );
+            objects[p]->children.insert(objects[i]);
+        } else {
+            this->objects.emplace_back(
+                objects[i]
+            );
+        }
+        objects[i]->getTransform()->setPosition(dr.read<gfxm::vec3>());
+        objects[i]->getTransform()->setRotation(dr.read<gfxm::quat>());
+        objects[i]->getTransform()->setScale(dr.read<gfxm::vec3>());
+    }
+
+    for(uint64_t i = 0; i < object_count; ++i) {
+        auto o = objects[i].get();
+        _regObject(o);
+        getEventMgr().postObjectCreated(o);
+    }
+}
+
+bool GameScene::serialize(const std::string& fname) {
+    file_stream strm(fname, file_stream::F_OUT);
+    if(!strm.is_open()) {
+        return false;
+    }
+
+    serialize(strm);
+
+    return true;
+}
+bool GameScene::deserialize(const std::string& fname) {
+    file_stream strm(fname, file_stream::F_IN);
+    if(!strm.is_open()) {
+        return false;
+    }
+
+    deserialize(strm);
+
+    return true;
 }
 
 GameObject* GameScene::createEmptyCopy(GameObject* o) {

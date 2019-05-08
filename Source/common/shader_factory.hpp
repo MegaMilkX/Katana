@@ -89,6 +89,15 @@ public:
             if((u = prog->getUniform("tex_5"))) glUniform1i(u, gl::TEXTURE_5);
             if((u = prog->getUniform("tex_6"))) glUniform1i(u, gl::TEXTURE_6);
 
+            GLuint ublock = glGetUniformBlockIndex(prog->getId(), "uCommon3d_t");
+            if(ublock != GL_INVALID_INDEX) {
+                glUniformBlockBinding(prog->getId(), ublock, 0);
+            }
+            ublock = glGetUniformBlockIndex(prog->getId(), "uBones_t");
+            if(ublock != GL_INVALID_INDEX) {
+                glUniformBlockBinding(prog->getId(), ublock, 1);
+            }
+
             if(!prog->validate()) {
                 LOG_WARN("Failed to validate shader program '" << name << "'");
             }

@@ -9,7 +9,7 @@ class ConstraintCtrl : public SceneControllerEventFilter<ConstraintStack> {
     RTTR_ENABLE(SceneController)
 public:
     virtual void onAttribCreated(ConstraintStack* s) { stacks.insert(s); }
-    virtual void onAttribDeleted(ConstraintStack* s) { stacks.erase(s); }
+    virtual void onAttribRemoved(ConstraintStack* s) { stacks.erase(s); }
 
     virtual SceneCtrlInfo getInfo() const {
         return SceneCtrlInfo{ true, FRAME_PRIORITY_CONSTRAINT };

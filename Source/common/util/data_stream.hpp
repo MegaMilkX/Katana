@@ -102,7 +102,14 @@ private:
 
 class file_stream : public base_stream {
 public:
-    file_stream(const std::string& path);
+    enum MODE {
+        F_IN = 1,
+        F_OUT = 2
+    };
+    file_stream(const std::string& path, MODE m = F_IN);
+
+    bool is_open();
+
     virtual void seek(size_t sz);
     virtual void jump(size_t pos);
     virtual bool eof();

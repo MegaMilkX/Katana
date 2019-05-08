@@ -21,18 +21,27 @@ class CharacterActor
 {
     RTTR_ENABLE(StatefulActor)
 public:
-    std::shared_ptr<AudioClip> clip_footstep;
+    std::shared_ptr<AudioClip> footstep_clips[4];
     std::shared_ptr<AudioClip> clip_swoosh;
+
+    void playRandomFootstep() {
+        auto& clip = footstep_clips[rand() % 4];
+        audio().playOnce3d(clip->getBuffer(), getTransform()->getWorldPosition());
+    }
     virtual void init() {
         anim_stack = get<AnimationStack>().get();
 
-        clip_footstep = retrieve<AudioClip>("assets/audio/footstep.ogg");
+        footstep_clips[0] = retrieve<AudioClip>("assets/audio/gravel1.ogg");
+        footstep_clips[1] = retrieve<AudioClip>("assets/audio/gravel2.ogg");
+        footstep_clips[2] = retrieve<AudioClip>("assets/audio/gravel3.ogg");
+        footstep_clips[3] = retrieve<AudioClip>("assets/audio/gravel4.ogg");
+        
         clip_swoosh = retrieve<AudioClip>("assets/audio/swoosh.ogg");
         anim_stack->setEventCallback("footstep.L", [this](){
-            audio().playOnce3d(clip_footstep->getBuffer(), getTransform()->getWorldPosition());
+            playRandomFootstep();
         });
         anim_stack->setEventCallback("footstep.R", [this](){
-            audio().playOnce3d(clip_footstep->getBuffer(), getTransform()->getWorldPosition());
+            playRandomFootstep();
         });
         anim_stack->setEventCallback("swoosh", [this](){
             audio().playOnce3d(clip_swoosh->getBuffer(), getTransform()->getWorldPosition());

@@ -13,8 +13,8 @@ class AudioController : public SceneControllerEventFilter<AudioSource, AudioList
     RTTR_ENABLE(SceneController)
 public:
     virtual void onAttribCreated(AudioSource* s) { sources.insert(s); }
-    virtual void onAttribDeleted(AudioSource* s) { sources.erase(s); }
-    virtual void onAttribDeleted(AudioListener* l) { 
+    virtual void onAttribRemoved(AudioSource* s) { sources.erase(s); }
+    virtual void onAttribRemoved(AudioListener* l) { 
         if(l == listener) {
             listener = 0;
         } 

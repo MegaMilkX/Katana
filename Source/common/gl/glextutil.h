@@ -124,6 +124,13 @@ extern PFNGLBINDFRAGDATALOCATIONPROC glBindFragDataLocation;
 
 extern PFNGLFRAMEBUFFERTEXTURE2DPROC glFramebufferTexture2D;
 
+//========================
+// Uniform buffers
+//========================
+extern PFNGLGETUNIFORMBLOCKINDEXPROC glGetUniformBlockIndex;
+extern PFNGLBINDBUFFERBASEPROC glBindBufferBase;
+extern PFNGLUNIFORMBLOCKBINDINGPROC glUniformBlockBinding;
+
 void WGLEXTLoadFunctions();
 void GLEXTLoadFunctions();
 

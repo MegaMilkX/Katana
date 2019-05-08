@@ -11,7 +11,7 @@ static void serializeObject(std::ostream& out, GameObject* o) {
     }
 
     auto name = o->getName();
-    uint64_t uid = o->getUid();
+    uint64_t uid = (uint64_t)o;
     gfxm::mat4 t = o->getTransform()->getLocalTransform();
     gfxm::aabb box = o->getAabb();
 
@@ -25,13 +25,13 @@ static void serializeObject(std::ostream& out, GameObject* o) {
     zipw.add("components", component_stream);
 
     if(o->getParent()) {
-        uint64_t puid = o->getParent()->getUid();
+        uint64_t puid = (uint64_t)o->getParent();
         zipw.add("parent", puid);
     }
     std::vector<uint64_t> child_uids;
     child_uids.emplace_back(o->childCount());
     for(size_t i = 0; i < o->childCount(); ++i) {
-        child_uids.emplace_back(o->getChild(i)->getUid());
+        child_uids.emplace_back((uint64_t)o->getChild(i).get());
     }
     zipw.add("children", child_uids);
     zipw.add("type", o->get_type().get_name().to_string());
@@ -48,7 +48,7 @@ static void serializeObjectRecursive(ZipWriter& zipw, GameObject* o) {
     std::stringstream ss;
     serializeObject(ss, o);
 
-    zipw.add(MKSTR(o->getUid()), ss);
+    zipw.add(MKSTR(o), ss);
 
     for(size_t i = 0; i < o->childCount(); ++i) {
         auto& c = o->getChild(i);

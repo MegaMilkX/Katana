@@ -16,6 +16,10 @@ STATIC_RUN(MyAttr) {
     reg_type<MyAttr>("MyAttr");
 }
 
+#define REG_ATTRIB(ATTR) STATIC_RUN(ATTR) { \
+    reg_type<ATTR>(#ATTR); \
+}
+
 class TestState : public AppState {
 public:
     virtual void onInit() {
@@ -36,8 +40,14 @@ public:
     virtual void onUpdate() {
     }
     virtual void onGui() {
-        ImGui::Begin("Hello");
-        ImGui::Text("This is my text");
+        ImGui::Begin("Object inspector");
+        ImGui::Text("Attributes");
+        if(ImGui::BeginCombo("Behavior", "<null>")) {
+            ImGui::Selectable("<null>", false);
+            ImGui::Selectable("Character", false);
+            ImGui::Selectable("TpsCamera", false);
+            ImGui::EndCombo();
+        }
         ImGui::End();
     }
     virtual void onRender() {

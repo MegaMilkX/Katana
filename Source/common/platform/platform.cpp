@@ -17,6 +17,8 @@ static GLFWwindow* window = 0;
 bool initWindow();
 void cleanupWindow();
 
+static ImFont* font1;
+
 bool platformInit() {
     initFilesystemResources(get_module_dir());
     if(!initWindow()) {
@@ -55,6 +57,10 @@ bool platformInit() {
     io.KeyMap[ImGuiKey_X] = GLFW_KEY_X;
     io.KeyMap[ImGuiKey_Y] = GLFW_KEY_Y;
     io.KeyMap[ImGuiKey_Z] = GLFW_KEY_Z;
+
+    //io.Fonts->AddFontFromMemoryCompressedTTF()
+    //font1 = io.Fonts->AddFontFromFileTTF((get_module_dir() + "\\Karla-Regular.ttf").c_str(), 14);
+    //io.Fonts->Build();
     // ==============
 
     return true;
@@ -147,6 +153,20 @@ bool initWindow() {
     LOG("GL_RENDERER  : " << glGetString(GL_RENDERER));
     LOG("GL_VERSION   : " << glGetString(GL_VERSION));
     LOG("GLSL_VERSION : " << glGetString(GL_SHADING_LANGUAGE_VERSION));
+
+    {
+        GLint i;
+        glGetIntegerv(GL_MAX_UNIFORM_BUFFER_BINDINGS, &i);
+        LOG("GL_MAX_UNIFORM_BUFFER_BINDINGS: " << i);
+        glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &i);
+        LOG("GL_MAX_UNIFORM_BLOCK_SIZE: " << i);
+        glGetIntegerv(GL_MAX_VERTEX_UNIFORM_BLOCKS, &i);
+        LOG("GL_MAX_VERTEX_UNIFORM_BLOCKS: " << i);
+        glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_BLOCKS, &i);
+        LOG("GL_MAX_FRAGMENT_UNIFORM_BLOCKS: " << i);
+        glGetIntegerv(GL_MAX_GEOMETRY_UNIFORM_BLOCKS, &i);
+        LOG("GL_MAX_GEOMETRY_UNIFORM_BLOCKS: " << i);
+    }
 
     glDisable(GL_CULL_FACE);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

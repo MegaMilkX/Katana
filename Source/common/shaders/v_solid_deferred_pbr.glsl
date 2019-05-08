@@ -1,4 +1,5 @@
 R"(#version 450
+
     in vec3 Position;
     in vec2 UV;
     in vec3 Normal;
@@ -13,12 +14,15 @@ R"(#version 450
     out mat3 mat_tbn;
 
     uniform mat4 mat_model;
-    uniform mat4 mat_view;
-    uniform mat4 mat_projection;
+
+    layout (std140) uniform uCommon3d_t {
+        mat4 view;
+        mat4 projection;
+    } uCommon3d;
 
     void main()
     {
-        view_pos = (inverse(mat_view) * vec4(0,0,0,1)).xyz;
+        view_pos = (inverse(uCommon3d.view) * vec4(0,0,0,1)).xyz;
 
         normal_model = normalize ((mat_model * vec4(Normal, 0.0)).xyz);
 
@@ -29,7 +33,7 @@ R"(#version 450
 
         vec4 pos_model = vec4(Position , 1.0);
 
-        vec4 pos_screen = mat_projection * mat_view * mat_model * pos_model; 
+        vec4 pos_screen = uCommon3d.projection * uCommon3d.view * mat_model * pos_model; 
 
         frag_pos_screen = vec3(pos_screen);  
         uv_frag = UV;  

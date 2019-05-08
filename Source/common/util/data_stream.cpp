@@ -47,8 +47,16 @@ size_t dstream::bytes_available() {
     return size() - cur;
 }
 
-file_stream::file_stream(const std::string& path) {
-    f = std::fstream(path, std::ifstream::in | std::ifstream::binary);
+file_stream::file_stream(const std::string& path, MODE m) {
+    int mode_ = std::fstream::binary;
+    if(m & MODE::F_IN) {
+        mode_ |= std::fstream::in;
+    }
+    if(m & MODE::F_OUT) {
+        mode_ |= std::fstream::out;
+    }
+
+    f = std::fstream(path, mode_);
     if(f.is_open()) {
         f.seekg(0, std::ios::end);
         sz = (size_t)f.tellg();
@@ -57,6 +65,11 @@ file_stream::file_stream(const std::string& path) {
         LOG_WARN(std::strerror(errno) << ": " << path);
     }
 }
+
+bool file_stream::is_open() {
+    return f.is_open();
+}
+
 void file_stream::seek(size_t sz) {
     if(!f.is_open()) return;
     f.seekg(sz);

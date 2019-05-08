@@ -40,10 +40,10 @@ STATIC_RUN(StaticMesh) {
 void notifyObjectEvent(GameScene* scn, GameObject* o, SCENE_EVENT evt, rttr::type t);
 
 #include "actor_object.hpp"
-
 #include "scene_controller.hpp"
+#include "../serializable.hpp"
 
-class GameScene {
+class GameScene : public Serializable {
 public:
     GameScene();
     ~GameScene();
@@ -77,6 +77,10 @@ public:
     void removeRecursive(GameObject* o);
     void removeAll();
 
+    void createBehavior(GameObject* owner, rttr::type t);
+    Behavior* findBehavior(GameObject* owner);
+    void eraseBehavior(GameObject* owner);
+
     void refreshAabbs();
 
     template<typename T>
@@ -109,13 +113,18 @@ public:
     void _unregisterComponent(Attribute* c);
     void _regObject(GameObject* o);
     void _unregObject(GameObject* o);
+
+    void serialize(out_stream& out);
+    void deserialize(in_stream& in);
+    bool serialize(const std::string& fname);
+    bool deserialize(const std::string& fname);
 private:
     GameObject* createEmptyCopy(GameObject* o);
     GameObject* copyToExistingObject(GameObject* o);
 
     SceneController* createController(rttr::type t);
 
-    std::vector<GameObject*> objects;
+    std::vector<std::shared_ptr<GameObject>> objects;
     std::map<
         rttr::type, 
         std::vector<Attribute*>
@@ -124,6 +133,8 @@ private:
         rttr::type,
         std::vector<GameObject*>
     > typed_objects;
+
+    std::map<GameObject*, std::shared_ptr<Behavior>> behaviors;
 
     std::map<rttr::type, std::shared_ptr<SceneController>> controllers;
     std::vector<SceneController*> updatable_controllers;
@@ -135,7 +146,7 @@ template<typename T>
 T* GameScene::create() {
     T* o = new T();
     o->scene = this;
-    objects.emplace_back(o);
+    objects.emplace_back(std::shared_ptr<GameObject>(o));
     o->_onCreate();
     _regObject(o);
     getEventMgr().postObjectCreated(o);

@@ -28,6 +28,7 @@ public:
     void grid3d(const gfxm::vec3& from, const gfxm::vec3& to, float step, const gfxm::vec3& color);
 
     void aabb(const gfxm::aabb& aabb_, const gfxm::vec3& color);
+    void aabb_corners(const gfxm::aabb& aabb_, const gfxm::vec3& color);
 
     void point(const gfxm::vec3& pt, const gfxm::vec3& color);
 

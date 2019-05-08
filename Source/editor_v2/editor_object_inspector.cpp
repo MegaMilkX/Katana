@@ -6,6 +6,8 @@
 
 #include "editor.hpp"
 
+#include "behavior/behavior.hpp"
+
 void EditorObjectInspector::update(Editor* editor) {
     if(ImGui::Begin("Object inspector", 0, ImGuiWindowFlags_MenuBar)) {
         if(ImGui::BeginMenuBar()) {
@@ -28,6 +30,31 @@ void EditorObjectInspector::update(Editor* editor) {
         GameObject* so = editor->getSelectedObject();
         if(so) {
             editor->getEditorScene().objectGui(so);
+            
+            ImGui::Separator();
+            auto bhvr = so->getBehavior();
+            if(ImGui::BeginCombo(
+                "behavior", 
+                bhvr ? bhvr->get_type().get_name().to_string().c_str() : "<null>"
+            )) {
+                if(ImGui::Selectable("<null>", !bhvr)) {
+                    so->clearBehavior();
+                }
+                rttr::type t = rttr::type::get<Behavior>();
+                auto derived = t.get_derived_classes();
+                for(auto& d : derived) {
+                    if(ImGui::Selectable(
+                        d.get_name().to_string().c_str(),
+                        bhvr && (bhvr->get_type() == d)
+                    )) {
+                        so->setBehavior(d);
+                    }
+                }
+
+                ImGui::EndCombo();
+            }
+            if(bhvr) bhvr->onGui();
+
             ImGui::Separator();
             ImGui::Text("Components");
             for(size_t i = 0; i < so->componentCount(); ++i) {

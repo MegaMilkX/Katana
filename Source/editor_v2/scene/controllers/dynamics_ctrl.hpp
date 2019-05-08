@@ -47,6 +47,12 @@ public:
                 col_info.bt_object->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE
             );
         }
+        col_info.bt_object->setCollisionFlags(
+            col_info.bt_object->getCollisionFlags() | btCollisionObject::CF_HAS_CUSTOM_DEBUG_RENDERING_COLOR
+        );
+        auto& col = c->getDebugColor();
+        col_info.bt_object->setCustomDebugColor(btVector3(col.x, col.y, col.z));
+
         getBtWorld()->addCollisionObject(
             col_info.bt_object.get(),
             c->getCollisionGroup(),

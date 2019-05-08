@@ -37,6 +37,7 @@ EditorViewport::EditorViewport() {
 
     input_lis = input().createListener();
     input_lis->bindActionPress("MouseMiddle", [this](){
+        if(!mouse_is_over_vp) return;
         mouse_look = true;
     });
     input_lis->bindActionRelease("MouseMiddle", [this](){
@@ -45,7 +46,6 @@ EditorViewport::EditorViewport() {
     input_lis->bindActionPress("MouseLookAlt", [this](){ mouse_look_alt = true; });
     input_lis->bindActionRelease("MouseLookAlt", [this](){ mouse_look_alt = false; });
     input_lis->bindAxis("MoveCamX", [this](float v){
-        if(!mouse_is_over_vp) return;
         if(mouse_look && mouse_look_alt){
             cam_angle_y += (-v * 0.01f);
         } else if(mouse_look){
@@ -58,7 +58,6 @@ EditorViewport::EditorViewport() {
         }
     });
     input_lis->bindAxis("MoveCamY", [this](float v){
-        if(!mouse_is_over_vp) return;
         if(mouse_look && mouse_look_alt){
             cam_angle_x += (-v * 0.01f);
         } else if(mouse_look){
@@ -76,7 +75,6 @@ EditorViewport::EditorViewport() {
         cam_zoom += -v * mod * 0.15f;
     });
     input_lis->bindActionPress("ResetEditorCam", [this](){
-        if(!window_in_focus) return;
         //cam_angle_y = gfxm::radian(45.0f);
         //cam_angle_x = gfxm::radian(-25.0f);
         if(editor->getSelectedObject()) {
@@ -109,23 +107,27 @@ void EditorViewport::init(Editor* editor, GameScene* scene) {
 void EditorViewport::update(Editor* editor) {
     editor->getScene()->update();
     dd.clear();
-    editor->getScene()->debugDraw(dd);
-
-    dd.line(
-        gfxm::vec3(.0f, .0f, .0f),
-        gfxm::vec3(.0, 1.0f, .0f),
-        gfxm::vec3(1.0f, .0f, .0f)
-    );
+    if(editor->getState().debug_draw) {
+        editor->getScene()->debugDraw(dd);
+    }
+    /*
+    dd.line(gfxm::vec3(.0f, .0f, .0f), gfxm::vec3(1.0, .0f, .0f), gfxm::vec3(1.0f, .0f, .0f));
+    dd.line(gfxm::vec3(.0f, .0f, .0f), gfxm::vec3(.0, 1.0f, .0f), gfxm::vec3(.0f, 1.0f, .0f));
+    dd.line(gfxm::vec3(.0f, .0f, .0f), gfxm::vec3(.0, .0f, 1.0f), gfxm::vec3(.0f, .0f, 1.0f));
+    */
+    dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-10.0, .0f, -11.0f), gfxm::vec3(1.0f, .0f, .0f));
+    dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, 1.0f, -11.0f), gfxm::vec3(.0f, 1.0f, .0f));
+    dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, .0f, -10.0f), gfxm::vec3(.0f, .0f, 1.0f));
     dd.gridxz(
         gfxm::vec3(-10.0f, .0f, -10.0f),
         gfxm::vec3(10.0f, .0f, 10.0f),
         1,
         gfxm::vec3(0.2f, 0.2f, 0.2f)
-    );
+    );/*
     for(size_t i = 0; i < editor->getScene()->objectCount(); ++i) {
         auto o = editor->getScene()->getObject(i);
         dd.aabb(o->getAabb(), gfxm::vec3(1.0f, 0.7f, 0.2f));
-    }
+    }*/
     if(editor->getSelectedObject()) {
         dd.aabb(
             editor->getSelectedObject()->getAabb(),

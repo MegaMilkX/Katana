@@ -1,15 +1,16 @@
 #include "game_object.hpp"
+#include "../behavior/behavior.hpp"
 
 #include "game_scene.hpp"
 
 #define MINIZ_HEADER_FILE_ONLY
 #include "../../common/lib/miniz.c"
 
-GameObject::GameObject()
-: uid((uint64_t)this) {
+GameObject::GameObject() {
 
 }
 GameObject::~GameObject() {
+    clearBehavior();
     // Tell parent transform that this one doesn't exist anymore
     transform.setParent(0);
     for(auto c : children) {
@@ -17,13 +18,6 @@ GameObject::~GameObject() {
         getScene()->getEventMgr().postObjectRemoved(c.get());
     }
     deleteAllComponents();
-}
-
-void GameObject::setUid(uint64_t uid) {
-    this->uid = uid;
-}
-uint64_t GameObject::getUid() const {
-    return uid;
 }
 
 void GameObject::setName(const std::string& name) { 
@@ -78,6 +72,17 @@ void GameObject::copyComponentsRecursive(GameObject* other) {
         child->copyComponentsRecursive(other->getChild(i).get());
     }
     copyComponents(other);
+
+    auto bhvr = other->getBehavior();
+    if(bhvr) {
+        dstream strm;
+        bhvr->serialize(strm);
+        setBehavior(bhvr->get_type());
+        bhvr = getBehavior();
+        if(bhvr) {
+            bhvr->deserialize(strm);
+        }
+    }
 }
 void GameObject::copyEmptyTree(GameObject* other) {
     for(size_t i = 0; i < other->childCount(); ++i) {
@@ -93,6 +98,19 @@ void GameObject::cloneExistingTree(GameObject* other) {
         child->cloneExistingTree(other->getChild(i).get());
     }
     copy(other);
+}
+
+void GameObject::setBehavior(rttr::type t) {
+    if(!scene) return;
+    scene->createBehavior(this, t);
+}
+Behavior* GameObject::getBehavior() {
+    if(!scene) return 0;
+    return scene->findBehavior(this);
+}
+void GameObject::clearBehavior() {
+    if(!scene) return;
+    scene->eraseBehavior(this);
 }
 
 std::shared_ptr<GameObject> GameObject::createChild() {

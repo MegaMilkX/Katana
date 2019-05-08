@@ -56,6 +56,8 @@ public:
 private:
     bool showOpenSceneDialog();
     bool showSaveSceneDialog(GameScene* scene, bool forceDialog = false);
+    bool showOpenSceneDialog_v2();
+    bool showSaveSceneDialog_v2(GameScene* scene, bool forceDialog = false);
 
     EditorState editor_state;
 

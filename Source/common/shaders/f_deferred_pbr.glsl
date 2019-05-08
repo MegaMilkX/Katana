@@ -29,6 +29,9 @@ R"(#version 450
         }
 
         vec3 t_normal = mat_tbn * (texture(tex_normal, uv_frag).xyz * 2.0 - 1.0);
+        if(!gl_FrontFacing) {
+            t_normal = -t_normal;
+        }
 
         out_normal = vec4(t_normal * 0.5 + 0.5, 1.0);
         out_metallic = vec4(texture(tex_metallic, uv_frag).xxx, 1.0);

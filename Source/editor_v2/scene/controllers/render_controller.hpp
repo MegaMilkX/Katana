@@ -22,10 +22,10 @@ public:
     }
 
     virtual void onAttribCreated(Model* m) { models.insert(m); }
-    virtual void onAttribDeleted(Model* m) { models.erase(m); }
+    virtual void onAttribRemoved(Model* m) { models.erase(m); }
     virtual void onAttribCreated(OmniLight* l) { omnis.insert(l); }
-    virtual void onAttribDeleted(OmniLight* l) { omnis.erase(l); }
-    virtual void onAttribDeleted(Camera* c) {
+    virtual void onAttribRemoved(OmniLight* l) { omnis.erase(l); }
+    virtual void onAttribRemoved(Camera* c) {
         if(c == default_camera) {
             default_camera = 0;
         }

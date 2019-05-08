@@ -112,6 +112,14 @@ void DebugDraw::aabb(const gfxm::aabb& aabb_, const gfxm::vec3& color) {
     line(gfxm::vec3(aabb_.to.x, aabb_.to.y, aabb_.from.z), gfxm::vec3(aabb_.to.x, aabb_.to.y, aabb_.to.z), color);
 }
 
+void DebugDraw::aabb_corners(const gfxm::aabb& aabb_, const gfxm::vec3& color) {
+    gfxm::vec3 from = gfxm::vec3(aabb_.from.x, aabb_.from.y, aabb_.from.z);
+    gfxm::vec3 to = gfxm::vec3(aabb_.to.x, aabb_.from.y, aabb_.from.z);
+    gfxm::vec3 diff = to - from;
+    diff = gfxm::normalize(diff) * (gfxm::length(diff) / 3);
+    line(from, from + diff, color);
+}
+
 void DebugDraw::point(const gfxm::vec3& pt, const gfxm::vec3& color) {
     line(gfxm::vec3(-0.5f,0,0) + pt, gfxm::vec3(0.5f,0,0) + pt, color);
     line(gfxm::vec3(0,-0.5f,0) + pt, gfxm::vec3(0,0.5f,0) + pt, color);

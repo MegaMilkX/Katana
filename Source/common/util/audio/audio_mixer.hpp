@@ -270,7 +270,7 @@ public:
                 back, buf_len,
                 em->buf->getPtr(),
                 em->buf->sampleCount(),
-                em->cursor, em->volume,
+                em->cursor, em->buf->channelCount(), em->volume,
                 p_,
                 lis_trans_copy
             );
@@ -339,6 +339,7 @@ private:
         short* src, 
         size_t src_len,
         size_t cur,
+        int channels,
         float vol,
         const gfxm::vec3& pos,
         const gfxm::mat4& lis_trans_copy

@@ -40,23 +40,23 @@ int main(int argc, char* argv[]) {
     }
 
     try {
-    app_state->onInit();
-    while(!platformIsShuttingDown()) {
-        platformUpdate();
-        unsigned w, h;
-        unsigned cx, cy;
-        platformGetViewportSize(w, h);
-        platformGetMousePos(cx, cy);
+        app_state->onInit();
+        while(!platformIsShuttingDown()) {
+            platformUpdate();
+            unsigned w, h;
+            unsigned cx, cy;
+            platformGetViewportSize(w, h);
+            platformGetMousePos(cx, cy);
 
-        if(app_state) {
-            app_state->onUpdate();
-            app_state->onGui();
-            app_state->onRender(w, h);
+            if(app_state) {
+                app_state->onUpdate();
+                app_state->onGui();
+                app_state->onRender(w, h);
+            }
+            
+            platformSwapBuffers();
         }
-        
-        platformSwapBuffers();
-    }
-    app_state->onCleanup();
+        app_state->onCleanup();
     } catch(std::exception& ex) {
         LOG_ERR(ex.what());
     }

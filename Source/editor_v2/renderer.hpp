@@ -12,9 +12,19 @@
 
 #include "draw_list.hpp"
 
-#define SKIN_BONE_LIMIT 110
+#include "../common/gl/uniform_buffers.hpp"
+
+#define SKIN_BONE_LIMIT 256
 
 void drawQuad();
+
+struct uCommon3d {
+    gfxm::mat4 view;
+    gfxm::mat4 projection;
+};
+struct uBones {
+    gfxm::mat4 pose[SKIN_BONE_LIMIT];
+};
 
 class Renderer {
 public:
@@ -60,6 +70,9 @@ public:
         );
     }
 
+    gl::UniformBuffer<uCommon3d, 0> ubufCommon3d;
+    gl::UniformBuffer<uBones, 1> ubufBones;
+
     void beginFrame(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view) {
         this->proj = proj;
         this->view = view;
@@ -69,6 +82,12 @@ public:
         glEnable(GL_DEPTH_TEST);
         glBindFramebuffer(GL_FRAMEBUFFER, vp->getGBuffer()->getGlFramebuffer());
         glViewport(0, 0, (GLsizei)vp->getWidth(), (GLsizei)vp->getHeight());
+
+        ubufCommon3d.upload(uCommon3d{view, proj});
+
+        ubufCommon3d.bind();
+        ubufBones.bind();
+
         glClear(GL_DEPTH_BUFFER_BIT);
     }
 
@@ -89,8 +108,6 @@ public:
         auto prog = prog_gbuf_solid;
 
         prog->use();
-        glUniformMatrix4fv(prog->getUniform("mat_projection"), 1, GL_FALSE, (float*)&proj);
-        glUniformMatrix4fv(prog->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
 
         for(size_t i = 0; i < draw_list.solidCount(); ++i) {
             auto o = draw_list.getSolid(i);
@@ -128,8 +145,6 @@ public:
     void drawSkinObjects(const DrawList& dl) {
         auto p = prog_gbuf_skin;
         p->use();
-        glUniformMatrix4fv(p->getUniform("mat_projection"), 1, GL_FALSE, (float*)&proj);
-        glUniformMatrix4fv(p->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
 
         for(size_t i = 0; i < dl.skinCount(); ++i) {
             auto o = dl.getSkin(i);
@@ -158,20 +173,16 @@ public:
             glBindTexture(GL_TEXTURE_2D, textures[3]);
             glUniform3f(p->getUniform("u_tint"), tint.x, tint.y, tint.z);
 
-            GLuint loc = p->getUniform("inverseBindPose[0]");
-            glUniformMatrix4fv(
-                loc,
-                (std::min)((unsigned)SKIN_BONE_LIMIT, (unsigned)o->bind_transforms.size()),
-                GL_FALSE,
-                (GLfloat*)o->bind_transforms.data()
-            );
-            loc = p->getUniform("bones[0]");
-            glUniformMatrix4fv(
-                loc,
-                (std::min)((unsigned)SKIN_BONE_LIMIT, (unsigned)o->bone_transforms.size()),
-                GL_FALSE,
-                (GLfloat*)o->bone_transforms.data()
-            );
+            gfxm::mat4 bone_m[SKIN_BONE_LIMIT];
+            unsigned bone_count = (std::min)((unsigned)SKIN_BONE_LIMIT, (unsigned)o->bind_transforms.size());
+            for(unsigned i = 0; i < bone_count; ++i) {
+                bone_m[i] = o->bone_transforms[i] * o->bind_transforms[i];
+            }
+
+            uBones bones;
+            memcpy(bones.pose, bone_m, sizeof(gfxm::mat4) * bone_count);
+            ubufBones.upload(bones);
+
             glBindVertexArray(o->vao);
             glUniformMatrix4fv(p->getUniform("mat_model"), 1, GL_FALSE, (float*)&o->transform);    
             glDrawElements(GL_TRIANGLES, o->indexCount, GL_UNSIGNED_INT, 0);
