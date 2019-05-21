@@ -11,6 +11,8 @@ uniform sampler2D tex_normal;
 uniform sampler2D tex_metallic;
 uniform sampler2D tex_roughness;
 uniform samplerCube tex_environment;
+uniform samplerCube tex_ext1;
+uniform sampler2D tex_ext0;
 
 uniform mat4 inverse_view_projection;
 uniform vec2 viewport_size;
@@ -131,18 +133,28 @@ void main()
     F0 = mix(F0, albedo, metallic);
 
     vec3 Lo = vec3(0.0);
-
     for(int i = 0; i < light_omni_count; ++i) {
         Lo += calcLightSource(
             light_omni_pos[i], light_omni_col[i], light_omni_radius[i], position, albedo, roughness, metallic, N, V, F0
         );
     }
     
-    vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);     
+    vec3 kS = F;
     vec3 kD = 1.0 - kS;
     vec3 irradiance = texture(tex_environment, N).rgb;
     vec3 diffuse = irradiance * albedo;
-    vec3 ambient = (kD * diffuse);
+
+    vec3 specular;
+    {
+        vec3 R = reflect(-V, N);
+        const float MAX_R_LOD = 4.0;
+        vec3 prefilteredColor = texture(tex_ext1, R, roughness * MAX_R_LOD).rgb;
+        vec2 envBRDF = texture(tex_ext0, vec2(max(dot(N, V), 0.0), roughness)).rg;
+        specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+    }
+
+    vec3 ambient = (kD * diffuse + specular);
 
     vec3 color = albedo * (ambient + Lo);
 

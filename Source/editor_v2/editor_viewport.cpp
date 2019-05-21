@@ -33,64 +33,39 @@ EditorViewport::EditorViewport() {
     input().getTable().addActionKey("MouseRight", "MOUSE_RIGHT");
     input().getTable().addActionKey("MouseMiddle", "MOUSE_MIDDLE");
     input().getTable().addActionKey("MouseLookAlt", "KB_LEFT_ALT");
-    input().getTable().addActionKey("ResetEditorCam", "KB_Z");
 
     input_lis = input().createListener();
     input_lis->bindActionPress("MouseMiddle", [this](){
-        if(!mouse_is_over_vp) return;
+        //if(!mouse_is_over_vp) return;
         mouse_look = true;
     });
     input_lis->bindActionRelease("MouseMiddle", [this](){
         mouse_look = false;
     });
-    input_lis->bindActionPress("MouseLookAlt", [this](){ mouse_look_alt = true; });
-    input_lis->bindActionRelease("MouseLookAlt", [this](){ mouse_look_alt = false; });
+    input_lis->bindActionPress("MouseLookAlt", [this](){ gvp.camMode(GuiViewport::CAM_ORBIT); mouse_look_alt = true; });
+    input_lis->bindActionRelease("MouseLookAlt", [this](){ gvp.camMode(GuiViewport::CAM_PAN);mouse_look_alt = false; });
     input_lis->bindAxis("MoveCamX", [this](float v){
+        //gvp.camMove(gfxm::vec2(-v, .0f));
+        /*
         if(mouse_look && mouse_look_alt){
-            cam_angle_y += (-v * 0.01f);
+            gvp.camRotate(gfxm::vec2(.0f, -v * 0.01f));
         } else if(mouse_look){
-            gfxm::transform tcam;
-            tcam.rotate(cam_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
-            tcam.rotate(cam_angle_x, tcam.right());
-            float mod = cam_zoom;
-            gfxm::vec3 right = tcam.right();
-            cam_pivot += right * -v * 0.01f * mod * 0.15f;
-        }
+            gvp.camMove(gfxm::vec2(-v * 0.01f, .0f));
+        }*/
     });
     input_lis->bindAxis("MoveCamY", [this](float v){
+        //gvp.camMove(gfxm::vec2(.0f, -v));
+        /*
         if(mouse_look && mouse_look_alt){
-            cam_angle_x += (-v * 0.01f);
+            gvp.camRotate(gfxm::vec2(-v * 0.01f, .0f));
         } else if(mouse_look){
-            gfxm::transform tcam;
-            tcam.rotate(cam_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
-            tcam.rotate(cam_angle_x, tcam.right());
-            float mod = cam_zoom;
-            gfxm::vec3 up = tcam.up();
-            cam_pivot += up * v * 0.01f * mod * 0.15f;
-        }
+            gvp.camMove(gfxm::vec2(.0f, v * 0.01f));
+        }*/
     });
     input_lis->bindAxis("CameraZoom", [this](float v){
-        if(!mouse_is_over_vp) return;
-        float mod = cam_zoom;
-        cam_zoom += -v * mod * 0.15f;
-    });
-    input_lis->bindActionPress("ResetEditorCam", [this](){
-        //cam_angle_y = gfxm::radian(45.0f);
-        //cam_angle_x = gfxm::radian(-25.0f);
-        if(editor->getSelectedObject()) {
-            auto o = editor->getSelectedObject();
-            cam_zoom = gfxm::length(
-                o->getAabb().to - o->getAabb().from
-            ) * 0.8f + 0.01f;
-            cam_pivot = gfxm::lerp(
-                o->getAabb().from,
-                o->getAabb().to,
-                0.5f
-            );
-        } else {
-            cam_zoom = 5.0f;
-            cam_pivot = gfxm::vec3(.0f, .0f, .0f);
-        }
+        //if(!mouse_is_over_vp) return;
+        //float mod = cam_zoom;
+        //cam_zoom += -v * mod * 0.15f;
     });
 
     oct_o = oct.createObject();
@@ -105,6 +80,34 @@ void EditorViewport::init(Editor* editor, GameScene* scene) {
 }
 
 void EditorViewport::update(Editor* editor) {
+    if(ImGui::Begin("Scene")) {
+        mouse_is_over_vp = ImGui::IsWindowHovered();
+        window_in_focus = ImGui::IsRootWindowFocused();
+
+        gvp.draw(editor->getScene(), gfxm::ivec2(0, 0));
+        
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
+                std::string fname = (char*)payload->Data;
+                LOG("Payload received: " << fname);
+                for(size_t i = 0; i < fname.size(); ++i) {
+                    fname[i] = (std::tolower(fname[i]));
+                }
+                if(has_suffix(fname, ".fbx")) {
+                    GameObject* new_so = editor->getScene()->create<GameObject>();
+                    objectFromFbx(fname, new_so);
+                    //new_so->get<Transform>()->position(wpt_xy);
+                    editor->setSelectedObject(new_so);
+                    editor->backupScene("import object from fbx");
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
+        ImGui::End();
+    }
+
+    return;
+
     editor->getScene()->update();
     dd.clear();
     if(editor->getState().debug_draw) {
@@ -195,7 +198,6 @@ void EditorViewport::update(Editor* editor) {
                     editor->getSelectedObject()->getTransform()->translate(
                         gfxm::inverse(editor->getSelectedObject()->getTransform()->getParentTransform()) * dT
                     );
-                    editor->getEditorScene().getObjectDesc(editor->getSelectedObject())->updateData();
                     editor->getSelectedObject()->getRoot()->refreshAabb();
                 }
             } else if(editor->getState().tgizmo_mode == TGIZMO_R) {
@@ -203,7 +205,6 @@ void EditorViewport::update(Editor* editor) {
                 if(ImGuizmo::IsUsing()){
                     gfxm::quat q = gfxm::to_quat(gfxm::to_mat3(dModel));
                     editor->getSelectedObject()->getTransform()->rotate(q);
-                    editor->getEditorScene().getObjectDesc(editor->getSelectedObject())->updateData();
                     editor->getSelectedObject()->getRoot()->refreshAabb();
                 }
             } else if(editor->getState().tgizmo_mode == TGIZMO_S) {
@@ -218,7 +219,6 @@ void EditorViewport::update(Editor* editor) {
                     );
 
                     editor->getSelectedObject()->getTransform()->setScale(dscl);
-                    editor->getEditorScene().getObjectDesc(editor->getSelectedObject())->updateData();
                     editor->getSelectedObject()->getRoot()->refreshAabb();
                 }
             }
@@ -257,10 +257,33 @@ void EditorViewport::update(Editor* editor) {
                     objectFromFbx(fname, new_so);
                     //new_so->get<Transform>()->position(wpt_xy);
                     editor->setSelectedObject(new_so);
+                    editor->backupScene("import object from fbx");
                 }
             }
             ImGui::EndDragDropTarget();
         }
         ImGui::End();
     }
+}
+
+void EditorViewport::recenterCamera() {
+    //cam_angle_y = gfxm::radian(45.0f);
+    //cam_angle_x = gfxm::radian(-25.0f);
+
+    if(editor->getSelectedObject()) {
+        auto o = editor->getSelectedObject();
+        gvp.resetCamera(
+            gfxm::lerp(o->getAabb().from, o->getAabb().to, 0.5f),
+            gfxm::length(o->getAabb().to - o->getAabb().from) * 0.8f + 0.01f
+        );
+    } else {
+        gvp.resetCamera(
+            gfxm::vec3(.0f, .0f, .0f),
+            5.0f
+        );
+    }
+}
+
+GuiViewport& EditorViewport::getViewport() {
+    return gvp;
 }

@@ -124,20 +124,21 @@ private:
 
     SceneController* createController(rttr::type t);
 
-    std::vector<std::shared_ptr<GameObject>> objects;
+    std::shared_ptr<GameObject>                             root_object;
+    std::map<GameObject*, std::shared_ptr<Behavior>>        behaviors;
+    std::map<rttr::type, std::shared_ptr<SceneController>>  controllers;
+    std::vector<SceneController*>                           updatable_controllers;
     std::map<
         rttr::type, 
         std::vector<Attribute*>
-    > object_components;
+    >                                                       object_components;
+
+// ==============
+    std::vector<std::shared_ptr<GameObject>> objects;
     std::map<
         rttr::type,
         std::vector<GameObject*>
     > typed_objects;
-
-    std::map<GameObject*, std::shared_ptr<Behavior>> behaviors;
-
-    std::map<rttr::type, std::shared_ptr<SceneController>> controllers;
-    std::vector<SceneController*> updatable_controllers;
     
     SceneEventBroadcaster event_broadcaster;
 };

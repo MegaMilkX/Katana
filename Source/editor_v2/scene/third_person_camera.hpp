@@ -9,15 +9,6 @@
 
 #include "character.hpp"
 
-class ThirdPersonCamera;
-class EditorTpsCamDesc : public IEditorObjectDesc {
-public:
-    EditorTpsCamDesc(GameObject* o);
-    virtual void gui();
-private:
-    ThirdPersonCamera* object = 0;
-};
-
 class ThirdPersonCamera : public ActorObject, public InputListenerWrap {
     RTTR_ENABLE(ActorObject)
 public:
@@ -129,8 +120,21 @@ public:
         }
     }
 
-    virtual IEditorObjectDesc* _newEditorObjectDesc() {
-        return new EditorTpsCamDesc(this);
+    virtual void onGui() {
+        ImGui::Text("Target character");
+        auto chara = getTargetCharacter();
+        ImGui::Button(chara ? chara->getName().c_str() : "empty");
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
+                GameObject* tgt_dnd_so = *(GameObject**)payload->Data;
+                if(tgt_dnd_so->get_type().is_derived_from<CharacterActor>()) {
+                    setTargetCharacter((CharacterActor*)tgt_dnd_so);
+                } else {
+                    LOG_WARN(tgt_dnd_so->getName() << " must be of CharacterActor type or derived");
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
     }
 private:
     gfxm::vec3 pivot = gfxm::vec3(0.0f, 1.3f, 0.0f);
@@ -148,26 +152,6 @@ STATIC_RUN(ThirdPersonCamera) {
         .constructor<>()(
             rttr::policy::ctor::as_raw_ptr
         );
-}
-
-EditorTpsCamDesc::EditorTpsCamDesc(GameObject* o) {
-    object = (ThirdPersonCamera*)o;
-}
-void EditorTpsCamDesc::gui() {
-    ImGui::Text("Target character");
-    auto chara = object->getTargetCharacter();
-    ImGui::Button(chara ? chara->getName().c_str() : "empty");
-    if (ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
-            GameObject* tgt_dnd_so = *(GameObject**)payload->Data;
-            if(tgt_dnd_so->get_type().is_derived_from<CharacterActor>()) {
-                object->setTargetCharacter((CharacterActor*)tgt_dnd_so);
-            } else {
-                LOG_WARN(tgt_dnd_so->getName() << " must be of CharacterActor type or derived");
-            }
-        }
-        ImGui::EndDragDropTarget();
-    }
 }
 
 #endif

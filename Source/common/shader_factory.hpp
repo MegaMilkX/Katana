@@ -80,6 +80,9 @@ public:
             if((u = prog->getUniform("tex_position"))) glUniform1i(u, gl::TEXTURE_POSITION);
             if((u = prog->getUniform("tex_environment"))) glUniform1i(u, gl::TEXTURE_ENVIRONMENT);
             if((u = prog->getUniform("tex_depth"))) glUniform1i(u, gl::TEXTURE_DEPTH);
+            if((u = prog->getUniform("tex_ext0"))) glUniform1i(u, gl::TEXTURE_EXT0);
+            if((u = prog->getUniform("tex_ext1"))) glUniform1i(u, gl::TEXTURE_EXT1);
+            if((u = prog->getUniform("tex_ext2"))) glUniform1i(u, gl::TEXTURE_EXT2);
 
             if((u = prog->getUniform("tex_0"))) glUniform1i(u, gl::TEXTURE_0);
             if((u = prog->getUniform("tex_1"))) glUniform1i(u, gl::TEXTURE_1);
@@ -88,6 +91,9 @@ public:
             if((u = prog->getUniform("tex_4"))) glUniform1i(u, gl::TEXTURE_4);
             if((u = prog->getUniform("tex_5"))) glUniform1i(u, gl::TEXTURE_5);
             if((u = prog->getUniform("tex_6"))) glUniform1i(u, gl::TEXTURE_6);
+            if((u = prog->getUniform("tex_7"))) glUniform1i(u, gl::TEXTURE_7);
+            if((u = prog->getUniform("tex_8"))) glUniform1i(u, gl::TEXTURE_8);
+            if((u = prog->getUniform("tex_9"))) glUniform1i(u, gl::TEXTURE_9);
 
             GLuint ublock = glGetUniformBlockIndex(prog->getId(), "uCommon3d_t");
             if(ublock != GL_INVALID_INDEX) {

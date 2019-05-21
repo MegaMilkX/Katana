@@ -37,6 +37,9 @@ void Editor::onInit() {
     input().getTable().addActionKey("GizmoR", "KB_E");
     input().getTable().addActionKey("GizmoS", "KB_R");
     input().getTable().addActionKey("DebugDrawToggle", "KB_Q");
+    input().getTable().addActionKey("CTRL", "KB_LEFT_CONTROL");
+    input().getTable().addActionKey("SHIFT", "KB_LEFT_SHIFT");
+    input().getTable().addActionKey("Z", "KB_Z");
 
     input_lis = input().createListener();
     input_lis->bindActionPress("MouseLeft", [this](){
@@ -69,14 +72,30 @@ void Editor::onInit() {
         if(ImGui::GetIO().WantTextInput) return;
         editor_state.debug_draw = !editor_state.debug_draw;
     });
+    input_lis->bindActionPress("CTRL", [this](){
+        ctrl = true;
+    });
+    input_lis->bindActionRelease("CTRL", [this](){
+        ctrl = false;
+    });
+    input_lis->bindActionPress("SHIFT", [this](){
+        shift = true;
+    });
+    input_lis->bindActionRelease("SHIFT", [this](){
+        shift = false;
+    });
+    input_lis->bindActionPress("Z", [this](){
+        if(ImGui::GetIO().WantTextInput) return;
+        if(ctrl && !shift) undo();
+        else if(ctrl && shift) redo();
+        else viewport.recenterCamera();
+    });
 
     scene.reset(new GameScene());
     scene->getController<RenderController>();
     scene->getController<ConstraintCtrl>();
     scene->getController<AnimController>();
     scene->startSession();
-
-    editor_scene.reset(new EditorScene(scene.get()));
 
     dir_view.init(get_module_dir());
     viewport.init(this, scene.get());
@@ -134,8 +153,17 @@ void Editor::onGui() {
 
     if(ImGui::BeginMenuBar()) {
         if(ImGui::BeginMenu("Scene")) {
+            if(ImGui::MenuItem("New")) {
+                scene->clear();
+                currentSceneFile = "";
+                history.clear();
+                backupScene("new scene");
+            }
             if(ImGui::MenuItem("Open")) {
-                showOpenSceneDialog();
+                if(showOpenSceneDialog()) {
+                    history.clear();
+                    backupScene("scene loaded");
+                }
             }
             ImGui::Separator();
             if(ImGui::MenuItem("Save")) {
@@ -146,7 +174,10 @@ void Editor::onGui() {
             }
             ImGui::Separator(); ImGui::Separator();
             if(ImGui::MenuItem("Open [v2]")) {
-                showOpenSceneDialog_v2();
+                if(showOpenSceneDialog_v2()) {
+                    history.clear();
+                    backupScene("scene loaded");
+                }
             }
             ImGui::Separator();
             if(ImGui::MenuItem("Save [v2]")) {
@@ -154,6 +185,12 @@ void Editor::onGui() {
             }
             if(ImGui::MenuItem("Save As... [v2]")) {
                 showSaveSceneDialog_v2(scene.get(), true);
+            }
+            ImGui::EndMenu();
+        }
+        if(ImGui::BeginMenu("Windows")) {
+            if(ImGui::MenuItem("History", 0, &history_open)) {
+
             }
             ImGui::EndMenu();
         }
@@ -191,21 +228,25 @@ void Editor::onGui() {
         ImGui::RadioButton("S", &gizmo_mode, TGIZMO_S);
         
         ImGui::Separator();
-        ImGui::Checkbox("Debug draw", &editor_state.debug_draw);
+        bool dd = viewport.getViewport().debugDrawEnabled();
+        ImGui::Checkbox("Debug draw", &dd);
+        viewport.getViewport().enableDebugDraw(dd);
 
         ImGui::End();
 
         editor_state.tgizmo_mode = (TRANSFORM_GIZMO_MODE)gizmo_mode;
         editor_state.tgizmo_space = (TRANSFORM_GIZMO_SPACE)gizmo_space;
     }
+    if(ImGui::Begin("History", &history_open, ImVec2(100, 200))) {
+        history.onGui();
+
+        ImGui::End();
+    }
     // TODO: 
 }
 
 GameScene* Editor::getScene() {
     return scene.get();
-}
-EditorScene& Editor::getEditorScene() {
-    return *editor_scene.get();
 }
 GameObject* Editor::getSelectedObject() {
     return selected_object;
@@ -216,6 +257,28 @@ EditorAssetInspector* Editor::getAssetInspector() {
 
 void Editor::setSelectedObject(GameObject* o) {
     selected_object = o;
+}
+
+void Editor::backupScene(const std::string& label) {
+    history.push(scene.get(), label);
+}
+void Editor::redo() {
+    LOG("REDO");
+    setSelectedObject(0);
+    scene->stopSession();
+    history.redo(scene.get());
+    //history.move_forward();
+    //if(!history.current()) return;
+    //scene->copy(history.current());
+}
+void Editor::undo() {
+    LOG("UNDO");
+    setSelectedObject(0);
+    scene->stopSession();
+    history.undo(scene.get());
+    //history.move_back();
+    //if(!history.current()) return;
+    //scene->copy(history.current());
 }
 
 EditorState& Editor::getState() {

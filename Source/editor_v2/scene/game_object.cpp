@@ -342,8 +342,43 @@ void GameObject::deserialize(std::istream& in, size_t sz) {
     
 }
 
-IEditorObjectDesc* GameObject::_newEditorObjectDesc() {
-    return new EditorGameObjectDesc(this);
+void GameObject::onGui() {
+    static TransformNode* last_transform = 0;
+    static int t_sync = -1;
+    static gfxm::vec3 euler;
+
+    if(last_transform != getTransform() || t_sync != getTransform()->getSyncId()) {
+        last_transform = getTransform();
+        t_sync = getTransform()->getSyncId();
+        euler = getTransform()->getEulerAngles();
+    }
+
+    auto t = getTransform()->getPosition();
+    auto r = getTransform()->getEulerAngles();
+    auto s = getTransform()->getScale();
+
+    char buf[256];
+    memset(buf, 0, 256);
+    memcpy(buf, getName().c_str(), getName().size());
+    if(ImGui::InputText("Name", buf, 256)) {
+        setName(buf);
+    }
+    ImGui::Separator();
+    if(ImGui::DragFloat3("Translation", (float*)&t, 0.001f)) {
+        getTransform()->setPosition(t);
+        getRoot()->refreshAabb();
+        t_sync = getTransform()->getSyncId();
+    }
+    if(ImGui::DragFloat3("Rotation", (float*)&euler, 0.001f)) {
+        getTransform()->setRotation(euler);
+        getRoot()->refreshAabb();
+        t_sync = getTransform()->getSyncId();
+    }
+    if(ImGui::DragFloat3("Scale", (float*)&s, 0.001f)) {
+        getTransform()->setScale(s);
+        getRoot()->refreshAabb();
+        t_sync = getTransform()->getSyncId();
+    }
 }
 
 // ==== Private ====================================
@@ -404,4 +439,98 @@ bool GameObject::serializeComponents(std::ostream& out) {
 
     out.write(buf.data(), buf.size());
     return true;
+}
+
+void GameObject::write(out_stream& out) {
+    GameObject* obj = this;
+
+    std::map<GameObject*, uint64_t> oid_map;
+    std::vector<GameObject*> objects;
+    std::map<rttr::type, std::vector<Attribute*>> attribs;
+
+    std::stack<GameObject*> stack;
+    GameObject* current = obj;
+    while(current != 0 || (!stack.empty())) {
+        if(current == 0) {
+            current = stack.top();
+            stack.pop();
+        }
+        for(size_t i = 0; i < current->childCount(); ++i) {
+            stack.push(current->getChild(i).get());
+        }
+
+        uint64_t id = oid_map.size();
+        oid_map[current] = id;
+        objects.emplace_back(current);
+        for(size_t i = 0; i < current->componentCount(); ++i) {
+            auto attrib = current->getById(i);
+            attribs[attrib->get_type()].emplace_back(attrib.get());
+        }
+
+        current = 0;
+    }
+
+    DataWriter dw(&out);
+    dw.write<uint64_t>(objects.size());
+    for(size_t i = 0; i < objects.size(); ++i) {
+        auto o = objects[i];
+        if(o->getParent()) {
+            dw.write<uint64_t>(oid_map[o]);
+        } else {
+            dw.write<uint64_t>(-1);
+        }
+        dw.write(o->getName());
+        dw.write(o->getTransform()->getPosition());
+        dw.write(o->getTransform()->getRotation());
+        dw.write(o->getTransform()->getScale());
+    }
+
+    dw.write<uint32_t>(attribs.size());
+    for(auto kv : attribs) {
+        rttr::type t = kv.first;
+        auto& vec = kv.second;
+        dw.write(t.get_name().to_string());
+        dw.write<uint64_t>(vec.size());
+        for(size_t i = 0; i < vec.size(); ++i) {
+            auto a = vec[i];
+            dw.write<uint64_t>(oid_map[a->getOwner()]);
+            
+            dstream sdata;
+            a->serialize(sdata);
+            dw.write<uint64_t>(sdata.size()); // bytes written
+            dw.write(sdata.getBuffer());
+        }
+    }
+}
+void GameObject::read(in_stream& in) {
+    std::vector<GameObject*> objects;
+    objects.emplace_back(this);
+    
+    DataReader dr(&in);
+    uint64_t object_count = dr.read<uint64_t>();
+    for(uint64_t i = 1; i < object_count; ++i) {
+        objects.emplace_back(new GameObject());
+    }
+
+    for(uint64_t i = 1; i < object_count; ++i) {
+        uint64_t p = dr.read<uint64_t>();
+        std::string name = dr.readStr();
+        gfxm::vec3 t = dr.read<gfxm::vec3>();
+        gfxm::quat r = dr.read<gfxm::quat>();
+        gfxm::vec3 s = dr.read<gfxm::vec3>();
+
+        objects[i]->parent = objects[p];
+        objects[i]->scene = this->scene;
+        objects[i]->getTransform()->setPosition(t);
+        objects[i]->getTransform()->setRotation(r);
+        objects[i]->getTransform()->setScale(s);
+        objects[p]->children.insert(std::shared_ptr<GameObject>(objects[i]));
+    }
+
+    // Send events
+    for(uint64_t i = 1; i < object_count; ++i) {
+        auto o = objects[i];
+        scene->_regObject(o);
+        scene->getEventMgr().postObjectCreated(o);
+    }
 }

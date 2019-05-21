@@ -14,6 +14,10 @@
 
 #include "../common/gl/uniform_buffers.hpp"
 
+#include "../common/util/animation/curve.h"
+
+#include "../common/data_headers/ibl_brdf_lut.png.h"
+
 #define SKIN_BONE_LIMIT 256
 
 void drawQuad();
@@ -29,7 +33,29 @@ struct uBones {
 class Renderer {
 public:
     Renderer() {
-        cube_map = retrieve<CubeMap>("env.hdr");
+        {
+            curve<gfxm::vec3> curv;
+            curv[0.0f] = gfxm::vec3(0 / 255.0f, 0 / 255.0f, 0 / 255.0f);
+            curv[.5f] = gfxm::vec3(3 / 255.0f, 3 / 255.0f, 5 / 255.0f);
+            curv[.55f] = gfxm::vec3(255 / 255.0f, 74 / 255.0f, 5 / 255.0f);
+            curv[.60f] = gfxm::vec3(160 / 255.0f, 137 / 255.0f, 129 / 255.0f);
+            curv[.7f] = gfxm::vec3(1 / 255.0f, 44 / 255.0f, 95 / 255.0f);
+            curv[1.0f] = gfxm::vec3(1 / 255.0f, 11 / 255.0f, 36 / 255.0f);
+            char color[300];
+            for(int i = 0; i < 300; i += 3) {
+                float y = i / 300.0f;
+                gfxm::vec3 c = curv.at(y);
+                color[i] = c.x * 255;
+                color[i + 1] = c.y * 255;
+                color[i + 2] = c.z * 255;
+            }
+            //env_map = retrieve<CubeMap>("env.hdr");
+            env_map.reset(new CubeMap());
+            env_map->data(color, 1, 100, 3);
+
+            irradiance_map.reset(new CubeMap());
+            irradiance_map->makeIrradianceMap(env_map);
+        }
 
         texture_white_px.reset(new Texture2D());
         unsigned char wht[3] = { 255, 255, 255 };
@@ -43,6 +69,11 @@ public:
         texture_def_roughness_px.reset(new Texture2D());
         unsigned char rgh[3] = { 230, 230, 230 };
         texture_def_roughness_px->Data(rgh, 1, 1, 3);
+        
+        tex_ibl_brdf_lut.reset(new Texture2D());
+        dstream dstrm;
+        dstrm.setBuffer(std::vector<char>(ibl_brdf_lut_png, ibl_brdf_lut_png + sizeof(ibl_brdf_lut_png)));
+        tex_ibl_brdf_lut->deserialize(dstrm, sizeof(ibl_brdf_lut_png));
 
         prog_light_pass = ShaderFactory::getOrCreate(
             "light_pass",
@@ -97,7 +128,7 @@ public:
         prog_skybox->use();
         glUniformMatrix4fv(prog_skybox->getUniform("mat_projection"), 1, GL_FALSE, (float*)&proj);
         glUniformMatrix4fv(prog_skybox->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
-        gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, cube_map->getId());
+        gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, env_map->getId());
         drawCube();
 
         glUseProgram(0);
@@ -236,8 +267,10 @@ public:
         gl::bindTexture2d(gl::TEXTURE_NORMAL, g_buffer->getNormalTexture());
         gl::bindTexture2d(gl::TEXTURE_METALLIC, g_buffer->getMetallicTexture());
         gl::bindTexture2d(gl::TEXTURE_ROUGHNESS, g_buffer->getRoughnessTexture());
-        gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, cube_map->getId());
+        gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, irradiance_map->getId());
         gl::bindTexture2d(gl::TEXTURE_DEPTH, g_buffer->getDepthTexture());
+        gl::bindTexture2d(gl::TEXTURE_EXT0, tex_ibl_brdf_lut->GetGlName());
+        gl::bindCubeMap(gl::TEXTURE_EXT1, env_map->getId());
 
         gfxm::vec4 view_pos4 = gfxm::inverse(view) * gfxm::vec4(0,0,0,1);
         glUniform3f(prog_light_pass->getUniform("view_pos"), view_pos4.x, view_pos4.y, view_pos4.z);
@@ -266,7 +299,9 @@ private:
     std::shared_ptr<Texture2D> texture_black_px;
     std::shared_ptr<Texture2D> texture_normal_px;
     std::shared_ptr<Texture2D> texture_def_roughness_px;
-    std::shared_ptr<CubeMap> cube_map;
+    std::shared_ptr<Texture2D> tex_ibl_brdf_lut;
+    std::shared_ptr<CubeMap> env_map;
+    std::shared_ptr<CubeMap> irradiance_map;
 };
 
 inline void drawQuad()

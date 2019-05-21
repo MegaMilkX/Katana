@@ -7,6 +7,7 @@
 #include "asset_view/anm_view.hpp"
 #include "asset_view/material_view.hpp"
 #include "asset_view/fbx_view.hpp"
+#include "asset_view/texture_view.hpp"
 
 EditorAssetInspector::EditorAssetInspector() {
     asset_view.reset(new AssetView());
@@ -24,6 +25,10 @@ void EditorAssetInspector::setFile(const std::string& fname) {
         asset_view.reset(new MaterialView(a));
     } else if(has_suffix(fname, ".fbx")) {
         asset_view.reset(new FbxView());
+    } else if(has_suffix(fname, ".jpg") || has_suffix(fname, ".png") || has_suffix(fname, ".tga")) {
+        auto t = retrieve<Texture2D>(fname);
+        loaded_resource = t;
+        asset_view.reset(new TextureAssetView(t));
     } else {
         loaded_resource = std::shared_ptr<Resource>();
         asset_view.reset(new AssetView());

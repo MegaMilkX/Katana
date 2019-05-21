@@ -59,6 +59,7 @@ public:
         if(!data)
             return false;
         Data(data, w, h, 4);
+        stbi_image_free(data);
         return true;
     }   
 private:

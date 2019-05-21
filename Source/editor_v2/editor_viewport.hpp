@@ -12,6 +12,8 @@
 
 #include "octree.hpp"
 
+#include "gui_viewport.hpp"
+
 class Editor;
 class EditorViewport {
 public:
@@ -19,7 +21,12 @@ public:
     ~EditorViewport();
     void init(Editor* editor, GameScene* scene);
     void update(Editor* editor);
+    
+    void recenterCamera();
+    GuiViewport& getViewport();
 private:
+    GuiViewport gvp;
+
     Editor* editor;
     RenderViewport vp;
     Renderer renderer;

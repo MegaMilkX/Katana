@@ -34,6 +34,7 @@ void GameScene::clear() {
 }
 
 void GameScene::copy(GameScene* other) {
+    clear();
     for(size_t i = 0; i < other->objectCount(); ++i) {
         createEmptyCopy(other->getObject(i));
     }
@@ -188,7 +189,6 @@ void GameScene::removeRecursive(GameObject* o) {
         if(objects[i].get() == o) {
             _unregObject(o);
             getEventMgr().postObjectRemoved(o);
-            delete o;
             objects.erase(objects.begin() + i);
             break;
         }
@@ -423,6 +423,34 @@ void GameScene::serialize(out_stream& out) {
         }
         zw.add("objects", objects_strm.getBuffer());
     }
+    {
+        ZipWriter zw_attr;
+        for(auto& kv : object_components) {
+            rttr::type t = kv.first;
+            dstream data;
+            out_stream& out = data;
+            uint64_t sz = kv.second.size();
+            out.write(sz);
+            for(auto a : kv.second) {
+                uint64_t pid = 0;
+                if(a->getOwner()) {
+                    pid = scene_pack.oid_map[a->getOwner()];
+                }
+                out.write(pid);
+
+                dstream sdata;
+                a->serialize(sdata);
+
+                out.write<uint64_t>(sdata.size()); // bytes written
+                out.write(sdata.getBuffer());
+            }
+
+            zw_attr.add(t.get_name().to_string(), data.getBuffer());
+        }
+
+        auto buf = zw_attr.finalize();
+        zw.add("attribs", buf);
+    }
 
     std::vector<char> buf = zw.finalize();
     out.write(buf.data(), buf.size());
@@ -462,6 +490,30 @@ void GameScene::deserialize(in_stream& in) {
         objects[i]->getTransform()->setPosition(dr.read<gfxm::vec3>());
         objects[i]->getTransform()->setRotation(dr.read<gfxm::quat>());
         objects[i]->getTransform()->setScale(dr.read<gfxm::vec3>());
+    }
+
+    {
+        std::vector<char> buf = zr.extractFile("attribs");
+        ZipReader zra(buf.data(), buf.size());
+        for(size_t i = 0; i < zra.fileCount(); ++i) {
+            std::vector<char> attr_buf = zra.extractFile(i);
+            std::string tname = zra.getFileName(i);
+            rttr::type t = rttr::type::get_by_name(tname);
+            if(!t.is_valid()) continue;
+
+            dstream data;
+            data.setBuffer(attr_buf);
+            in_stream& in = data;
+            uint64_t attr_count = in.read<uint64_t>();
+            for(uint64_t j = 0; j < attr_count; ++j) {
+                uint64_t pid = in.read<uint64_t>();
+                uint64_t sz = in.read<uint64_t>();
+
+                GameObject* obj = objects[pid].get();
+                auto a = obj->get(t);
+                a->deserialize(in, sz);
+            }
+        }
     }
 
     for(uint64_t i = 0; i < object_count; ++i) {

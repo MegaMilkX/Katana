@@ -15,9 +15,11 @@
 #include "../../common/lib/imgui_wrap.hpp"
 
 class GameObject;
+class GameScene;
 class Attribute {
     RTTR_ENABLE()
 
+    friend GameScene;
     friend GameObject;
 public:
     virtual ~Attribute();

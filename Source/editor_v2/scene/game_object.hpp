@@ -14,23 +14,7 @@
 
 #include "../components/component.hpp"
 
-#include "../editor_object_desc.hpp"
-
 class GameScene;
-
-class GameObject;
-class EditorGameObjectDesc : public IEditorObjectDesc {
-public:
-    EditorGameObjectDesc(GameObject* o);
-    virtual void updateData();
-    virtual void gui();
-private:
-    GameObject* object = 0;
-    gfxm::vec3 t;
-    gfxm::vec3 r;
-    gfxm::vec3 s = gfxm::vec3(1.0f, 1.0f, 1.0f);
-};
-
 class Behavior;
 
 class GameObject {
@@ -99,8 +83,11 @@ public:
     virtual void                        serialize(std::ostream& out);
     virtual void                        deserialize(std::istream& in, size_t sz);
 
-    virtual IEditorObjectDesc*          _newEditorObjectDesc();
+    virtual void                        onGui();
     bool                                serializeComponents(std::ostream& out);
+
+    void                                write(out_stream& out);
+    void                                read(in_stream& in);
 private:
     std::shared_ptr<Attribute>          createComponent(rttr::type t);
 
@@ -139,50 +126,6 @@ std::shared_ptr<COMPONENT_T> GameObject::get() {
 template<typename COMPONENT_T>
 std::shared_ptr<COMPONENT_T> GameObject::find() {
     return std::dynamic_pointer_cast<COMPONENT_T>(find(rttr::type::get<COMPONENT_T>()));
-}
-
-inline EditorGameObjectDesc::EditorGameObjectDesc(GameObject* o)
-: object(o) {
-    updateData();
-}
-inline void EditorGameObjectDesc::updateData() {
-    t = object->getTransform()->getPosition();
-    r = object->getTransform()->getEulerAngles();
-    s = object->getTransform()->getScale();
-}
-inline void EditorGameObjectDesc::gui() {
-    static TransformNode* last_transform = 0;
-    static int t_sync = -1;
-    static gfxm::vec3 euler;
-
-    if(last_transform != object->getTransform() || t_sync != object->getTransform()->getSyncId()) {
-        last_transform = object->getTransform();
-        t_sync = object->getTransform()->getSyncId();
-        euler = object->getTransform()->getEulerAngles();
-    }
-
-    char buf[256];
-    memset(buf, 0, 256);
-    memcpy(buf, object->getName().c_str(), object->getName().size());
-    if(ImGui::InputText("Name", buf, 256)) {
-        object->setName(buf);
-    }
-    ImGui::Separator();
-    if(ImGui::DragFloat3("Translation", (float*)&t, 0.001f)) {
-        object->getTransform()->setPosition(t);
-        object->getRoot()->refreshAabb();
-        t_sync = object->getTransform()->getSyncId();
-    }
-    if(ImGui::DragFloat3("Rotation", (float*)&euler, 0.001f)) {
-        object->getTransform()->setRotation(euler);
-        object->getRoot()->refreshAabb();
-        t_sync = object->getTransform()->getSyncId();
-    }
-    if(ImGui::DragFloat3("Scale", (float*)&s, 0.001f)) {
-        object->getTransform()->setScale(s);
-        object->getRoot()->refreshAabb();
-        t_sync = object->getTransform()->getSyncId();
-    }
 }
 
 #endif

@@ -13,11 +13,11 @@
 
 #include "scene/game_scene.hpp"
 
-#include "editor_scene.hpp"
-
 #include "../common/util/audio/audio_mixer.hpp"
 
 #include "../common/application_state.hpp"
+
+#include "scene_history.hpp"
 
 enum TRANSFORM_GIZMO_MODE {
     TGIZMO_T,
@@ -47,10 +47,13 @@ public:
     virtual void onGui();
 
     GameScene* getScene();
-    EditorScene& getEditorScene();
     GameObject* getSelectedObject();
     EditorAssetInspector* getAssetInspector();
     void setSelectedObject(GameObject* o);
+
+    void backupScene(const std::string& label = "");
+    void redo();
+    void undo();
 
     EditorState& getState();
 private:
@@ -71,10 +74,15 @@ private:
 
     std::shared_ptr<GameScene> scene;
     GameObject* selected_object = 0;
-
-    std::shared_ptr<EditorScene> editor_scene;
+    SceneHistory history;
 
     std::string currentSceneFile;
+
+    bool ctrl = false;
+    bool shift = false;
+
+    // windows
+    bool history_open = false;
 };
 
 #endif

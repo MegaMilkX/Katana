@@ -36,6 +36,7 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
             for(auto& d : derived_array) {
                 if(ImGui::MenuItem(d.get_name().to_string().c_str())) {
                     editor->setSelectedObject(o->createChild(d).get());
+                    editor->backupScene("child created");
                 }
             }
             ImGui::EndMenu();
@@ -61,6 +62,7 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
                         new_o->refreshAabb();
                     }
                     o = 0;
+                    editor->backupScene("object replaced");
                 }
             }
             ImGui::EndMenu();
@@ -76,11 +78,13 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
                     o->getParent()->removeChildRecursive(o);
                 }
                 o = 0;
+                editor->backupScene("move object to top");
             }
         }
         ImGui::Separator();
         if(ImGui::MenuItem("Duplicate")) {
             editor->setSelectedObject(editor->getScene()->copyObject(o));
+            editor->backupScene("object duplicated");
         }
         ImGui::Separator();
         if(ImGui::MenuItem("Delete")) {
@@ -91,6 +95,7 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
                 o->getParent()->removeChild(o);
             }
             o = 0;
+            editor->backupScene("object deleted");
         }
         if(ImGui::MenuItem("Delete tree")) {
             if(editor->getSelectedObject() == o)editor->setSelectedObject(0);
@@ -100,6 +105,7 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
                 o->getParent()->removeChildRecursive(o);
             }
             o = 0;
+            editor->backupScene("object tree deleted");
         }
         ImGui::EndPopup();
     }
@@ -117,6 +123,7 @@ void EditorSceneInspector::update(Editor* editor) {
                 for(auto& d : derived_array) {
                     if(ImGui::MenuItem(d.get_name().to_string().c_str())) {
                         editor->setSelectedObject(editor->getScene()->create(d));
+                        editor->backupScene("object created");
                     }
                 }   
                 //imguiRecursiveDerivedMenu(scene, t);

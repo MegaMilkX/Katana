@@ -18,6 +18,7 @@ void EditorObjectInspector::update(Editor* editor) {
                     if(ImGui::MenuItem(d.get_name().to_string().c_str())) {
                         if(editor->getSelectedObject()) {
                             editor->getSelectedObject()->get(d);
+                            editor->backupScene("component added");
                         }
                     }
                 }   
@@ -29,7 +30,7 @@ void EditorObjectInspector::update(Editor* editor) {
 
         GameObject* so = editor->getSelectedObject();
         if(so) {
-            editor->getEditorScene().objectGui(so);
+            so->onGui();
             
             ImGui::Separator();
             auto bhvr = so->getBehavior();
@@ -39,6 +40,8 @@ void EditorObjectInspector::update(Editor* editor) {
             )) {
                 if(ImGui::Selectable("<null>", !bhvr)) {
                     so->clearBehavior();
+                    bhvr = nullptr;
+                    editor->backupScene("behavior set to null");
                 }
                 rttr::type t = rttr::type::get<Behavior>();
                 auto derived = t.get_derived_classes();
@@ -48,6 +51,7 @@ void EditorObjectInspector::update(Editor* editor) {
                         bhvr && (bhvr->get_type() == d)
                     )) {
                         so->setBehavior(d);
+                        editor->backupScene("behavior set");
                     }
                 }
 
