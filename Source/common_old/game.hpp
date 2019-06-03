@@ -2,7 +2,7 @@
 #define GAME_HPP
 
 #include "scene.hpp"
-#include "renderer.hpp"
+#include "../common/renderer.hpp"
 #include "animator_sys.hpp"
 #include "behavior_system.hpp"
 #include "scene_components/scene_physics_world.hpp"

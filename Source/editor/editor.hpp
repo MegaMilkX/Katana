@@ -1,66 +1,86 @@
-#ifndef EDITOR_H
-#define EDITOR_H
+#ifndef EDITOR_HPP
+#define EDITOR_HPP
 
-#include <vector>
-#include <memory>
-
-#include <glfw/glfw3.h>
-
-#include "../common_old/resource/resource_factory.h"
-#include "../common_old/resource/texture2d.h"
-
-#include "editor_window.hpp"
 #include "editor_viewport.hpp"
-#include "editor_scene.hpp"
-#include "editor_scene_tree.hpp"
-#include "editor_object_inspector.hpp"
-#include "editor_console.hpp"
+#include "editor_scene_inspector.hpp"
 #include "editor_dir_view.hpp"
+#include "editor_object_inspector.hpp"
+#include "editor_asset_inspector.hpp"
 
-#include "../common_old/scene.hpp"
+#include "../common/input/input_mgr.hpp"
 
-#include "../common_old/input/input_mgr.hpp"
+#include "../common/util/filesystem.hpp"
 
-#include "../common_old/animator_sys.hpp"
+#include "scene/game_scene.hpp"
 
-#include "../common_old/game.hpp"
+#include "../common/util/audio/audio_mixer.hpp"
 
-class Editor {
+#include "../common/application_state.hpp"
+
+#include "scene_history.hpp"
+
+enum TRANSFORM_GIZMO_MODE {
+    TGIZMO_T,
+    TGIZMO_R,
+    TGIZMO_S
+};
+
+enum TRANSFORM_GIZMO_SPACE {
+    TGIZMO_LOCAL,
+    TGIZMO_WORLD
+};
+
+struct EditorState {
+    TRANSFORM_GIZMO_MODE tgizmo_mode = TGIZMO_T;
+    TRANSFORM_GIZMO_SPACE tgizmo_space = TGIZMO_LOCAL;
+
+    bool debug_draw = true;
+};
+
+class Editor : public AppState {
 public:
     Editor();
-    
-    void Init();
-    void Cleanup();
+    ~Editor();
+    virtual void onInit();
+    virtual void onCleanup();
+    virtual void onUpdate();
+    virtual void onGui();
 
-    void Update(GLFWwindow* window);
+    GameScene* getScene();
+    GameObject* getSelectedObject();
+    EditorAssetInspector* getAssetInspector();
+    void setSelectedObject(GameObject* o);
 
-    void AddWindow(EditorWindow* win);
+    void backupScene(const std::string& label = "");
+    void redo();
+    void undo();
+
+    EditorState& getState();
 private:
-    int SetupLayout();
+    bool showOpenSceneDialog();
+    bool showSaveSceneDialog(GameScene* scene, bool forceDialog = false);
 
-    void _updateEditor(GLFWwindow* window);
-    void _updatePlayMode(GLFWwindow* window);
+    EditorState editor_state;
 
-    bool saveScene(Scene* scene, bool forceDialog = false);
-
-    InputListener* input_lis;
-
-    bool play_mode = false;
-
-    std::vector<std::shared_ptr<EditorWindow>> windows;
-
-    EditorSceneTree scene_tree;
-    EditorObjectInspector object_inspector;
-    EditorConsole console;
+    EditorViewport viewport;
+    EditorSceneInspector scene_inspector;
     EditorDirView dir_view;
-    EditorScene scene_window;
+    EditorObjectInspector object_inspector;
+    EditorAssetInspector asset_inspector;
 
-    Scene* scene;
+    InputListener* input_lis = 0;
+
+    std::shared_ptr<GameScene> scene;
+    GameObject* selected_object = 0;
+    SceneHistory history;
+
     std::string currentSceneFile;
-    Game game;
-    //AnimatorSys animator_sys;
 
-    gfxm::ivec2 cursor_pos;
+    bool ctrl = false;
+    bool shift = false;
+
+    // windows
+    bool history_open = false;
 };
 
 #endif

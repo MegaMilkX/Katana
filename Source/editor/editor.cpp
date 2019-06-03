@@ -1,112 +1,118 @@
 #include "editor.hpp"
+#include <GLFW/glfw3.h>
+#include "../common/lib/imgui_wrap.hpp"
+#include "../common/lib/imgui/imgui_internal.h"
+#include "../common/lib/imguizmo/ImGuizmo.h"
+#include "../common/util/log.hpp"
 
-#include "../common_old/scene_from_fbx.hpp"
+#include "../common/lib/nativefiledialog/nfd.h"
 
-#include "../common_old/lib/nativefiledialog/nfd.h"
+#include "../common/util/has_suffix.hpp"
 
-#include "../common_old/lib/imguizmo/ImGuizmo.h"
+#include "../common/audio.hpp"
 
-#include "../common_old/util/has_suffix.hpp"
+#include "../common/util/system.hpp"
 
-#include "../common_old/util/filesystem.hpp"
+#include "scene/controllers/render_controller.hpp"
+#include "scene/controllers/constraint_ctrl.hpp"
+#include "scene/controllers/anim_controller.hpp"
 
-#include "../common_old/scene_components/scene_physics_world.hpp"
+int setupImguiLayout();
 
-Editor::Editor()
-: scene_tree(&object_inspector, &scene_window) {
-
+Editor::Editor() {
+    
+}
+Editor::~Editor() {
+    
 }
 
-void Editor::Init() {
-
-    dir_view.init(get_module_dir() + "\\");
-
-    scene = Scene::create();
-
-    scene_tree.setScene(scene);
-
-    scene_window.setScene(scene);
-
-    //animator_sys.setScene(scene);
+void Editor::onInit() {
+    input().getTable().addActionKey("MouseLeft", "MOUSE_LEFT");
+    input().getTable().addActionKey("MouseRight", "MOUSE_RIGHT");
+    input().getTable().addActionKey("MouseMiddle", "MOUSE_MIDDLE");
+    input().getTable().addActionKey("ExitPlayMode", "KB_ESCAPE");
+    input().getTable().addActionKey("GizmoT", "KB_W");
+    input().getTable().addActionKey("GizmoR", "KB_E");
+    input().getTable().addActionKey("GizmoS", "KB_R");
+    input().getTable().addActionKey("DebugDrawToggle", "KB_Q");
+    input().getTable().addActionKey("CTRL", "KB_LEFT_CONTROL");
+    input().getTable().addActionKey("SHIFT", "KB_LEFT_SHIFT");
+    input().getTable().addActionKey("Z", "KB_Z");
 
     input_lis = input().createListener();
+    input_lis->bindActionPress("MouseLeft", [this](){
+        ImGui::GetIO().MouseDown[0] = true;
+    });
+    input_lis->bindActionRelease("MouseLeft", [this](){
+        ImGui::GetIO().MouseDown[0] = false;
+    });
+    input_lis->bindActionPress("MouseRight", [this](){
+        ImGui::GetIO().MouseDown[1] = true;
+    });
+    input_lis->bindActionRelease("MouseRight", [this](){
+        ImGui::GetIO().MouseDown[1] = false;
+    });
+    input_lis->bindActionPress("ExitPlayMode", [this](){
+    });
+    input_lis->bindActionPress("GizmoT", [this](){
+        if(ImGui::GetIO().WantTextInput) return;
+        editor_state.tgizmo_mode = TGIZMO_T;
+    });
+    input_lis->bindActionPress("GizmoR", [this](){
+        if(ImGui::GetIO().WantTextInput) return;
+        editor_state.tgizmo_mode = TGIZMO_R;
+    });
+    input_lis->bindActionPress("GizmoS", [this](){
+        if(ImGui::GetIO().WantTextInput) return;
+        editor_state.tgizmo_mode = TGIZMO_S;
+    });
+    input_lis->bindActionPress("DebugDrawToggle", [this](){
+        if(ImGui::GetIO().WantTextInput) return;
+        editor_state.debug_draw = !editor_state.debug_draw;
+    });
+    input_lis->bindActionPress("CTRL", [this](){
+        ctrl = true;
+    });
+    input_lis->bindActionRelease("CTRL", [this](){
+        ctrl = false;
+    });
+    input_lis->bindActionPress("SHIFT", [this](){
+        shift = true;
+    });
+    input_lis->bindActionRelease("SHIFT", [this](){
+        shift = false;
+    });
+    input_lis->bindActionPress("Z", [this](){
+        if(ImGui::GetIO().WantTextInput) return;
+        if(ctrl && !shift) undo();
+        else if(ctrl && shift) redo();
+        else viewport.recenterCamera();
+    });
 
-    input_lis->bindActionPress(
-        "ExitPlayMode",
-        [this]() {
-            play_mode = false;
-            // for debugging
-            // TODO: REMOVE
-            //scene->copyFrom(game.getScene());
-        }
-    );
+    scene.reset(new GameScene());
+    scene->getController<RenderController>();
+    scene->getController<ConstraintCtrl>();
+    scene->getController<AnimController>();
+    scene->startSession();
 
-    game.init();
+    dir_view.init(get_module_dir());
+    viewport.init(this, scene.get());
+
+    LOG("Editor initialized");
 }
 
-void Editor::Cleanup() {
-    game.cleanup();
+void Editor::onCleanup() {
+    scene->stopSession();
 
     input().removeListener(input_lis);
-
-    scene->destroy();
 }
 
-void Editor::Update(GLFWwindow* window) {
-    if(!play_mode) {
-        _updateEditor(window);
-    } else {
-        _updatePlayMode(window);
-    }
+void Editor::onUpdate() {
+    
 }
 
-void Editor::AddWindow(EditorWindow* win) {
-    windows.emplace_back(std::shared_ptr<EditorWindow>(win));
-}
-
-int Editor::SetupLayout() {
-    ImGuiID dockspace_id = ImGui::GetID("MyDockspace");
-
-    ImGuiID dsid_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.15f, NULL, &dockspace_id);
-    ImGuiID dsid_right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.20f, NULL, &dockspace_id);
-    ImGuiID dsid_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.30f, NULL, &dockspace_id);
-    //ImGuiID dsid_down_right = ImGui::DockBuilderSplitNode(dsid_down, ImGuiDir_Right, 0.40f, NULL, &dsid_down);
-
-    ImGui::DockBuilderDockWindow("Scene tree", dsid_left);
-    ImGui::DockBuilderDockWindow("Object inspector", dsid_right);
-    ImGui::DockBuilderDockWindow("Console", dsid_down);
-    ImGui::DockBuilderDockWindow("DirView", dsid_down);
-    ImGui::DockBuilderDockWindow("Scene", dockspace_id);
-
-    ImGui::DockBuilderFinish(dockspace_id);
-    return 0;
-}
-
-void Editor::_updateEditor(GLFWwindow* window) {
-    double cursor_x, cursor_y;
-    glfwGetCursorPos(window, &cursor_x, &cursor_y);
-    cursor_pos.x = (int)cursor_x;
-    cursor_pos.y = (int)cursor_y;
-    int w, h;
-    glfwGetWindowSize(window, &w, &h);
-
+void Editor::onGui() {
     ImGuizmo::BeginFrame();
-
-    double xcpos, ycpos;
-    glfwGetCursorPos(window, &xcpos, &ycpos);
-    ImGuiIO& io = ImGui::GetIO();
-    io.MousePos = ImVec2((float)xcpos, (float)ycpos);
-    int mlstate, mrstate;
-    mlstate = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
-    mrstate = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT);
-    if (mlstate == GLFW_PRESS) io.MouseDown[0] = true;
-    else io.MouseDown[0] = false;
-    if (mrstate == GLFW_PRESS) io.MouseDown[1] = true;
-    else io.MouseDown[1] = false;
-
-    //buildFrame();
-    //animator_sys.Update(1.f/60.f);
-    //
 
     bool p_open = true;
     static bool opt_fullscreen_persistant = true;
@@ -140,182 +146,172 @@ void Editor::_updateEditor(GLFWwindow* window) {
         ImGui::PopStyleVar(2);
     ImGuiID dockspace_id = ImGui::GetID("MyDockspace");
     ImGui::DockSpace(dockspace_id);
-    /*
-    ImGuiID dsid_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.20f, NULL, &dockspace_id);
-    ImGuiID dsid_right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.20f, NULL, &dockspace_id);
-    ImGuiID dsid_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.20f, NULL, &dockspace_id);
-    */
-    static int once = SetupLayout();
 
-    bool temp_flag = true;
-    if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("New scene")) {
-                //ImGui::OpenPopup("New scene?");
-                editorState().selected_object = 0;
-                scene->clear();
-                LOG("Scene cleared");
-            }
-            if (ImGui::MenuItem("Open scene...")) {
-                char* outPath;
-                auto r = NFD_OpenDialog("scn", NULL, &outPath);
-                if(r == NFD_OKAY) {
-                    editorState().selected_object = 0;
-                    scene->clear();
+    static int once = setupImguiLayout();
 
-                    std::cout << outPath << std::endl;
-                    std::string filePath(outPath);
-                    scene->deserialize(filePath);
-                    currentSceneFile = filePath;
-                }
-                else if(r == NFD_CANCEL) {
-                    std::cout << "cancelled" << std::endl;
-                }
-                else {
-                    std::cout << "error " << NFD_GetError() << std::endl;
-                }
-            }
-            if (ImGui::MenuItem("Import from FBX...")) {
-                char* outPath;
-                auto r = NFD_OpenDialog("fbx", NULL, &outPath);
-                if(r == NFD_OKAY) {
-                    LOG(outPath);
-                    std::string filePath(outPath);
-                    editorState().selected_object = 0;
-                    scene->clear();
-                    sceneFromFbx(filePath, scene);
-                }
-            }
-            if (ImGui::MenuItem("Merge...")) {
+    if(ImGui::BeginMenuBar()) {
+        if(ImGui::BeginMenu("Session")) {
+            if(ImGui::MenuItem("New")) {
 
             }
-            if (ImGui::MenuItem("Merge from FBX...")) {
-                char* outPath;
-                auto r = NFD_OpenDialog("fbx", NULL, &outPath);
-                if(r == NFD_OKAY) {
-                    LOG(outPath);
-                    std::string filePath(outPath);
-                    auto new_so = scene->createObject();
-                    sceneFromFbx(filePath, scene, new_so);
-                    editorState().selected_object = new_so;
-                }
-            }
-            if (ImGui::MenuItem("Save")) {
-                saveScene(scene);
-            }
-            if (ImGui::MenuItem("Save as...")) {
-                saveScene(scene, true);
-            }
-            if (ImGui::MenuItem("Exit")) {
-
-            }
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Window")) {
-            if (ImGui::MenuItem("New Viewport", "")) {
+            if(ImGui::MenuItem("Open")) {
                 
             }
-            if (ImGui::MenuItem("Scene tree", "", temp_flag)) {
-
+            if(ImGui::MenuItem("Save")) {
+                
             }
-            if (ImGui::MenuItem("Object inspector", "", temp_flag)) {
-
+            if(ImGui::MenuItem("Save As...")) {
+                
             }
-            if (ImGui::MenuItem("Console", "", temp_flag)) {
 
+            ImGui::EndMenu();
+        }
+        if(ImGui::BeginMenu("Scene")) {
+            if(ImGui::MenuItem("New")) {
+                scene->clear();
+                currentSceneFile = "";
+                history.clear();
+                backupScene("new scene");
             }
-            if (ImGui::MenuItem("Scene tree", "", temp_flag)) {
-
+            if(ImGui::MenuItem("Open")) {
+                if(showOpenSceneDialog()) {
+                    history.clear();
+                    backupScene("scene loaded");
+                }
             }
-            if (ImGui::MenuItem("Material editor", "", temp_flag)) {
+            ImGui::Separator();
+            if(ImGui::MenuItem("Save")) {
+                showSaveSceneDialog(scene.get());
+            }
+            if(ImGui::MenuItem("Save As...")) {
+                showSaveSceneDialog(scene.get(), true);
+            }
+            ImGui::EndMenu();
+        }
+        if(ImGui::BeginMenu("Windows")) {
+            if(ImGui::MenuItem("History", 0, &history_open)) {
 
             }
             ImGui::EndMenu();
         }
-        if(ImGui::MenuItem("Play...")) {
-            play_mode = true;
-            game.getScene()->clear();
-            game.getScene()->copyFrom(scene);
+        if(ImGui::MenuItem("Play mode")) {
+            std::string play_cache_path = get_module_dir() + "\\play_cache.scn";
+            //serializeScene(play_cache_path, getScene());
+            create_process(get_module_path(), "play \"" + play_cache_path + "\"");
+            /*
+            editorState().is_play_mode = true;
+            editorState().game_state->getScene()->clear();
+            editorState().game_state->getScene()->copy(getScene());
+            editorState().game_state->getScene()->startSession();*/
         }
-
         ImGui::EndMenuBar();
     }
-    bool sdw = true;
-    ImGui::ShowDemoWindow(&sdw);
-/*
-    if(ImGui::BeginPopupModal("New scene?", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("Clear all scene contents?");
+
+    //bool sdw = true;
+    //ImGui::ShowDemoWindow(&sdw);
+
+    audio().debugGui();
+
+    viewport.update(this);
+    scene_inspector.update(this);
+    dir_view.update(this);
+    object_inspector.update(this);
+    asset_inspector.update(this);
+    if(ImGui::Begin("Toolbox")) {
+        ImGui::Text("Transform:");
+        int gizmo_mode = (int)editor_state.tgizmo_mode;
+        int gizmo_space = (int)editor_state.tgizmo_space;
+        ImGui::RadioButton("T", &gizmo_mode, TGIZMO_T);
+        ImGui::SameLine(); ImGui::RadioButton("Local", &gizmo_space, TGIZMO_LOCAL);
+        ImGui::RadioButton("R", &gizmo_mode, TGIZMO_R);
+        ImGui::SameLine(); ImGui::RadioButton("World", &gizmo_space, TGIZMO_WORLD);
+        ImGui::RadioButton("S", &gizmo_mode, TGIZMO_S);
+        
         ImGui::Separator();
-        if(ImGui::Button("OK", ImVec2(120, 0))) {
-            editorState().selected_object = 0;
-            scene->clear();
-            LOG("Scene cleared");
+        bool dd = viewport.getViewport().debugDrawEnabled();
+        ImGui::Checkbox("Debug draw", &dd);
+        viewport.getViewport().enableDebugDraw(dd);
+
+        ImGui::End();
+
+        editor_state.tgizmo_mode = (TRANSFORM_GIZMO_MODE)gizmo_mode;
+        editor_state.tgizmo_space = (TRANSFORM_GIZMO_SPACE)gizmo_space;
+    }
+    if(ImGui::Begin("History", &history_open, ImVec2(100, 200))) {
+        history.onGui();
+
+        ImGui::End();
+    }
+    if(ImGui::Begin("Session")) {
+        if(ImGui::BeginCombo("session", "<null>")) {
+            
+            ImGui::EndCombo();
         }
-        ImGui::SetItemDefaultFocus();
-        ImGui::SameLine();
-        if(ImGui::Button("Cancel", ImVec2(120, 0))) {
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
-    }
-*/
-
-    DebugDraw::getInstance()->clear();
-    // TODO: Update physics? 
-    // Shouldn't be necessary for editor
-    scene->getSceneComponent<PhysicsWorld>()->debugDraw();
-
-    for(auto w : windows) {
-        if(ImGui::Begin(MKSTR(w->Name() << "##" << w.get()).c_str(), &w->is_open)) {
-            w->Update();
-            ImGui::End();
-        }
-    }
-
-    //ImGui::SetNextWindowDockID(dsid_left);
-    if(ImGui::Begin("Scene tree")) {
-        scene_tree.Update();
         ImGui::End();
     }
-    //ImGui::SetNextWindowDockID(dsid_right);
-    if(ImGui::Begin("Object inspector")) {
-        object_inspector.Update();
-        ImGui::End();
-    }
-    //ImGui::SetNextWindowDockID(dsid_down);
-    if(ImGui::Begin("Console")) {
-        console.Update();
-        ImGui::End();
-    }
-
-    if(ImGui::Begin("DirView")) {
-        dir_view.Update();
-        ImGui::End();
-    }
-
-    scene_window.setCursorPos(cursor_pos);
-    if(ImGui::Begin("Scene", 0, ImGuiWindowFlags_MenuBar)) {
-        scene_window.Update();
-        ImGui::End();
-    }
-
-    for(size_t i = 0; i < windows.size();) {
-        if(!windows[i]->is_open) {
-            windows.erase(windows.begin() + i);
-            continue;
-        }
-        ++i;
-    }
-
-    ImGui::End();
-}
-void Editor::_updatePlayMode(GLFWwindow* window) {
-    int w, h;
-    glfwGetWindowSize(window, &w, &h);
-    game.update(w, h);
+    // TODO: 
 }
 
-bool Editor::saveScene(Scene* scene, bool forceDialog) {
+GameScene* Editor::getScene() {
+    return scene.get();
+}
+GameObject* Editor::getSelectedObject() {
+    return selected_object;
+}
+EditorAssetInspector* Editor::getAssetInspector() {
+    return &asset_inspector;
+}
+
+void Editor::setSelectedObject(GameObject* o) {
+    selected_object = o;
+}
+
+void Editor::backupScene(const std::string& label) {
+    history.push(scene.get(), label);
+}
+void Editor::redo() {
+    LOG("REDO");
+    setSelectedObject(0);
+    scene->stopSession();
+    history.redo(scene.get());
+    //history.move_forward();
+    //if(!history.current()) return;
+    //scene->copy(history.current());
+}
+void Editor::undo() {
+    LOG("UNDO");
+    setSelectedObject(0);
+    scene->stopSession();
+    history.undo(scene.get());
+    //history.move_back();
+    //if(!history.current()) return;
+    //scene->copy(history.current());
+}
+
+EditorState& Editor::getState() {
+    return editor_state;
+}
+
+bool Editor::showOpenSceneDialog() {
+    char* outPath;
+    auto r = NFD_OpenDialog("scn", NULL, &outPath);
+    if(r == NFD_OKAY) {
+        std::cout << outPath << std::endl;
+        std::string filePath(outPath);
+        setSelectedObject(0);
+        getScene()->clear();
+        getScene()->read(filePath);
+        currentSceneFile = filePath;
+    }
+    else if(r == NFD_CANCEL) {
+        std::cout << "cancelled" << std::endl;
+    }
+    else {
+        std::cout << "error " << NFD_GetError() << std::endl;
+    }
+}
+
+bool Editor::showSaveSceneDialog(GameScene* scene, bool forceDialog) {
     if(currentSceneFile.empty() || forceDialog)
     {
         char* outPath;
@@ -326,21 +322,48 @@ bool Editor::saveScene(Scene* scene, bool forceDialog) {
                 filePath = filePath + ".scn";
             }
             std::cout << filePath << std::endl;
-            
-            if(scene->serialize(filePath))
-            {
-                std::cout << "Scene saved" << std::endl;
+            if(getScene()->write(filePath)) {
+                LOG("Scene saved");
                 currentSceneFile = filePath;
+            } else {
+                LOG_WARN("Failed to save scene");
             }
         }
     }
     else
     {
-        if(scene->serialize(currentSceneFile))
-        {
-            std::cout << "Scene saved" << std::endl;
+        if(getScene()->write(currentSceneFile)) {
+            LOG("Scene saved");
+        } else {
+            LOG_WARN("Failed to save scene");
         }
     }
     
     return true;
 }
+
+
+int setupImguiLayout() {
+    ImGuiID dockspace_id = ImGui::GetID("MyDockspace");
+
+    ImGuiID dsid_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.15f, NULL, &dockspace_id);
+    ImGuiID dsid_right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.20f, NULL, &dockspace_id);
+    ImGuiID dsid_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.30f, NULL, &dockspace_id);
+    ImGuiID dsid_center_right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.15f, NULL, &dockspace_id);
+    ImGuiID dsid_down_left = ImGui::DockBuilderSplitNode(dsid_left, ImGuiDir_Down, 0.45f, NULL, &dsid_left);
+    ImGuiID dsid_down_right = ImGui::DockBuilderSplitNode(dsid_right, ImGuiDir_Down, 0.25f, NULL, &dsid_right);
+
+    ImGui::DockBuilderDockWindow("Toolbox", dsid_center_right);
+    ImGui::DockBuilderDockWindow("Scene Inspector", dsid_left);
+    ImGui::DockBuilderDockWindow("Object inspector", dsid_right);
+    ImGui::DockBuilderDockWindow("Resource inspector", dsid_right);
+    ImGui::DockBuilderDockWindow("Console", dsid_down);
+    ImGui::DockBuilderDockWindow("DirView", dsid_down);
+    ImGui::DockBuilderDockWindow("Scene", dockspace_id);
+    ImGui::DockBuilderDockWindow("Session", dsid_down_left);
+    ImGui::DockBuilderDockWindow("History", dsid_down_right);
+
+    ImGui::DockBuilderFinish(dockspace_id);
+    return 0;
+}
+

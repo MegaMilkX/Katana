@@ -10,9 +10,9 @@
 #include "../resource/resource.h"
 #include "../resource/resource_factory.h"
 
-#include "../../editor_v2/components/component.hpp"
-#include "../../editor_v2/scene/game_object.hpp"
-#include "../../editor_v2/scene/game_scene.hpp"
+#include "../../editor/components/component.hpp"
+#include "../../editor/scene/game_object.hpp"
+#include "../../editor/scene/game_scene.hpp"
 
 template<typename BASE_T>
 inline void imguiHeapObjectCombo(
@@ -118,10 +118,9 @@ inline void imguiComponentCombo(
     }
 }
 
-template<typename OBJ_T>
 inline void imguiObjectCombo(
     const char* label,
-    OBJ_T*& o,
+    GameObject*& o,
     GameScene* scene,
     std::function<void(void)> callback = nullptr
 ) {
@@ -133,10 +132,11 @@ inline void imguiObjectCombo(
         if(ImGui::Selectable("<null>", o == 0)) {
             o = 0;
         }
-        auto& list = scene->getObjects<OBJ_T>();
+        std::vector<GameObject*> list;
+        scene->getRoot()->getAllObjects(list);
         for(auto l : list) {
             if(ImGui::Selectable(l->getName().c_str(), o == l)) {
-                o = (OBJ_T*)l;
+                o = l;
                 if(callback) callback();
             }
         }
@@ -145,17 +145,7 @@ inline void imguiObjectCombo(
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
             GameObject* tgt_dnd_so = *(GameObject**)payload->Data;
-            if(tgt_dnd_so->get_type() == rttr::type::get<OBJ_T>()) {
-                o = (OBJ_T*)tgt_dnd_so;
-            } else {
-                auto base = tgt_dnd_so->get_type().get_base_classes();
-                for(auto bt : base) {
-                    if(bt == rttr::type::get<OBJ_T>()) {
-                        o = (OBJ_T*)tgt_dnd_so;
-                        break;
-                    }
-                }
-            }
+            o = tgt_dnd_so;
         }
         ImGui::EndDragDropTarget();
     }

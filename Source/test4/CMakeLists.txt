@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
-project (editor)
+project (test)
 
 foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
@@ -16,23 +16,23 @@ file(GLOB_RECURSE SRCFILES
 *.cpp;
 *.c;
 *.cxx)
-add_executable(editor ${SRCFILES})
+add_executable(test ${SRCFILES})
 
-target_include_directories(editor PRIVATE 
+target_include_directories(test PRIVATE 
 	../../../lib/glfw/include
 	../../../lib/rttr/src
 	../../../lib/assimp-master/include
 	../../../lib/assimp-master/build/include
 	../../../lib/bullet3-2.86.1/src
 )
-target_link_directories(editor PRIVATE 
+target_link_directories(test PRIVATE 
 	../../../lib/glfw/lib
 	../../../lib/rttr/lib
 	../../../lib/assimp-master/build/code/Release
 	../../../lib/assimp-master/build/contrib/zlib/Release
 	../../../lib/bullet3-2.86.1/bin
 )
-target_link_libraries(editor 
+target_link_libraries(test 
 	shlwapi.lib
 	glfw3.lib 
 	OpenGL32.lib

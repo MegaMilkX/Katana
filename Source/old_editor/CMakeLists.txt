@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
-project (editor)
+project (scene_editor)
 
 foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
@@ -10,29 +10,29 @@ foreach(flag_var
 endforeach(flag_var)
 
 file(GLOB_RECURSE SRCFILES 
-../common/*.cpp;
-../common/*.c;
-../common/*.cxx;
+../common_old/*.cpp;
+../common_old/*.c;
+../common_old/*.cxx;
 *.cpp;
 *.c;
 *.cxx)
-add_executable(editor ${SRCFILES})
+add_executable(scene_editor ${SRCFILES})
 
-target_include_directories(editor PRIVATE 
+target_include_directories(scene_editor PRIVATE 
 	../../../lib/glfw/include
 	../../../lib/rttr/src
 	../../../lib/assimp-master/include
 	../../../lib/assimp-master/build/include
 	../../../lib/bullet3-2.86.1/src
 )
-target_link_directories(editor PRIVATE 
+target_link_directories(scene_editor PRIVATE 
 	../../../lib/glfw/lib
 	../../../lib/rttr/lib
 	../../../lib/assimp-master/build/code/Release
 	../../../lib/assimp-master/build/contrib/zlib/Release
 	../../../lib/bullet3-2.86.1/bin
 )
-target_link_libraries(editor 
+target_link_libraries(scene_editor 
 	shlwapi.lib
 	glfw3.lib 
 	OpenGL32.lib
