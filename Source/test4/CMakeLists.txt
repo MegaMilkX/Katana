@@ -9,6 +9,17 @@ foreach(flag_var
     endif(${flag_var} MATCHES "/MD")
 endforeach(flag_var)
 
+file(GLOB_RECURSE GENBINFILES ../common/gen/*[!.h])
+
+foreach(gen_bin_file ${GENBINFILES})
+	get_filename_component(DIR ${gen_bin_file} DIRECTORY)
+	get_filename_component(FNAME ${gen_bin_file} NAME)
+	execute_process(
+		COMMAND "C:/MyDocuments/Projects/Aurora3/BuildTools/bin2header/bin2header.exe" ${FNAME}
+		WORKING_DIRECTORY ${DIR}
+	)
+endforeach(gen_bin_file)
+
 file(GLOB_RECURSE SRCFILES 
 ../common/*.cpp;
 ../common/*.c;

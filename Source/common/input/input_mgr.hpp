@@ -100,11 +100,11 @@ public:
     void set(input_key_hdl_t key, float value) {
         
     }
-
-    void update() {
+private:
+    void trigger_events(input_key_hdl_t key) {
         
     }
-private:
+
     InputTable input_table;
     std::map<std::string, input_key_hdl_t> key_to_handle;
     std::vector<float> key_values;

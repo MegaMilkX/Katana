@@ -299,6 +299,12 @@ void GameObject::onGui() {
     }
 }
 
+void GameObject::onGizmo(GuiViewport& vp) {
+    for(size_t i = 0; i < componentCount(); ++i) {
+        getById(i)->onGizmo(vp);
+    }
+}
+
 // ==== Private ====================================
 
 std::shared_ptr<Attribute> GameObject::createComponent(rttr::type t) {
@@ -386,7 +392,7 @@ void GameObject::write(out_stream& out) {
     for(size_t i = 0; i < objects.size(); ++i) {
         auto o = objects[i];
         if(o->getParent()) {
-            dw.write<uint64_t>(oid_map[o]);
+            dw.write<uint64_t>(oid_map[o->getParent()]);
         } else {
             dw.write<uint64_t>(-1);
         }
@@ -423,6 +429,23 @@ void GameObject::read(in_stream& in) {
         objects.emplace_back(new GameObject());
     }
 
+    if(object_count == 0) {
+        LOG_WARN("No objects in an .so data")
+        return;
+    }
+
+    {
+        uint64_t p = dr.read<uint64_t>();
+        std::string name = dr.readStr();
+        gfxm::vec3 t = dr.read<gfxm::vec3>();
+        gfxm::quat r = dr.read<gfxm::quat>();
+        gfxm::vec3 s = dr.read<gfxm::vec3>();
+        objects[0]->setName(name);
+        objects[0]->getTransform()->setPosition(t);
+        objects[0]->getTransform()->setRotation(r);
+        objects[0]->getTransform()->setScale(s);
+    }
+
     for(uint64_t i = 1; i < object_count; ++i) {
         uint64_t p = dr.read<uint64_t>();
         std::string name = dr.readStr();
@@ -430,12 +453,15 @@ void GameObject::read(in_stream& in) {
         gfxm::quat r = dr.read<gfxm::quat>();
         gfxm::vec3 s = dr.read<gfxm::vec3>();
 
+        
         objects[i]->parent = objects[p];
+        objects[p]->children.insert(objects[i]);
         objects[i]->scene = this->scene;
         objects[i]->getTransform()->setPosition(t);
         objects[i]->getTransform()->setRotation(r);
         objects[i]->getTransform()->setScale(s);
-        objects[p]->children.insert(objects[i]);
+        objects[i]->setName(name);
+        objects[i]->getTransform()->setParent(objects[p]->getTransform());
     }
 
     // Send events
@@ -443,4 +469,51 @@ void GameObject::read(in_stream& in) {
         auto o = objects[i];
         scene->_regObject(o);
     }
+
+    LOG("BYTES_AVAILABLE: " << in.bytes_available());
+
+    auto attrib_type_count = dr.read<uint32_t>();
+    LOG("ATTRIB_TYPE_COUNT: " << attrib_type_count);
+    for(uint32_t i = 0; i < attrib_type_count; ++i) {
+        std::string type = dr.readStr();
+        LOG("TYPE: " << type);
+        auto attrib_count = dr.read<uint64_t>();
+        LOG("ATTRIB_COUNT: " << attrib_count);
+        rttr::type t = rttr::type::get_by_name(type);
+        for(uint64_t j = 0; j < attrib_count; ++j) {
+            uint64_t owner_id = dr.read<uint64_t>();
+            uint64_t data_sz = dr.read<uint64_t>();
+            assert(t.is_valid());
+            auto a = objects[owner_id]->createComponent(t);
+            if(!a) {
+                dr.skip(data_sz);
+                continue;
+            }
+            std::vector<char> data = dr.readArray<char>();
+            dstream strm;
+            strm.setBuffer(data);
+            a->deserialize(strm, strm.bytes_available());
+        }
+    }
+}
+
+bool GameObject::write(const std::string& fname) {
+    file_stream strm(fname, file_stream::F_OUT);
+    if(!strm.is_open()) {
+        return false;
+    }
+
+    write(strm);
+
+    return true;
+}
+bool GameObject::read(const std::string& fname) {
+    file_stream strm(fname, file_stream::F_IN);
+    if(!strm.is_open()) {
+        return false;
+    }
+
+    read(strm);
+
+    return true;
 }

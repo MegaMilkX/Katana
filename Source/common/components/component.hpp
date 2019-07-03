@@ -14,6 +14,9 @@
 
 #include "../../common/lib/imgui_wrap.hpp"
 
+#include "../debug_draw.hpp"
+#include "../gui_viewport.hpp"
+
 class GameObject;
 class GameScene;
 class Attribute {
@@ -37,6 +40,7 @@ public:
     virtual bool buildAabb(gfxm::aabb& out);
 
     virtual void onGui();
+    virtual void onGizmo(GuiViewport& vp);
 
     virtual bool serialize(out_stream& out);
     virtual bool deserialize(in_stream& in, size_t sz);

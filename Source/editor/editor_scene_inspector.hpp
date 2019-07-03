@@ -1,7 +1,7 @@
 #ifndef EDITOR_SCENE_INSPECTOR_HPP
 #define EDITOR_SCENE_INSPECTOR_HPP
 
-#include "scene/game_scene.hpp"
+#include "../common/scene/game_scene.hpp"
 
 class Editor;
 class EditorSceneInspector {

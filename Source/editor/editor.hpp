@@ -11,7 +11,7 @@
 
 #include "../common/util/filesystem.hpp"
 
-#include "scene/game_scene.hpp"
+#include "../common/scene/game_scene.hpp"
 
 #include "../common/util/audio/audio_mixer.hpp"
 

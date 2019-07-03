@@ -13,67 +13,7 @@ extern "C"{
 #include "../shader_factory.hpp"
 #include "../gfxm.hpp"
 
-inline void drawCube() {
-    static const GLfloat g_vertex_buffer_data[] = {
-        -1.0f,-1.0f,-1.0f, // triangle 1 : begin
-        -1.0f,-1.0f, 1.0f,
-        -1.0f, 1.0f, 1.0f, // triangle 1 : end
-        1.0f, 1.0f,-1.0f, // triangle 2 : begin
-        -1.0f,-1.0f,-1.0f,
-        -1.0f, 1.0f,-1.0f, // triangle 2 : end
-        1.0f,-1.0f, 1.0f,
-        -1.0f,-1.0f,-1.0f,
-        1.0f,-1.0f,-1.0f,
-        1.0f, 1.0f,-1.0f,
-        1.0f,-1.0f,-1.0f,
-        -1.0f,-1.0f,-1.0f,
-        -1.0f,-1.0f,-1.0f,
-        -1.0f, 1.0f, 1.0f,
-        -1.0f, 1.0f,-1.0f,
-        1.0f,-1.0f, 1.0f,
-        -1.0f,-1.0f, 1.0f,
-        -1.0f,-1.0f,-1.0f,
-        -1.0f, 1.0f, 1.0f,
-        -1.0f,-1.0f, 1.0f,
-        1.0f,-1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f,-1.0f,-1.0f,
-        1.0f, 1.0f,-1.0f,
-        1.0f,-1.0f,-1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f,-1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f,-1.0f,
-        -1.0f, 1.0f,-1.0f,
-        1.0f, 1.0f, 1.0f,
-        -1.0f, 1.0f,-1.0f,
-        -1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        -1.0f, 1.0f, 1.0f,
-        1.0f,-1.0f, 1.0f
-    };
-
-    GLuint vao_handle = 0;
-    GLuint vbuf;
-    glGenBuffers(1, &vbuf);
-
-    glGenVertexArrays(1, &vao_handle);
-    glBindVertexArray(vao_handle);
-    glBindBuffer(GL_ARRAY_BUFFER, vbuf);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(
-        0, 3, GL_FLOAT, GL_FALSE,
-        0, 0
-    );
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbuf);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), (void*)g_vertex_buffer_data, GL_STREAM_DRAW);
-    
-    glDrawArrays(GL_TRIANGLES, 0, 12 * 3);
-
-    glDeleteVertexArrays(1, &vao_handle);
-    glDeleteBuffers(1, &vbuf);
-}
+#include "../draw_primitive.hpp"
 
 class CubeMap : public Resource {
     RTTR_ENABLE(Resource)

@@ -28,6 +28,8 @@ inline void initFilesystemResources(const std::string& rootDir) {
             DataSourceRef(new DataSourceFilesystem(files[i]))
         );
     }
+
+    LOG("Found " << GlobalDataRegistry().Count() << " file data sources");
 }
 
 #endif

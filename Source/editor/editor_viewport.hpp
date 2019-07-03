@@ -1,7 +1,7 @@
 #ifndef EDITOR_VIEWPORT_HPP
 #define EDITOR_VIEWPORT_HPP
 
-#include "scene/game_scene.hpp"
+#include "../common/scene/game_scene.hpp"
 
 #include "../common/render_viewport.hpp"
 #include "../common/renderer.hpp"
@@ -12,7 +12,7 @@
 
 #include "octree.hpp"
 
-#include "gui_viewport.hpp"
+#include "../common/gui_viewport.hpp"
 
 class Editor;
 class EditorViewport {
@@ -29,7 +29,7 @@ private:
 
     Editor* editor;
     RenderViewport vp;
-    Renderer renderer;
+    RendererPBR renderer;
 
     DebugDraw dd;
     InputListener* input_lis = 0;

@@ -1,16 +1,16 @@
 #ifndef GAME_STATE_HPP
 #define GAME_STATE_HPP
 
-#include "scene/game_scene.hpp"
+#include "../common/scene/game_scene.hpp"
 
-#include "scene/character.hpp"
+#include "../common/scene/character.hpp"
 
-#include "scene/controllers/render_controller.hpp"
-#include "scene/controllers/dynamics_ctrl.hpp"
-#include "scene/controllers/actor_ctrl.hpp"
-#include "scene/controllers/anim_controller.hpp"
-#include "scene/controllers/audio_controller.hpp"
-#include "scene/controllers/constraint_ctrl.hpp"
+#include "../common/scene/controllers/render_controller.hpp"
+#include "../common/scene/controllers/dynamics_ctrl.hpp"
+#include "../common/scene/controllers/actor_ctrl.hpp"
+#include "../common/scene/controllers/anim_controller.hpp"
+#include "../common/scene/controllers/audio_controller.hpp"
+#include "../common/scene/controllers/constraint_ctrl.hpp"
 
 #include "../common/application_state.hpp"
 
@@ -80,7 +80,7 @@ private:
     std::shared_ptr<GameScene> scene;
 
     RenderViewport vp;
-    Renderer renderer;
+    RendererPBR renderer;
     DebugDraw dd;
 };
 

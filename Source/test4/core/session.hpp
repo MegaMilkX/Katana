@@ -2,23 +2,23 @@
 #define SESSION_HPP
 
 #include "actor.hpp"
-#include "scene.hpp"
+#include "../../common/scene/game_scene.hpp"
 
 #include <vector>
 #include <set>
 
 class GameSession {
-    Scene*                  scene    = 0;
+    GameScene*              scene = 0;
     std::set<Actor*>        actors;
 public:
     virtual ~GameSession() {
         clearActors();
     }
 
-    void        setScene(Scene* scn) { 
+    void        setScene(GameScene* scn) {
         scene = scn;
     }
-    Scene*      getScene() {
+    GameScene*  getScene() {
         return scene;
     }
 

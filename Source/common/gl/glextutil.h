@@ -92,6 +92,9 @@ extern PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation;
 extern PFNGLBINDATTRIBLOCATIONPROC glBindAttribLocation;
 extern PFNGLGETATTRIBLOCATIONPROC glGetAttribLocation;
 
+extern PFNGLGETACTIVEATTRIBPROC glGetActiveAttrib;
+extern PFNGLGETACTIVEUNIFORMPROC glGetActiveUniform;
+
 //========================
 // Textures
 //========================

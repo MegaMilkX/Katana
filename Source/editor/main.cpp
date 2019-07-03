@@ -4,7 +4,7 @@
 #include "editor.hpp"
 #include "game_state.hpp"
 
-#include "components/volume_trigger_test.hpp"
+#include "../common/components/volume_trigger_test.hpp"
 
 int main(int argc, char* argv[]) {
     if(!platformInit()) {

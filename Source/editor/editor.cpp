@@ -13,9 +13,9 @@
 
 #include "../common/util/system.hpp"
 
-#include "scene/controllers/render_controller.hpp"
-#include "scene/controllers/constraint_ctrl.hpp"
-#include "scene/controllers/anim_controller.hpp"
+#include "../common/scene/controllers/render_controller.hpp"
+#include "../common/scene/controllers/constraint_ctrl.hpp"
+#include "../common/scene/controllers/anim_controller.hpp"
 
 int setupImguiLayout();
 

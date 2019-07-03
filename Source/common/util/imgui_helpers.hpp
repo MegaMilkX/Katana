@@ -10,9 +10,9 @@
 #include "../resource/resource.h"
 #include "../resource/resource_factory.h"
 
-#include "../../editor/components/component.hpp"
-#include "../../editor/scene/game_object.hpp"
-#include "../../editor/scene/game_scene.hpp"
+#include "../components/component.hpp"
+#include "../scene/game_object.hpp"
+#include "../scene/game_scene.hpp"
 
 template<typename BASE_T>
 inline void imguiHeapObjectCombo(

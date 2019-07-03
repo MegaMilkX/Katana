@@ -23,39 +23,95 @@ void renderToScreen();
 #include "../common/renderer.hpp"
 #include "../common/render_viewport.hpp"
 
+#include "../common/scene/game_scene.hpp"
+#include "../editor/scene_object_from_fbx.hpp"
+#include "../common/scene/controllers/render_controller.hpp"
+
+#include "../common/gen/psx_f.glsl.h"
+#include "../common/gen/psx_skin_v.glsl.h"
+#include "../common/gen/psx_solid_v.glsl.h"
+
+class RendererPSX : public Renderer {
+    gl::ShaderProgram* prog_solid;
+    gl::ShaderProgram* prog_skin;
+public:
+    RendererPSX() {
+        prog_solid = ShaderFactory::getOrCreate(
+            "psx_solid", (char*)psx_solid_v_glsl, (char*)psx_f_glsl
+        );
+        prog_skin = ShaderFactory::getOrCreate(
+            "psx_skin", (char*)psx_skin_v_glsl, (char*)psx_f_glsl
+        );
+    }
+    virtual void draw(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen = false) {
+        glEnable(GL_CULL_FACE);
+        glEnable(GL_DEPTH_TEST);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, (GLsizei)vp->getWidth(), (GLsizei)vp->getHeight());
+        getState().ubufCommon3d.upload(uCommon3d{view, proj});
+        getState().bindUniformBuffers();
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        drawMultiple(
+            prog_solid,
+            draw_list.solids.data(),
+            draw_list.solids.size()
+        );
+        drawMultiple(
+            prog_skin,
+            draw_list.skins.data(),
+            draw_list.skins.size()
+        );
+
+        endFrame();
+    }
+};
+
+
 void main() {
     if(!platformInit()) {
         LOG_ERR("Failed to init platform");
     }
 
+    input().getTable().addAxisKey("MoveHori", "KB_D", 1.0f);
+    input().getTable().addAxisKey("MoveHori", "KB_A", -1.0f);
+    input().getTable().addAxisKey("MoveVert", "KB_W", 1.0f);
+    input().getTable().addAxisKey("MoveVert", "KB_S", -1.0f);
+    input().getTable().addAxisKey("MoveCamX", "MOUSE_X", 1.0);
+    input().getTable().addAxisKey("MoveCamY", "MOUSE_Y", 1.0);
+    input().getTable().addAxisKey("CameraZoom", "MOUSE_SCROLL", 1.0);
+
     RenderViewport vp;
     vp.init(1280, 720);
-    Renderer renderer;
+    RendererPSX renderer;
     
-
-    Scene scene;
-
+    GameScene gscn;
     sessGameplay sess;
-    sess.setScene(&scene);
+    sess.setScene(&gscn);
 
     std::shared_ptr<Mesh> mesh = retrieve<Mesh>("test.msh");
-
-    DrawList dl;
-    dl.add(DrawList::Solid{
-        mesh->mesh.getVao(), 0,
-        mesh->indexCount(),
-        gfxm::mat4(1.0f)
-    });
 
     sess.start();
     while(!platformIsShuttingDown()) {
         platformUpdate();
         
         sess.update();
+
+        DrawList dl;
+        gscn.getController<RenderController>()->getDrawList(dl);
+
+        unsigned w, h;
+        platformGetViewportSize(w, h);
+        //w = 640;
+        //h = 480;
+        vp.resize(w, h);
+        gfxm::mat4 proj, view;
+        proj = gscn.getController<RenderController>()->getDefaultCamera()->getProjection(w, h);
+        view = gscn.getController<RenderController>()->getDefaultCamera()->getView();
         renderer.draw(
             &vp, 
-            gfxm::perspective(1.4f, 16.0f/9.0f, 0.01f, 1000.0f), 
-            gfxm::inverse(gfxm::translate(gfxm::mat4(1.0f), gfxm::vec3(.0f, .0f, 5.0f))), 
+            proj, 
+            view, 
             dl, 
             true
         );

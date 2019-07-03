@@ -37,12 +37,19 @@ public:
             for(size_t i = 0; i < m->segmentCount(); ++i) {
                 if(!m->getSegment(i).mesh) continue;
                 if(!m->getSegment(i).skin_data) {
+                    DrawCmdSolid s;
+                    s.vao = m->getSegment(i).mesh->mesh.getVao();
+                    s.material = m->getSegment(i).material.get();
+                    s.indexCount = m->getSegment(i).mesh->mesh.getIndexCount();
+                    s.transform = m->getOwner()->getTransform()->getWorldTransform();
+                    dl.solids.emplace_back(s);
+                    /*
                     dl.add(DrawList::Solid{
                         m->getSegment(i).mesh->mesh.getVao(),
                         m->getSegment(i).material.get(),
                         m->getSegment(i).mesh->mesh.getIndexCount(),
                         m->getOwner()->getTransform()->getWorldTransform()
-                    });
+                    });*/
                 } else {
                     std::vector<gfxm::mat4> bone_transforms;
                     for(auto t : m->getSegment(i).skin_data->bone_nodes) {
@@ -52,6 +59,15 @@ public:
                             bone_transforms.emplace_back(gfxm::mat4(1.0f));
                         }
                     }
+                    DrawCmdSkin s;
+                    s.vao = m->getSegment(i).mesh->mesh.getVao();
+                    s.material = m->getSegment(i).material.get();
+                    s.indexCount = m->getSegment(i).mesh->mesh.getIndexCount();
+                    s.transform = m->getOwner()->getTransform()->getWorldTransform();
+                    s.bone_transforms = bone_transforms;
+                    s.bind_transforms = m->getSegment(i).skin_data->bind_transforms;
+                    dl.skins.emplace_back(s);
+                    /*
                     dl.add(DrawList::Skin{
                         m->getSegment(i).mesh->mesh.getVao(),
                         m->getSegment(i).material.get(),
@@ -59,12 +75,12 @@ public:
                         m->getOwner()->getTransform()->getWorldTransform(),
                         bone_transforms,
                         m->getSegment(i).skin_data->bind_transforms
-                    });
+                    });*/
                 }
             }
         }
         for(auto l : omnis) {
-            dl.add(DrawList::OmniLight{l->getOwner()->getTransform()->getWorldPosition(), l->color, l->intensity, l->radius});
+            dl.omnis.emplace_back(DrawList::OmniLight{l->getOwner()->getTransform()->getWorldPosition(), l->color, l->intensity, l->radius});
         }
     }
 

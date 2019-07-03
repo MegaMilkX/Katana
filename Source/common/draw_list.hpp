@@ -7,22 +7,50 @@
 #include <memory>
 #include "../common/resource/material.hpp"
 
+#include "render_state.hpp"
+
+class DrawCmd {
+public:
+    virtual ~DrawCmd() {}
+
+    virtual void bind(RenderState& state) const = 0;
+
+    GLuint vao;
+    Material* material;
+    size_t indexCount;
+};
+
+class DrawCmdSolid : public DrawCmd {
+public:
+    virtual void bind(RenderState& state) const {
+        state.getProgram()->uploadModelTransform(transform);
+    }
+
+    gfxm::mat4 transform;
+};
+
+class DrawCmdSkin : public DrawCmd {
+public:
+    virtual void bind(RenderState& state) const {
+        state.getProgram()->uploadModelTransform(transform);
+
+        gfxm::mat4 bone_m[SKIN_BONE_LIMIT];
+        unsigned bone_count = (std::min)((unsigned)SKIN_BONE_LIMIT, (unsigned)bind_transforms.size());
+        for(unsigned i = 0; i < bone_count; ++i) {
+            bone_m[i] = bone_transforms[i] * bind_transforms[i];
+        }
+        uBones bones;
+        memcpy(bones.pose, bone_m, sizeof(gfxm::mat4) * bone_count);
+        state.ubufBones.upload(bones);
+    }
+
+    gfxm::mat4 transform;
+    std::vector<gfxm::mat4> bone_transforms;
+    std::vector<gfxm::mat4> bind_transforms;
+};
+
 class DrawList {
 public:
-    struct Solid {
-        GLuint vao;
-        Material* material;
-        size_t indexCount;
-        gfxm::mat4 transform;
-    };
-    struct Skin {
-        GLuint vao;
-        Material* material;
-        size_t indexCount;
-        gfxm::mat4 transform;
-        std::vector<gfxm::mat4> bone_transforms;
-        std::vector<gfxm::mat4> bind_transforms;
-    };
     struct OmniLight {
         gfxm::vec3 translation = gfxm::vec3(0,0,0);
         gfxm::vec3 color = gfxm::vec3(1,1,1);
@@ -30,39 +58,11 @@ public:
         float radius = 5.0f;
     };
 
-    void add(const Solid& s) {
-        solids.emplace_back(s);
-    }
-    size_t solidCount() const {
-        return solids.size();
-    }
-    const Solid* getSolid(size_t i) const {
-        return &solids[i];
-    }
-
-    void add(const Skin& s) {
-        skins.emplace_back(s);
-    }
-    size_t skinCount() const {
-        return skins.size();
-    }
-    const Skin* getSkin(size_t i) const {
-        return &skins[i];
-    }
-
-    size_t omniLightCount() const {
-        return omnis.size();
-    }
-    void add(OmniLight l) {
-        omnis.emplace_back(l);
-    }
-    const OmniLight& getOmniLight(size_t i) const {
-        return omnis[i];
-    }
-private:
-    std::vector<Solid> solids;
-    std::vector<Skin> skins;
+    std::vector<DrawCmdSolid> solids;
+    std::vector<DrawCmdSkin> skins;
     std::vector<OmniLight> omnis;
+private:
+    
 };
 
 #endif

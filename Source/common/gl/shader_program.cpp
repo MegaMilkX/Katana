@@ -54,27 +54,12 @@ bool ShaderProgram::link()
     }
     if(res == GL_FALSE)
         return false;
-    return true;
-}
-bool ShaderProgram::linkAndInit() {
-    for(int i = gl::VERTEX_ATTRIB_FIRST; i < gl::VERTEX_ATTRIB_COUNT; ++i) {
-        bindAttrib(i, gl::getAttribDesc((gl::ATTRIB_INDEX)i).name);
-    }
-    bindFragData(0, "out_albedo");
-    bindFragData(1, "out_normal");
-    bindFragData(2, "out_specular");
-    bindFragData(3, "out_emission");
-    link();
-    use();
-    glUniform1i(getUniform("tex_diffuse"), 0);
-    glUniform1i(getUniform("tex_normal"), 1);
-    glUniform1i(getUniform("tex_specular"), 2);
-    glUniform1i(getUniform("tex_emission"), 3);
-    glUniform1i(getUniform("tex0"), 0);
-    glUniform1i(getUniform("tex1"), 1);
+
     loc_projection = getUniform("mat_projection");
     loc_view = getUniform("mat_view");
     loc_model = getUniform("mat_model");
+
+    return true;
 }
 GLuint ShaderProgram::getUniform(const std::string& name)
 {
@@ -101,6 +86,27 @@ bool ShaderProgram::validate() {
     }
     if(res == GL_FALSE)
         return false;
+
+    GLint count = 0;
+    const GLsizei nameBufSize = 32;
+    GLchar name[nameBufSize];
+    GLsizei length;
+    GLint size;
+    GLenum type;
+    glGetProgramiv(id, GL_ACTIVE_ATTRIBUTES, &count);
+    LOG("Attribute count: " << count);
+    for(int i = 0; i < count; ++i) {
+        glGetActiveAttrib(id, (GLuint)i, nameBufSize, &length, &size, &type, name);
+        LOG("Attrib " << i << ", type: " << type << ", name: " << name);
+    }
+    glGetProgramiv(id, GL_ACTIVE_UNIFORMS, &count);
+    LOG("Uniform count: " << count);
+    for(int i = 0; i < count; ++i) {
+        glGetActiveUniform(id, (GLuint)i, nameBufSize, &length, &size, &type, name);
+        LOG("Uniform " << i << ", type: " << type << ", name: " << name);
+    }
+
+
     return true;
 }
 GLuint ShaderProgram::getId() const

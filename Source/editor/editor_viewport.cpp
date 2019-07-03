@@ -13,7 +13,7 @@
 
 #include "editor.hpp"
 
-#include "scene/controllers/render_controller.hpp"
+#include "../common/scene/controllers/render_controller.hpp"
 
 bool mouse_look = false;
 bool mouse_look_alt = false;
@@ -84,7 +84,7 @@ void EditorViewport::update(Editor* editor) {
         mouse_is_over_vp = ImGui::IsWindowHovered();
         window_in_focus = ImGui::IsRootWindowFocused();
 
-        gvp.draw(editor->getScene(), gfxm::ivec2(0, 0));
+        gvp.draw(editor->getScene(), editor->getSelectedObject(), gfxm::ivec2(0, 0));
         
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
@@ -99,6 +99,8 @@ void EditorViewport::update(Editor* editor) {
                     //new_so->get<Transform>()->position(wpt_xy);
                     editor->setSelectedObject(new_so);
                     editor->backupScene("import object from fbx");
+                } else if(has_suffix(fname, ".so")) {
+                    editor->getScene()->getRoot()->createChild()->read(fname);
                 }
             }
             ImGui::EndDragDropTarget();
@@ -258,6 +260,8 @@ void EditorViewport::update(Editor* editor) {
                     //new_so->get<Transform>()->position(wpt_xy);
                     editor->setSelectedObject(new_so);
                     editor->backupScene("import object from fbx");
+                } else if(has_suffix(fname, ".so")) {
+                    editor->getScene()->getRoot()->read(fname);
                 }
             }
             ImGui::EndDragDropTarget();

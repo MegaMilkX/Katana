@@ -17,6 +17,14 @@
 #include "scene_controller.hpp"
 #include "../serializable.hpp"
 
+class SceneQuery {
+    bool satisfied = false;
+public:
+    virtual ~SceneQuery() {}
+
+    operator bool() const { return satisfied; }
+};
+
 class GameScene : public Serializable {
 public:
     GameScene();
@@ -36,6 +44,8 @@ public:
     template<typename T>
     std::vector<Attribute*>& getAllComponents() { return getAllComponents(rttr::type::get<T>()); }
     std::vector<Attribute*>& getAllComponents(rttr::type t);
+
+    void query(SceneQuery& q);
 
     // Controllers
     template<typename T>

@@ -55,8 +55,6 @@ public:
             name_list.emplace_back(name);
         }
         dataSources[name] = dataSource;
-        
-        LOG("Added data source '" << n << "'");
     }
 
     const std::vector<std::string>& getList() const {

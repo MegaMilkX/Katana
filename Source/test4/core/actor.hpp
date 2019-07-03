@@ -2,7 +2,6 @@
 #define ACTOR_HPP
 
 
-#include "scene_node.hpp"
 #include <string>
 
 
@@ -14,12 +13,10 @@ class Actor {
 
     std::string         name            = "Actor";
     GameSession*        session         = 0;
-    SceneNode*          node            = 0;
 public:
     virtual             ~Actor     () {}
 
     GameSession*        getSession      () { return session; }
-    SceneNode*          getNode         () { return node; }
     const std::string&  getName         () { return name; }
 
     virtual void        onInit          () {}

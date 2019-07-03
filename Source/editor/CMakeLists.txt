@@ -19,6 +19,7 @@ file(GLOB_RECURSE SRCFILES
 add_executable(editor ${SRCFILES})
 
 target_include_directories(editor PRIVATE 
+	../common
 	../../../lib/glfw/include
 	../../../lib/rttr/src
 	../../../lib/assimp-master/include

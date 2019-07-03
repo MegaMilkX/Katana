@@ -31,6 +31,10 @@ void Attribute::onGui() {
 
 }
 
+void Attribute::onGizmo(GuiViewport& vp) {
+
+}
+
 bool Attribute::serialize(out_stream& out) {
     return false;
 }

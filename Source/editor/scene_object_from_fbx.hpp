@@ -22,10 +22,10 @@
 #include "../common/resource/animation.hpp"
 #include "../common/resource/mesh.hpp"
 
-#include "components/model.hpp"
-#include "components/animation_stack.hpp"
+#include "../common/components/model.hpp"
+#include "../common/components/animation_stack.hpp"
 
-#include "scene/game_object.hpp"
+#include "../common/scene/game_object.hpp"
 
 inline gfxm::vec2 sampleSphericalMap(gfxm::vec3 v) {
     const gfxm::vec2 invAtan = gfxm::vec2(0.1591f, 0.3183f);

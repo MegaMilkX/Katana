@@ -6,7 +6,28 @@
 
 #include "editor.hpp"
 
-#include "scene/third_person_camera.hpp"
+#include "../common/scene/third_person_camera.hpp"
+
+#include "../common/lib/nativefiledialog/nfd.h"
+
+static bool showSaveGameObjectDialog(GameObject* o, bool forceDialog) {
+    char* outPath;
+    auto r = NFD_SaveDialog("so", NULL, &outPath);
+    if(r == NFD_OKAY) {
+        std::string filePath(outPath);
+        if(!has_suffix(filePath, ".so")) {
+            filePath = filePath + ".so";
+        }
+        std::cout << filePath << std::endl;
+        if(o->write(filePath)) {
+            LOG("Game object saved");
+        } else {
+            LOG_WARN("Failed to save game object");
+        }
+    }
+    
+    return true;
+}
 
 static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
     if (ImGui::BeginPopupContextItem()) {
@@ -26,6 +47,10 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
         if(ImGui::MenuItem("Duplicate")) {
             o->duplicate();
             editor->backupScene("object duplicated");
+        }
+        ImGui::Separator();
+        if(ImGui::MenuItem("Save As...")) {
+            showSaveGameObjectDialog(o, true);
         }
         ImGui::Separator();
         if(ImGui::MenuItem("Delete")) {

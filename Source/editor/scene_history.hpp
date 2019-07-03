@@ -1,7 +1,7 @@
 #ifndef SCENE_HISTORY_HPP
 #define SCENE_HISTORY_HPP
 
-#include "scene/game_scene.hpp"
+#include "../common/scene/game_scene.hpp"
 
 class SceneHistory {
 public:

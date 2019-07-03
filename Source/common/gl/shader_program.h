@@ -13,7 +13,6 @@ public:
     void bindAttrib(GLuint loc, const std::string& name);
     void bindFragData(GLuint loc, const std::string& name);
     bool link();
-    bool linkAndInit();
     GLuint getUniform(const std::string& name);
     GLuint locProjection() const { return loc_projection; }
     GLuint locView() const { return loc_view; }
@@ -21,6 +20,10 @@ public:
     void use();
     bool validate();
     GLuint getId() const;
+
+    void uploadModelTransform(const gfxm::mat4& v) {
+        glUniformMatrix4fv(loc_model, 1, GL_FALSE, (float*)&v);
+    }
 private:
     ShaderProgram(const ShaderProgram &) {}
     ShaderProgram& operator=(const ShaderProgram &) {}

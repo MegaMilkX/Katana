@@ -43,6 +43,10 @@ public:
         read(v);
         return v;
     }
+
+    void skip(size_t sz) {
+        strm->read<char>(sz);
+    }
     
 private:
     in_stream* strm;

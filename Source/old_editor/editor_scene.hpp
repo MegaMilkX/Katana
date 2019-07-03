@@ -43,7 +43,7 @@ public:
 private:
     EditorViewport vp;
 
-    Renderer renderer;
+    RendererPBR renderer;
     Scene* scene = 0;
 };
 

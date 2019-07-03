@@ -6,7 +6,7 @@
 
 #include "editor.hpp"
 
-#include "behavior/behavior.hpp"
+#include "../common/behavior/behavior.hpp"
 
 void EditorObjectInspector::update(Editor* editor) {
     if(ImGui::Begin("Object inspector", 0, ImGuiWindowFlags_MenuBar)) {

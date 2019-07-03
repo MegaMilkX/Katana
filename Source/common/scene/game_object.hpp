@@ -72,10 +72,13 @@ public:
     virtual void                        deserialize(std::istream& in, size_t sz);
 
     virtual void                        onGui();
+    void                                onGizmo(GuiViewport& vp);
     bool                                serializeComponents(std::ostream& out);
 
     void                                write(out_stream& out);
     void                                read(in_stream& in);
+    bool                                write(const std::string& fname);
+    bool                                read(const std::string& fname);
 private:
     std::shared_ptr<Attribute>          createComponent(rttr::type t);
 

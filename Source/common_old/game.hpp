@@ -19,7 +19,7 @@ public:
 private:
     Scene* scene = 0;
     
-    Renderer renderer;
+    RendererPBR renderer;
     GBuffer g_buffer;
 
     AnimatorSys animator_sys;
