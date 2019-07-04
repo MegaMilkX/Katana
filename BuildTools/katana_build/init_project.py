@@ -42,11 +42,17 @@ else:
 	srcDir = args.path + "/" + srcDir
 	if not os.path.isdir(srcDir):
 		os.mkdir(srcDir)
-	# TODO: Create or replace CMakeLists.txt
+	replaceList = { 
+		'PROJECT_NAME':os.path.splitext(os.path.basename(projFile))[0], 
+		'BUILD_TOOLS_DIR':srcDir, # TODO
+		'ENGINE_SRC_DIR':srcDir # TODO
+	}
+	kt_util.createFileFromTemplate(kt_config.CMAKELISTS_TEMPLATE, srcDir, "CMakeLists.txt", replaceList)
 
 	cfgDir = config.get("General", "config")
 	cfgDir = args.path + "/" + cfgDir
 	if not os.path.isdir(cfgDir):
 		os.mkdir(cfgDir)
 	# TODO: Create input bindings xml if doesn't exist
-	
+
+	print("INFO | Done")
