@@ -1,5 +1,6 @@
 import glob
 from shutil import copyfile
+from string import Template
 import os
 import kt_config
 
@@ -25,6 +26,12 @@ def findProjectFile(dir):
         return
     projectFileName = projectList[0]
     return projectFileName
+
+def createFileFromTemplate(tplFilename, tgtDir, newFilename, replaceList):
+    f = open(tplFilename)
+    src = Template(f.read())
+    tgtF = open(tgtDir + "/" + newFilename, 'w+')
+    tgtF.write(src.safe_substitute(replaceList))
 
 def createProjectFileFromTemplate(tplFilename, tgtDir):
     projName = os.path.basename(tgtDir) # TODO: Said to work differently on unix
