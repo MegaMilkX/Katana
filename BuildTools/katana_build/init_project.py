@@ -10,6 +10,8 @@ except ImportError:
 import kt_config
 import kt_util
 
+import kt_cmake
+
 parser = argparse.ArgumentParser()
 parser.add_argument('path', metavar='DIRECTORY', help='path to a preferably empty directory')
 args = parser.parse_args()
@@ -27,6 +29,7 @@ except OSError as ex:
 	pass
 
 projFile = kt_util.findProjectFile(args.path)
+projName = os.path.splitext(os.path.basename(projFile))[0]
 
 if not projFile:
 	print("INFO | Project config doesn't exist. Creating a default one...")
@@ -42,13 +45,11 @@ else:
 	srcDir = args.path + "/" + srcDir
 	if not os.path.isdir(srcDir):
 		os.mkdir(srcDir)
-	replaceList = { 
-		'PROJECT_NAME':os.path.splitext(os.path.basename(projFile))[0], 
-		'BUILD_TOOLS_DIR':srcDir, # TODO
-		'ENGINE_SRC_DIR':srcDir # TODO
-	}
-	kt_util.createFileFromTemplate(kt_config.CMAKELISTS_TEMPLATE, srcDir, "CMakeLists.txt", replaceList)
-
+	kt_cmake.createCMakeLists(
+		projName,
+		srcDir
+	)
+	
 	cfgDir = config.get("General", "config")
 	cfgDir = args.path + "/" + cfgDir
 	if not os.path.isdir(cfgDir):

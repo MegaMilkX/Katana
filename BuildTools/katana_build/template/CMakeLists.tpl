@@ -9,7 +9,7 @@ foreach(flag_var
     endif(${flag_var} MATCHES "/MD")
 endforeach(flag_var)
 
-file(GLOB_RECURSE GENBINFILES ../common/gen/*[!.h])
+file(GLOB_RECURSE GENBINFILES $ENGINE_SRC_DIR/common/gen/*[!.h])
 
 foreach(gen_bin_file ${GENBINFILES})
 	get_filename_component(DIR ${gen_bin_file} DIRECTORY)
