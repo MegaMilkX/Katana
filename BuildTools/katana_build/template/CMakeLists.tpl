@@ -24,26 +24,69 @@ file(GLOB_RECURSE SRCFILES
 $ENGINE_SRC_DIR/common/*.cpp;
 $ENGINE_SRC_DIR/common/*.c;
 $ENGINE_SRC_DIR/common/*.cxx;
+$ENGINE_SRC_DIR/katana/*.cpp;
+$ENGINE_SRC_DIR/katana/*.c;
+$ENGINE_SRC_DIR/katana/*.cxx;
 *.cpp;
 *.c;
 *.cxx)
-add_executable($PROJECT_NAME ${SRCFILES})
+file(GLOB_RECURSE EDITOR_SRCFILES 
+$ENGINE_SRC_DIR/common/*.cpp;
+$ENGINE_SRC_DIR/common/*.c;
+$ENGINE_SRC_DIR/common/*.cxx;
+$ENGINE_SRC_DIR/editor/*.cpp;
+$ENGINE_SRC_DIR/editor/*.c;
+$ENGINE_SRC_DIR/editor/*.cxx;
+*.cpp;
+*.c;
+*.cxx)
+add_executable($PROJECT_NAME ${SRCFILES} $ENGINE_SRC_DIR/resource.rc)
+add_executable(${PROJECT_NAME}_editor ${EDITOR_SRCFILES} $ENGINE_SRC_DIR/resource.rc)
+
+set_target_properties(
+	$PROJECT_NAME PROPERTIES
+	RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_SOURCE_DIR}/../build/debug"
+	RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/../build/release"
+	RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_SOURCE_DIR}/../build/release"
+	RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/../build/debug"
+)
+
+set_target_properties(
+	${PROJECT_NAME}_editor PROPERTIES
+	RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_SOURCE_DIR}/../build/debug"
+	RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/../build/release"
+	RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_SOURCE_DIR}/../build/release"
+	RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/../build/debug"
+)
 
 target_include_directories($PROJECT_NAME PRIVATE 
-	../../../lib/glfw/include
-	../../../lib/rttr/src
-	../../../lib/assimp-master/include
-	../../../lib/assimp-master/build/include
-	../../../lib/bullet3-2.86.1/src
+	$ENGINE_SRC_DIR/common/
+	$ENGINE_SRC_DIR/katana/
+	$INCLUDE_PATHS
 )
 target_link_directories($PROJECT_NAME PRIVATE 
-	../../../lib/glfw/lib
-	../../../lib/rttr/lib
-	../../../lib/assimp-master/build/code/Release
-	../../../lib/assimp-master/build/contrib/zlib/Release
-	../../../lib/bullet3-2.86.1/bin
+	$LIB_PATHS
 )
 target_link_libraries($PROJECT_NAME 
+	shlwapi.lib
+	glfw3.lib 
+	OpenGL32.lib
+	librttr_core.lib
+	assimp.lib
+	zlibstatic.lib
+	BulletCollision_vs2010.lib
+	BulletDynamics_vs2010.lib
+	LinearMath_vs2010.lib
+)
+
+target_include_directories(${PROJECT_NAME}_editor PRIVATE 
+	$ENGINE_SRC_DIR/common/
+	$INCLUDE_PATHS
+)
+target_link_directories(${PROJECT_NAME}_editor PRIVATE 
+	$LIB_PATHS
+)
+target_link_libraries(${PROJECT_NAME}_editor
 	shlwapi.lib
 	glfw3.lib 
 	OpenGL32.lib

@@ -27,7 +27,10 @@ def findProjectFile(dir):
     projectFileName = projectList[0]
     return projectFileName
 
-def createFileFromTemplate(tplFilename, tgtDir, newFilename, replaceList):
+def createFileFromTemplate(tplFilename, tgtDir, newFilename, replaceList, overwrite=True):
+    if not overwrite:
+        if os.path.isfile(tgtDir + "/" + newFilename):
+            return
     f = open(tplFilename)
     src = Template(f.read())
     tgtF = open(tgtDir + "/" + newFilename, 'w+')

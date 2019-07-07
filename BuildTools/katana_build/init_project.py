@@ -1,6 +1,7 @@
 import argparse
 import os
 import errno
+import subprocess
 
 try:
     from configparser import ConfigParser
@@ -13,7 +14,7 @@ import kt_util
 import kt_cmake
 
 parser = argparse.ArgumentParser()
-parser.add_argument('path', metavar='DIRECTORY', help='path to a preferably empty directory')
+parser.add_argument('path', metavar='PROJECT_PATH', help='path to a project directory')
 args = parser.parse_args()
 
 if not args:
@@ -30,6 +31,7 @@ except OSError as ex:
 
 projFile = kt_util.findProjectFile(args.path)
 projName = os.path.splitext(os.path.basename(projFile))[0]
+projDir = args.path.replace('\\','/')
 
 if not projFile:
 	print("INFO | Project config doesn't exist. Creating a default one...")
@@ -41,19 +43,71 @@ else:
 	config = ConfigParser()
 	config.read(projFile)
 
-	srcDir = config.get("General", "source")
-	srcDir = args.path + "/" + srcDir
+	replaceList = {
+		'BUILD_TOOLS_PATH':kt_config.BUILD_TOOLS_PATH
+	}
+	kt_util.createFileFromTemplate(
+		kt_config.REFRESH_PROJECT_PY_TPL,
+		projDir, 'refresh_project.py', replaceList
+	)
+
+	srcDir = config.get("General", "source_dir")
+	srcDir = projDir + "/" + srcDir
+	assetDir = config.get("General", "asset_dir")
+	assetDir = projDir + "/" + assetDir
+	
 	if not os.path.isdir(srcDir):
 		os.mkdir(srcDir)
+	if not os.path.isdir(assetDir):
+		os.mkdir(assetDir)
+	if not os.path.isdir(srcDir + '/../cmake'):
+		os.mkdir(srcDir + '/../cmake')
+	
+	# === CPP starter files ====
+	replaceList = {}
+	kt_util.createFileFromTemplate(
+		kt_config.MAIN_CPP_TPL,
+		srcDir, 'main.cpp', replaceList, False
+	)
+
+	# === VSCODE ====
+	replaceList = {
+		'BUILD_SCRIPTS_PATH':kt_config.BUILD_SCRIPTS_PATH,
+		'PROJECT_PATH':projDir
+	}
+	kt_util.createFileFromTemplate(
+		kt_config.VSCODE_TASKS_JSON_TPL,
+		projDir + "/.vscode", 'tasks.json', replaceList
+	)
+	
+	INCLUDE_PATHS = kt_config.INCLUDE_PATHS
+	INCLUDE_PATHS.append(kt_config.ENGINE_SOURCE_PATH + '/common')
+	INCLUDE_PATHS.append(kt_config.ENGINE_SOURCE_PATH + '/katana')
+	replaceList={
+		'INCLUDE_PATHS':',\n'.join('"{0}"'.format(l) for l in kt_config.INCLUDE_PATHS)
+	}
+	kt_util.createFileFromTemplate(
+		kt_config.VSCODE_C_CPP_PROPERTIES_JSON_TPL,
+		projDir + '/.vscode', 'c_cpp_properties.json', replaceList
+	)
+
+	# === CMakeLists ====	
 	kt_cmake.createCMakeLists(
 		projName,
 		srcDir
 	)
 	
-	cfgDir = config.get("General", "config")
-	cfgDir = args.path + "/" + cfgDir
+	# === Configs ====
+	cfgDir = config.get("General", "config_dir")
+	cfgDir = projDir + "/" + cfgDir
 	if not os.path.isdir(cfgDir):
 		os.mkdir(cfgDir)
 	# TODO: Create input bindings xml if doesn't exist
+
+	# === Generate cmake stuff ====
+	subprocess.check_call(
+		"cmake -S \".\" -B \"../cmake\"",
+		cwd=srcDir
+	)
 
 	print("INFO | Done")
