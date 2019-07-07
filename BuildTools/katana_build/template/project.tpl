@@ -1,13 +1,12 @@
-# General
 [General]
-source=src/
-assets=assets/
-config=cfg/
+source_dir=src/
+asset_dir=assets/
+config_dir=cfg/
 
-title=My Japanese Sword
+title=My Project
+
 input_bindings=input.xml
 command_bindings=commands.ini
-entry_session=sessMain
 
-# Rendering
-viewport=1280;720
+icon=icon.ico
+icon_editor=icon.ico
