@@ -9,6 +9,8 @@
 #include "../util/filesystem.hpp"
 #include "../util/has_suffix.hpp"
 
+#include "platform/platform.hpp"
+
 class DataRegistry {
 public:
     typedef std::map<std::string, DataSourceRef> DataSourceMap_t;
@@ -82,7 +84,7 @@ inline DataRegistry& GlobalDataRegistry() {
 inline void registerGlobalFileSource(const std::string& fname) {
     GlobalDataRegistry().Add(
         fname,
-        DataSourceRef(new DataSourceFilesystem(get_module_dir() + "\\" + fname))
+        DataSourceRef(new DataSourceFilesystem(get_module_dir()  + "/" + platformGetConfig().data_dir + "/" +  fname))
     );
 }
 

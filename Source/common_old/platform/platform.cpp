@@ -18,7 +18,7 @@ bool initWindow();
 void cleanupWindow();
 
 bool platformInit() {
-    initFilesystemResources(get_module_dir());
+    initFilesystemResources();
     if(!initWindow()) {
         return 0;
     }

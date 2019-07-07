@@ -47,7 +47,7 @@ void EditorDirView::checkDirChanges() {
     case WAIT_OBJECT_0:
         makeDirTree(directory, root_dir);
         updateFileList(selected_dir.full_path);
-        initFilesystemResources(get_module_dir());
+        initFilesystemResources();
 
         if(FindNextChangeNotification(dwChangeHandle) == FALSE) {
             LOG_ERR("FindNextChangeNotification failed");
@@ -82,7 +82,7 @@ void EditorDirView::update(Editor* editor) {
             for(auto& f : filenames) {
                 std::string res_name = f.full_path;
                 if(res_name.compare(0, get_module_dir().length(), get_module_dir()) == 0) {
-                    res_name = res_name.substr(get_module_dir().length() + 1);
+                    res_name = res_name.substr(root_dir.full_path.size() + 1);
                 }
                 while(res_name[0] == '\\' && res_name.size() > 0) {
                     res_name.erase(res_name.begin());

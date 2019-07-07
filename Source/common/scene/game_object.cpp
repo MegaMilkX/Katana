@@ -9,6 +9,8 @@
 #define MINIZ_HEADER_FILE_ONLY
 #include "../../common/lib/miniz.c"
 
+#include "../lib/imguizmo/ImGuizmo.h"
+
 GameObject::GameObject() {
 
 }
@@ -260,6 +262,19 @@ void GameObject::deserialize(std::istream& in, size_t sz) {
     
 }
 
+enum TRANSFORM_GIZMO_MODE {
+    TGIZMO_T,
+    TGIZMO_R,
+    TGIZMO_S
+};
+
+enum TRANSFORM_GIZMO_SPACE {
+    TGIZMO_LOCAL,
+    TGIZMO_WORLD
+};
+static TRANSFORM_GIZMO_MODE sGizmoMode;
+static TRANSFORM_GIZMO_SPACE sGizmoSpace;
+
 void GameObject::onGui() {
     static TransformNode* last_transform = 0;
     static int t_sync = -1;
@@ -297,9 +312,73 @@ void GameObject::onGui() {
         getRoot()->refreshAabb();
         t_sync = getTransform()->getSyncId();
     }
+
+    ImGui::Separator();
+    ImGui::Text("Gizmo:");
+    int gizmo_mode = (int)sGizmoMode;
+    int gizmo_space = (int)sGizmoSpace;
+    ImGui::RadioButton("T", &gizmo_mode, TGIZMO_T);
+    ImGui::SameLine(); ImGui::RadioButton("Local", &gizmo_space, TGIZMO_LOCAL);
+    ImGui::RadioButton("R", &gizmo_mode, TGIZMO_R);
+    ImGui::SameLine(); ImGui::RadioButton("World", &gizmo_space, TGIZMO_WORLD);
+    ImGui::RadioButton("S", &gizmo_mode, TGIZMO_S);
+    sGizmoMode = (TRANSFORM_GIZMO_MODE)gizmo_mode;
+    sGizmoSpace = (TRANSFORM_GIZMO_SPACE)gizmo_space;
 }
 
 void GameObject::onGizmo(GuiViewport& vp) {
+    ImVec2 sz;
+    sz.x = vp.getSize().x;
+    sz.y = vp.getSize().y;
+    gfxm::mat4 proj = vp.getProjection();
+    gfxm::mat4 view = vp.getView();
+
+    ImGuizmo::SetRect(
+        ImVec2(ImGui::GetCursorScreenPos()).x, 
+        ImVec2(ImGui::GetCursorScreenPos()).y, 
+        sz.x, 
+        sz.y
+    );
+    gfxm::mat4 model = getTransform()->getWorldTransform();
+    gfxm::mat4 dModel(1.0f);
+
+    ImGuizmo::MODE space_mode = ImGuizmo::MODE::LOCAL;
+    if(sGizmoSpace == TGIZMO_WORLD) {
+        space_mode = ImGuizmo::MODE::WORLD;
+    }
+    
+    if(sGizmoMode == TGIZMO_T) {
+        ImGuizmo::Manipulate((float*)&view, (float*)&proj, ImGuizmo::OPERATION::TRANSLATE, space_mode, (float*)&model, (float*)&dModel, 0);
+        if(ImGuizmo::IsUsing()){
+            gfxm::vec4 dT = dModel[3];
+            getTransform()->translate(
+                gfxm::inverse(getTransform()->getParentTransform()) * dT
+            );
+            getRoot()->refreshAabb();
+        }
+    } else if(sGizmoMode == TGIZMO_R) {
+        ImGuizmo::Manipulate((float*)&view, (float*)&proj, ImGuizmo::OPERATION::ROTATE, space_mode, (float*)&model, (float*)&dModel, 0);
+        if(ImGuizmo::IsUsing()){
+            gfxm::quat q = gfxm::to_quat(gfxm::to_mat3(dModel));
+            getTransform()->rotate(q);
+            getRoot()->refreshAabb();
+        }
+    } else if(sGizmoMode == TGIZMO_S) {
+        ImGuizmo::Manipulate((float*)&view, (float*)&proj, ImGuizmo::OPERATION::SCALE, space_mode, (float*)&model, (float*)&dModel, 0);
+        if(ImGuizmo::IsUsing()){
+            gfxm::mat4 m4 = model;
+            m4 = gfxm::inverse(getTransform()->getParentTransform()) * m4;
+            gfxm::vec3 dscl(
+                gfxm::length(m4[0]),
+                gfxm::length(m4[1]),
+                gfxm::length(m4[2])
+            );
+
+            getTransform()->setScale(dscl);
+            getRoot()->refreshAabb();
+        }
+    }
+    
     for(size_t i = 0; i < componentCount(); ++i) {
         getById(i)->onGizmo(vp);
     }

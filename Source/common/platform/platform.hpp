@@ -1,6 +1,10 @@
 #ifndef PLATFORM_HPP
 #define PLATFORM_HPP
 
+#include "../config.hpp"
+
+Config& platformGetConfig();
+
 bool platformInit();
 void platformCleanup();
 bool platformIsShuttingDown();

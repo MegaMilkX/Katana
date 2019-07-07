@@ -12,6 +12,16 @@ GuiViewport::~GuiViewport() {
     dd.cleanup();
 }
 
+gfxm::ivec2 GuiViewport::getSize() const {
+    return gfxm::ivec2(viewport_sz.x, viewport_sz.y);
+}
+gfxm::mat4 GuiViewport::getProjection() const {
+    return _proj;
+}
+gfxm::mat4 GuiViewport::getView() const {
+    return _view;
+}
+
 bool GuiViewport::isMouseClicked(int button) {
     if(button > 4) return false;
     return mouse_clicked[button];
@@ -23,14 +33,14 @@ gfxm::ivec2 GuiViewport::getMousePos() {
 
 gfxm::vec3 GuiViewport::getMouseScreenToWorldPos(float height) {
     gfxm::mat4 proj = gfxm::perspective(gfxm::radian(45.0f), viewport_sz.x/(float)viewport_sz.y, 0.01f, 1000.0f);
-        gfxm::transform tcam;
-        cam_pos = gfxm::lerp(cam_pos, cam_pivot, 0.2f);
-        cam_zoom_actual = gfxm::lerp(cam_zoom_actual, cam_zoom, 0.2f);
-        tcam.position(cam_pos);
-        tcam.rotate(cam_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
-        tcam.rotate(cam_angle_x, tcam.right());
-        tcam.translate(tcam.back() * cam_zoom_actual);
-        gfxm::mat4 view = gfxm::inverse(tcam.matrix());
+    gfxm::transform tcam;
+    cam_pos = gfxm::lerp(cam_pos, cam_pivot, 0.2f);
+    cam_zoom_actual = gfxm::lerp(cam_zoom_actual, cam_zoom, 0.2f);
+    tcam.position(cam_pos);
+    tcam.rotate(cam_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
+    tcam.rotate(cam_angle_x, tcam.right());
+    tcam.translate(tcam.back() * cam_zoom_actual);
+    gfxm::mat4 view = gfxm::inverse(tcam.matrix());
 
     return gfxm::screenToWorldPlaneXY(
         gfxm::vec2(mouse_pos.x, mouse_pos.y),
@@ -132,7 +142,7 @@ void GuiViewport::draw(GameScene* scn, GameObject* selected_object, gfxm::ivec2 
         // ============================
 
         rvp.resize(vp_sz.x, vp_sz.y);
-        gfxm::mat4 proj = gfxm::perspective(gfxm::radian(45.0f), vp_sz.x/(float)vp_sz.y, 0.01f, 1000.0f);
+        _proj = gfxm::perspective(gfxm::radian(45.0f), vp_sz.x/(float)vp_sz.y, 0.01f, 1000.0f);
         gfxm::transform tcam;
         cam_pos = gfxm::lerp(cam_pos, cam_pivot, 0.2f);
         cam_zoom_actual = gfxm::lerp(cam_zoom_actual, cam_zoom, 0.2f);
@@ -140,16 +150,16 @@ void GuiViewport::draw(GameScene* scn, GameObject* selected_object, gfxm::ivec2 
         tcam.rotate(cam_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
         tcam.rotate(cam_angle_x, tcam.right());
         tcam.translate(tcam.back() * cam_zoom_actual);
-        gfxm::mat4 view = gfxm::inverse(tcam.matrix());
+        _view = gfxm::inverse(tcam.matrix());
 
         DrawList dl;
         scn->getController<RenderController>()->getDrawList(dl);
-        renderer.draw(&rvp, proj, view, dl);
+        renderer.draw(&rvp, _proj, _view, dl);
         
         rvp.getFinalBuffer()->bind();
         glViewport(0, 0, (GLsizei)vp_sz.x, (GLsizei)vp_sz.y);
         if(debug_draw_enabled) {
-            dd.draw(proj, view);
+            dd.draw(_proj, _view);
         }
 
         ImGui::GetWindowDrawList()->AddImage((void*)rvp.getFinalImage(),

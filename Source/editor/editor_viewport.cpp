@@ -15,6 +15,8 @@
 
 #include "../common/scene/controllers/render_controller.hpp"
 
+#include "../common/platform/platform.hpp"
+
 bool mouse_look = false;
 bool mouse_look_alt = false;
 float cam_angle_y = gfxm::radian(45.0f);
@@ -100,7 +102,7 @@ void EditorViewport::update(Editor* editor) {
                     editor->setSelectedObject(new_so);
                     editor->backupScene("import object from fbx");
                 } else if(has_suffix(fname, ".so")) {
-                    editor->getScene()->getRoot()->createChild()->read(fname);
+                    editor->getScene()->getRoot()->createChild()->read(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + fname);
                 }
             }
             ImGui::EndDragDropTarget();

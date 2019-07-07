@@ -27,6 +27,8 @@
 
 #include "../common/scene/game_object.hpp"
 
+#include "../common/platform/platform.hpp"
+
 inline gfxm::vec2 sampleSphericalMap(gfxm::vec3 v) {
     const gfxm::vec2 invAtan = gfxm::vec2(0.1591f, 0.3183f);
     gfxm::vec2 uv = gfxm::vec2(atan2f(v.z, v.x), asinf(v.y));
@@ -77,7 +79,7 @@ inline std::shared_ptr<Skeleton> skeletonFromAssimpScene(const aiScene* ai_scene
     };
     finalizeBone(ai_scene->mRootNode, skel);
 
-    skel->write_to_file(fname);
+    skel->write_to_file(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + fname);
     registerGlobalFileSource(fname);
 
     return skel;
@@ -192,7 +194,7 @@ inline void meshesFromAssimpScene(
         mesh_ref->mesh.setIndices(indices.data(), indices.size());
 
         std::string fname = MKSTR("data\\mesh\\" << dirname << "\\" << root_name << i << ".msh");
-        mesh_ref->write_to_file(fname);
+        mesh_ref->write_to_file(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + fname);
         registerGlobalFileSource(fname);
     }
 }
@@ -376,7 +378,7 @@ inline void animFromAssimpScene(
             // TODO: Convert to additive?
         }
 
-        anim->write_to_file(fname);
+        anim->write_to_file(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + fname);
         registerGlobalFileSource(fname);
     }
 }
@@ -463,10 +465,10 @@ inline bool objectFromFbx(const std::vector<char>& buffer, GameObject* o, const 
     fname = fname.substr(0, fname.find_first_of('.')); 
     //CreateDirectoryA(dirname.c_str(), 0);
 
-    createDirRecursive(get_module_dir() + "\\data\\anim\\" + fname);
-    createDirRecursive(get_module_dir() + "\\data\\mesh\\" + fname);
-    createDirRecursive(get_module_dir() + "\\data\\skel\\" + fname);
-    std::string asset_param_path = get_module_dir() + "\\asset_params\\" + filename + ".asset_params";
+    createDirRecursive(get_module_dir() + "/" + platformGetConfig().data_dir + "\\data\\anim\\" + fname);
+    createDirRecursive(get_module_dir() + "/" + platformGetConfig().data_dir + "\\data\\mesh\\" + fname);
+    createDirRecursive(get_module_dir() + "/" + platformGetConfig().data_dir + "\\data\\skel\\" + fname);
+    std::string asset_param_path = get_module_dir() + "/" + platformGetConfig().data_dir + "\\asset_params\\" + filename + ".asset_params";
     createDirRecursive(cut_dirpath(asset_param_path));
 
     std::string root_name = "object";
@@ -580,7 +582,7 @@ inline bool objectFromFbx(const std::vector<char>& buffer, GameObject* o, const 
 }
 
 inline bool objectFromFbx(const std::string& filename, GameObject* o) {
-    std::ifstream f(filename, std::ios::binary | std::ios::ate);
+    std::ifstream f(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + filename, std::ios::binary | std::ios::ate);
     if(!f.is_open()) {
         LOG_WARN("Failed to open " << filename);
         return false;

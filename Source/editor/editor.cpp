@@ -17,6 +17,8 @@
 #include "../common/scene/controllers/constraint_ctrl.hpp"
 #include "../common/scene/controllers/anim_controller.hpp"
 
+#include "../common/platform/platform.hpp"
+
 int setupImguiLayout();
 
 Editor::Editor() {
@@ -95,7 +97,7 @@ void Editor::onInit() {
     scene->getController<AnimController>();
     scene->startSession();
 
-    dir_view.init(get_module_dir());
+    dir_view.init(get_module_dir() + "/" + platformGetConfig().data_dir);
     viewport.init(this, scene.get());
 
     LOG("Editor initialized");
@@ -210,7 +212,7 @@ void Editor::onGui() {
     //bool sdw = true;
     //ImGui::ShowDemoWindow(&sdw);
 
-    audio().debugGui();
+    //audio().debugGui();
 
     viewport.update(this);
     scene_inspector.update(this);
@@ -218,6 +220,7 @@ void Editor::onGui() {
     object_inspector.update(this);
     asset_inspector.update(this);
     if(ImGui::Begin("Toolbox")) {
+        /*
         ImGui::Text("Transform:");
         int gizmo_mode = (int)editor_state.tgizmo_mode;
         int gizmo_space = (int)editor_state.tgizmo_space;
@@ -226,7 +229,7 @@ void Editor::onGui() {
         ImGui::RadioButton("R", &gizmo_mode, TGIZMO_R);
         ImGui::SameLine(); ImGui::RadioButton("World", &gizmo_space, TGIZMO_WORLD);
         ImGui::RadioButton("S", &gizmo_mode, TGIZMO_S);
-        
+        */
         ImGui::Separator();
         bool dd = viewport.getViewport().debugDrawEnabled();
         ImGui::Checkbox("Debug draw", &dd);
@@ -234,8 +237,8 @@ void Editor::onGui() {
 
         ImGui::End();
 
-        editor_state.tgizmo_mode = (TRANSFORM_GIZMO_MODE)gizmo_mode;
-        editor_state.tgizmo_space = (TRANSFORM_GIZMO_SPACE)gizmo_space;
+        //editor_state.tgizmo_mode = (TRANSFORM_GIZMO_MODE)gizmo_mode;
+        //editor_state.tgizmo_space = (TRANSFORM_GIZMO_SPACE)gizmo_space;
     }
     if(ImGui::Begin("History", &history_open, ImVec2(100, 200))) {
         history.onGui();
