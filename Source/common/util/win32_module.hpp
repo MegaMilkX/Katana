@@ -5,6 +5,10 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+#include <string>
+
+#include "split.hpp"
+
 inline HMODULE this_module_handle()
 {
   HMODULE h = NULL;
@@ -14,6 +18,15 @@ inline HMODULE this_module_handle()
     &h
   );
   return h;
+}
+
+inline std::string this_module_name() {
+    std::string filename;
+    char buf[512];
+    GetModuleFileNameA(this_module_handle(), buf, 512);
+    filename = buf;
+    auto tokens = split(filename, '\\');
+    return tokens[tokens.size() - 1];
 }
 
 #endif

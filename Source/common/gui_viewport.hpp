@@ -47,10 +47,16 @@ private:
     //
     gfxm::aabb viewport_bb;
     gfxm::vec2 viewport_sz;
+
+    gfxm::mat4 _proj;
+    gfxm::mat4 _view;
 public:
     GuiViewport();
     ~GuiViewport();
 
+    gfxm::ivec2 getSize() const;
+    gfxm::mat4 getProjection() const;
+    gfxm::mat4 getView() const;
     bool isMouseClicked(int button);
     gfxm::ivec2 getMousePos();
     gfxm::vec3 getMouseScreenToWorldPos(float height);

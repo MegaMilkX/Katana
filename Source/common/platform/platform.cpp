@@ -11,7 +11,6 @@
 #include "../audio.hpp"
 #include "../lib/imgui_wrap.hpp"
 
-
 static GLFWwindow* window = 0;
 
 bool initWindow();
@@ -19,8 +18,13 @@ void cleanupWindow();
 
 static ImFont* font1;
 
+Config& platformGetConfig() {
+    static Config cfg;
+    return cfg;
+}
+
 bool platformInit() {
-    initFilesystemResources(get_module_dir());
+    initFilesystemResources(get_module_dir() + "/" + platformGetConfig().data_dir);
     if(!initWindow()) {
         return 0;
     }

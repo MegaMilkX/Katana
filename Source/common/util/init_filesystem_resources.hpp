@@ -5,6 +5,7 @@
 #include "filesystem.hpp"
 #include "../resource/data_registry.h"
 #include "log.hpp"
+#include "../platform/platform.hpp"
 
 inline void initFilesystemResources(const std::string& rootDir) {
     GlobalDataRegistry().Clear();
@@ -30,6 +31,10 @@ inline void initFilesystemResources(const std::string& rootDir) {
     }
 
     LOG("Found " << GlobalDataRegistry().Count() << " file data sources");
+}
+
+inline void initFilesystemResources() {
+    initFilesystemResources(get_module_dir() + "/" + platformGetConfig().data_dir);
 }
 
 #endif

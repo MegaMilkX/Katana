@@ -43,12 +43,13 @@ private:
             tm ptm = {0};
             time_t t = time(0);
             localtime_s(&ptm, &t);
-            char buffer[32];
-            strftime(buffer, 32, "%d%m%Y", &ptm);
+            char buffer[64];
+            strftime(buffer, 64, "%d%m%Y", &ptm);
+            std::string fname = this_module_name() + "_" + std::string(buffer);
 
             createDirRecursive(get_module_dir() + "\\log");
 
-            std::ofstream f(get_module_dir() + "\\log\\" + std::string(buffer) + ".log", std::ios::out | std::ios::app);
+            std::ofstream f(get_module_dir() + "\\log\\" + fname + ".log", std::ios::out | std::ios::app);
 
             do {
                 std::queue<entry> lines_copy;

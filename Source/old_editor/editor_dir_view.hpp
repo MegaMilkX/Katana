@@ -117,7 +117,7 @@ public:
             root_dir.children.clear();
             makeDirTree(directory, root_dir);
             updateList(selected_dir.full_path + "\\");
-            initFilesystemResources(get_module_dir());
+            initFilesystemResources();
 
             if(FindNextChangeNotification(dwChangeHandle) == FALSE) {
                 LOG_ERR("FindNextChangeNotification failed");
