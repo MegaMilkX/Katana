@@ -5,7 +5,7 @@
 
 #include "../../common/util/log.hpp"
 
-#include "../../common/resource/resource_factory.h"
+#include "../../common/resource/resource_tree.hpp"
 
 class AssetView {
 public:

@@ -6,7 +6,7 @@
 #include "../../common/resource/animation.hpp"
 #include "../../common/resource/skeleton.hpp"
 
-#include "../../common/resource/resource_factory.h"
+#include "../../common/resource/resource_tree.hpp"
 
 #include "../transform.hpp"
 
@@ -88,6 +88,13 @@ public:
         static int selected_index = 0;
         static int selected_anim_index = 0;
 
+        if(selected_anim_index >= anims.size()) {
+            selected_anim_index = anims.size() - 1;
+            if(selected_anim_index < 0) {
+                selected_anim_index = 0;
+            }
+        }
+
         ImGui::Text("Skeleton "); ImGui::SameLine();
         std::string button_label = "! No skeleton !";
         if(anim_stack->skeleton) {
@@ -101,7 +108,7 @@ public:
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
                 std::string fname = (char*)payload->Data;
                 LOG("Payload received: " << fname);
-                anim_stack->setSkeleton(getResource<Skeleton>(fname));
+                anim_stack->setSkeleton(retrieve<Skeleton>(fname));
             }
             ImGui::EndDragDropTarget();
         }
@@ -182,7 +189,7 @@ public:
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
                 std::string fname = (char*)payload->Data;
                 LOG("Payload received: " << fname);
-                auto anim = getResource<Animation>(fname);
+                auto anim = retrieve<Animation>(fname);
                 anim_stack->addAnim(anim);
             }
             ImGui::EndDragDropTarget();

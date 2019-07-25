@@ -29,13 +29,11 @@ static bool showSaveGameObjectDialog(GameObject* o, bool forceDialog) {
     return true;
 }
 
-static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
+static GameObject* guiGameObjectContextMenu(GameObject* o, ObjectSet& selected) {
     if (ImGui::BeginPopupContextItem()) {
         if(ImGui::MenuItem("Create child")) {
-            editor->setSelectedObject(
-                o->createChild()
-            );
-            editor->backupScene("child created");
+            selected.clearAndAdd(o->createChild());
+            // TODO: editor->backupScene("child created");
         }
         if(o && (o->getParent() != 0)) {
             ImGui::Separator();
@@ -46,7 +44,7 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
         ImGui::Separator();
         if(ImGui::MenuItem("Duplicate")) {
             o->duplicate();
-            editor->backupScene("object duplicated");
+            // TODO: editor->backupScene("object duplicated");
         }
         ImGui::Separator();
         if(ImGui::MenuItem("Save As...")) {
@@ -54,30 +52,32 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, Editor* editor) {
         }
         ImGui::Separator();
         if(ImGui::MenuItem("Delete")) {
-            if(editor->getSelectedObject() == o)editor->setSelectedObject(0);
+            if(selected.contains(o)) selected.clear();
             o->remove(true);
             o = 0;
-            editor->backupScene("object deleted");
+            // TODO: editor->backupScene("object deleted");
         }
         if(ImGui::MenuItem("Delete tree")) {
-            if(editor->getSelectedObject() == o) editor->setSelectedObject(0);
+            if(selected.contains(o)) selected.clear();
             o->remove();
             o = 0;
-            editor->backupScene("object tree deleted");
+            // TODO: editor->backupScene("object tree deleted");
         }
         ImGui::EndPopup();
     }
     return o;
 } 
 
-void EditorSceneInspector::update(Editor* editor) {
-    GameScene* scene = editor->getScene();
+void EditorSceneInspector::update(Editor* editor, const std::string& title) {
+    update(editor->getScene(), editor->getSelectedObjects(), title);
+}
 
-    if(ImGui::Begin("Scene Inspector", 0, ImGuiWindowFlags_MenuBar)) {
+void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const std::string& title) {
+    if(ImGui::Begin(title.c_str(), 0, ImGuiWindowFlags_MenuBar)) {
         if(ImGui::BeginMenuBar()) {
             if(ImGui::MenuItem("Create")) {
-                editor->setSelectedObject(editor->getScene()->getRoot()->createChild());
-                editor->backupScene("object created");
+                selected.clearAndAdd(scene->getRoot()->createChild());
+                // TODO: editor->backupScene("object created");
             }
             ImGui::EndMenuBar();
         }
@@ -87,7 +87,7 @@ void EditorSceneInspector::update(Editor* editor) {
         }
         std::string find_str = search_string_buf;
         if(find_str.empty()) {
-            sceneTreeViewNode(scene->getRoot(), editor);
+            sceneTreeViewNode(scene->getRoot(), selected);
         } else {
             ImGui::Text("Search results:");
             auto objects = scene->findObjectsFuzzy(find_str);
@@ -95,8 +95,8 @@ void EditorSceneInspector::update(Editor* editor) {
                 std::string name_with_uid;
                 name_with_uid = MKSTR(o->getName() << "##" << o);
 
-                if(ImGui::Selectable(name_with_uid.c_str(), o == editor->getSelectedObject())) {
-                    editor->setSelectedObject(o);
+                if(ImGui::Selectable(name_with_uid.c_str(), selected.contains(o))) {
+                    selected.clearAndAdd(o);
                 }
                 if(ImGui::BeginDragDropSource(0)) {
                     ImGui::SetDragDropPayload("DND_OBJECT", &o, sizeof(o));
@@ -110,7 +110,7 @@ void EditorSceneInspector::update(Editor* editor) {
                     }
                     ImGui::EndDragDropTarget();
                 }
-                o = guiGameObjectContextMenu(o, editor);
+                o = guiGameObjectContextMenu(o, selected);
             }
         }
 
@@ -128,15 +128,15 @@ void EditorSceneInspector::update(Editor* editor) {
     }
 }
 
-void EditorSceneInspector::sceneTreeViewNode(GameObject* o, Editor* editor) {
+void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected) {
     std::string name_with_uid = MKSTR(o->getName() << "##" << o);
 
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
     if(o->childCount() == 0) {
         ImGui::PushID(name_with_uid.c_str());
         ImGui::TreeAdvanceToLabelPos();
-        if(ImGui::Selectable(name_with_uid.c_str(), o == editor->getSelectedObject())) {
-            editor->setSelectedObject(o);
+        if(ImGui::Selectable(name_with_uid.c_str(), selected.contains(o))) {
+            selected.clearAndAdd(o);
         }
         if(ImGui::BeginDragDropSource(0)) {
             ImGui::SetDragDropPayload("DND_OBJECT", &o, sizeof(o));
@@ -150,7 +150,7 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, Editor* editor) {
             }
             ImGui::EndDragDropTarget();
         }
-        guiGameObjectContextMenu(o, editor);
+        guiGameObjectContextMenu(o, selected);
         ImGui::PopID();
     } else {
         ImGui::PushID(o);
@@ -161,8 +161,8 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, Editor* editor) {
             ""
         );
         ImGui::SameLine();
-        if(ImGui::Selectable(name_with_uid.c_str(), o == editor->getSelectedObject())) {
-            editor->setSelectedObject(o);
+        if(ImGui::Selectable(name_with_uid.c_str(), selected.contains(o))) {
+            selected.clearAndAdd(o);
         }
         if(ImGui::BeginDragDropSource(0)) {
             ImGui::SetDragDropPayload("DND_OBJECT", &o, sizeof(o));
@@ -176,13 +176,13 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, Editor* editor) {
             }
             ImGui::EndDragDropTarget();
         }
-        o = guiGameObjectContextMenu(o, editor);
+        o = guiGameObjectContextMenu(o, selected);
         ImGui::PopID();
 
         if(node_open) {
             if(o) {
                 for(unsigned i = 0; i < o->childCount(); ++i) {
-                    sceneTreeViewNode(o->getChild(i), editor);
+                    sceneTreeViewNode(o->getChild(i), selected);
                 }
             }
             ImGui::TreePop();

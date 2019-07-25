@@ -7,9 +7,13 @@
 
 #include "../../common/resource/audio_clip.hpp"
 
-#include "../../common/resource/resource_factory.h"
+#include "../../common/resource/resource_tree.hpp"
 
 #include "../../common/audio.hpp"
+
+#include "../../common/util/has_suffix.hpp"
+
+#include "../../common/util/imgui_helpers.hpp"
 
 class AudioSource : public Attribute {
     RTTR_ENABLE(Attribute)
@@ -66,7 +70,16 @@ public:
     }
 
     virtual void onGui() {
-        auto clip_list = GlobalDataRegistry().makeList(".ogg");
+        std::string clip_name = "<null>";
+        if(clip) clip_name = clip->Name();
+        
+        imguiResourceTreeCombo("AudioClip", clip, "ogg", [this](){
+            setClip(clip);
+        });
+        
+        // TODO: FIX
+        /*
+        auto clip_list = std::vector<std::string>();// GlobalDataRegistry().makeList(".ogg");
         std::string clip_name = "<null>";
         if(clip) {
             clip_name = clip->Name();
@@ -79,6 +92,7 @@ public:
             }
             ImGui::EndCombo();
         }
+         */
         if(ImGui::Button("Preview")) {
             audio().play(emid);
         }

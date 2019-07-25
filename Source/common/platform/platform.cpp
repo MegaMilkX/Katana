@@ -3,9 +3,10 @@
 #include <glfw/glfw3.h>
 
 #include "../shader_factory.hpp"
-#include "../event.hpp"
+//#include "../event.hpp"
 #include "../debug_draw.hpp"
-#include "../util/init_filesystem_resources.hpp"
+//#include "../util/init_filesystem_resources.hpp"
+#include "../resource/resource_tree.hpp"
 #include "../input/input_mgr.hpp"
 #include "../input/input_glfw.hpp"
 #include "../audio.hpp"
@@ -24,7 +25,8 @@ Config& platformGetConfig() {
 }
 
 bool platformInit() {
-    initFilesystemResources(get_module_dir() + "/" + platformGetConfig().data_dir);
+    gResourceTree.scanFilesystem(get_module_dir() + "/" + platformGetConfig().data_dir);
+    
     if(!initWindow()) {
         return 0;
     }
@@ -86,7 +88,7 @@ bool platformIsShuttingDown() {
 void platformUpdate() {
     glfwPollEvents();
     updateGlfwInput(window);
-    eventMgr().pollEvents();
+    //eventMgr().pollEvents();
 
     unsigned w, h;
     unsigned cx, cy;

@@ -45,7 +45,7 @@ private:
     gfxm::ivec2 mouse_pos;
 
     //
-    gfxm::aabb viewport_bb;
+    gfxm::ivec2 pos;
     gfxm::vec2 viewport_sz;
 
     gfxm::mat4 _proj;
@@ -54,6 +54,7 @@ public:
     GuiViewport();
     ~GuiViewport();
 
+    gfxm::ivec2 getPos() const;
     gfxm::ivec2 getSize() const;
     gfxm::mat4 getProjection() const;
     gfxm::mat4 getView() const;

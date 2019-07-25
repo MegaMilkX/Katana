@@ -15,7 +15,6 @@
 #include "../components/component.hpp"
 
 class GameScene;
-class Behavior;
 
 class GameObject {
     friend GameScene;
@@ -36,12 +35,6 @@ public:
     GameObject*                         getParent();
 
     TransformNode*                      getTransform();
-
-    template<typename BHVR_T>
-    void                                setBehavior();
-    void                                setBehavior(rttr::type t);
-    Behavior*                           getBehavior();
-    void                                clearBehavior();
 
     GameObject*                         createChild();
     size_t                              childCount();
@@ -68,9 +61,6 @@ public:
     void                                setAabb(const gfxm::aabb& box);
     const gfxm::aabb&                   getAabb() const;
 
-    virtual void                        serialize(std::ostream& out);
-    virtual void                        deserialize(std::istream& in, size_t sz);
-
     virtual void                        onGui();
     void                                onGizmo(GuiViewport& vp);
     bool                                serializeComponents(std::ostream& out);
@@ -93,11 +83,6 @@ private:
     std::set<GameObject*> children;
     std::map<rttr::type, std::shared_ptr<Attribute>> components;
 };
-
-template<typename BHVR_T>
-void GameObject::setBehavior() {
-    setBehavior(rttr::type::get<T>());
-}
 
 template<typename COMPONENT_T>
 std::shared_ptr<COMPONENT_T> GameObject::get() {

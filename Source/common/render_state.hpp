@@ -6,7 +6,7 @@
 #include "shader_factory.hpp"
 #include "resource/texture2d.h"
 #include "resource/cube_map.hpp"
-#include "resource/resource_factory.h"
+#include "resource/resource_tree.hpp"
 #include "gl/uniform_buffers.hpp"
 
 #define SKIN_BONE_LIMIT 256

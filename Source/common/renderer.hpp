@@ -8,7 +8,7 @@
 #include "resource/texture2d.h"
 #include "resource/cube_map.hpp"
 
-#include "resource/resource_factory.h"
+#include "resource/resource_tree.hpp"
 
 #include "draw_list.hpp"
 

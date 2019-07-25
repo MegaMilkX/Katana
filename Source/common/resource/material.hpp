@@ -6,7 +6,7 @@
 #include "texture2d.h"
 #include "../lib/json.hpp"
 #include "../util/log.hpp"
-#include "../resource/resource_factory.h"
+#include "../resource/resource_tree.hpp"
 
 class Material : public Resource {
 public:
@@ -71,7 +71,7 @@ private:
         nlohmann::json j_ = j[name];
         if(j_.is_string()) {
             std::string name = j_.get<std::string>();
-            ptr = getResource<Texture2D>(name);
+            ptr = retrieve<Texture2D>(name);
         } else {
             LOG_WARN(name << " value must be a string");
         }

@@ -135,10 +135,10 @@ public:
             uint64_t reserved = r.read<uint64_t>();
             mat_name = r.readStr();
             if(!mesh_name.empty()) {
-                getSegment(i).mesh = getResource<Mesh>(mesh_name);
+                getSegment(i).mesh = retrieve<Mesh>(mesh_name);
             }
             if(!mat_name.empty()) {
-                getSegment(i).material = getResource<Material>(mat_name);
+                getSegment(i).material = retrieve<Material>(mat_name);
             }
 
             uint32_t bone_count = r.read<uint32_t>();
@@ -160,22 +160,12 @@ public:
         for(size_t i = 0; i < segmentCount(); ++i) {
             auto& seg = getSegment(i);
             ImGui::Text(MKSTR("Segment " << i).c_str());
-            imguiResourceCombo<Mesh>(
-                MKSTR("mesh##" << i).c_str(),
-                seg.mesh,
-                ".msh",
-                [](){
-                    LOG("Mesh changed");
-                }
-            );
-            imguiResourceCombo<Material>(
-                MKSTR("material##" << i).c_str(),
-                seg.material,
-                ".mat",
-                [](){
-                    LOG("Material changed")
-                }
-            );
+            imguiResourceTreeCombo(MKSTR("mesh##" << i).c_str(), seg.mesh, "msh", [this](){
+                LOG("Mesh changed");
+            });
+            imguiResourceTreeCombo(MKSTR("material##" << i).c_str(), seg.material, "mat", [this](){
+                LOG("Material changed");
+            });
             if(ImGui::SmallButton(MKSTR("- remove segment##" << i).c_str())) {
                 removeSegment(i);
             }

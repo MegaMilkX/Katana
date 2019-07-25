@@ -6,6 +6,8 @@
 #include "editor_dir_view.hpp"
 #include "editor_object_inspector.hpp"
 #include "editor_asset_inspector.hpp"
+#include "editor_resource_tree.hpp"
+#include "editor_document.hpp"
 
 #include "../common/input/input_mgr.hpp"
 
@@ -18,6 +20,8 @@
 #include "../common/application_state.hpp"
 
 #include "scene_history.hpp"
+
+#include "object_set.hpp"
 
 enum TRANSFORM_GIZMO_MODE {
     TGIZMO_T,
@@ -47,9 +51,15 @@ public:
     virtual void onGui();
 
     GameScene* getScene();
-    GameObject* getSelectedObject();
+    ObjectSet& getSelectedObjects();
     EditorAssetInspector* getAssetInspector();
+    EditorResourceTree& getResourceTree();
+    void setCurrentDockspace(ImGuiID id);
     void setSelectedObject(GameObject* o);
+
+    void addDocument(const ResourceNode* node, EditorDocument* doc);
+    void addNewDocument(EditorDocument* doc);
+    void tryOpenDocument(const ResourceNode* node);
 
     void backupScene(const std::string& label = "");
     void redo();
@@ -57,10 +67,19 @@ public:
 
     EditorState& getState();
 private:
+    int setupImguiLayout();
+
     bool showOpenSceneDialog();
     bool showSaveSceneDialog(GameScene* scene, bool forceDialog = false);
 
     EditorState editor_state;
+
+    EditorResourceTree ed_resource_tree;
+    std::map<const ResourceNode*, EditorDocument*> documents;
+    std::set<EditorDocument*> new_documents;
+
+    ImGuiID dockspace_id;
+    ImGuiID current_dockspace; // dockspace for the next opened document
 
     EditorViewport viewport;
     EditorSceneInspector scene_inspector;
@@ -71,7 +90,7 @@ private:
     InputListener* input_lis = 0;
 
     std::shared_ptr<GameScene> scene;
-    GameObject* selected_object = 0;
+    ObjectSet selected_objects;
     SceneHistory history;
 
     std::string currentSceneFile;
