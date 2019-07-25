@@ -24,8 +24,8 @@ public:
     };
 
     virtual ~Resource() {}
-    const std::string& Name() const { return name; }
-    void Name(const std::string& name) { this->name = name; }
+    const std::string& Name() const { return resource_name; }
+    void Name(const std::string& name) { resource_name = name; }
     STORAGE Storage() const { return storage; }
     void Storage(STORAGE storage) { this->storage = storage; }
 
@@ -43,7 +43,7 @@ public:
 
     virtual void _editorGui() {}
 private:
-    std::string name;
+    std::string resource_name;
     STORAGE storage;
 };
 

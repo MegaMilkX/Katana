@@ -2,6 +2,12 @@
 
 #include "../common/scene/game_scene.hpp"
 
+#include "../common/scene/controllers/render_controller.hpp"
+#include "../common/scene/controllers/dynamics_ctrl.hpp"
+#include "../common/scene/controllers/constraint_ctrl.hpp"
+#include "../common/scene/controllers/audio_controller.hpp"
+#include "../common/scene/controllers/anim_controller.hpp"
+
 EditorDocScene::EditorDocScene(ResourceNode* node)
 : EditorDocument(node) {
     if(node) {
@@ -9,6 +15,12 @@ EditorDocScene::EditorDocScene(ResourceNode* node)
     } else {
         scene.reset(new GameScene());
     }
+    scene->getController<RenderController>();
+    scene->getController<DynamicsCtrl>();
+    scene->getController<ConstraintCtrl>();
+    scene->getController<AudioController>();
+    scene->getController<AnimController>();
+
     gvp.enableDebugDraw(true);
 }
 

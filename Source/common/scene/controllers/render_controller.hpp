@@ -13,8 +13,6 @@
 
 #include "../../../common/util/imgui_helpers.hpp"
 
-#include "../scene_listener.hpp"
-
 class RenderController : public SceneControllerEventFilter<Model, Camera, OmniLight> {
     RTTR_ENABLE(SceneController)
 public:

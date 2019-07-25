@@ -4,8 +4,6 @@
 
 #include "../behavior/behavior.hpp"
 
-#include "game_scene.hpp"
-
 #define MINIZ_HEADER_FILE_ONLY
 #include "../../common/lib/miniz.c"
 
@@ -32,9 +30,6 @@ const std::string& GameObject::getName() const {
     return name; 
 }
 
-GameScene* GameObject::getScene() {
-    return scene;
-}
 GameObject* GameObject::getRoot() {
     if(!parent) {
         return this;
@@ -52,7 +47,6 @@ TransformNode* GameObject::getTransform() {
 
 GameObject* GameObject::createChild() {
     GameObject* o = new GameObject();
-    o->scene = scene;
     o->parent = this;
     o->getTransform()->setParent(&transform);
     children.insert(o);
@@ -129,12 +123,12 @@ std::shared_ptr<Attribute> GameObject::getById(size_t id) {
 void GameObject::deleteComponentById(size_t id) {
     auto it = components.begin();
     std::advance(it, id);
-    getScene()->_unregisterComponent(it->second.get());
+    _unregisterComponent(it->second.get());
     components.erase(it);
 }
 void GameObject::deleteAllComponents() {
     for(auto& kv : components) {
-        getScene()->_unregisterComponent(kv.second.get());
+        _unregisterComponent(kv.second.get());
     }
     components.clear();
 }
@@ -389,7 +383,7 @@ std::shared_ptr<Attribute> GameObject::createComponent(rttr::type t) {
 
     components[t] = ptr;
     ptr->onCreate();
-    getScene()->_registerComponent(c);
+    _registerComponent(c);
     return ptr;
 }
 
@@ -518,7 +512,6 @@ void GameObject::read(in_stream& in) {
         
         objects[i]->parent = objects[p];
         objects[p]->children.insert(objects[i]);
-        objects[i]->scene = this->scene;
         objects[i]->getTransform()->setPosition(t);
         objects[i]->getTransform()->setRotation(r);
         objects[i]->getTransform()->setScale(s);
@@ -572,4 +565,39 @@ bool GameObject::read(const std::string& fname) {
     read(strm);
 
     return true;
+}
+
+
+void GameObject::_registerComponent(Attribute* attrib) {
+    GameObject* current = parent;
+    GameObject* p = 0;
+    while(current) {
+        p = current;
+        current = current->parent;
+    }
+    if(p) {
+        p->_registerComponent(attrib);
+    }
+}
+void GameObject::_unregisterComponent(Attribute* attrib) {
+    GameObject* current = parent;
+    GameObject* p = 0;
+    while(current) {
+        p = current;
+        current = current->parent;
+    }
+    if(p) {
+        p->_unregisterComponent(attrib);
+    }
+}
+void GameObject::_readdComponent(Attribute* attrib) {
+    GameObject* current = parent;
+    GameObject* p = 0;
+    while(current) {
+        p = current;
+        current = current->parent;
+    }
+    if(p) {
+        p->_readdComponent(attrib);
+    }
 }

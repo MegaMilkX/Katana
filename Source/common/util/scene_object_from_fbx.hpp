@@ -428,7 +428,6 @@ inline void finalizeObjectsFromAssimpNode(
         );
     }
 
-    GameScene* game_scene = object->getScene();
     GameObject* root_object = object->getRoot();
 
     if(node->mNumMeshes) {

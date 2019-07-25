@@ -3,15 +3,9 @@
 #include "../scene/game_object.hpp"
 #include "../scene/game_scene.hpp"
 
-#include "../scene/controllers/anim_controller.hpp"
+AnimationStack::~AnimationStack() {}
 
-AnimationStack::~AnimationStack() {
-    getOwner()->getScene()->getController<AnimController>()->_unregStack(this);
-}
-
-void AnimationStack::onCreate() {
-    getOwner()->getScene()->getController<AnimController>()->_regStack(this);
-}
+void AnimationStack::onCreate() {}
 
 void AnimationStack::play(int layer, const std::string& anim_alias) {
     size_t anim_i = 0;

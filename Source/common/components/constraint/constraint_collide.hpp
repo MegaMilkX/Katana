@@ -7,8 +7,6 @@
 
 #include "../../../common/util/imgui_helpers.hpp"
 
-#include "../../scene/controllers/dynamics_ctrl.hpp"
-
 #include "../../components/collider.hpp"
 
 namespace Constraint {
@@ -24,8 +22,11 @@ public:
     virtual void update(GameObject* t) {
         gfxm::vec3 new_pos = t->getTransform()->getWorldPosition();
         auto col = t->find<Collider>();
-        t->getScene()->getController<DynamicsCtrl>()->getAdjustedPosition(col.get(), new_pos, 1);
-        t->getTransform()->setPosition(new_pos);
+        
+        // TODO: Doesn't work now. Attributes don't know about scene controllers
+        // Should the ConstraintStack be an actor? Probably.
+        //t->getScene()->getController<DynamicsCtrl>()->getAdjustedPosition(col.get(), new_pos, 1);
+        //t->getTransform()->setPosition(new_pos);
     }
     virtual void onGui() {
 

@@ -2,51 +2,47 @@
 
 #include "../scene/controllers/dynamics_ctrl.hpp"
 
-void Collider::onCreate() {
-    getOwner()->getScene()->getController<DynamicsCtrl>();
-}
+void Collider::onCreate() {}
 
-static void checkboxHelper(DynamicsCtrl* ctrl, const char* postfix, uint32_t& tgt, int bit) {
+static void checkboxHelper(int i, const char* postfix, uint32_t& tgt, int bit) {
     ImGui::CheckboxFlags(
-        (ctrl->getCollisionGroupName((COLLISION_GROUP)((int)COLLISION_GROUP_0 + bit)) + postfix).c_str(),
+        MKSTR(i << postfix).c_str(),
         &tgt,
         1 << bit
     );
 }
 
 void Collider::onGui() {
-    auto dctrl = getOwner()->getScene()->getController<DynamicsCtrl>();
-
     if(ImGui::Checkbox("Is Ghost", &is_ghost)) {
         setGhost(is_ghost);
     }
 
     ImGui::Text("Collision group");
     uint32_t flags = getCollisionGroup();
-    checkboxHelper(dctrl, MKSTR("##" << this).c_str(), flags, 0);
+    checkboxHelper(0, MKSTR("##" << this).c_str(), flags, 0);
     ImGui::SameLine();
-    checkboxHelper(dctrl, MKSTR("##" << this).c_str(), flags, 1);
-    checkboxHelper(dctrl, MKSTR("##" << this).c_str(), flags, 2);
+    checkboxHelper(1, MKSTR("##" << this).c_str(), flags, 1);
+    checkboxHelper(2, MKSTR("##" << this).c_str(), flags, 2);
     ImGui::SameLine();
-    checkboxHelper(dctrl, MKSTR("##" << this).c_str(), flags, 3);
-    checkboxHelper(dctrl, MKSTR("##" << this).c_str(), flags, 4);
+    checkboxHelper(3, MKSTR("##" << this).c_str(), flags, 3);
+    checkboxHelper(4, MKSTR("##" << this).c_str(), flags, 4);
     ImGui::SameLine();
-    checkboxHelper(dctrl, MKSTR("##" << this).c_str(), flags, 5);
+    checkboxHelper(5, MKSTR("##" << this).c_str(), flags, 5);
     if(flags != getCollisionGroup()) {
         setCollisionGroup(flags);
     }
 
     ImGui::Text("Collides with");
     flags = getCollisionMask();
-    checkboxHelper(dctrl, MKSTR("##mask" << this).c_str(), flags, 0);
+    checkboxHelper(0, MKSTR("##mask" << this).c_str(), flags, 0);
     ImGui::SameLine();
-    checkboxHelper(dctrl, MKSTR("##mask" << this).c_str(), flags, 1);
-    checkboxHelper(dctrl, MKSTR("##mask" << this).c_str(), flags, 2);
+    checkboxHelper(1, MKSTR("##mask" << this).c_str(), flags, 1);
+    checkboxHelper(2, MKSTR("##mask" << this).c_str(), flags, 2);
     ImGui::SameLine();
-    checkboxHelper(dctrl, MKSTR("##mask" << this).c_str(), flags, 3);
-    checkboxHelper(dctrl, MKSTR("##mask" << this).c_str(), flags, 4);
+    checkboxHelper(3, MKSTR("##mask" << this).c_str(), flags, 3);
+    checkboxHelper(4, MKSTR("##mask" << this).c_str(), flags, 4);
     ImGui::SameLine();
-    checkboxHelper(dctrl, MKSTR("##mask" << this).c_str(), flags, 5);
+    checkboxHelper(5, MKSTR("##mask" << this).c_str(), flags, 5);
     if(flags != getCollisionMask()) {
         setCollisionMask(flags);
     }
