@@ -49,7 +49,8 @@ void EditorAssetInspector::update(Editor* editor) {
             if(ImGui::MenuItem("Reload")) {
                 //asset_view->reload();
                 if(loaded_resource) {
-                    GlobalResourceFactory().forceReload(loaded_resource->Name());
+                    // TODO: FIX
+                    //GlobalResourceFactory().forceReload(loaded_resource->Name());
                 }
             }
             ImGui::EndMenuBar();

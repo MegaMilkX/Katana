@@ -6,11 +6,15 @@
 
 #include "../common/components/volume_trigger_test.hpp"
 
+#include "../common/resource/resource_desc_library.hpp"
+
 int main(int argc, char* argv[]) {
     if(!platformInit()) {
         LOG_ERR("Failed to initialize platform");
         return 0;
     }
+
+    ResourceDescLibrary::get()->init();
 
     // TODO : 
     input().getTable().addAxisKey("MoveCamX", "MOUSE_X", 1.0);
@@ -39,7 +43,7 @@ int main(int argc, char* argv[]) {
         app_state.reset(new Editor());
     }
 
-    try {
+    //try {
         app_state->onInit();
         while(!platformIsShuttingDown()) {
             platformUpdate();
@@ -57,9 +61,9 @@ int main(int argc, char* argv[]) {
             platformSwapBuffers();
         }
         app_state->onCleanup();
-    } catch(std::exception& ex) {
-        LOG_ERR(ex.what());
-    }
+    //} catch(std::exception& ex) {
+    //    LOG_ERR(ex.what());
+    //}
 
     platformCleanup();
     return 0;

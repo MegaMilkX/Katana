@@ -80,9 +80,12 @@ void AnimationStack::setSkeleton(std::shared_ptr<Skeleton> skel) {
     resetSkeletonMapping();
 }
 void AnimationStack::addAnim(std::shared_ptr<Animation> anim) {
+    if(!anim) return;
+    size_t slash_pos = anim->Name().find_last_of("/");
+    std::string alias = slash_pos == anim->Name().npos ? anim->Name() : anim->Name().substr(slash_pos);
     anims.emplace_back(
         AnimInfo {
-            anim->Name().substr(anim->Name().find_last_of("/")),
+            alias,
             anim
         }
     );
@@ -228,7 +231,7 @@ bool AnimationStack::deserialize(in_stream& in, size_t sz) {
     uint32_t anim_count = r.read<uint32_t>();
     for(size_t i = 0; i < anim_count; ++i) {
         std::string alias = r.readStr();
-        auto anim = getResource<Animation>(r.readStr());
+        auto anim = retrieve<Animation>(r.readStr());
         bool looping = (bool)r.read<uint8_t>();
         std::vector<size_t> bone_remap;
 
@@ -247,7 +250,7 @@ bool AnimationStack::deserialize(in_stream& in, size_t sz) {
         }
     }
 
-    setSkeleton(getResource<Skeleton>(r.readStr()));
+    setSkeleton(retrieve<Skeleton>(r.readStr()));
     return true;
 }
 

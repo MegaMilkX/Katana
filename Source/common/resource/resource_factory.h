@@ -24,24 +24,16 @@ public:
         std::shared_ptr<T> ptr;
         res_weak_ptr_t& weak = resources[name];
         if(weak.expired()) {
-            /*
-            auto& strm = dataSrc->open_stream();
-            strm.seekg(0, std::ios::end);
-            size_t sz = (size_t)strm.tellg();
-            strm.seekg(0, std::ios::beg);*/
-
             std::shared_ptr<base_stream> strm = dataSrc->make_stream();
 
             ptr.reset(new T());
-            if(!ptr->deserialize(*strm.get(), strm->size())) {
-                LOG_WARN("Failed to build resource " << name);
-                //dataSrc->close_stream();
-                return std::shared_ptr<T>();
-            }
-
-            weak = ptr;
             ptr->Name(name);
             ptr->Storage(Resource::GLOBAL);
+            if(!ptr->deserialize(*strm.get(), strm->size())) {
+                LOG_WARN("Failed to build resource " << name);
+                return std::shared_ptr<T>();
+            }
+            weak = ptr;
         } else {
             ptr = std::dynamic_pointer_cast<T>(weak.lock());
         }

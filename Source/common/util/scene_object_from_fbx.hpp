@@ -10,24 +10,24 @@
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
 
-#include "../common/util/log.hpp"
-#include "../common/util/split.hpp"
-#include "../common/util/filesystem.hpp"
-#include "../common/asset_params.hpp"
+#include "log.hpp"
+#include "split.hpp"
+#include "filesystem.hpp"
+#include "../asset_params.hpp"
 
-#include "../common/resource/data_registry.h"
-#include "../common/resource/resource_factory.h"
+//#include "../resource/data_registry.h"
+#include "../resource/resource_tree.hpp"
 
-#include "../common/resource/skeleton.hpp"
-#include "../common/resource/animation.hpp"
-#include "../common/resource/mesh.hpp"
+#include "../resource/skeleton.hpp"
+#include "../resource/animation.hpp"
+#include "../resource/mesh.hpp"
 
-#include "../common/components/model.hpp"
-#include "../common/components/animation_stack.hpp"
+#include "../components/model.hpp"
+#include "../components/animation_stack.hpp"
 
-#include "../common/scene/game_object.hpp"
+#include "../scene/game_object.hpp"
 
-#include "../common/platform/platform.hpp"
+#include "../platform/platform.hpp"
 
 inline gfxm::vec2 sampleSphericalMap(gfxm::vec3 v) {
     const gfxm::vec2 invAtan = gfxm::vec2(0.1591f, 0.3183f);
@@ -37,8 +37,12 @@ inline gfxm::vec2 sampleSphericalMap(gfxm::vec3 v) {
     return uv;
 }
 
+inline void regFilesystemResource(const std::string& fname) {
+    gResourceTree.insert(fname, new DataSourceFilesystem(get_module_dir()  + "/" + platformGetConfig().data_dir + "/" +  fname));
+}
+
 inline std::shared_ptr<Skeleton> skeletonFromAssimpScene(const aiScene* ai_scene, const std::string& dirname, const std::string& root_name) {
-    std::string fname = MKSTR("data\\skel\\" << dirname << "\\" << root_name << ".skl");
+    std::string fname = MKSTR("data/skel/" << dirname << "/" << root_name << ".skl");
 
     std::shared_ptr<Skeleton> skel = retrieve<Skeleton>(fname);
     if(!skel) {
@@ -80,7 +84,7 @@ inline std::shared_ptr<Skeleton> skeletonFromAssimpScene(const aiScene* ai_scene
     finalizeBone(ai_scene->mRootNode, skel);
 
     skel->write_to_file(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + fname);
-    registerGlobalFileSource(fname);
+    regFilesystemResource(fname);
 
     return skel;
 }
@@ -193,9 +197,9 @@ inline void meshesFromAssimpScene(
 
         mesh_ref->mesh.setIndices(indices.data(), indices.size());
 
-        std::string fname = MKSTR("data\\mesh\\" << dirname << "\\" << root_name << i << ".msh");
+        std::string fname = MKSTR("data/mesh/" << dirname << "/" << root_name << i << ".msh");
         mesh_ref->write_to_file(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + fname);
-        registerGlobalFileSource(fname);
+        regFilesystemResource(fname);
     }
 }
 
@@ -339,7 +343,7 @@ inline void animFromAssimpScene(
         bool root_rotation = anim_asset_params.get_bool("RootRotation", false);
         bool root_translation = anim_asset_params.get_bool("RootTranslation", false);
 
-        std::string fname = MKSTR("data\\anim\\" << dirname << "\\" << root_name << "_" << replace_reserved_chars(ai_anim->mName.C_Str(), '_') << ".anm");
+        std::string fname = MKSTR("data/anim/" << dirname << "/" << root_name << "_" << replace_reserved_chars(ai_anim->mName.C_Str(), '_') << ".anm");
         std::shared_ptr<Animation> anim = retrieve<Animation>(fname);
         if(!anim) {
             anim.reset(new Animation());
@@ -379,7 +383,7 @@ inline void animFromAssimpScene(
         }
 
         anim->write_to_file(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + fname);
-        registerGlobalFileSource(fname);
+        regFilesystemResource(fname);
     }
 }
 
@@ -432,7 +436,7 @@ inline void finalizeObjectsFromAssimpNode(
         if(m) {
             for(unsigned i = 0; i < node->mNumMeshes; ++i) {
                 auto& seg = m->getSegment(i);
-                seg.mesh = getResource<Mesh>(MKSTR("data\\mesh\\" << dirname << "\\" << root_name << node->mMeshes[i] << ".msh"));
+                seg.mesh = retrieve<Mesh>(MKSTR("data/mesh/" << dirname << "/" << root_name << node->mMeshes[i] << ".msh"));
             
                 aiMesh* ai_mesh = ai_scene->mMeshes[node->mMeshes[i]];
                 if(ai_mesh->mNumBones) {
@@ -455,24 +459,37 @@ inline void finalizeObjectsFromAssimpNode(
     }
 }
 
-inline bool objectFromFbx(const std::vector<char>& buffer, GameObject* o, const std::string& filename = "") {
+inline bool objectFromFbx(const std::vector<char>& buffer, GameObject* o, const std::string& filename_hint = "") {
+    auto sanitizeString = [](const std::string& str)->std::string {
+        std::string name = str;
+        for(size_t i = 0; i < name.size(); ++i) {
+            name[i] = (std::tolower(name[i]));
+            if(name[i] == '\\') {
+                name[i] = '/';
+            }
+        }
+        return name;
+    };
+    
+    std::string filename = sanitizeString(filename_hint);
+
     std::string fname = filename;
-    while(fname[fname.size() - 1] == '\\') {
+    while(fname[fname.size() - 1] == '/') {
         fname = std::string(fname.begin(), fname.begin() + fname.size() - 1);
     }
     //std::replace( dirname.begin(), dirname.end(), '.', '_');
-    fname = fname.substr(fname.find_last_of("\\") + 1);
+    fname = fname.substr(fname.find_last_of("/") + 1);
     fname = fname.substr(0, fname.find_first_of('.')); 
     //CreateDirectoryA(dirname.c_str(), 0);
 
-    createDirRecursive(get_module_dir() + "/" + platformGetConfig().data_dir + "\\data\\anim\\" + fname);
-    createDirRecursive(get_module_dir() + "/" + platformGetConfig().data_dir + "\\data\\mesh\\" + fname);
-    createDirRecursive(get_module_dir() + "/" + platformGetConfig().data_dir + "\\data\\skel\\" + fname);
-    std::string asset_param_path = get_module_dir() + "/" + platformGetConfig().data_dir + "\\asset_params\\" + filename + ".asset_params";
+    createDirRecursive(get_module_dir() + "/" + platformGetConfig().data_dir + "/data/anim/" + fname);
+    createDirRecursive(get_module_dir() + "/" + platformGetConfig().data_dir + "/data/mesh/" + fname);
+    createDirRecursive(get_module_dir() + "/" + platformGetConfig().data_dir + "/data/skel/" + fname);
+    std::string asset_param_path = get_module_dir() + "/" + platformGetConfig().data_dir + "/asset_params/" + filename + ".asset_params";
     createDirRecursive(cut_dirpath(asset_param_path));
 
     std::string root_name = "object";
-    std::vector<std::string> tokens = split(filename, '\\');
+    std::vector<std::string> tokens = split(filename, '/');
     if(!tokens.empty()) {
         std::string name = tokens[tokens.size() - 1];
         tokens = split(name, '.');
@@ -559,12 +576,12 @@ inline bool objectFromFbx(const std::vector<char>& buffer, GameObject* o, const 
     if(ai_scene->mNumAnimations > 0) {
         auto anim_stack = o->get<AnimationStack>();
         anim_stack->setSkeleton(retrieve<Skeleton>(
-            MKSTR("data\\skel\\" << fname << "\\" << root_name << ".skl")
+            MKSTR("data/skel/" << fname << "/" << root_name << ".skl")
         ));
     }
     for(unsigned i = 0; i < ai_scene->mNumAnimations; ++i) {
         auto anim_stack = o->get<AnimationStack>();
-        std::string name = MKSTR("data\\anim\\" << fname << "\\" << root_name << "_" << replace_reserved_chars(ai_scene->mAnimations[i]->mName.C_Str(), '_') << ".anm");
+        std::string name = MKSTR("data/anim/" << fname << "/" << root_name << "_" << replace_reserved_chars(ai_scene->mAnimations[i]->mName.C_Str(), '_') << ".anm");
         anim_stack->addAnim(retrieve<Animation>(name));
     }
 

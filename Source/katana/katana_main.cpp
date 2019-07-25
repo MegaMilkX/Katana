@@ -7,6 +7,8 @@
 
 #include "../common/scene/controllers/render_controller.hpp"
 
+#include "../common/resource/resource_tree.hpp"
+
 static float sFrameDelta = .0f;
 static float sTime = .0f;
 
@@ -35,7 +37,7 @@ public:
 
     void update() {
         if(!_session) return;
-        
+
         _session->onUpdate();
         
         unsigned w, h;
@@ -59,7 +61,7 @@ public:
 int main(int argc, char **argv) {
     if(!platformInit()) {
         LOG_ERR("Failed to init platform");
-    }
+    }    
 
     KatanaImpl kt;
     timer frameTimer;

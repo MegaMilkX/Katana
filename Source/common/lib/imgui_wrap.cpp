@@ -4,6 +4,8 @@
 
 #include <memory>
 
+#include "../gen/Karla_Regular.ttf.h"
+
 static ImGuiContext* imGuiCtx;
 static GLuint imGuiVBuf;
 static GLuint imGuiIBuf;
@@ -35,6 +37,8 @@ void ImGuiInit() {
     // TODO: Create texture
     unsigned char* pixels;
     int width, height;
+    io.Fonts->AddFontFromMemoryTTF((void*)Karla_Regular_ttf, sizeof(Karla_Regular_ttf), 18);
+
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
     glGenTextures(1, &imGuiTexture2d);

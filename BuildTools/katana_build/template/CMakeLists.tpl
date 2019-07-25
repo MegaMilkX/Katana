@@ -97,3 +97,7 @@ target_link_libraries(${PROJECT_NAME}_editor
 	BulletDynamics_vs2010.lib
 	LinearMath_vs2010.lib
 )
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
+target_compile_definitions(${PROJECT_NAME}_editor PRIVATE NOMINMAX)
+

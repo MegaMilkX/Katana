@@ -8,18 +8,22 @@
 
 #include "../common/behavior/behavior.hpp"
 
-void EditorObjectInspector::update(Editor* editor) {
-    if(ImGui::Begin("Object inspector", 0, ImGuiWindowFlags_MenuBar)) {
+void EditorObjectInspector::update(Editor* editor, const std::string& title) {
+    update(editor->getScene(), editor->getSelectedObjects(), title);
+}
+
+void EditorObjectInspector::update(GameScene* scene, ObjectSet& selected, const std::string& title) {
+    if(ImGui::Begin(title.c_str(), 0, ImGuiWindowFlags_MenuBar)) {
         if(ImGui::BeginMenuBar()) {
             if(ImGui::BeginMenu("Add component...")) {
                 rttr::type t = rttr::type::get<Attribute>();
                 auto derived_array = t.get_derived_classes();
                 for(auto& d : derived_array) {
                     if(ImGui::MenuItem(d.get_name().to_string().c_str())) {
-                        if(editor->getSelectedObject()) {
-                            editor->getSelectedObject()->get(d);
-                            editor->backupScene("component added");
+                        for(auto& o : selected.getAll()) {
+                            o->get(d);
                         }
+                        // TODO: editor->backupScene("component added");
                     }
                 }   
                 //imguiRecursiveDerivedMenu(scene, t);
@@ -28,36 +32,10 @@ void EditorObjectInspector::update(Editor* editor) {
             ImGui::EndMenuBar();
         }
 
-        GameObject* so = editor->getSelectedObject();
-        if(so) {
+        // TODO: Handle multiple selected objects
+        if(!selected.empty()) {
+            GameObject* so = *selected.getAll().begin();
             so->onGui();
-            
-            ImGui::Separator();
-            auto bhvr = so->getBehavior();
-            if(ImGui::BeginCombo(
-                "behavior", 
-                bhvr ? bhvr->get_type().get_name().to_string().c_str() : "<null>"
-            )) {
-                if(ImGui::Selectable("<null>", !bhvr)) {
-                    so->clearBehavior();
-                    bhvr = nullptr;
-                    editor->backupScene("behavior set to null");
-                }
-                rttr::type t = rttr::type::get<Behavior>();
-                auto derived = t.get_derived_classes();
-                for(auto& d : derived) {
-                    if(ImGui::Selectable(
-                        d.get_name().to_string().c_str(),
-                        bhvr && (bhvr->get_type() == d)
-                    )) {
-                        so->setBehavior(d);
-                        editor->backupScene("behavior set");
-                    }
-                }
-
-                ImGui::EndCombo();
-            }
-            if(bhvr) bhvr->onGui();
 
             ImGui::Separator();
             ImGui::Text("Components");

@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "../resource/resource.h"
+
 #include "game_object.hpp"
 #include "scene_event_mgr.hpp"
 
@@ -17,15 +19,7 @@
 #include "scene_controller.hpp"
 #include "../serializable.hpp"
 
-class SceneQuery {
-    bool satisfied = false;
-public:
-    virtual ~SceneQuery() {}
-
-    operator bool() const { return satisfied; }
-};
-
-class GameScene : public Serializable {
+class GameScene : public Resource {
 public:
     GameScene();
     ~GameScene();
@@ -36,16 +30,10 @@ public:
 
     std::vector<GameObject*> findObjectsFuzzy(const std::string& name);
 
-    void createBehavior(GameObject* owner, rttr::type t);
-    Behavior* findBehavior(GameObject* owner);
-    void eraseBehavior(GameObject* owner);
-
     // Components
     template<typename T>
     std::vector<Attribute*>& getAllComponents() { return getAllComponents(rttr::type::get<T>()); }
     std::vector<Attribute*>& getAllComponents(rttr::type t);
-
-    void query(SceneQuery& q);
 
     // Controllers
     template<typename T>
@@ -66,8 +54,9 @@ public:
     void resetAttribute(Attribute* attrib);
     void _registerComponent(Attribute* c);
     void _unregisterComponent(Attribute* c);
-    void _regObject(GameObject* o);
-    void _unregObject(GameObject* o);
+
+    virtual void serialize(out_stream& out);
+    virtual bool deserialize(in_stream& in, size_t sz);
 
     void write(out_stream& out);
     void read(in_stream& in);
@@ -77,7 +66,6 @@ private:
     SceneController* createController(rttr::type t);
 
     std::shared_ptr<GameObject>                             root_object;
-    std::map<GameObject*, std::shared_ptr<Behavior>>        behaviors;
     std::map<rttr::type, std::shared_ptr<SceneController>>  controllers;
     std::vector<SceneController*>                           updatable_controllers;
     std::map<
@@ -85,6 +73,12 @@ private:
         std::vector<Attribute*>
     >                                                       object_components;
 };
+STATIC_RUN(GameScene) {
+    rttr::registration::class_<GameScene>("GameScene")
+        .constructor<>()(
+            rttr::policy::ctor::as_raw_ptr
+        );
+}
 
 template<typename T>
 T* GameScene::getController() {

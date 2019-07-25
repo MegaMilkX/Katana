@@ -7,9 +7,14 @@
 #include "../../common/util/zip_writer.hpp"
 #include "../../common/util/zip_reader.hpp"
 
+#include "../util/has_suffix.hpp"
+
+#include "../util/scene_object_from_fbx.hpp"
+
 GameScene::GameScene() {
     root_object.reset(new GameObject());
     root_object->scene = this;
+    root_object->setName("Root");
 }
 
 GameScene::~GameScene() {
@@ -77,50 +82,8 @@ SceneController* GameScene::getController(size_t i) {
     return it->second.get();
 }
 
-void GameScene::createBehavior(GameObject* owner, rttr::type t) {
-    if(!t.is_valid()) {
-        LOG_WARN(t.get_name().to_string() << " - not a valid Behavior type");
-        return;
-    }
-    rttr::variant v = t.create();
-    if(!v.get_type().is_pointer()) {
-        LOG_WARN(t.get_name().to_string() << " - rttr construction policy must be pointer");
-        return;
-    }
-    Behavior* b = v.get_value<Behavior*>();
-    if(!b) {
-        LOG_WARN(
-            "Failed to create behavior of type " <<
-            t.get_name().to_string()
-        );
-        return;
-    }
-    b->object = owner;
-
-    behaviors[owner].reset(b);
-    b->onInit();
-}
-Behavior* GameScene::findBehavior(GameObject* owner) {
-    auto it = behaviors.find(owner);
-    if(it == behaviors.end()) {
-        return 0;
-    }
-    return it->second.get();
-}
-void GameScene::eraseBehavior(GameObject* owner) {
-    auto b = findBehavior(owner);
-    if(b) {
-        b->onCleanup();
-        behaviors.erase(owner);
-    }
-}
-
 void GameScene::startSession() {
     for(auto& kv : controllers) {
-        kv.second->onStart();
-    }
-
-    for(auto& kv : behaviors) {
         kv.second->onStart();
     }
 }
@@ -130,11 +93,7 @@ void GameScene::stopSession() {
     }
 }
 
-void GameScene::update() {
-    for(auto& kv : behaviors) {
-        kv.second->onUpdate();
-    }
-    
+void GameScene::update() {    
     for(auto c : updatable_controllers) {
         c->onUpdate();
     }
@@ -183,11 +142,23 @@ void GameScene::_unregisterComponent(Attribute* c) {
         }   
     }
 }
-void GameScene::_regObject(GameObject* o) {
-    // TODO: Trigger callbacks
+
+void GameScene::serialize(out_stream& out) {
+    getRoot()->write(out);
 }
-void GameScene::_unregObject(GameObject* o) {
-    // TODO: Trigger callbacks
+bool GameScene::deserialize(in_stream& in, size_t sz) {
+    /*
+    const std::string& type_hint = Resource::Name();
+    std::vector<char> buf;
+    buf = in.read<char>(in.bytes_available());
+    if(has_suffix(type_hint, ".fbx")) {
+        objectFromFbx(buf, root_object.get(), type_hint);
+    } else {
+
+    } */
+    getRoot()->read(in);
+
+    return true;
 }
 
 void GameScene::write(out_stream& out) {

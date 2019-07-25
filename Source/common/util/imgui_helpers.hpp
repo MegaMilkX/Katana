@@ -8,7 +8,7 @@
 #include <functional>
 #include "../resource/data_registry.h"
 #include "../resource/resource.h"
-#include "../resource/resource_factory.h"
+#include "../resource/resource_tree.hpp"
 
 #include "../components/component.hpp"
 #include "../scene/game_object.hpp"
@@ -55,6 +55,79 @@ inline void imguiHeapObjectCombo(
     }
 }
 
+template<typename T>
+void imguiResourceTreeCombo(
+    const char* label,
+    std::shared_ptr<T>& res,
+    const char* ext,
+    std::function<void(void)> callback = nullptr
+) {
+    std::string current_name = "<null>";
+    if(res) {
+        current_name = res->Name();
+    }
+    if(ImGui::BeginCombo(label, current_name.c_str())) {
+        std::set<const ResourceNode*> valid_nodes;
+        std::function<bool(const ResourceNode*, const std::string&, std::set<const ResourceNode*>&)> walkNodes;
+        walkNodes = [&walkNodes](const ResourceNode* node, const std::string& suffix,  std::set<const ResourceNode*>& valid_nodes)->bool {
+            bool has_valid_child = false;
+            for(auto& kv : node->getChildren()) {
+                if(walkNodes(kv.second.get(), suffix, valid_nodes)) {
+                    has_valid_child = true;
+                }
+            }
+            if(!has_valid_child) {
+                if(has_suffix(node->getName(), suffix)) {
+                    valid_nodes.insert(node);
+                    return true;
+                }
+            } else {
+                valid_nodes.insert(node);
+                return true;
+            }
+            return false;
+        };
+
+        walkNodes(gResourceTree.getRoot(), MKSTR("." << ext), valid_nodes);
+
+        std::function<void(ResourceNode*, const std::set<const ResourceNode*>&)> imguiResourceTree;
+        imguiResourceTree = [&callback, &res, &imguiResourceTree](ResourceNode* node, const std::set<const ResourceNode*>& valid_nodes) {
+            if(valid_nodes.find(node) == valid_nodes.end()) {
+                return;
+            }
+            std::string node_label = node->getName();
+            if(node->isLoaded()) {
+                node_label += " [L]";
+            }
+            if(node->childCount()) {
+                if(ImGui::TreeNodeEx(
+                    (void*)node,
+                    ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                    ImGuiTreeNodeFlags_OpenOnArrow,
+                    node_label.c_str()
+                )) {
+                    for(auto& kv : node->getChildren()) {
+                        imguiResourceTree(kv.second.get(), valid_nodes);
+                    }
+                    ImGui::TreePop();
+                }
+            } else {
+                if(ImGui::Selectable(node_label.c_str())) {
+                    res = node->getResource<T>();
+                    if(callback) callback();
+                    //setClip(node->getResource<AudioClip>());
+                }
+            }
+        };
+
+        for(auto& kv : gResourceTree.getRoot()->getChildren()) {
+            imguiResourceTree(kv.second.get(), valid_nodes);
+        }
+
+        ImGui::EndCombo();
+    }
+}
+
 template<typename RES_T>
 inline void imguiResourceCombo(
     const char* label,
@@ -63,7 +136,8 @@ inline void imguiResourceCombo(
     std::function<void(void)> callback = nullptr
 ) {
     std::string name = "<null>";
-    auto r_list = GlobalDataRegistry().makeList(ext);
+    // TODO: FIX
+    auto r_list = std::vector<std::string>(); //GlobalDataRegistry().makeList(ext);
     if(res) {
         name = res->Name();
     }

@@ -2,6 +2,9 @@
 
 #include "../common/scene/game_scene.hpp"
 #include "../common/scene/controllers/render_controller.hpp"
+#include "../common/scene/controllers/dynamics_ctrl.hpp"
+
+#include "../common/lib/imguizmo/ImGuizmo.h"
 
 GuiViewport::GuiViewport() {
     rvp.init(640, 480);
@@ -12,6 +15,9 @@ GuiViewport::~GuiViewport() {
     dd.cleanup();
 }
 
+gfxm::ivec2 GuiViewport::getPos() const {
+    return pos;
+}
 gfxm::ivec2 GuiViewport::getSize() const {
     return gfxm::ivec2(viewport_sz.x, viewport_sz.y);
 }
@@ -104,6 +110,10 @@ void GuiViewport::draw(GameScene* scn, GameObject* selected_object, gfxm::ivec2 
             1,
             gfxm::vec3(0.2f, 0.2f, 0.2f)
         );
+
+        if(scn->hasController<DynamicsCtrl>()) {
+            scn->getController<DynamicsCtrl>()->debugDraw(getDebugDraw());
+        }
         /*
         if(editor->getSelectedObject()) {
             dd.aabb(
@@ -111,6 +121,10 @@ void GuiViewport::draw(GameScene* scn, GameObject* selected_object, gfxm::ivec2 
                 gfxm::vec3(1.0f, 1.0f, 1.0f)
             );
         }*/
+
+        auto window = ImGui::GetCurrentWindow();
+        ImRect crect = window->ContentsRegionRect;
+        ImGuizmo::SetRect(crect.Min.x, crect.Min.y, crect.Max.x - crect.Min.x, crect.Max.y - crect.Min.y);
 
         if(selected_object && scn == selected_object->getScene()) {
             selected_object->onGizmo(*this);
@@ -120,8 +134,10 @@ void GuiViewport::draw(GameScene* scn, GameObject* selected_object, gfxm::ivec2 
         is_mouse_over = ImGui::IsWindowHovered();
         window_in_focus = ImGui::IsRootWindowFocused();
 
-        auto window = ImGui::GetCurrentWindow();
         auto bb = window->ClipRect;
+        ImVec2 cursor_pos = ImGui::GetCursorPos();
+        pos.x = cursor_pos.x;
+        pos.y = cursor_pos.y;
         auto vp_sz = ImVec2(bb.Max.x - bb.Min.x, bb.Max.y - bb.Min.y);
 
         viewport_sz = gfxm::vec2(

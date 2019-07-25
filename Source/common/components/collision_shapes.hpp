@@ -137,15 +137,10 @@ public:
     virtual bool onGui(GameObject* o) {
         bool need_rebuild = false;
         ImGui::TextWrapped("Debug display for collision meshes is disabled for performance");
-        imguiResourceCombo<Mesh>(
-            "mesh",
-            mesh,
-            ".msh",
-            [this, &need_rebuild](){
-                setMesh(mesh);
-                need_rebuild = true;
-            }
-        );
+        imguiResourceTreeCombo(MKSTR("mesh##" << this).c_str(), mesh, "msh", [this, &need_rebuild](){
+            setMesh(mesh);
+            need_rebuild = true;
+        });
         if(ImGui::Button("Make from model")) {
             auto mdl = o->find<Model>();
             if(mdl) {

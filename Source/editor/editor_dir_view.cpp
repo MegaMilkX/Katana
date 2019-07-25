@@ -46,7 +46,7 @@ void EditorDirView::checkDirChanges() {
     switch(dwWaitStatus) {
     case WAIT_OBJECT_0:
         makeDirTree(directory, root_dir);
-        updateFileList(selected_dir.full_path);
+        updateFileList(selected_dir.full_path.size() > 0 ? selected_dir.full_path : root_dir.full_path);
         initFilesystemResources();
 
         if(FindNextChangeNotification(dwChangeHandle) == FALSE) {
@@ -59,7 +59,7 @@ void EditorDirView::checkDirChanges() {
 
 void EditorDirView::init(const std::string& dir) {
     root_dir = DirInfo{
-        dir, dir
+        "Root", dir
     };
     directory = dir;
 
@@ -70,7 +70,11 @@ void EditorDirView::init(const std::string& dir) {
 
 void EditorDirView::update(Editor* editor) {
     checkDirChanges();
+
     if(ImGui::Begin("DirView")) {
+        static char find_buf[256];
+        ImGui::InputText("Find", find_buf, sizeof(find_buf));
+
         if(ImGui::BeginChild("Directories", ImVec2(250, 0))) {
             imguiDirTree(root_dir);
             ImGui::EndChild();

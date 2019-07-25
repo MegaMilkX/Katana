@@ -19,6 +19,8 @@
 
 #include "../common/platform/platform.hpp"
 
+#include "../common/resource/resource_desc_library.hpp"
+
 int setupImguiLayout();
 
 Editor::Editor() {
@@ -117,9 +119,9 @@ void Editor::onGui() {
     ImGuizmo::BeginFrame();
 
     bool p_open = true;
-    static bool opt_fullscreen_persistant = true;
+    static bool opt_fullscreen_persistent = true;
     static ImGuiDockNodeFlags opt_flags = ImGuiDockNodeFlags_None;
-    bool opt_fullscreen = opt_fullscreen_persistant;
+    bool opt_fullscreen = opt_fullscreen_persistent;
 
     // We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
     // because it would be confusing to have two docking targets within each others.
@@ -152,28 +154,29 @@ void Editor::onGui() {
     static int once = setupImguiLayout();
 
     if(ImGui::BeginMenuBar()) {
-        if(ImGui::BeginMenu("Session")) {
-            if(ImGui::MenuItem("New")) {
-
+        if(ImGui::BeginMenu("File")) {
+            if(ImGui::BeginMenu("New Resource")) {
+                if(ImGui::MenuItem("Scene")) {
+                    addNewDocument(new EditorDocScene(0));
+                }
+                if(ImGui::MenuItem("Texture2D")) {}
+                if(ImGui::MenuItem("Material")) {}
+                if(ImGui::MenuItem("Mesh")) {}
+                if(ImGui::MenuItem("Shader")) {}
+                if(ImGui::MenuItem("AudioClip")) {}
+                ImGui::EndMenu();
             }
-            if(ImGui::MenuItem("Open")) {
-                
-            }
-            if(ImGui::MenuItem("Save")) {
-                
-            }
-            if(ImGui::MenuItem("Save As...")) {
-                
-            }
-
+            if(ImGui::MenuItem("Exit")) {}
             ImGui::EndMenu();
         }
+        /*
         if(ImGui::BeginMenu("Scene")) {
             if(ImGui::MenuItem("New")) {
                 scene->clear();
                 currentSceneFile = "";
                 history.clear();
                 backupScene("new scene");
+                selected_objects.clear();
             }
             if(ImGui::MenuItem("Open")) {
                 if(showOpenSceneDialog()) {
@@ -189,13 +192,8 @@ void Editor::onGui() {
                 showSaveSceneDialog(scene.get(), true);
             }
             ImGui::EndMenu();
-        }
-        if(ImGui::BeginMenu("Windows")) {
-            if(ImGui::MenuItem("History", 0, &history_open)) {
-
-            }
-            ImGui::EndMenu();
-        }
+        } */
+        /*
         if(ImGui::MenuItem("Play mode")) {
             std::string play_cache_path = get_module_dir() + "\\play_cache.scn";
             //serializeScene(play_cache_path, getScene());
@@ -204,41 +202,51 @@ void Editor::onGui() {
             editorState().is_play_mode = true;
             editorState().game_state->getScene()->clear();
             editorState().game_state->getScene()->copy(getScene());
-            editorState().game_state->getScene()->startSession();*/
-        }
+            editorState().game_state->getScene()->startSession();
+        } */
         ImGui::EndMenuBar();
     }
 
-    //bool sdw = true;
-    //ImGui::ShowDemoWindow(&sdw);
+    ed_resource_tree.update(this);
+    for(auto& kv : documents) {
+        auto doc = kv.second;
+        if(!doc->isOpen()) {
+            delete doc;
+            documents.erase(kv.first);
+        }
+    }
+    for(auto& d : new_documents) {
+        if(!d->isOpen()) {
+            delete d;
+            new_documents.erase(d);
+        }
+    }
+    
+    if(documents.empty()) {
+        // TODO
+        //setCurrentDockspace(dockspace_id);
+    }
+    for(auto& kv : documents) {
+        kv.second->update(this);
+    }
+    for(auto d : new_documents) {
+        d->update(this);
+    }
 
-    //audio().debugGui();
+    //viewport.update(this);
+    //scene_inspector.update(this);
+    //dir_view.update(this);
+    //object_inspector.update(this);
+    //asset_inspector.update(this);
 
-    viewport.update(this);
-    scene_inspector.update(this);
-    dir_view.update(this);
-    object_inspector.update(this);
-    asset_inspector.update(this);
+    /*
     if(ImGui::Begin("Toolbox")) {
-        /*
-        ImGui::Text("Transform:");
-        int gizmo_mode = (int)editor_state.tgizmo_mode;
-        int gizmo_space = (int)editor_state.tgizmo_space;
-        ImGui::RadioButton("T", &gizmo_mode, TGIZMO_T);
-        ImGui::SameLine(); ImGui::RadioButton("Local", &gizmo_space, TGIZMO_LOCAL);
-        ImGui::RadioButton("R", &gizmo_mode, TGIZMO_R);
-        ImGui::SameLine(); ImGui::RadioButton("World", &gizmo_space, TGIZMO_WORLD);
-        ImGui::RadioButton("S", &gizmo_mode, TGIZMO_S);
-        */
         ImGui::Separator();
         bool dd = viewport.getViewport().debugDrawEnabled();
         ImGui::Checkbox("Debug draw", &dd);
         viewport.getViewport().enableDebugDraw(dd);
 
         ImGui::End();
-
-        //editor_state.tgizmo_mode = (TRANSFORM_GIZMO_MODE)gizmo_mode;
-        //editor_state.tgizmo_space = (TRANSFORM_GIZMO_SPACE)gizmo_space;
     }
     if(ImGui::Begin("History", &history_open, ImVec2(100, 200))) {
         history.onGui();
@@ -251,22 +259,78 @@ void Editor::onGui() {
             ImGui::EndCombo();
         }
         ImGui::End();
-    }
+    } */
     // TODO: 
+
+    ImGui::End();
+
+    bool dummy = true;
+    if(ImGui::BeginPopupModal("Hint1", &dummy)) {
+        ImGui::Text(MKSTR("No editor or viewer exist for this resource type").c_str());
+        if(ImGui::Button("OK")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+    if(ImGui::BeginPopupModal("Hint2", &dummy)) {
+        ImGui::Text(MKSTR("Can't deduce resource type without extension").c_str());
+        if(ImGui::Button("OK")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }    
 }
 
 GameScene* Editor::getScene() {
     return scene.get();
 }
-GameObject* Editor::getSelectedObject() {
-    return selected_object;
+ObjectSet& Editor::getSelectedObjects() {
+    return selected_objects;
 }
 EditorAssetInspector* Editor::getAssetInspector() {
     return &asset_inspector;
 }
+EditorResourceTree& Editor::getResourceTree() {
+    return ed_resource_tree;
+}
+
+void Editor::setCurrentDockspace(ImGuiID id) {
+    current_dockspace = id;
+}
 
 void Editor::setSelectedObject(GameObject* o) {
-    selected_object = o;
+    selected_objects.clearAndAdd(o);
+}
+
+void Editor::addDocument(const ResourceNode* node, EditorDocument* doc) {
+    documents[node] = doc;
+    ImGui::SetWindowFocus(doc->getName().c_str());
+    ImGui::DockBuilderDockWindow(doc->getName().c_str(), current_dockspace);
+}
+void Editor::addNewDocument(EditorDocument* doc) {
+    new_documents.insert(doc);
+    ImGui::SetWindowFocus(doc->getName().c_str());
+    ImGui::DockBuilderDockWindow(doc->getName().c_str(), current_dockspace);
+}
+void Editor::tryOpenDocument(const ResourceNode* node) {
+    auto it = documents.find(node);
+    if(it != documents.end()) {
+        ImGui::SetWindowFocus(it->second->getName().c_str());
+        return;
+    }
+    std::string node_name = node->getName();
+    size_t dot_pos = node_name.find_last_of(".");
+    if(dot_pos != node_name.npos) {
+        std::string ext = node_name.substr(dot_pos + 1);
+        ResourceDesc* desc = ResourceDescLibrary::get()->find(ext);
+        if(!desc) {
+            ImGui::OpenPopup("Hint1");
+        } else {
+            addDocument(node, desc->create_resource_doc_fn((ResourceNode*)node));
+        }
+    } else {
+        ImGui::OpenPopup("Hint2");
+    }
 }
 
 void Editor::backupScene(const std::string& label) {
@@ -346,9 +410,9 @@ bool Editor::showSaveSceneDialog(GameScene* scene, bool forceDialog) {
 }
 
 
-int setupImguiLayout() {
-    ImGuiID dockspace_id = ImGui::GetID("MyDockspace");
-
+int Editor::setupImguiLayout() {
+    dockspace_id = ImGui::GetID("MyDockspace");
+    /*
     ImGuiID dsid_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.15f, NULL, &dockspace_id);
     ImGuiID dsid_right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.20f, NULL, &dockspace_id);
     ImGuiID dsid_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.30f, NULL, &dockspace_id);
@@ -365,8 +429,14 @@ int setupImguiLayout() {
     ImGui::DockBuilderDockWindow("Scene", dockspace_id);
     ImGui::DockBuilderDockWindow("Session", dsid_down_left);
     ImGui::DockBuilderDockWindow("History", dsid_down_right);
+     */
+
+    ImGuiID dsid_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.15f, NULL, &dockspace_id);
+
+    ImGui::DockBuilderDockWindow("Resource Tree", dsid_left);
 
     ImGui::DockBuilderFinish(dockspace_id);
+    current_dockspace = dockspace_id;
     return 0;
 }
 

@@ -4,12 +4,12 @@
 #include "../common/lib/imgui/imgui_internal.h"
 #include "../common/lib/imguizmo/ImGuizmo.h"
 
-#include "../common/resource/resource_factory.h"
+#include "../common/resource/resource_tree.hpp"
 #include "../common/resource/texture2d.h"
 
 #include "../common/util/has_suffix.hpp"
 
-#include "scene_object_from_fbx.hpp"
+#include "../common/util/scene_object_from_fbx.hpp"
 
 #include "editor.hpp"
 
@@ -86,7 +86,11 @@ void EditorViewport::update(Editor* editor) {
         mouse_is_over_vp = ImGui::IsWindowHovered();
         window_in_focus = ImGui::IsRootWindowFocused();
 
-        gvp.draw(editor->getScene(), editor->getSelectedObject(), gfxm::ivec2(0, 0));
+        GameObject* selected_object = 0;
+        if(!editor->getSelectedObjects().empty()) {
+            selected_object = *editor->getSelectedObjects().getAll().begin();
+        }
+        gvp.draw(editor->getScene(), selected_object, gfxm::ivec2(0, 0));
         
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ASSET_FILE")) {
@@ -96,13 +100,13 @@ void EditorViewport::update(Editor* editor) {
                     fname[i] = (std::tolower(fname[i]));
                 }
                 if(has_suffix(fname, ".fbx")) {
-                    GameObject* new_so = editor->getScene()->getRoot()->createChild();
-                    objectFromFbx(fname, new_so);
+                    //GameObject* new_so = editor->getScene()->getRoot()->createChild();
+                    //objectFromFbx(fname, new_so);
                     //new_so->get<Transform>()->position(wpt_xy);
-                    editor->setSelectedObject(new_so);
-                    editor->backupScene("import object from fbx");
+                    //editor->setSelectedObject(new_so);
+                    //editor->backupScene("import object from fbx");
                 } else if(has_suffix(fname, ".so")) {
-                    editor->getScene()->getRoot()->createChild()->read(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + fname);
+                    //editor->getScene()->getRoot()->createChild()->read(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + fname);
                 }
             }
             ImGui::EndDragDropTarget();
@@ -111,17 +115,13 @@ void EditorViewport::update(Editor* editor) {
     }
 
     return;
-
+/*
     editor->getScene()->update();
     dd.clear();
     if(editor->getState().debug_draw) {
         editor->getScene()->debugDraw(dd);
     }
-    /*
-    dd.line(gfxm::vec3(.0f, .0f, .0f), gfxm::vec3(1.0, .0f, .0f), gfxm::vec3(1.0f, .0f, .0f));
-    dd.line(gfxm::vec3(.0f, .0f, .0f), gfxm::vec3(.0, 1.0f, .0f), gfxm::vec3(.0f, 1.0f, .0f));
-    dd.line(gfxm::vec3(.0f, .0f, .0f), gfxm::vec3(.0, .0f, 1.0f), gfxm::vec3(.0f, .0f, 1.0f));
-    */
+
     dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-10.0, .0f, -11.0f), gfxm::vec3(1.0f, .0f, .0f));
     dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, 1.0f, -11.0f), gfxm::vec3(.0f, 1.0f, .0f));
     dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, .0f, -10.0f), gfxm::vec3(.0f, .0f, 1.0f));
@@ -130,14 +130,12 @@ void EditorViewport::update(Editor* editor) {
         gfxm::vec3(10.0f, .0f, 10.0f),
         1,
         gfxm::vec3(0.2f, 0.2f, 0.2f)
-    );/*
-    for(size_t i = 0; i < editor->getScene()->objectCount(); ++i) {
-        auto o = editor->getScene()->getObject(i);
-        dd.aabb(o->getAabb(), gfxm::vec3(1.0f, 0.7f, 0.2f));
-    }*/
-    if(editor->getSelectedObject()) {
+    );
+    
+    auto& selected = editor->getSelectedObjects();
+    for(auto& o : selected.getAll()) {
         dd.aabb(
-            editor->getSelectedObject()->getAabb(),
+            o->getAabb(),
             gfxm::vec3(1.0f, 1.0f, 1.0f)
         );
     }
@@ -180,6 +178,7 @@ void EditorViewport::update(Editor* editor) {
         tcam.translate(tcam.back() * cam_zoom_actual);
         gfxm::mat4 view = gfxm::inverse(tcam.matrix());
 
+        
         if(editor->getSelectedObject()) {
             ImGuizmo::SetRect(
                 ImVec2(ImGui::GetCursorScreenPos()).x, 
@@ -226,7 +225,7 @@ void EditorViewport::update(Editor* editor) {
                     editor->getSelectedObject()->getRoot()->refreshAabb();
                 }
             }
-        }
+        } 
         
         DrawList dl;
         editor->getScene()->getController<RenderController>()->getDrawList(dl);
@@ -269,25 +268,27 @@ void EditorViewport::update(Editor* editor) {
             ImGui::EndDragDropTarget();
         }
         ImGui::End();
-    }
+    }*/
 }
 
 void EditorViewport::recenterCamera() {
     //cam_angle_y = gfxm::radian(45.0f);
     //cam_angle_x = gfxm::radian(-25.0f);
 
-    if(editor->getSelectedObject()) {
-        auto o = editor->getSelectedObject();
-        gvp.resetCamera(
-            gfxm::lerp(o->getAabb().from, o->getAabb().to, 0.5f),
-            gfxm::length(o->getAabb().to - o->getAabb().from) * 0.8f + 0.01f
-        );
-    } else {
+    auto& selected = editor->getSelectedObjects();
+    if(selected.empty()) {
         gvp.resetCamera(
             gfxm::vec3(.0f, .0f, .0f),
             5.0f
         );
+        return;
     }
+    GameObject* o = *selected.getAll().begin();
+
+    gvp.resetCamera(
+        gfxm::lerp(o->getAabb().from, o->getAabb().to, 0.5f),
+        gfxm::length(o->getAabb().to - o->getAabb().from) * 0.8f + 0.01f
+    );
 }
 
 GuiViewport& EditorViewport::getViewport() {
