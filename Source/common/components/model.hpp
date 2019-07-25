@@ -6,11 +6,9 @@
 #include "../../common/resource/mesh.hpp"
 #include "../../common/resource/material.hpp"
 
-#include "../scene/game_scene.hpp"
-
 #include "../../common/util/imgui_helpers.hpp"
 
-class Model : public Attribute, public SceneListener {
+class Model : public Attribute {
     RTTR_ENABLE(Attribute)
 public:
     struct SkinData {
@@ -175,6 +173,7 @@ public:
         }
     }
 private:
+/* TODO: This needs to work
     virtual void onObjectRemoved(GameObject* sender) {
         for(size_t i = 0; i < segmentCount(); ++i) {
             auto& seg = getSegment(i);
@@ -186,7 +185,7 @@ private:
                 }
             }
         }
-    }
+    } */
 
     std::vector<Segment> segments;
 };

@@ -7,9 +7,12 @@
 
 #include "../../components/animation_stack.hpp"
 
-class AnimController : public SceneController {
+class AnimController : public SceneControllerEventFilter<AnimationStack> {
     RTTR_ENABLE(SceneController)
 public:
+    virtual void onAttribCreated(AnimationStack* s) { stacks.insert(s); }
+    virtual void onAttribRemoved(AnimationStack* s) { stacks.erase(s); }
+
     virtual SceneCtrlInfo getInfo() const {
         return SceneCtrlInfo{ true, FRAME_PRIORITY_ANIM };
     }
@@ -20,12 +23,6 @@ public:
         }
     }
 
-    void _regStack(AnimationStack* s) {
-        stacks.insert(s);
-    }
-    void _unregStack(AnimationStack* s) {
-        stacks.erase(s);
-    }
 private:
     std::set<AnimationStack*> stacks;
 };

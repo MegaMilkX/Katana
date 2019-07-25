@@ -3,7 +3,7 @@
 
 #include "../common/scene/game_scene.hpp"
 
-#include "../common/scene/character.hpp"
+//#include "../common/scene/character.hpp"
 
 #include "../common/scene/controllers/render_controller.hpp"
 #include "../common/scene/controllers/dynamics_ctrl.hpp"

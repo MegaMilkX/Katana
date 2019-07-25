@@ -126,7 +126,7 @@ void GuiViewport::draw(GameScene* scn, GameObject* selected_object, gfxm::ivec2 
         ImRect crect = window->ContentsRegionRect;
         ImGuizmo::SetRect(crect.Min.x, crect.Min.y, crect.Max.x - crect.Min.x, crect.Max.y - crect.Min.y);
 
-        if(selected_object && scn == selected_object->getScene()) {
+        if(selected_object && scn == selected_object->getRoot()) {
             selected_object->onGizmo(*this);
         }
 

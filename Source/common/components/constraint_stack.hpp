@@ -20,30 +20,6 @@ public:
     virtual ~ConstraintStack();
     virtual void onCreate();
 
-    virtual void copy(Attribute* other) {
-        if(other->get_type() != get_type()) {
-            LOG("Can't copy from " << other->get_type().get_name().to_string() << " to " <<
-                get_type().get_name().to_string());
-            return;
-        }
-        ConstraintStack* o = (ConstraintStack*)other;
-
-        for(size_t i = 0; i < o->stack.size(); ++i) {
-            auto& ptr = o->stack[i];
-            auto t = ptr->get_type();
-            auto v = t.create();
-            if(!v.is_valid()) {
-                LOG_WARN("Failed to copy constraint " << ptr->get_type().get_name().to_string());
-                break;
-            }
-            auto p = v.get_value<Constraint::Constraint*>();
-            std::shared_ptr<Constraint::Constraint> newptr(p);
-            stack.emplace_back(newptr);
-            newptr->setScene(getOwner()->getScene());
-            newptr->copy(ptr.get());
-        }
-    }
-
     virtual void onGui() {
         for(size_t i = 0; i < stack.size(); ++i) {
             ImGui::Text(stack[i]->get_type().get_name().to_string().c_str());
@@ -66,7 +42,7 @@ public:
                         continue;
                     }
                     std::shared_ptr<Constraint::Constraint> ptr(cc);
-                    ptr->setScene(getOwner()->getScene());
+                    //ptr->setScene(getOwner()->getScene());
                     stack.emplace_back(ptr);
                 }
             }
@@ -103,7 +79,7 @@ public:
             }
             auto p = v.get_value<Constraint::Constraint*>();
             stack[i].reset(p);
-            stack[i]->setScene(getOwner()->getScene());
+            //stack[i]->setScene(getOwner()->getScene());
             stack[i]->deserialize(in);
         }
         return true;

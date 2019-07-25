@@ -1,3 +1,5 @@
+#include <stack>
+
 #include "game_scene.hpp"
 
 #include "../behavior/behavior.hpp"
@@ -12,29 +14,25 @@
 #include "../util/scene_object_from_fbx.hpp"
 
 GameScene::GameScene() {
-    root_object.reset(new GameObject());
-    root_object->scene = this;
-    root_object->setName("Root");
+    setName("Root");
 }
 
 GameScene::~GameScene() {
 }
 
 void GameScene::clear() {
-    root_object.reset(new GameObject());
-    root_object->scene = this;
+    deleteAllComponents();
+    for(auto o : children) {
+        delete o;
+    }
 
-    controllers.clear();
-    updatable_controllers.clear();
-}
-
-GameObject* GameScene::getRoot() {
-    return root_object.get();
+    //controllers.clear();
+    //updatable_controllers.clear();
 }
 
 std::vector<GameObject*> GameScene::findObjectsFuzzy(const std::string& name) {
     std::vector<GameObject*> r;
-    root_object->getAllObjects(r);
+    getAllObjects(r);
 
     std::vector<GameObject*> result;
     struct tmp {
@@ -44,8 +42,8 @@ std::vector<GameObject*> GameScene::findObjectsFuzzy(const std::string& name) {
     std::vector<tmp> sorted;
     for(auto o : r) {
         size_t cost = levenshteinDistance(name, o->getName());
-        size_t pos = o->name.find_first_of(name);
-        if(pos != o->name.npos) {
+        size_t pos = o->getName().find_first_of(name);
+        if(pos != o->getName().npos) {
             //cost = 0;
         }
         sorted.emplace_back(tmp{o, cost});
@@ -98,7 +96,7 @@ void GameScene::update() {
         c->onUpdate();
     }
 
-    root_object->getTransform()->_frameClean();
+    getTransform()->_frameClean();
 }
 void GameScene::debugDraw(DebugDraw& dd) {
     for(auto& kv : controllers) {
@@ -106,86 +104,11 @@ void GameScene::debugDraw(DebugDraw& dd) {
     }
 }
 
-void GameScene::resetAttribute(Attribute* attrib) {
-    _unregisterComponent(attrib);
-    _registerComponent(attrib);   
-}
-void GameScene::_registerComponent(Attribute* c) {
-    object_components[c->get_type()].emplace_back(c);
-
-    for(auto& kv : controllers) {
-        kv.second->attribCreated(c->get_type(), c);
-    }
-    auto bases = c->get_type().get_base_classes();
-    for(auto b : bases) {
-        for(auto& kv : controllers) {
-            kv.second->attribCreated(b, c);
-        }   
-    }
-}
-void GameScene::_unregisterComponent(Attribute* c) {
-    auto& vec = object_components[c->get_type()];
-    for(size_t i = 0; i < vec.size(); ++i) {
-        if(vec[i] == c) {
-            vec.erase(vec.begin() + i);
-            break;
-        }
-    }
-    
-    for(auto& kv : controllers) {
-        kv.second->attribDeleted(c->get_type(), c);
-    }
-    auto bases = c->get_type().get_base_classes();
-    for(auto b : bases) {
-        for(auto& kv : controllers) {
-            kv.second->attribDeleted(b, c);
-        }   
-    }
-}
-
 void GameScene::serialize(out_stream& out) {
-    getRoot()->write(out);
+    write(out);
 }
 bool GameScene::deserialize(in_stream& in, size_t sz) {
-    /*
-    const std::string& type_hint = Resource::Name();
-    std::vector<char> buf;
-    buf = in.read<char>(in.bytes_available());
-    if(has_suffix(type_hint, ".fbx")) {
-        objectFromFbx(buf, root_object.get(), type_hint);
-    } else {
-
-    } */
-    getRoot()->read(in);
-
-    return true;
-}
-
-void GameScene::write(out_stream& out) {
-    
-}
-void GameScene::read(in_stream& in) {
-    
-}
-
-bool GameScene::write(const std::string& fname) {
-    file_stream strm(fname, file_stream::F_OUT);
-    if(!strm.is_open()) {
-        return false;
-    }
-
-    write(strm);
-
-    return true;
-}
-bool GameScene::read(const std::string& fname) {
-    file_stream strm(fname, file_stream::F_IN);
-    if(!strm.is_open()) {
-        return false;
-    }
-
-    read(strm);
-
+    read(in);
     return true;
 }
 
@@ -218,4 +141,53 @@ SceneController* GameScene::createController(rttr::type t) {
     }
 
     sc->init(this);
+
+    // Trigger component signals only for the new controller (don't want to needlessly disturb other controllers)
+    for(auto& kv : object_components) {
+        for(auto& a : kv.second) {
+            sc->attribCreated(a->get_type(), a);
+            auto bases = a->get_type().get_base_classes();
+            for(auto b : bases) {
+                sc->attribCreated(b, a);
+            }
+        }
+    }
+}
+
+
+void GameScene::_registerComponent(Attribute* c) {
+    object_components[c->get_type()].emplace_back(c);
+
+    for(auto& kv : controllers) {
+        kv.second->attribCreated(c->get_type(), c);
+    }
+    auto bases = c->get_type().get_base_classes();
+    for(auto b : bases) {
+        for(auto& kv : controllers) {
+            kv.second->attribCreated(b, c);
+        }   
+    }
+}
+void GameScene::_unregisterComponent(Attribute* c) {
+    auto& vec = object_components[c->get_type()];
+    for(size_t i = 0; i < vec.size(); ++i) {
+        if(vec[i] == c) {
+            vec.erase(vec.begin() + i);
+            break;
+        }
+    }
+    
+    for(auto& kv : controllers) {
+        kv.second->attribDeleted(c->get_type(), c);
+    }
+    auto bases = c->get_type().get_base_classes();
+    for(auto b : bases) {
+        for(auto& kv : controllers) {
+            kv.second->attribDeleted(b, c);
+        }   
+    }
+}
+void GameScene::_readdComponent(Attribute* attrib) {
+    _unregisterComponent(attrib);
+    _registerComponent(attrib);   
 }

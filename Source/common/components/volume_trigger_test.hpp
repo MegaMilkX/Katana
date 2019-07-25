@@ -11,9 +11,7 @@
 class VolumeTriggerTest : public CollisionListener {
     RTTR_ENABLE(CollisionListener)
 public:
-    void onCreate() {
-        getOwner()->getScene()->getController<DynamicsCtrl>();
-    }
+    void onCreate() {}
 
     void onEnter(GameObject* other) {
         getOwner()->get<AudioSource>()->play(true);

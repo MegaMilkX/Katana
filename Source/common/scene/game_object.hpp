@@ -13,11 +13,9 @@
 #include "../transform.hpp"
 
 #include "../components/component.hpp"
-
-class GameScene;
+#include "../scene/scene_controller.hpp"
 
 class GameObject {
-    friend GameScene;
 public:
     GameObject();
     virtual ~GameObject();
@@ -30,7 +28,6 @@ public:
     void                                setName(const std::string& name);
     const std::string&                  getName() const;
 
-    GameScene*                          getScene();
     GameObject*                         getRoot();
     GameObject*                         getParent();
 
@@ -69,10 +66,13 @@ public:
     void                                read(in_stream& in);
     bool                                write(const std::string& fname);
     bool                                read(const std::string& fname);
-private:
-    std::shared_ptr<Attribute>          createComponent(rttr::type t);
 
-    GameScene* scene = 0;
+    virtual void                        _readdComponent(Attribute* attrib);
+protected:
+    std::shared_ptr<Attribute>          createComponent(rttr::type t);
+    virtual void                        _registerComponent(Attribute* attrib);
+    virtual void                        _unregisterComponent(Attribute* attrib);
+
     std::string name = "Object";
     TransformNode transform;
     gfxm::aabb aabb = gfxm::aabb(

@@ -9,7 +9,6 @@
 #include "../resource/resource.h"
 
 #include "game_object.hpp"
-#include "scene_event_mgr.hpp"
 
 #include "../components/camera.hpp"
 
@@ -19,14 +18,12 @@
 #include "scene_controller.hpp"
 #include "../serializable.hpp"
 
-class GameScene : public Resource {
+class GameScene : public GameObject, public Resource {
 public:
     GameScene();
     ~GameScene();
 
     void clear();
-
-    GameObject* getRoot();
 
     std::vector<GameObject*> findObjectsFuzzy(const std::string& name);
 
@@ -51,21 +48,15 @@ public:
     void update();
     void debugDraw(DebugDraw& dd);
 
-    void resetAttribute(Attribute* attrib);
-    void _registerComponent(Attribute* c);
-    void _unregisterComponent(Attribute* c);
-
     virtual void serialize(out_stream& out);
     virtual bool deserialize(in_stream& in, size_t sz);
-
-    void write(out_stream& out);
-    void read(in_stream& in);
-    bool write(const std::string& fname);
-    bool read(const std::string& fname);
 private:
     SceneController* createController(rttr::type t);
 
-    std::shared_ptr<GameObject>                             root_object;
+    virtual void                        _registerComponent(Attribute* attrib);
+    virtual void                        _unregisterComponent(Attribute* attrib);
+    virtual void                        _readdComponent(Attribute* attrib);
+
     std::map<rttr::type, std::shared_ptr<SceneController>>  controllers;
     std::vector<SceneController*>                           updatable_controllers;
     std::map<

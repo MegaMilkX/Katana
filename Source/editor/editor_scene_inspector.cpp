@@ -6,9 +6,11 @@
 
 #include "editor.hpp"
 
-#include "../common/scene/third_person_camera.hpp"
+//#include "../common/scene/third_person_camera.hpp"
 
 #include "../common/lib/nativefiledialog/nfd.h"
+
+#include "../common/util/has_suffix.hpp"
 
 static bool showSaveGameObjectDialog(GameObject* o, bool forceDialog) {
     char* outPath;
@@ -76,7 +78,7 @@ void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const s
     if(ImGui::Begin(title.c_str(), 0, ImGuiWindowFlags_MenuBar)) {
         if(ImGui::BeginMenuBar()) {
             if(ImGui::MenuItem("Create")) {
-                selected.clearAndAdd(scene->getRoot()->createChild());
+                selected.clearAndAdd(scene->createChild());
                 // TODO: editor->backupScene("object created");
             }
             ImGui::EndMenuBar();
@@ -87,7 +89,7 @@ void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const s
         }
         std::string find_str = search_string_buf;
         if(find_str.empty()) {
-            sceneTreeViewNode(scene->getRoot(), selected);
+            sceneTreeViewNode(scene, selected);
         } else {
             ImGui::Text("Search results:");
             auto objects = scene->findObjectsFuzzy(find_str);
@@ -113,7 +115,7 @@ void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const s
                 o = guiGameObjectContextMenu(o, selected);
             }
         }
-
+/*
         ImGui::Separator();
         ImGui::Text("Scene controllers:");
         ImGui::Separator();
@@ -123,7 +125,7 @@ void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const s
                 c->onGui();
             }            
         }
-
+*/
         ImGui::End();
     }
 }

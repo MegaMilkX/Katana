@@ -16,7 +16,7 @@ void Attribute::copy(Attribute* other) {}
 
 GameObject* Attribute::getOwner() { return owner; }
 void Attribute::resetAttribute() {
-    getOwner()->getScene()->resetAttribute(this);
+    getOwner()->_readdComponent(this);
 }
 
 bool Attribute::buildAabb(gfxm::aabb& out) {
