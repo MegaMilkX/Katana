@@ -172,6 +172,8 @@ public:
             getSegment(segmentCount());
         }
     }
+
+    virtual const char* getIconCode() const { return ICON_MDI_CUBE; }
 private:
 /* TODO: This needs to work
     virtual void onObjectRemoved(GameObject* sender) {

@@ -100,7 +100,6 @@ void GuiViewport::camZoom(float v) {
 
 void GuiViewport::draw(GameScene* scn, GameObject* selected_object, gfxm::ivec2 sz) {        
     if(ImGui::BeginChildFrame(0, ImVec2(sz.x, sz.y))) {
-        dd.clear();
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-10.0, .0f, -11.0f), gfxm::vec3(1.0f, .0f, .0f));
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, 1.0f, -11.0f), gfxm::vec3(.0f, 1.0f, .0f));
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, .0f, -10.0f), gfxm::vec3(.0f, .0f, 1.0f));
@@ -177,6 +176,7 @@ void GuiViewport::draw(GameScene* scn, GameObject* selected_object, gfxm::ivec2 
         if(debug_draw_enabled) {
             dd.draw(_proj, _view);
         }
+        dd.clear();
 
         ImGui::GetWindowDrawList()->AddImage((void*)rvp.getFinalImage(),
             bb.Min,

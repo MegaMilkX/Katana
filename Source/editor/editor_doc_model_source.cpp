@@ -2,13 +2,14 @@
 
 #include "../common/scene/game_scene.hpp"
 
-EditorDocModelSource::EditorDocModelSource(ResourceNode* node)
-: EditorDocument(node) {
-    //gvp.camMode(GuiViewport::CAM_MODE::CAM_ORBIT);
-    mdl_src = node->getResource<ModelSource>();
+EditorDocModelSource::EditorDocModelSource(std::shared_ptr<ResourceNode>& node)
+{
+    setResourceNode(node);
 }
 
 void EditorDocModelSource::onGui(Editor* ed) {
+    auto& mdl_src = _resource;
+
     ImVec2 winMin = ImGui::GetWindowContentRegionMin();
     ImVec2 winMax = ImGui::GetWindowContentRegionMax();
     ImVec2 winSize = ImVec2(winMax - winMin);

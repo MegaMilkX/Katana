@@ -5,6 +5,9 @@
 #include <memory>
 
 #include "../gen/Karla_Regular.ttf.h"
+#include "../gen/materialdesignicons_webfont.ttf.h"
+
+#include "../common/util/materialdesign_icons.hpp"
 
 static ImGuiContext* imGuiCtx;
 static GLuint imGuiVBuf;
@@ -38,6 +41,12 @@ void ImGuiInit() {
     unsigned char* pixels;
     int width, height;
     io.Fonts->AddFontFromMemoryTTF((void*)Karla_Regular_ttf, sizeof(Karla_Regular_ttf), 18);
+
+    static const ImWchar icons_ranges[] = { ICON_MIN_MDI, ICON_MAX_MDI, 0 };
+    ImFontConfig icons_config;
+    icons_config.MergeMode = true;
+    icons_config.PixelSnapH = true;
+    io.Fonts->AddFontFromMemoryTTF((void*)materialdesignicons_webfont_ttf, sizeof(materialdesignicons_webfont_ttf), 18, &icons_config, icons_ranges);
 
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 

@@ -88,6 +88,8 @@ public:
 
     virtual void        serialize(out_stream& out);
     virtual bool        deserialize(in_stream& in, size_t sz);
+
+    virtual const char* getWriteExtension() const { return "anm"; }
 private:
     AnimNode root_motion_node;
     std::vector<AnimNode> nodes;

@@ -151,7 +151,7 @@ public:
             draw_list.solids.size()
         );
         drawMultiple(
-            prog_gbuf_solid,
+            prog_gbuf_skin,
             draw_list.skins.data(),
             draw_list.skins.size()
         );

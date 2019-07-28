@@ -42,6 +42,8 @@ public:
         ImGui::DragFloat("intensity", &intensity, 0.001f);
         ImGui::DragFloat("radius", &radius, 0.001f);
     }
+    void onGizmo(GuiViewport& vp);
+    virtual const char* getIconCode() const { return ICON_MDI_LIGHTBULB_ON; }
 };
 STATIC_RUN(OmniLight) {
     rttr::registration::class_<OmniLight>("OmniLight")

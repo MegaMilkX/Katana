@@ -35,6 +35,8 @@ public:
         free(decoded);
         return true;
     }
+
+    virtual const char* getWriteExtension() const { return ""; }
 private:
     std::shared_ptr<AudioBuffer> buf;
 };

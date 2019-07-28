@@ -13,12 +13,15 @@ class ResourceNode;
 class Editor;
 class EditorResourceTree {
     const ResourceNode* selected_node = 0;
+    ResourceNode*       renaming_node = 0;
     bool needs_autoscroll = false;
 
     HANDLE dwChangeHandle;
 
     void initDirWatch(const std::string& dir);
     void checkDirChanges();
+
+    void imguiContextMenu(const ResourceNode* node);
 
 public:
     EditorResourceTree();

@@ -25,24 +25,24 @@ size_t ResourceNode::childCount() const {
     return nodes.size();
 }
 
-ResourceNode* ResourceNode::getChild(const std::string& name) {
+std::shared_ptr<ResourceNode> ResourceNode::getChild(const std::string& name) {
     auto& ptr = nodes[name];
     if(!ptr) {
         ptr.reset(new ResourceNode);
         ptr->parent = this;
         ptr->name = name;
     }
-    return ptr.get();
+    return ptr;
 }
-ResourceNode* ResourceNode::findChild(const std::string& name) {
+std::shared_ptr<ResourceNode> ResourceNode::findChild(const std::string& name) {
     auto it = nodes.find(name);
-    ResourceNode* r = 0;
+    std::shared_ptr<ResourceNode> r;
     if(it != nodes.end()) {
-        r = it->second.get();
+        r = it->second;
     }
     return r;
 }
-const std::map<std::string, std::unique_ptr<ResourceNode>>& ResourceNode::getChildren() const {
+const std::map<std::string, std::shared_ptr<ResourceNode>>& ResourceNode::getChildren() const {
     return nodes;
 }
 std::string ResourceNode::getName() const {
@@ -65,6 +65,42 @@ bool ResourceNode::isLoaded() const {
     return (bool)resource;
 }
 
+void ResourceNode::difference(ResourceNode* other) {
+    std::set<std::string> to_delete;
+    for(auto& n : nodes) {
+        auto& it = other->nodes.find(n.first);
+        if(it == other->nodes.end()) {
+            to_delete.insert(n.first);
+        } else {
+            n.second->difference(it->second.get());
+        }
+    }
+
+    for(auto& n : to_delete) {
+        nodes.erase(n);
+    }
+}
+void ResourceNode::add(ResourceNode* other) {
+    std::set<ResourceNode*> new_nodes;
+    for(auto& other_kv : other->nodes) {
+        auto& this_kv = nodes.find(other_kv.first);
+        if(this_kv != nodes.end()) {
+            this_kv->second->add(other_kv.second.get());
+        } else {
+            ResourceNode* new_n = new ResourceNode();
+            new_n->parent = this;
+            new_n->name = other_kv.second->name;
+            new_n->data_src = other_kv.second->data_src;
+            new_nodes.insert(new_n);
+        }
+    }
+
+    for(auto n : new_nodes) {
+        nodes[n->name].reset(n);
+        n->add(other->nodes[n->name].get());
+    }
+}
+
 void ResourceNode::print() {
     LOG(name);
     for(auto& kv : nodes) {
@@ -73,8 +109,12 @@ void ResourceNode::print() {
 }
 
 
+ResourceTree::ResourceTree() {
+    root.reset(new ResourceNode());
+}
+
 void ResourceTree::clear() {
-    root = ResourceNode();
+    root.reset(new ResourceNode());
 }
 
 void ResourceTree::mapType(const std::string& mask, rttr::type type) {
@@ -83,37 +123,61 @@ void ResourceTree::mapType(const std::string& mask, rttr::type type) {
 
 void ResourceTree::insert(const std::string& path, DataSource* data_src) {
     std::vector<std::string> tokens = split(path, '/');
-    ResourceNode* cur_node = &root;
+    ResourceNode* cur_node = root.get();
     for(int i = 0; i < tokens.size(); ++i) {
-        cur_node = cur_node->getChild(tokens[i]);
+        cur_node = cur_node->getChild(tokens[i]).get();
     }
     cur_node->setDataSource(data_src);
 }
 ResourceNode* ResourceTree::get(const std::string& p) {
+    return get_weak(p).lock().get();
+}
+std::weak_ptr<ResourceNode> ResourceTree::get_weak(const std::string& p) {
     std::string path = sanitizeString(p);
     std::vector<std::string> tokens = split(path, '/');
 
-    ResourceNode* cur_node = tokens.size() > 0 ? &root : 0;
+    std::shared_ptr<ResourceNode> cur_node = tokens.size() > 0 ? root : 0;
     for(int i = 0; i < tokens.size(); ++i) {
         if(!cur_node) break;
         cur_node = cur_node->findChild(tokens[i]);
     }
-    if(cur_node == 0) {
+    if(!cur_node) {
         LOG_WARN("No such resource node: '" << path << "'");
     }
     return cur_node;
 }
-ResourceNode* ResourceTree::getRoot() { 
-    return &root; 
+
+std::shared_ptr<ResourceNode>& ResourceTree::getRoot() { 
+    return root; 
+}
+
+std::shared_ptr<ResourceNode> ResourceTree::find_shared(const std::string& p) {
+    std::string path = sanitizeString(p);
+    std::vector<std::string> tokens = split(path, '/');
+
+    std::shared_ptr<ResourceNode> cur_node = tokens.size() > 0 ? root : 0;
+    for(int i = 0; i < tokens.size(); ++i) {
+        if(!cur_node) break;
+        cur_node = cur_node->findChild(tokens[i]);
+    }
+    if(!cur_node) {
+        LOG_WARN("No such resource node: '" << path << "'");
+    }
+    return cur_node;
+}
+
+void ResourceTree::update(ResourceTree& other) {
+    root->difference(other.root.get());
+    root->add(other.root.get());
 }
 
 void ResourceTree::print() {
-    root.print();
+    root->print();
 }
 
 void ResourceTree::scanFilesystem(const std::string& rootDir) {
     ResourceTree& resTree = *this;
-    root = ResourceNode();
+    ResourceTree new_tree;
     
     std::vector<std::string> files = find_all_files(rootDir, "*.*");
     std::vector<std::string> files_relative = files;
@@ -124,6 +188,8 @@ void ResourceTree::scanFilesystem(const std::string& rootDir) {
         std::replace(f.begin(), f.end(), '\\', '/');
         std::transform(f.begin(), f.end(), f.begin(), ::tolower);
 
-        resTree.insert(f, new DataSourceFilesystem(files[i]));
+        new_tree.insert(f, new DataSourceFilesystem(files[i]));
     }
+
+    resTree.update(new_tree);
 }

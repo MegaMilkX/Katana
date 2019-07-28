@@ -18,6 +18,8 @@ public:
     virtual bool deserialize(in_stream& in, size_t sz) {
         return true;
     }
+
+    virtual const char* getIconCode() const { return ICON_MDI_MICROPHONE; }
 private:
 
 };

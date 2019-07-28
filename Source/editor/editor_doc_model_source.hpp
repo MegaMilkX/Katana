@@ -7,12 +7,11 @@
 
 #include "../common/resource/model_source.hpp"
 
-class EditorDocModelSource : public EditorDocument {
+class EditorDocModelSource : public EditorDocumentTyped<ModelSource> {
     bool first_use = true;
     GuiViewport gvp;
-    std::shared_ptr<ModelSource> mdl_src;
 public:
-    EditorDocModelSource(ResourceNode* node);
+    EditorDocModelSource(std::shared_ptr<ResourceNode>& node);
 
     virtual void onGui(Editor* ed);
 };

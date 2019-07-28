@@ -126,6 +126,17 @@ void DebugDraw::point(const gfxm::vec3& pt, const gfxm::vec3& color) {
     line(gfxm::vec3(0,0,-0.5f) + pt, gfxm::vec3(0,0,0.5f) + pt, color);
 }
 
+void DebugDraw::circle(const gfxm::vec3& center, float radius, const gfxm::vec3& color, const gfxm::mat3& transform) {
+    const int reso = 12;
+    for(int i = 1; i <= reso; ++i) {
+        float v_a = ((i - 1) / (float)reso) * gfxm::pi * 2.0f;
+        float v_b = (i / (float)reso) * gfxm::pi * 2.0f;
+        gfxm::vec3 pt_a = gfxm::to_mat4(transform) * gfxm::vec4(sinf(v_a) * radius, 0, cosf(v_a) * radius, 0);
+        gfxm::vec3 pt_b = gfxm::to_mat4(transform) * gfxm::vec4(sinf(v_b) * radius, 0, cosf(v_b) * radius, 0);
+        line(center + pt_a, center + pt_b, color);
+    }
+}
+
 void DebugDraw::draw(const gfxm::mat4& proj, const gfxm::mat4& view) {
     if(line_buf.empty()) return;
 
