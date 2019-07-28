@@ -10,7 +10,9 @@
 
 #include "object_set.hpp"
 
-class EditorDocScene : public EditorDocument {
+#include "../common/input_listener.hpp"
+
+class EditorDocScene : public EditorDocumentTyped<GameScene>, public InputListenerWrap {
     bool first_use = true;
     GuiViewport gvp;
     EditorSceneInspector scene_inspector;
@@ -18,7 +20,8 @@ class EditorDocScene : public EditorDocument {
     std::shared_ptr<GameScene> scene;
     ObjectSet selected;
 public:
-    EditorDocScene(ResourceNode* node);
+    EditorDocScene();
+    EditorDocScene(std::shared_ptr<ResourceNode>& node);
 
     virtual void onGui (Editor* ed);
 };

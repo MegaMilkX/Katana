@@ -8,23 +8,24 @@
 #include "../common/scene/controllers/audio_controller.hpp"
 #include "../common/scene/controllers/anim_controller.hpp"
 
-EditorDocScene::EditorDocScene(ResourceNode* node)
-: EditorDocument(node) {
-    if(node) {
-        scene = node->getResource<GameScene>();
-    } else {
-        scene.reset(new GameScene());
-    }
-    scene->getController<RenderController>();
-    scene->getController<DynamicsCtrl>();
-    scene->getController<ConstraintCtrl>();
-    scene->getController<AudioController>();
-    scene->getController<AnimController>();
+#include "editor.hpp"
 
+EditorDocScene::EditorDocScene() {
+    
+}
+EditorDocScene::EditorDocScene(std::shared_ptr<ResourceNode>& node) {
+    setResourceNode(node);
     gvp.enableDebugDraw(true);
+    
+    bindActionPress("ALT", [this](){ 
+        gvp.camMode(GuiViewport::CAM_ORBIT); 
+    });
+    bindActionRelease("ALT", [this](){ gvp.camMode(GuiViewport::CAM_PAN); });
 }
 
 void EditorDocScene::onGui (Editor* ed) {
+    auto& scene = _resource;
+
     ImGuiID dock_id = ImGui::GetID(getName().c_str());
     ImGui::DockSpace(dock_id);
 
@@ -45,6 +46,12 @@ void EditorDocScene::onGui (Editor* ed) {
 
     bool open = true;
     if(ImGui::Begin(win_vp_name.c_str(), &open, ImVec2(200, 200))) {
+        if(ImGui::IsRootWindowOrAnyChildFocused()) {
+            // TODO: Shouldn't be here
+            ed->getResourceTree().setSelected(getNode());
+            ed->setFocusedDocument(this);
+        }
+
         gvp.draw(scene.get(), 0, gfxm::ivec2(0,0));
         ImGui::End();
     }

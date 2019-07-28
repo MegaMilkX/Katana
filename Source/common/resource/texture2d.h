@@ -61,7 +61,9 @@ public:
         Data(data, w, h, 4);
         stbi_image_free(data);
         return true;
-    }   
+    }
+
+    virtual const char* getWriteExtension() const { return ""; }
 private:
     bool dirty;
     std::vector<unsigned char> _data;

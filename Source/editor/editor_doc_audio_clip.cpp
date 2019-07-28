@@ -4,14 +4,21 @@
 
 #include "../common/audio.hpp"
 
-EditorDocAudioClip::EditorDocAudioClip(ResourceNode* node)
-: EditorDocument(node) {
-    clip = node->getResource<AudioClip>();
+EditorDocAudioClip::EditorDocAudioClip(std::shared_ptr<ResourceNode>& node)
+{
     chan = audio().createChannel();
+    setResourceNode(node);
+}
+
+void EditorDocAudioClip::setResourceNode(std::shared_ptr<ResourceNode>& node) {
+    EditorDocumentTyped<AudioClip>::setResourceNode(node);
+    auto& clip = _resource;
     audio().setBuffer(chan, clip->getBuffer());
 }
 
 void EditorDocAudioClip::onGui(Editor* ed) {
+    auto& clip = _resource;
+
     ImVec2 winMin = ImGui::GetWindowContentRegionMin();
     ImVec2 winMax = ImGui::GetWindowContentRegionMax();
     ImVec2 winSize = ImVec2(winMax - winMin);

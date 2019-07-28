@@ -68,21 +68,21 @@ void imguiResourceTreeCombo(
     }
     if(ImGui::BeginCombo(label, current_name.c_str())) {
         std::set<const ResourceNode*> valid_nodes;
-        std::function<bool(const ResourceNode*, const std::string&, std::set<const ResourceNode*>&)> walkNodes;
-        walkNodes = [&walkNodes](const ResourceNode* node, const std::string& suffix,  std::set<const ResourceNode*>& valid_nodes)->bool {
+        std::function<bool(const std::shared_ptr<ResourceNode>&, const std::string&, std::set<const ResourceNode*>&)> walkNodes;
+        walkNodes = [&walkNodes](const std::shared_ptr<ResourceNode>& node, const std::string& suffix,  std::set<const ResourceNode*>& valid_nodes)->bool {
             bool has_valid_child = false;
             for(auto& kv : node->getChildren()) {
-                if(walkNodes(kv.second.get(), suffix, valid_nodes)) {
+                if(walkNodes(kv.second, suffix, valid_nodes)) {
                     has_valid_child = true;
                 }
             }
             if(!has_valid_child) {
                 if(has_suffix(node->getName(), suffix)) {
-                    valid_nodes.insert(node);
+                    valid_nodes.insert(node.get());
                     return true;
                 }
             } else {
-                valid_nodes.insert(node);
+                valid_nodes.insert(node.get());
                 return true;
             }
             return false;
@@ -90,9 +90,9 @@ void imguiResourceTreeCombo(
 
         walkNodes(gResourceTree.getRoot(), MKSTR("." << ext), valid_nodes);
 
-        std::function<void(ResourceNode*, const std::set<const ResourceNode*>&)> imguiResourceTree;
-        imguiResourceTree = [&callback, &res, &imguiResourceTree](ResourceNode* node, const std::set<const ResourceNode*>& valid_nodes) {
-            if(valid_nodes.find(node) == valid_nodes.end()) {
+        std::function<void(const std::shared_ptr<ResourceNode>&, const std::set<const ResourceNode*>&)> imguiResourceTree;
+        imguiResourceTree = [&callback, &res, &imguiResourceTree](const std::shared_ptr<ResourceNode>& node, const std::set<const ResourceNode*>& valid_nodes) {
+            if(valid_nodes.find(node.get()) == valid_nodes.end()) {
                 return;
             }
             std::string node_label = node->getName();
@@ -101,13 +101,13 @@ void imguiResourceTreeCombo(
             }
             if(node->childCount()) {
                 if(ImGui::TreeNodeEx(
-                    (void*)node,
+                    (void*)node.get(),
                     ImGuiTreeNodeFlags_OpenOnDoubleClick |
                     ImGuiTreeNodeFlags_OpenOnArrow,
                     node_label.c_str()
                 )) {
                     for(auto& kv : node->getChildren()) {
-                        imguiResourceTree(kv.second.get(), valid_nodes);
+                        imguiResourceTree(kv.second, valid_nodes);
                     }
                     ImGui::TreePop();
                 }
@@ -121,7 +121,7 @@ void imguiResourceTreeCombo(
         };
 
         for(auto& kv : gResourceTree.getRoot()->getChildren()) {
-            imguiResourceTree(kv.second.get(), valid_nodes);
+            imguiResourceTree(kv.second, valid_nodes);
         }
 
         ImGui::EndCombo();

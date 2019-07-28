@@ -19,6 +19,8 @@
 #include <shellapi.h>
 #include <Shlobj.h>
 
+#include "../common/resource/ext_to_icon.hpp"
+
 void EditorResourceTree::initDirWatch(const std::string& dir) {
     dwChangeHandle = FindFirstChangeNotificationA(
         dir.c_str(),
@@ -84,7 +86,7 @@ static void imguiDragDropTarget(const std::string& name) {
     }
 }
 
-static void imguiContextMenu(const ResourceNode* node) {
+void EditorResourceTree::imguiContextMenu(const ResourceNode* node) {
     if (ImGui::BeginPopupContextItem()) {
         if(ImGui::MenuItem("Open in default program")) {
             ShellExecuteA(NULL, "open", MKSTR(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + node->getFullName()).c_str(), NULL, NULL, SW_SHOWDEFAULT);
@@ -117,7 +119,7 @@ static void imguiContextMenu(const ResourceNode* node) {
         }
         ImGui::Separator();
         if(ImGui::MenuItem("Rename")) {
-            
+            renaming_node = (ResourceNode*)node;
         }
         if(ImGui::MenuItem("Delete")) {
             
@@ -130,50 +132,69 @@ void EditorResourceTree::update(Editor* editor) {
     checkDirChanges();
 
     if(ImGui::Begin("Resource Tree")) {
+        // TODO: ImGui::CalcTextSize()
         ImGui::TextWrapped("Select a resource to see it's description and preview here");
         ImGui::BeginChildFrame(ImGui::GetID("ResourceTreeTree"), ImVec2(0,0));
-        std::function<void(const ResourceNode*/*, const std::set<const ResourceNode*>& */)> imguiResourceTree;
-        imguiResourceTree = [this, editor, &imguiResourceTree](const ResourceNode* node/*, const std::set<const ResourceNode*>& valid_nodes */) {
-            /*
-            if(valid_nodes.find(node) == valid_nodes.end()) {
-                return;
-            } */
+        std::function<void(const std::shared_ptr<ResourceNode>&)> imguiResourceTree;
+        imguiResourceTree = [this, editor, &imguiResourceTree](const std::shared_ptr<ResourceNode>& node) {
             std::string node_label = node->getName();
             if(node->isLoaded()) {
                 node_label += " [L]";
             }
             if(node->childCount()) {
+                node_label = ICON_MDI_FOLDER " " + node_label;
                 if(ImGui::TreeNodeEx(
-                    (void*)node,
+                    (void*)node.get(),
                     ImGuiTreeNodeFlags_OpenOnDoubleClick |
                     ImGuiTreeNodeFlags_OpenOnArrow,
                     node_label.c_str()
                 )) {
                     for(auto& kv : node->getChildren()) {
-                        imguiResourceTree(kv.second.get()/*, valid_nodes */);
+                        imguiResourceTree(kv.second);
                     }
                     ImGui::TreePop();
                 }
             } else {
-                bool selected = selected_node == node;
+                bool selected = selected_node == node.get();
                 if(selected && needs_autoscroll) {
                     needs_autoscroll = false;
                     ImGui::SetScrollY(ImGui::GetCursorScreenPos().y);
                 }
-                if(ImGui::Selectable(node_label.c_str(), &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
-                    if(ImGui::IsMouseDoubleClicked(0)) {
-                        editor->tryOpenDocument(node);
-                        setSelected(node, false);
+
+                if(renaming_node == node.get()) {
+                    char buf[256];
+                    memset(buf, 0, 256);
+                    memcpy(buf, node_label.c_str(), node_label.size());
+                    ImGui::PushItemWidth(-1);
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,1));
+                    if(ImGui::InputText(MKSTR("###" << node.get()).c_str(), buf, 256, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_EnterReturnsTrue)) {
+                        renaming_node = 0;
                     }
-                }
-                imguiDragDropSource(IMGUI_DND_RESOURCE, (void*)node, node->getName());
-                imguiDragDropTarget(IMGUI_DND_RESOURCE);
-                imguiContextMenu(node);
+                    ImGui::PopStyleColor();
+                    ImGui::PopItemWidth();
+                } else {
+                    std::string node_name = node->getName();
+                    std::string ext = node_name.substr(node_name.find_last_of("."));
+                    std::string icon = getExtIconCode(ext.c_str());
+
+                    if(ImGui::Selectable(MKSTR(icon << " " << node_label).c_str(), &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+                        renaming_node = 0;
+                        if(ImGui::IsMouseDoubleClicked(0)) {
+                            editor->tryOpenDocument(node);                            
+                        } else {
+                        }
+                        
+                        setSelected(node.get(), false);
+                    }
+                    imguiDragDropSource(IMGUI_DND_RESOURCE, (void*)node.get(), node->getName());
+                    imguiDragDropTarget(IMGUI_DND_RESOURCE);
+                    imguiContextMenu(node.get());
+                }                
             }
         };
 
         for(auto& kv : gResourceTree.getRoot()->getChildren()) {
-            imguiResourceTree(kv.second.get());
+            imguiResourceTree(kv.second);
         }
         ImGui::EndChildFrame();
 

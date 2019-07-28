@@ -14,6 +14,8 @@
 #include "../../common/util/data_reader.hpp"
 #include "../../common/util/data_writer.hpp"
 
+#include "../../common/util/materialdesign_icons.hpp"
+
 class Resource {
     RTTR_ENABLE()
 public:
@@ -32,14 +34,20 @@ public:
     virtual void serialize(out_stream& out) {}
     virtual bool deserialize(in_stream& in, size_t sz) { return false; }
 
-    void write_to_file(const std::string& filename) {
-        std::ofstream f(filename, std::ios::binary);
+    bool write_to_file(const std::string& filename) {
         dstream out;
+        serialize(out);
+
+        if(out.getBuffer().empty()) return false;
+
+        std::ofstream f(filename, std::ios::binary);
         if(f.is_open()) {
-            serialize(out);
             f.write(out.getBuffer().data(), out.getBuffer().size());
         }
+        return true;
     }
+
+    virtual const char* getWriteExtension() const { return ""; }
 
     virtual void _editorGui() {}
 private:

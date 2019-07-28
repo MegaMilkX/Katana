@@ -219,6 +219,8 @@ public:
             }
         }
     }
+
+    virtual const char* getIconCode() const { return ICON_MDI_LAYERS; }
 private:
     void updateLayer(
         AnimLayer& l, 

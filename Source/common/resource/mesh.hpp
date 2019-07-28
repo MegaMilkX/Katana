@@ -40,6 +40,8 @@ public:
 
         return true; 
     }
+
+    virtual const char* getWriteExtension() const { return "msh"; }
 private:
     std::vector<float> vertices;
     std::vector<uint32_t> indices;

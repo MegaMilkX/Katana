@@ -52,14 +52,16 @@ public:
 
     GameScene* getScene();
     ObjectSet& getSelectedObjects();
+    EditorDocument* getFocusedDocument();
     EditorAssetInspector* getAssetInspector();
     EditorResourceTree& getResourceTree();
     void setCurrentDockspace(ImGuiID id);
     void setSelectedObject(GameObject* o);
+    void setFocusedDocument(EditorDocument* doc);
 
-    void addDocument(const ResourceNode* node, EditorDocument* doc);
+    void addDocument(EditorDocument* doc);
     void addNewDocument(EditorDocument* doc);
-    void tryOpenDocument(const ResourceNode* node);
+    void tryOpenDocument(const std::shared_ptr<ResourceNode>& node);
 
     void backupScene(const std::string& label = "");
     void redo();
@@ -75,8 +77,8 @@ private:
     EditorState editor_state;
 
     EditorResourceTree ed_resource_tree;
-    std::map<const ResourceNode*, EditorDocument*> documents;
-    std::set<EditorDocument*> new_documents;
+    std::set<EditorDocument*> open_documents;
+    EditorDocument* focused_document = 0;
 
     ImGuiID dockspace_id;
     ImGuiID current_dockspace; // dockspace for the next opened document

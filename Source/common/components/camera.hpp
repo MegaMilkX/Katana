@@ -70,6 +70,7 @@ public:
         return true;
     }
 
+    virtual const char* getIconCode() const { return ICON_MDI_VIDEO_VINTAGE; }
 private:
     gfxm::mat4 projection;
     gfxm::mat4 view;

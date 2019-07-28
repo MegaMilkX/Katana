@@ -66,6 +66,7 @@ public:
         return true;
     }
 
+    virtual const char* getWriteExtension() const { return "mat"; }
 private:
     void getMap(nlohmann::json& j, const std::string& name, std::shared_ptr<Texture2D>& ptr) {
         nlohmann::json j_ = j[name];

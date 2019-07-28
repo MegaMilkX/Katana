@@ -1,6 +1,10 @@
 import os
+import platform
 import argparse
 import subprocess
+if platform.system() == "Windows":
+	import winsound
+
 try:
     from configparser import ConfigParser
 except ImportError:
@@ -29,7 +33,16 @@ config.read(projFilename)
 srcDir = config.get("General", "source_dir")
 srcDir = projDir + "/" + srcDir
 
-subprocess.check_call(
-    "cmake --build \"../cmake\" --config RelWithDebInfo", 
-    cwd=srcDir
-)
+try:
+	result = subprocess.check_call(
+		"cmake --build \"../cmake\" --config RelWithDebInfo", 
+		cwd=srcDir
+	)
+except subprocess.CalledProcessError:
+	if platform.system() == "Windows":
+		winsound.PlaySound('build_failed.wav', winsound.SND_FILENAME)
+else:
+	if platform.system() == "Windows":
+		winsound.PlaySound('build_complete.wav', winsound.SND_FILENAME)
+
+

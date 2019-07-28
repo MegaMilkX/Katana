@@ -133,6 +133,8 @@ public:
         setLooping((bool)r.read<uint8_t>());
         return true;
     }
+
+    virtual const char* getIconCode() const { return ICON_MDI_VOLUME_HIGH; }
 private:
     size_t emid;
     std::shared_ptr<AudioClip> clip;

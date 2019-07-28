@@ -23,61 +23,61 @@ public:
         descs = {
             { "so", ResourceDesc{
                 rttr::type::get<GameScene>(),
-                [](ResourceNode* node)->EditorDocument*{
+                [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
                     return new EditorDocScene(node);
                 }
             }},
             { "png", ResourceDesc{
                 rttr::type::get<Texture2D>(),
-                [](ResourceNode* node)->EditorDocument*{
+                [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
                     return new EditorDocTexture2d(node);
                 }
             }},
             { "jpg", ResourceDesc{
                 rttr::type::get<Texture2D>(),
-                [](ResourceNode* node)->EditorDocument*{
+                [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
                     return new EditorDocTexture2d(node);
                 }
             }},
             { "jpeg", ResourceDesc{
                 rttr::type::get<Texture2D>(),
-                [](ResourceNode* node)->EditorDocument*{
+                [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
                     return new EditorDocTexture2d(node);
                 }
             }},
             { "jfif", ResourceDesc{
                 rttr::type::get<Texture2D>(),
-                [](ResourceNode* node)->EditorDocument*{
+                [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
                     return new EditorDocTexture2d(node);
                 }
             }},
             { "tga", ResourceDesc{
                 rttr::type::get<Texture2D>(),
-                [](ResourceNode* node)->EditorDocument*{
+                [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
                     return new EditorDocTexture2d(node);
                 }
             }},
             { "ogg", ResourceDesc{
                 rttr::type::get<AudioClip>(),
-                [](ResourceNode* node)->EditorDocument*{
+                [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
                     return new EditorDocAudioClip(node);
                 }
             }},
             { "fbx", ResourceDesc{
                 rttr::type::get<ModelSource>(),
-                [](ResourceNode* node)->EditorDocument*{
+                [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
                     return new EditorDocModelSource(node);
                 }
             }},
             { "obj", ResourceDesc{
                 rttr::type::get<ModelSource>(),
-                [](ResourceNode* node)->EditorDocument*{
+                [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
                     return new EditorDocModelSource(node);
                 }
             }},
             { "dae", ResourceDesc{
                 rttr::type::get<ModelSource>(),
-                [](ResourceNode* node)->EditorDocument*{
+                [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
                     return new EditorDocModelSource(node);
                 }
             }}

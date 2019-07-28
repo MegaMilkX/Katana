@@ -131,13 +131,22 @@ void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const s
 }
 
 void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected) {
-    std::string name_with_uid = MKSTR(o->getName() << "##" << o);
+    std::string name_with_uid = MKSTR(o->getName() << "###" << o);
 
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+    std::string icons;
+    for(size_t i = 0; i < o->componentCount(); ++i) {
+        auto& c = o->getById(i);
+        icons += c->getIconCode();
+    }
+    if(!icons.empty()) {
+        icons += " ";
+    }
+
     if(o->childCount() == 0) {
         ImGui::PushID(name_with_uid.c_str());
         ImGui::TreeAdvanceToLabelPos();
-        if(ImGui::Selectable(name_with_uid.c_str(), selected.contains(o))) {
+        if(ImGui::Selectable(MKSTR(icons << name_with_uid).c_str(), selected.contains(o))) {
             selected.clearAndAdd(o);
         }
         if(ImGui::BeginDragDropSource(0)) {
@@ -163,7 +172,7 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected)
             ""
         );
         ImGui::SameLine();
-        if(ImGui::Selectable(name_with_uid.c_str(), selected.contains(o))) {
+        if(ImGui::Selectable(MKSTR(icons << name_with_uid).c_str(), selected.contains(o))) {
             selected.clearAndAdd(o);
         }
         if(ImGui::BeginDragDropSource(0)) {

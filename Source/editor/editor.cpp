@@ -41,7 +41,9 @@ void Editor::onInit() {
     input().getTable().addActionKey("DebugDrawToggle", "KB_Q");
     input().getTable().addActionKey("CTRL", "KB_LEFT_CONTROL");
     input().getTable().addActionKey("SHIFT", "KB_LEFT_SHIFT");
+    input().getTable().addActionKey("ALT", "KB_LEFT_ALT");
     input().getTable().addActionKey("Z", "KB_Z");
+    input().getTable().addActionKey("S", "KB_S");
 
     input_lis = input().createListener();
     input_lis->bindActionPress("MouseLeft", [this](){
@@ -91,6 +93,11 @@ void Editor::onInit() {
         if(ctrl && !shift) undo();
         else if(ctrl && shift) redo();
         else viewport.recenterCamera();
+    });
+    input_lis->bindActionPress("S", [this](){
+        if(focused_document && ctrl) {
+            focused_document->save();
+        }
     });
 
     scene.reset(new GameScene());
@@ -157,7 +164,7 @@ void Editor::onGui() {
         if(ImGui::BeginMenu("File")) {
             if(ImGui::BeginMenu("New Resource")) {
                 if(ImGui::MenuItem("Scene")) {
-                    addNewDocument(new EditorDocScene(0));
+                    addNewDocument(new EditorDocScene());
                 }
                 if(ImGui::MenuItem("Texture2D")) {}
                 if(ImGui::MenuItem("Material")) {}
@@ -165,6 +172,16 @@ void Editor::onGui() {
                 if(ImGui::MenuItem("Shader")) {}
                 if(ImGui::MenuItem("AudioClip")) {}
                 ImGui::EndMenu();
+            }
+            if(ImGui::MenuItem("Save")) {
+                if(focused_document) {
+                    focused_document->save();
+                }
+            }
+            if(ImGui::MenuItem("Save as...")) {
+                if(focused_document) {
+                    focused_document->saveAs();
+                }
             }
             if(ImGui::MenuItem("Exit")) {}
             ImGui::EndMenu();
@@ -207,29 +224,39 @@ void Editor::onGui() {
         ImGui::EndMenuBar();
     }
 
+    EditorDocument* doc_to_be_closed = 0;
+
     ed_resource_tree.update(this);
-    for(auto& kv : documents) {
-        auto doc = kv.second;
-        if(!doc->isOpen()) {
-            delete doc;
-            documents.erase(kv.first);
+    for(auto& d : open_documents) {
+        if(!d->isOpen()) {
+            if(d->isUnsaved()) {
+                ImGui::OpenPopup("Unsaved document");
+                doc_to_be_closed = d;
+                break;
+            } else {
+                delete d;
+                open_documents.erase(d);
+                setFocusedDocument(0);
+            }
         }
     }
-    for(auto& d : new_documents) {
-        if(!d->isOpen()) {
-            delete d;
-            new_documents.erase(d);
+
+    if(ImGui::BeginPopupModal("Unsaved document")) {
+        ImGui::Text(MKSTR("Close without saving?").c_str());
+        if(ImGui::Button("Close")) {
+            delete doc_to_be_closed;
+            open_documents.erase(doc_to_be_closed);
+            setFocusedDocument(0);
+            ImGui::CloseCurrentPopup();
+        } ImGui::SameLine();
+        if(ImGui::Button("Cancel")) {
+            doc_to_be_closed->setOpen(true);
+            ImGui::CloseCurrentPopup();
         }
+        ImGui::EndPopup();
     }
     
-    if(documents.empty()) {
-        // TODO
-        //setCurrentDockspace(dockspace_id);
-    }
-    for(auto& kv : documents) {
-        kv.second->update(this);
-    }
-    for(auto d : new_documents) {
+    for(auto d : open_documents) {
         d->update(this);
     }
 
@@ -278,7 +305,10 @@ void Editor::onGui() {
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
-    }    
+    }
+
+    //bool demo = true;
+    //ImGui::ShowDemoWindow(&demo);
 }
 
 GameScene* Editor::getScene() {
@@ -287,6 +317,10 @@ GameScene* Editor::getScene() {
 ObjectSet& Editor::getSelectedObjects() {
     return selected_objects;
 }
+EditorDocument* Editor::getFocusedDocument() {
+    return focused_document;
+}
+
 EditorAssetInspector* Editor::getAssetInspector() {
     return &asset_inspector;
 }
@@ -301,23 +335,39 @@ void Editor::setCurrentDockspace(ImGuiID id) {
 void Editor::setSelectedObject(GameObject* o) {
     selected_objects.clearAndAdd(o);
 }
+void Editor::setFocusedDocument(EditorDocument* doc) {
+    focused_document = doc;
+}
 
-void Editor::addDocument(const ResourceNode* node, EditorDocument* doc) {
-    documents[node] = doc;
-    ImGui::SetWindowFocus(doc->getName().c_str());
-    ImGui::DockBuilderDockWindow(doc->getName().c_str(), current_dockspace);
+void Editor::addDocument(EditorDocument* doc) {
+    open_documents.insert(doc);
+    ImGui::SetWindowFocus(doc->getWindowName().c_str());
+    ImGui::DockBuilderDockWindow(doc->getWindowName().c_str(), current_dockspace);
+    setFocusedDocument(doc);
 }
 void Editor::addNewDocument(EditorDocument* doc) {
-    new_documents.insert(doc);
-    ImGui::SetWindowFocus(doc->getName().c_str());
-    ImGui::DockBuilderDockWindow(doc->getName().c_str(), current_dockspace);
+    open_documents.insert(doc);
+    ImGui::SetWindowFocus(doc->getWindowName().c_str());
+    ImGui::DockBuilderDockWindow(doc->getWindowName().c_str(), current_dockspace);
+    setFocusedDocument(doc);
 }
-void Editor::tryOpenDocument(const ResourceNode* node) {
-    auto it = documents.find(node);
-    if(it != documents.end()) {
-        ImGui::SetWindowFocus(it->second->getName().c_str());
+void Editor::tryOpenDocument(const std::shared_ptr<ResourceNode>& node) {
+    EditorDocument* doc = 0;
+    for(auto &d : open_documents) {
+        // TODO: 
+        if(d->getName() == node->getFullName()) {
+            doc = d;
+            break;
+        }
+    }
+
+    if(doc) {
+        // TODO: getWindowName()
+        ImGui::SetWindowFocus(doc->getWindowName().c_str());
+        setFocusedDocument(doc);
         return;
     }
+
     std::string node_name = node->getName();
     size_t dot_pos = node_name.find_last_of(".");
     if(dot_pos != node_name.npos) {
@@ -326,11 +376,11 @@ void Editor::tryOpenDocument(const ResourceNode* node) {
         if(!desc) {
             ImGui::OpenPopup("Hint1");
         } else {
-            addDocument(node, desc->create_resource_doc_fn((ResourceNode*)node));
+            addDocument(desc->create_resource_doc_fn((std::shared_ptr<ResourceNode>&)node));
         }
     } else {
         ImGui::OpenPopup("Hint2");
-    }
+    }    
 }
 
 void Editor::backupScene(const std::string& label) {

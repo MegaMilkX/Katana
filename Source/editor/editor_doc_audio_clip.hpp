@@ -5,11 +5,12 @@
 #include "../common/resource/audio_clip.hpp"
 #include "../common/resource/resource_tree.hpp"
 
-class EditorDocAudioClip : public EditorDocument {
-    std::shared_ptr<AudioClip> clip;
+class EditorDocAudioClip : public EditorDocumentTyped<AudioClip> {
     size_t chan = 0;
 public:
-    EditorDocAudioClip(ResourceNode* node);
+    EditorDocAudioClip(std::shared_ptr<ResourceNode>& node);
+
+    virtual void setResourceNode(std::shared_ptr<ResourceNode>& node);
 
     virtual void onGui(Editor* ed);
 };
