@@ -129,6 +129,7 @@ public:
             _node = gResourceTree.find_shared(rel_path);
             if(!_node.expired()) {
                 _node.lock()->overrideResource(_resource);
+                _window_name = MKSTR(rel_path << "###" << this);
             } else {
                 LOG_WARN("Save failed");
             }
