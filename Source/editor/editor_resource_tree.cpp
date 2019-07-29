@@ -186,7 +186,7 @@ void EditorResourceTree::update(Editor* editor) {
                         
                         setSelected(node.get(), false);
                     }
-                    imguiDragDropSource(IMGUI_DND_RESOURCE, (void*)node.get(), node->getName());
+                    imguiDragDropSource(IMGUI_DND_RESOURCE, (void*)node.get(), node->getFullName());
                     imguiDragDropTarget(IMGUI_DND_RESOURCE);
                     imguiContextMenu(node.get());
                 }                

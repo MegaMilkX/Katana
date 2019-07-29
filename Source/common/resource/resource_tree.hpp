@@ -31,6 +31,7 @@ public:
                                     getChildren() const;
     std::string                     getName() const;
     std::string                     getFullName() const;
+    std::shared_ptr<DataSource>     getSource();
     template<typename T>
     std::shared_ptr<T>              getResource();
     template<typename T>

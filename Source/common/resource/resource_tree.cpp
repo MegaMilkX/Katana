@@ -61,6 +61,10 @@ std::string ResourceNode::getFullName() const {
     }
 }
 
+std::shared_ptr<DataSource> ResourceNode::getSource() {
+    return data_src;
+}
+
 bool ResourceNode::isLoaded() const {
     return (bool)resource;
 }

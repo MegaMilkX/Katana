@@ -11,16 +11,15 @@
 #include "editor.hpp"
 
 EditorDocScene::EditorDocScene() {
-    
-}
-EditorDocScene::EditorDocScene(std::shared_ptr<ResourceNode>& node) {
-    setResourceNode(node);
-    gvp.enableDebugDraw(true);
-    
     bindActionPress("ALT", [this](){ 
         gvp.camMode(GuiViewport::CAM_ORBIT); 
     });
     bindActionRelease("ALT", [this](){ gvp.camMode(GuiViewport::CAM_PAN); });
+}
+EditorDocScene::EditorDocScene(std::shared_ptr<ResourceNode>& node)
+: EditorDocScene() {
+    setResourceNode(node);
+    gvp.enableDebugDraw(true);    
 }
 
 void EditorDocScene::onGui (Editor* ed) {
@@ -53,6 +52,27 @@ void EditorDocScene::onGui (Editor* ed) {
         }
 
         gvp.draw(scene.get(), 0, gfxm::ivec2(0,0));
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_DND_RESOURCE)) {
+                ResourceNode* node = *(ResourceNode**)payload->Data;
+                LOG("Payload received: " << node->getFullName());
+                if(has_suffix(node->getName(), ".so")) {
+                    auto o = scene->createChild();
+                    
+                    auto strm = node->getSource()->make_stream();
+                    o->read(*strm.get());
+                    selected.clearAndAdd(o);
+
+                    gfxm::vec3 pos = gvp.getMouseScreenToWorldPos(0);
+                    pos = gfxm::inverse(scene->getTransform()->getWorldTransform()) * gfxm::vec4(pos, 1.0f);
+                    gfxm::vec3 scale_new = o->getTransform()->getScale();
+                    gfxm::vec3 scale_world = scene->getTransform()->getScale();
+                    o->getTransform()->setScale(gfxm::vec3(scale_new.x / scale_world.x, scale_new.y / scale_world.y, scale_new.z / scale_world.z));
+                    o->getTransform()->translate(pos);
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
         ImGui::End();
     }
 
