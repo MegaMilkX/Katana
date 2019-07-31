@@ -21,7 +21,7 @@ public:
     }
 
     virtual void onAttribCreated(Model* m) { models.insert(m); }
-    virtual void onAttribRemoved(Model* m) { models.erase(m); }
+    virtual void onAttribRemoved(Model* m) { models.erase(m); } 
     virtual void onAttribCreated(OmniLight* l) { omnis.insert(l); }
     virtual void onAttribRemoved(OmniLight* l) { omnis.erase(l); }
     virtual void onAttribRemoved(Camera* c) {

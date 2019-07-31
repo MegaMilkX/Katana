@@ -422,10 +422,13 @@ bool Editor::showOpenSceneDialog() {
     }
     else if(r == NFD_CANCEL) {
         std::cout << "cancelled" << std::endl;
+        return false;
     }
     else {
         std::cout << "error " << NFD_GetError() << std::endl;
+        return false;
     }
+    return true;
 }
 
 bool Editor::showSaveSceneDialog(GameScene* scene, bool forceDialog) {

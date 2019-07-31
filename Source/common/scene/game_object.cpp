@@ -9,6 +9,9 @@
 
 #include "../lib/imguizmo/ImGuizmo.h"
 
+#include "game_scene.hpp"
+#include "object_instance.hpp"
+
 GameObject::GameObject() {
 
 }
@@ -20,6 +23,41 @@ GameObject::~GameObject() {
 
     for(auto o : children) {
         delete o;
+    }
+}
+
+void GameObject::copy(GameObject* other) {
+    std::vector<std::pair<GameObject*, GameObject*>> target_source_pairs;
+
+    std::function<void(GameObject*, GameObject*)> copy_tree_fn;
+    copy_tree_fn = [this, &copy_tree_fn, &target_source_pairs](GameObject* target, GameObject* source){
+        target->name = source->name;
+        if(target != this) {
+            target->getTransform()->setTransform(source->getTransform()->getLocalTransform());
+        } else {
+            target->getTransform()->setScale(source->getTransform()->getScale());
+        }
+        for(auto c : source->children) {
+            copy_tree_fn(target->createChild(), c);
+        }
+        target_source_pairs.emplace_back(std::make_pair(target, source));
+    };
+
+    copy_tree_fn(this, other);
+
+    for(auto pair : target_source_pairs) {
+        for(auto& kv : pair.second->components) {
+            dstream strm;
+            kv.second->serialize(strm);
+            strm.jump(0);
+            auto attr = pair.first->createComponent(kv.first);
+
+            auto parent_cached = this->parent;
+            this->parent = 0; // Tricking components into thinking that this is the root node,
+                        // which it is for purposes of deserialization
+            attr->deserialize(strm, strm.bytes_available());
+            this->parent = parent_cached;
+        }
     }
 }
 
@@ -50,6 +88,17 @@ GameObject* GameObject::createChild() {
     o->parent = this;
     o->getTransform()->setParent(&transform);
     children.insert(o);
+    return o;
+}
+
+ktObjectInstance* GameObject::createInstance(std::shared_ptr<GameScene> scn) {
+    ktObjectInstance* o = new ktObjectInstance();
+    o->parent = this;
+    o->getTransform()->setParent(&transform);
+    children.insert(o);
+
+    o->setScene(scn);
+    
     return o;
 }
 
@@ -428,13 +477,20 @@ void GameObject::write(out_stream& out) {
             current = stack.top();
             stack.pop();
         }
-        for(size_t i = 0; i < current->childCount(); ++i) {
-            stack.push(current->getChild(i));
-        }
 
         uint64_t id = oid_map.size();
         oid_map[current] = id;
         objects.emplace_back(current);
+
+        if(current->getType() == OBJECT_INSTANCE) {
+            current = 0;
+            continue;
+        }
+
+        for(size_t i = 0; i < current->childCount(); ++i) {
+            stack.push(current->getChild(i));
+        }
+
         for(size_t i = 0; i < current->componentCount(); ++i) {
             auto attrib = current->getById(i);
             attribs[attrib->get_type()].emplace_back(attrib.get());
@@ -456,6 +512,15 @@ void GameObject::write(out_stream& out) {
         dw.write(o->getTransform()->getPosition());
         dw.write(o->getTransform()->getRotation());
         dw.write(o->getTransform()->getScale());
+        dw.write<int8_t>(o->getType());
+        if(o->getType() == OBJECT_INSTANCE) {
+            auto scn = ((ktObjectInstance*)o)->getScene();
+            if(scn) {
+                dw.write(scn->Name()); // Name() is a resource name, getName() is a node name TODO: FIX IT
+            } else {
+                dw.write(std::string());
+            }
+        }
     }
 
     dw.write<uint32_t>(attribs.size());
@@ -481,9 +546,10 @@ void GameObject::read(in_stream& in) {
     
     DataReader dr(&in);
     uint64_t object_count = dr.read<uint64_t>();
+    objects.resize(object_count - 1);/*
     for(uint64_t i = 1; i < object_count; ++i) {
         objects.emplace_back(new GameObject());
-    }
+    } */
 
     if(object_count == 0) {
         LOG_WARN("No objects in an .so data")
@@ -491,32 +557,56 @@ void GameObject::read(in_stream& in) {
     }
 
     {
+        // TODO: Problem: Root can't be an instance?
+        GameObject* o = 0;
         uint64_t p = dr.read<uint64_t>();
         std::string name = dr.readStr();
         gfxm::vec3 t = dr.read<gfxm::vec3>();
         gfxm::quat r = dr.read<gfxm::quat>();
         gfxm::vec3 s = dr.read<gfxm::vec3>();
-        objects[0]->setName(name);
-        objects[0]->getTransform()->setPosition(t);
-        objects[0]->getTransform()->setRotation(r);
-        objects[0]->getTransform()->setScale(s);
+        OBJECT_TYPE type  = (OBJECT_TYPE)dr.read<int8_t>();
+        if(type == OBJECT_INSTANCE) {
+            std::string ref_name = dr.readStr();
+            //((ktObjectInstance*)o)->setScene(retrieve<GameScene>(ref_name));
+        } else {
+            //o = new GameObject();
+        }
+        o = objects[0];
+        o->setName(name);
+        o->getTransform()->setPosition(t);
+        o->getTransform()->setRotation(r);
+        o->getTransform()->setScale(s);
     }
 
     for(uint64_t i = 1; i < object_count; ++i) {
+        GameObject* o = 0;
+
         uint64_t p = dr.read<uint64_t>();
         std::string name = dr.readStr();
         gfxm::vec3 t = dr.read<gfxm::vec3>();
         gfxm::quat r = dr.read<gfxm::quat>();
         gfxm::vec3 s = dr.read<gfxm::vec3>();
-
+        OBJECT_TYPE type  = (OBJECT_TYPE)dr.read<int8_t>();
+        std::string ref_name;
+        if(type == OBJECT_INSTANCE) {
+            ref_name = dr.readStr();
+            o = new ktObjectInstance();
+        } else {
+            o = new GameObject();
+        }
         
-        objects[i]->parent = objects[p];
-        objects[p]->children.insert(objects[i]);
-        objects[i]->getTransform()->setPosition(t);
-        objects[i]->getTransform()->setRotation(r);
-        objects[i]->getTransform()->setScale(s);
-        objects[i]->setName(name);
-        objects[i]->getTransform()->setParent(objects[p]->getTransform());
+        objects[i] = o;
+        o->parent = objects[p]; // OK: Thanks to order of writing of the scene tree objects[p] will never be 0 here (except if p is invalid for some reason)
+        objects[p]->children.insert(o);
+        o->setName(name);
+        o->getTransform()->setParent(objects[p]->getTransform());
+
+        if(type == OBJECT_INSTANCE) {
+            ((ktObjectInstance*)o)->setScene(retrieve<GameScene>(ref_name));
+        }
+        o->getTransform()->setPosition(t);
+        o->getTransform()->setRotation(r);
+        o->getTransform()->setScale(s);
     }
 
     LOG("BYTES_AVAILABLE: " << in.bytes_available());
@@ -541,7 +631,12 @@ void GameObject::read(in_stream& in) {
             std::vector<char> data = dr.readArray<char>();
             dstream strm;
             strm.setBuffer(data);
+
+            auto parent_cached = this->parent;
+            this->parent = 0; // Tricking components into thinking that this is the root node,
+                            // Which it is for purposes of deserialization
             a->deserialize(strm, strm.bytes_available());
+            this->parent = parent_cached;
         }
     }
 }
