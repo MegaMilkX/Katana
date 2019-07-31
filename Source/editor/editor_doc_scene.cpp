@@ -57,11 +57,7 @@ void EditorDocScene::onGui (Editor* ed) {
                 ResourceNode* node = *(ResourceNode**)payload->Data;
                 LOG("Payload received: " << node->getFullName());
                 if(has_suffix(node->getName(), ".so")) {
-                    auto o = scene->createChild();
-                    
-                    auto strm = node->getSource()->make_stream();
-                    o->read(*strm.get());
-                    selected.clearAndAdd(o);
+                    auto o = scene->createInstance(node->getResource<GameScene>());
 
                     gfxm::vec3 pos = gvp.getMouseScreenToWorldPos(0);
                     pos = gfxm::inverse(scene->getTransform()->getWorldTransform()) * gfxm::vec4(pos, 1.0f);

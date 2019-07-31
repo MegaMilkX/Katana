@@ -9,6 +9,7 @@
 #include "../resource/resource.h"
 
 #include "game_object.hpp"
+#include "object_instance.hpp"
 
 #include "../components/camera.hpp"
 

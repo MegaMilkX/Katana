@@ -15,10 +15,21 @@
 #include "../components/component.hpp"
 #include "../scene/scene_controller.hpp"
 
+enum OBJECT_TYPE {
+    OBJECT_NORMAL,
+    OBJECT_INSTANCE
+};
+
+class ktObjectInstance;
+class GameScene;
 class GameObject {
 public:
     GameObject();
     virtual ~GameObject();
+
+    virtual OBJECT_TYPE                 getType() const { return OBJECT_NORMAL; }
+
+    void                                copy(GameObject* other);
 
     virtual void                        _onCreate() {
         onCreate();
@@ -34,6 +45,7 @@ public:
     TransformNode*                      getTransform();
 
     GameObject*                         createChild();
+    ktObjectInstance*                   createInstance(std::shared_ptr<GameScene> scn);
     size_t                              childCount();
     GameObject*                         getChild(size_t i);
     GameObject*                         getChild(const std::string& name);

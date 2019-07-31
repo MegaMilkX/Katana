@@ -143,12 +143,19 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected)
         icons += " ";
     }
 
+    ImVec4 label_col = ImVec4(1,1,1,1);
+    if(o->getType() == OBJECT_INSTANCE) {
+        label_col = ImVec4(0.4f, 1.0f, 0.7f, 1.0f);
+    }
+
     if(o->childCount() == 0) {
         ImGui::PushID(name_with_uid.c_str());
         ImGui::TreeAdvanceToLabelPos();
+        ImGui::PushStyleColor(ImGuiCol_Text, label_col);
         if(ImGui::Selectable(MKSTR(icons << name_with_uid).c_str(), selected.contains(o))) {
             selected.clearAndAdd(o);
         }
+        ImGui::PopStyleColor();
         if(ImGui::BeginDragDropSource(0)) {
             ImGui::SetDragDropPayload("DND_OBJECT", &o, sizeof(o));
             ImGui::Text(name_with_uid.c_str());
@@ -172,9 +179,11 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected)
             ""
         );
         ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, label_col);
         if(ImGui::Selectable(MKSTR(icons << name_with_uid).c_str(), selected.contains(o))) {
             selected.clearAndAdd(o);
         }
+        ImGui::PopStyleColor();
         if(ImGui::BeginDragDropSource(0)) {
             ImGui::SetDragDropPayload("DND_OBJECT", &o, sizeof(o));
             ImGui::Text(o->getName().c_str());
