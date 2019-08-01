@@ -41,7 +41,19 @@ std::vector<GameObject*> GameScene::findObjectsFuzzy(const std::string& name) {
     };
     std::vector<tmp> sorted;
     for(auto o : r) {
-        size_t cost = levenshteinDistance(name, o->getName());
+        if(name.size() > o->getName().size()) {
+            continue;
+        }
+        std::string str_to_compare = o->getName();
+        size_t find_from = str_to_compare.find_first_of(name[0]);
+        if(find_from == str_to_compare.npos) continue;
+        str_to_compare = str_to_compare.substr(find_from);
+        if(name.size() < str_to_compare.size()) {
+            str_to_compare = str_to_compare.substr(0, name.size());
+        }
+        size_t cost = levenshteinDistance(name, str_to_compare) * 10;
+        if(find_from > 0) cost += 1;
+        cost += o->getName().size() - name.size();
         size_t pos = o->getName().find_first_of(name);
         if(pos != o->getName().npos) {
             //cost = 0;
