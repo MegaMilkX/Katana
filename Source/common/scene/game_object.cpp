@@ -26,11 +26,11 @@ GameObject::~GameObject() {
     }
 }
 
-void GameObject::copy(GameObject* other) {
+void GameObject::copy(GameObject* other, OBJECT_FLAGS f) {
     std::vector<std::pair<GameObject*, GameObject*>> target_source_pairs;
 
     std::function<void(GameObject*, GameObject*)> copy_tree_fn;
-    copy_tree_fn = [this, &copy_tree_fn, &target_source_pairs](GameObject* target, GameObject* source){
+    copy_tree_fn = [this, &copy_tree_fn, &target_source_pairs, &f](GameObject* target, GameObject* source){
         target->name = source->name;
         if(target != this) {
             target->getTransform()->setTransform(source->getTransform()->getLocalTransform());
@@ -38,7 +38,7 @@ void GameObject::copy(GameObject* other) {
             target->getTransform()->setScale(source->getTransform()->getScale());
         }
         for(auto c : source->children) {
-            copy_tree_fn(target->createChild(), c);
+            copy_tree_fn(target->createChild(f), c);
         }
         target_source_pairs.emplace_back(std::make_pair(target, source));
     };
@@ -46,7 +46,7 @@ void GameObject::copy(GameObject* other) {
     copy_tree_fn(this, other);
 
     for(auto pair : target_source_pairs) {
-        for(auto& kv : pair.second->components) {
+        for(auto& kv : pair.second->components) {            
             dstream strm;
             kv.second->serialize(strm);
             strm.jump(0);
@@ -83,10 +83,11 @@ TransformNode* GameObject::getTransform() {
     return &transform;
 }
 
-GameObject* GameObject::createChild() {
+GameObject* GameObject::createChild(OBJECT_FLAGS f) {
     GameObject* o = new GameObject();
     o->parent = this;
     o->getTransform()->setParent(&transform);
+    o->_flags = f;
     children.insert(o);
     return o;
 }
@@ -308,6 +309,10 @@ void GameObject::onGui() {
         auto t = getTransform()->getPosition();
         auto r = getTransform()->getEulerAngles();
         auto s = getTransform()->getScale();
+
+        if(ImGui::Checkbox("Enabled", &_enabled)) {
+            // ?
+        }
 
         char buf[256];
         memset(buf, 0, 256);

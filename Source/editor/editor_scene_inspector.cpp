@@ -135,6 +135,9 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected)
 
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
     std::string icons;
+    if(!o->isEnabled()) {
+        icons += ICON_MDI_EYE_OFF;
+    }
     for(size_t i = 0; i < o->componentCount(); ++i) {
         auto& c = o->getById(i);
         icons += c->getIconCode();
@@ -146,6 +149,8 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected)
     ImVec4 label_col = ImVec4(1,1,1,1);
     if(o->getType() == OBJECT_INSTANCE) {
         label_col = ImVec4(0.4f, 1.0f, 0.7f, 1.0f);
+    } else if(o->getFlags() && OBJECT_FLAG_TRANSIENT) {
+        label_col = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
     }
 
     if(o->childCount() == 0) {

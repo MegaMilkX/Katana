@@ -51,6 +51,7 @@ void EditorDocScene::onGui (Editor* ed) {
             ed->setFocusedDocument(this);
         }
 
+        scene->getController<AnimController>()->onUpdate();
         gvp.draw(scene.get(), 0, gfxm::ivec2(0,0));
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_DND_RESOURCE)) {
