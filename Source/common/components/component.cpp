@@ -12,7 +12,13 @@ rttr::type Attribute::getRequiredOwnerType() {
 
 void Attribute::onCreate() {}
 
-void Attribute::copy(Attribute* other) {}
+void Attribute::instantiate(Attribute& other) {
+    dstream strm;
+    other.serialize(strm);
+    strm.jump(0);
+
+    deserialize(strm, strm.bytes_available());
+}
 
 GameObject* Attribute::getOwner() { return owner; }
 void Attribute::resetAttribute() {

@@ -34,7 +34,7 @@ public:
     // Basically a constructor for components
     virtual void onCreate();
 
-    virtual void copy(Attribute* other);
+    virtual void instantiate(Attribute& other);
 
     GameObject* getOwner();
     void resetAttribute();
@@ -47,7 +47,7 @@ public:
 
     virtual bool serialize(out_stream& out);
     virtual bool deserialize(in_stream& in, size_t sz);
-private:
+protected:
     GameObject* owner = 0;
 };
 
