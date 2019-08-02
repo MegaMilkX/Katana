@@ -4,18 +4,25 @@ TransformNode::~TransformNode() {
     setParent(0);
 }
 
+void TransformNode::instantiate(TransformNode* other) {
+    _dirty_id = other->_dirty_id;
+    _position = other->_position;
+    _rotation = other->_rotation;
+    _scale = other->_scale;
+}
+
 void TransformNode::dirty() {
-    if(!_dirty) {
+    if(!_dirty_id == _dirty_sync) {
         _sync_id++;
     }
-    _dirty = true;
+    _dirty_id++;
     _frame_dirty = true;
     for(auto& c : _children) {
         c->dirty();
     }
 }
 bool TransformNode::isDirty() {
-    return _dirty;
+    return _dirty_id != _dirty_sync;
 }
 
 void TransformNode::lookAt(const gfxm::vec3& tgt, const gfxm::vec3& up_vec, float f) {
@@ -37,7 +44,7 @@ void TransformNode::translate(float x, float y, float z) {
     translate(gfxm::vec3(x, y, z)); 
 }
 void TransformNode::translate(const gfxm::vec3& vec) {
-    _position = _position + vec;
+    _position = _position.get() + vec;
     dirty();
 }
 void TransformNode::rotate(float angle, float axisX, float axisY, float axisZ) { 
@@ -50,7 +57,7 @@ void TransformNode::rotate(const gfxm::quat& q) {
     _rotation = 
         gfxm::normalize(
             q * 
-            _rotation
+            _rotation.get()
         );
     dirty();
 }
@@ -117,7 +124,7 @@ const gfxm::vec3& TransformNode::getScale() const {
     return _scale;
 }
 gfxm::vec3 TransformNode::getEulerAngles() {
-    return gfxm::to_euler(_rotation);
+    return gfxm::to_euler(_rotation.get());
 }
 gfxm::vec3 TransformNode::getWorldPosition() {
     return getWorldTransform()[3];
@@ -125,7 +132,7 @@ gfxm::vec3 TransformNode::getWorldPosition() {
 gfxm::quat TransformNode::getWorldRotation() {
     gfxm::quat q;
     if(getParent())
-        q = getParent()->getWorldRotation() * _rotation;
+        q = getParent()->getWorldRotation() * _rotation.get();
     else
         q = _rotation;
     return q;
@@ -134,7 +141,7 @@ gfxm::vec3 TransformNode::getWorldScale() {
     gfxm::vec3 s;
     if(getParent()) {
         auto ps = getParent()->getWorldScale();
-        s = gfxm::vec3(ps.x * _scale.x, ps.y * _scale.y, ps.z * _scale.z);
+        s = gfxm::vec3(ps.x * _scale->x, ps.y * _scale->y, ps.z * _scale->z);
     }
     else
         s = _scale;
@@ -156,9 +163,9 @@ gfxm::vec3 TransformNode::forward()
 
 gfxm::mat4 TransformNode::getLocalTransform() const {
     return 
-        gfxm::translate(gfxm::mat4(1.0f), _position) * 
-        gfxm::to_mat4(_rotation) * 
-        gfxm::scale(gfxm::mat4(1.0f), _scale);
+        gfxm::translate(gfxm::mat4(1.0f), _position.get()) * 
+        gfxm::to_mat4(_rotation.get()) * 
+        gfxm::scale(gfxm::mat4(1.0f), _scale.get());
 }
 gfxm::mat4 TransformNode::getParentTransform() {
     if(getParent())
@@ -169,7 +176,7 @@ gfxm::mat4 TransformNode::getParentTransform() {
 const gfxm::mat4& TransformNode::getWorldTransform() {
     if(isDirty())
     {
-        _dirty = false;
+        _dirty_sync = _dirty_id;
         gfxm::mat4 localTransform = getLocalTransform();           
         if(getParent())
             _transform = getParent()->getWorldTransform() * localTransform;

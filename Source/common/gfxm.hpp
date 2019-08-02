@@ -746,12 +746,12 @@ inline tquat<T> operator*=(tquat<T>& q0, const tquat<T>& q1)
     return q0 = q0 * q1;
 }
 
-template<typename T, typename M>
-inline tquat<T> operator*(const tquat<T>& a, const M& f) {
+template<typename T>
+inline tquat<T> operator*(const tquat<T>& a, const T& f) {
     return tquat<T>(a.x * f, a.y * f, a.z * f, a.w * f);
 }
-template<typename T, typename M>
-inline tquat<T> operator*=(tquat<T>& a, const M& f) {
+template<typename T>
+inline tquat<T> operator*=(tquat<T>& a, const T& f) {
     return a = a * f;
 }
 template<typename T>

@@ -33,7 +33,8 @@ void GameObject::copy(GameObject* other, OBJECT_FLAGS f) {
     copy_tree_fn = [this, &copy_tree_fn, &target_source_pairs, &f](GameObject* target, GameObject* source){
         target->name = source->name;
         if(target != this) {
-            target->getTransform()->setTransform(source->getTransform()->getLocalTransform());
+            //target->getTransform()->setTransform(source->getTransform()->getLocalTransform());
+            target->getTransform()->instantiate(source->getTransform());
         } else {
             target->getTransform()->setScale(source->getTransform()->getScale());
         }
@@ -46,17 +47,15 @@ void GameObject::copy(GameObject* other, OBJECT_FLAGS f) {
     copy_tree_fn(this, other);
 
     for(auto pair : target_source_pairs) {
-        for(auto& kv : pair.second->components) {            
-            dstream strm;
-            kv.second->serialize(strm);
-            strm.jump(0);
+        pair.first->_enabled = pair.second->_enabled;
+        for(auto& kv : pair.second->components) {
             auto attr = pair.first->createComponent(kv.first);
 
             auto parent_cached = this->parent;
             this->parent = 0; // Tricking components into thinking that this is the root node,
                         // which it is for purposes of deserialization
-            attr->deserialize(strm, strm.bytes_available());
-            this->parent = parent_cached;
+            attr->instantiate(*kv.second.get());
+            this->parent = parent_cached;            
         }
     }
 }
@@ -310,7 +309,7 @@ void GameObject::onGui() {
         auto r = getTransform()->getEulerAngles();
         auto s = getTransform()->getScale();
 
-        if(ImGui::Checkbox("Enabled", &_enabled)) {
+        if(ImGui::Checkbox("Enabled", &_enabled.get())) {
             // ?
         }
 

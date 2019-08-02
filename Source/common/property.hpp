@@ -14,24 +14,34 @@ public:
     ktProperty(const T& value)
     : data(new T(value)) {}
 
-    ktProperty& operator=(const ktProperty<T>& other) {
+    T* operator->() {
+        return data.get();
+    }
+    const T* operator->() const {
+        return data.get();
+    }
+
+    ktProperty<T>& operator=(const ktProperty<T>& other) {
         data = other.data;
+        return *this;
     }
 
     T& operator=(const T& value) {
         *data.get() = value;
+        return *data.get();
     }
 
-    operator T() const {
-        return *data.get();
-    }
-    operator T() {
-        return *data.get();
-    }
     operator T&() {
         return *data.get();
     }
     operator const T&() const {
+        return *data.get();
+    }
+
+    const T& get() const {
+        return *data.get();
+    }
+    T& get() {
         return *data.get();
     }
 };

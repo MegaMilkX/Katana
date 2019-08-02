@@ -93,7 +93,7 @@ protected:
     virtual void                        _registerComponent(Attribute* attrib);
     virtual void                        _unregisterComponent(Attribute* attrib);
 
-    bool _enabled = true;
+    ktProperty<bool> _enabled = true;
     OBJECT_FLAGS _flags = OBJECT_FLAG_NONE;
     std::string name = "Object";
     TransformNode transform;
