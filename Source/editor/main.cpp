@@ -8,6 +8,20 @@
 
 #include "../common/resource/resource_desc_library.hpp"
 
+#include "../katana/timer.hpp"
+#include "../common/katana_impl.hpp"
+
+std::unique_ptr<KatanaImpl> kt_play_mode;
+
+class EscInputListener : public InputListenerWrap {
+public:
+    EscInputListener() {
+        bindActionPress("EndPlayMode", [](){
+            kt_play_mode.reset(0);
+        });
+    }
+};
+
 int main(int argc, char* argv[]) {
     if(!platformInit()) {
         LOG_ERR("Failed to initialize platform");
@@ -26,7 +40,10 @@ int main(int argc, char* argv[]) {
     input().getTable().addAxisKey("MoveVert", "KB_S", -1.0f);
     input().getTable().addActionKey("Attack", "KB_SPACE");
     input().getTable().addActionKey("SlowWalk", "KB_LEFT_ALT");
+    input().getTable().addActionKey("EndPlayMode", "KB_ESCAPE");
     //
+
+    EscInputListener esc_input_listener;
 
     std::unique_ptr<AppState> app_state;
 
@@ -43,22 +60,31 @@ int main(int argc, char* argv[]) {
         app_state.reset(new Editor());
     }
 
+    timer frameTimer;
+
     //try {
         app_state->onInit();
         while(!platformIsShuttingDown()) {
+            frameTimer.start();
+
             platformUpdate();
             unsigned w, h;
             unsigned cx, cy;
             platformGetViewportSize(w, h);
             platformGetMousePos(cx, cy);
 
-            if(app_state) {
+            if(kt_play_mode) {
+                kt_play_mode->update();
+            } else if(app_state) {
                 app_state->onUpdate();
                 app_state->onGui();
                 app_state->onRender(w, h);
             }
             
             platformSwapBuffers();
+            if(kt_play_mode) {
+                kt_play_mode->update_time(frameTimer.end());
+            }
         }
         app_state->onCleanup();
     //} catch(std::exception& ex) {

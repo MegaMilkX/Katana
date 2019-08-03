@@ -24,6 +24,11 @@ public:
     virtual void onAttribRemoved(Model* m) { models.erase(m); } 
     virtual void onAttribCreated(OmniLight* l) { omnis.insert(l); }
     virtual void onAttribRemoved(OmniLight* l) { omnis.erase(l); }
+    virtual void onAttribCreated(Camera* c) {
+        if(!default_camera) {
+            default_camera = c;
+        }
+    }
     virtual void onAttribRemoved(Camera* c) {
         if(c == default_camera) {
             default_camera = 0;

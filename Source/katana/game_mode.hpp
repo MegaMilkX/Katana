@@ -1,5 +1,5 @@
-#ifndef SESSION_HPP
-#define SESSION_HPP
+#ifndef GAME_MODE_HPP
+#define GAME_MODE_HPP
 
 #include "actor.hpp"
 #include "../common/scene/game_scene.hpp"
@@ -15,7 +15,7 @@ public:
     virtual ~ktGameMode() {
     }
 
-    GameScene*  getScene() { return &scene; }
+    GameScene& getScene() { return scene; }
 
 
 

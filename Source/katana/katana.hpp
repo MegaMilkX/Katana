@@ -1,7 +1,7 @@
 #ifndef KATANA_HPP
 #define KATANA_HPP
 
-#include "session.hpp"
+#include "game_mode.hpp"
 
 class KatanaApi {
 public:
