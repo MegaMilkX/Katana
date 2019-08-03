@@ -43,8 +43,10 @@ gfxm::vec3 GuiViewport::getMouseScreenToWorldPos(float height) {
     cam_pos = gfxm::lerp(cam_pos, cam_pivot, 0.2f);
     cam_zoom_actual = gfxm::lerp(cam_zoom_actual, cam_zoom, 0.2f);
     tcam.position(cam_pos);
-    tcam.rotate(cam_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
-    tcam.rotate(cam_angle_x, tcam.right());
+    cam_angle_x_actual = gfxm::lerp(cam_angle_x_actual, cam_angle_x, 0.5f);
+    cam_angle_y_actual = gfxm::lerp(cam_angle_y_actual, cam_angle_y, 0.5f);
+    tcam.rotate(cam_angle_y_actual, gfxm::vec3(0.0f, 1.0f, 0.0f));
+    tcam.rotate(cam_angle_x_actual, tcam.right());
     tcam.translate(tcam.back() * cam_zoom_actual);
     gfxm::mat4 view = gfxm::inverse(tcam.matrix());
 
@@ -162,8 +164,10 @@ void GuiViewport::draw(GameScene* scn, GameObject* selected_object, gfxm::ivec2 
         cam_pos = gfxm::lerp(cam_pos, cam_pivot, 0.2f);
         cam_zoom_actual = gfxm::lerp(cam_zoom_actual, cam_zoom, 0.2f);
         tcam.position(cam_pos);
-        tcam.rotate(cam_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
-        tcam.rotate(cam_angle_x, tcam.right());
+        cam_angle_x_actual = gfxm::lerp(cam_angle_x_actual, cam_angle_x, 0.5f);
+        cam_angle_y_actual = gfxm::lerp(cam_angle_y_actual, cam_angle_y, 0.5f);
+        tcam.rotate(cam_angle_y_actual, gfxm::vec3(0.0f, 1.0f, 0.0f));
+        tcam.rotate(cam_angle_x_actual, tcam.right());
         tcam.translate(tcam.back() * cam_zoom_actual);
         _view = gfxm::inverse(tcam.matrix());
 

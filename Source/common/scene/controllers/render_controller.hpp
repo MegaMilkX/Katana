@@ -21,7 +21,7 @@ public:
     }
 
     virtual void onAttribCreated(Model* m) { models.insert(m); }
-    virtual void onAttribRemoved(Model* m) { models.erase(m); }
+    virtual void onAttribRemoved(Model* m) { models.erase(m); } 
     virtual void onAttribCreated(OmniLight* l) { omnis.insert(l); }
     virtual void onAttribRemoved(OmniLight* l) { omnis.erase(l); }
     virtual void onAttribRemoved(Camera* c) {
@@ -32,6 +32,9 @@ public:
 
     void getDrawList(DrawList& dl) {
         for(auto m : models) {
+            if(!m->getOwner()->isEnabled()) {
+                continue;
+            }
             for(size_t i = 0; i < m->segmentCount(); ++i) {
                 if(!m->getSegment(i).mesh) continue;
                 if(!m->getSegment(i).skin_data) {

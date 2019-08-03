@@ -15,10 +15,29 @@
 #include "../components/component.hpp"
 #include "../scene/scene_controller.hpp"
 
+enum OBJECT_TYPE {
+    OBJECT_NORMAL,
+    OBJECT_INSTANCE
+};
+enum OBJECT_FLAGS {
+    OBJECT_FLAG_NONE = 0,
+    OBJECT_FLAG_TRANSIENT = 1
+};
+
+class ktObjectInstance;
+class GameScene;
 class GameObject {
 public:
     GameObject();
     virtual ~GameObject();
+
+    void                                setEnabled(bool v);
+    bool                                isEnabled() const;
+    void                                setFlags(OBJECT_FLAGS f) { _flags = f; }
+    OBJECT_FLAGS                        getFlags() const { return _flags; }
+    virtual OBJECT_TYPE                 getType() const { return OBJECT_NORMAL; }
+
+    void                                copy(GameObject* other, OBJECT_FLAGS f = OBJECT_FLAG_NONE);
 
     virtual void                        _onCreate() {
         onCreate();
@@ -33,7 +52,8 @@ public:
 
     TransformNode*                      getTransform();
 
-    GameObject*                         createChild();
+    GameObject*                         createChild(OBJECT_FLAGS f = OBJECT_FLAG_NONE);
+    ktObjectInstance*                   createInstance(std::shared_ptr<GameScene> scn);
     size_t                              childCount();
     GameObject*                         getChild(size_t i);
     GameObject*                         getChild(const std::string& name);
@@ -73,6 +93,8 @@ protected:
     virtual void                        _registerComponent(Attribute* attrib);
     virtual void                        _unregisterComponent(Attribute* attrib);
 
+    bool _enabled = true;
+    OBJECT_FLAGS _flags = OBJECT_FLAG_NONE;
     std::string name = "Object";
     TransformNode transform;
     gfxm::aabb aabb = gfxm::aabb(

@@ -71,7 +71,7 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, ObjectSet& selected) 
 } 
 
 void EditorSceneInspector::update(Editor* editor, const std::string& title) {
-    update(editor->getScene(), editor->getSelectedObjects(), title);
+    //update(editor->getScene(), editor->getSelectedObjects(), title);
 }
 
 void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const std::string& title) {
@@ -135,6 +135,9 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected)
 
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
     std::string icons;
+    if(!o->isEnabled()) {
+        icons += ICON_MDI_EYE_OFF;
+    }
     for(size_t i = 0; i < o->componentCount(); ++i) {
         auto& c = o->getById(i);
         icons += c->getIconCode();
@@ -143,12 +146,21 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected)
         icons += " ";
     }
 
-    if(o->childCount() == 0) {
+    ImVec4 label_col = ImVec4(1,1,1,1);
+    if(o->getType() == OBJECT_INSTANCE) {
+        label_col = ImVec4(0.4f, 1.0f, 0.7f, 1.0f);
+    } else if(o->getFlags() && OBJECT_FLAG_TRANSIENT) {
+        label_col = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+    }
+
+    if(o->childCount() == 0 || o->getType() == OBJECT_INSTANCE) {
         ImGui::PushID(name_with_uid.c_str());
         ImGui::TreeAdvanceToLabelPos();
+        ImGui::PushStyleColor(ImGuiCol_Text, label_col);
         if(ImGui::Selectable(MKSTR(icons << name_with_uid).c_str(), selected.contains(o))) {
             selected.clearAndAdd(o);
         }
+        ImGui::PopStyleColor();
         if(ImGui::BeginDragDropSource(0)) {
             ImGui::SetDragDropPayload("DND_OBJECT", &o, sizeof(o));
             ImGui::Text(name_with_uid.c_str());
@@ -172,9 +184,11 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected)
             ""
         );
         ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, label_col);
         if(ImGui::Selectable(MKSTR(icons << name_with_uid).c_str(), selected.contains(o))) {
             selected.clearAndAdd(o);
         }
+        ImGui::PopStyleColor();
         if(ImGui::BeginDragDropSource(0)) {
             ImGui::SetDragDropPayload("DND_OBJECT", &o, sizeof(o));
             ImGui::Text(o->getName().c_str());
