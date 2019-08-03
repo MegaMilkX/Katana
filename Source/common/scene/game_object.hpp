@@ -31,8 +31,8 @@ public:
     GameObject();
     virtual ~GameObject();
 
-    void                                setEnabled(bool v) { _enabled = v; }
-    bool                                isEnabled() const { return _enabled; }
+    void                                setEnabled(bool v);
+    bool                                isEnabled() const;
     void                                setFlags(OBJECT_FLAGS f) { _flags = f; }
     OBJECT_FLAGS                        getFlags() const { return _flags; }
     virtual OBJECT_TYPE                 getType() const { return OBJECT_NORMAL; }

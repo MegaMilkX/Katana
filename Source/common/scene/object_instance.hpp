@@ -13,7 +13,9 @@ public:
     virtual OBJECT_TYPE                 getType() const { return OBJECT_INSTANCE; }
     
     void                                setScene(std::shared_ptr<GameScene> scene);
-    GameScene*                          getScene() const;
+    std::shared_ptr<GameScene>          getScene() const;
+
+    void                                onGui() override;
 };
 
 #endif

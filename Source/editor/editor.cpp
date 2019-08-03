@@ -90,9 +90,8 @@ void Editor::onInit() {
     });
     input_lis->bindActionPress("Z", [this](){
         if(ImGui::GetIO().WantTextInput) return;
-        if(ctrl && !shift) undo();
-        else if(ctrl && shift) redo();
-        else viewport.recenterCamera();
+        //if(ctrl && !shift) undo();
+        //else if(ctrl && shift) redo();
     });
     input_lis->bindActionPress("S", [this](){
         if(focused_document && ctrl) {
@@ -100,20 +99,10 @@ void Editor::onInit() {
         }
     });
 
-    scene.reset(new GameScene());
-    scene->getController<RenderController>();
-    scene->getController<ConstraintCtrl>();
-    scene->getController<AnimController>();
-    scene->startSession();
-
-    dir_view.init(get_module_dir() + "/" + platformGetConfig().data_dir);
-    viewport.init(this, scene.get());
-
     LOG("Editor initialized");
 }
 
 void Editor::onCleanup() {
-    scene->stopSession();
 
     input().removeListener(input_lis);
 }
@@ -311,19 +300,10 @@ void Editor::onGui() {
     //ImGui::ShowDemoWindow(&demo);
 }
 
-GameScene* Editor::getScene() {
-    return scene.get();
-}
-ObjectSet& Editor::getSelectedObjects() {
-    return selected_objects;
-}
 EditorDocument* Editor::getFocusedDocument() {
     return focused_document;
 }
 
-EditorAssetInspector* Editor::getAssetInspector() {
-    return &asset_inspector;
-}
 EditorResourceTree& Editor::getResourceTree() {
     return ed_resource_tree;
 }
@@ -332,10 +312,10 @@ void Editor::setCurrentDockspace(ImGuiID id) {
     current_dockspace = id;
 }
 
-void Editor::setSelectedObject(GameObject* o) {
-    selected_objects.clearAndAdd(o);
-}
 void Editor::setFocusedDocument(EditorDocument* doc) {
+    if(focused_document != doc) {
+        if(doc) doc->onFocus();
+    }
     focused_document = doc;
 }
 
@@ -383,28 +363,6 @@ void Editor::tryOpenDocument(const std::shared_ptr<ResourceNode>& node) {
     }    
 }
 
-void Editor::backupScene(const std::string& label) {
-    history.push(scene.get(), label);
-}
-void Editor::redo() {
-    LOG("REDO");
-    setSelectedObject(0);
-    scene->stopSession();
-    history.redo(scene.get());
-    //history.move_forward();
-    //if(!history.current()) return;
-    //scene->copy(history.current());
-}
-void Editor::undo() {
-    LOG("UNDO");
-    setSelectedObject(0);
-    scene->stopSession();
-    history.undo(scene.get());
-    //history.move_back();
-    //if(!history.current()) return;
-    //scene->copy(history.current());
-}
-
 EditorState& Editor::getState() {
     return editor_state;
 }
@@ -415,9 +373,9 @@ bool Editor::showOpenSceneDialog() {
     if(r == NFD_OKAY) {
         std::cout << outPath << std::endl;
         std::string filePath(outPath);
-        setSelectedObject(0);
-        getScene()->clear();
-        getScene()->read(filePath);
+        //setSelectedObject(0);
+        //getScene()->clear();
+        //getScene()->read(filePath);
         currentSceneFile = filePath;
     }
     else if(r == NFD_CANCEL) {
@@ -442,21 +400,12 @@ bool Editor::showSaveSceneDialog(GameScene* scene, bool forceDialog) {
                 filePath = filePath + ".scn";
             }
             std::cout << filePath << std::endl;
-            if(getScene()->write(filePath)) {
-                LOG("Scene saved");
-                currentSceneFile = filePath;
-            } else {
-                LOG_WARN("Failed to save scene");
-            }
+            
         }
     }
     else
     {
-        if(getScene()->write(currentSceneFile)) {
-            LOG("Scene saved");
-        } else {
-            LOG_WARN("Failed to save scene");
-        }
+        
     }
     
     return true;

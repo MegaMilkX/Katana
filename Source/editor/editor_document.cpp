@@ -49,7 +49,7 @@ void EditorDocument::backup() {
 }
 
 void EditorDocument::update (Editor* ed) {
-    ImGuiWindowFlags flags = 0;
+    ImGuiWindowFlags flags = imgui_win_flags;
     if(isUnsaved()) {
         flags |= ImGuiWindowFlags_UnsavedDocument;
     }

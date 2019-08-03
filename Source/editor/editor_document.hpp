@@ -26,9 +26,12 @@ protected:
     std::string _name;
     std::string _window_name;
     std::weak_ptr<ResourceNode> _node;
+    ImGuiWindowFlags imgui_win_flags = 0;
 public:
     EditorDocument();
     virtual ~EditorDocument() {}
+
+    virtual void onFocus() {}
 
     virtual void setResourceNode(std::shared_ptr<ResourceNode>& node) = 0;
 
