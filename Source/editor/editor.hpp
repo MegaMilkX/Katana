@@ -3,9 +3,7 @@
 
 #include "editor_viewport.hpp"
 #include "editor_scene_inspector.hpp"
-#include "editor_dir_view.hpp"
 #include "editor_object_inspector.hpp"
-#include "editor_asset_inspector.hpp"
 #include "editor_resource_tree.hpp"
 #include "editor_document.hpp"
 
@@ -50,22 +48,14 @@ public:
     virtual void onUpdate();
     virtual void onGui();
 
-    GameScene* getScene();
-    ObjectSet& getSelectedObjects();
     EditorDocument* getFocusedDocument();
-    EditorAssetInspector* getAssetInspector();
     EditorResourceTree& getResourceTree();
     void setCurrentDockspace(ImGuiID id);
-    void setSelectedObject(GameObject* o);
     void setFocusedDocument(EditorDocument* doc);
 
     void addDocument(EditorDocument* doc);
     void addNewDocument(EditorDocument* doc);
     void tryOpenDocument(const std::shared_ptr<ResourceNode>& node);
-
-    void backupScene(const std::string& label = "");
-    void redo();
-    void undo();
 
     EditorState& getState();
 private:
@@ -83,16 +73,8 @@ private:
     ImGuiID dockspace_id;
     ImGuiID current_dockspace; // dockspace for the next opened document
 
-    EditorViewport viewport;
-    EditorSceneInspector scene_inspector;
-    EditorDirView dir_view;
-    EditorObjectInspector object_inspector;
-    EditorAssetInspector asset_inspector;
-
     InputListener* input_lis = 0;
 
-    std::shared_ptr<GameScene> scene;
-    ObjectSet selected_objects;
     SceneHistory history;
 
     std::string currentSceneFile;

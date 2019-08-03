@@ -71,7 +71,7 @@ static GameObject* guiGameObjectContextMenu(GameObject* o, ObjectSet& selected) 
 } 
 
 void EditorSceneInspector::update(Editor* editor, const std::string& title) {
-    update(editor->getScene(), editor->getSelectedObjects(), title);
+    //update(editor->getScene(), editor->getSelectedObjects(), title);
 }
 
 void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const std::string& title) {
@@ -153,7 +153,7 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected)
         label_col = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
     }
 
-    if(o->childCount() == 0) {
+    if(o->childCount() == 0 || o->getType() == OBJECT_INSTANCE) {
         ImGui::PushID(name_with_uid.c_str());
         ImGui::TreeAdvanceToLabelPos();
         ImGui::PushStyleColor(ImGuiCol_Text, label_col);

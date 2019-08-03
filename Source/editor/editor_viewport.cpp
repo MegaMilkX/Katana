@@ -82,7 +82,7 @@ void EditorViewport::init(Editor* editor, GameScene* scene) {
 }
 
 void EditorViewport::update(Editor* editor) {
-    if(ImGui::Begin("Scene")) {
+    /*if(ImGui::Begin("Scene")) {
         mouse_is_over_vp = ImGui::IsWindowHovered();
         window_in_focus = ImGui::IsRootWindowFocused();
 
@@ -113,7 +113,7 @@ void EditorViewport::update(Editor* editor) {
         }
         ImGui::End();
     }
-
+ */
     return;
 /*
     editor->getScene()->update();
@@ -274,7 +274,7 @@ void EditorViewport::update(Editor* editor) {
 void EditorViewport::recenterCamera() {
     //cam_angle_y = gfxm::radian(45.0f);
     //cam_angle_x = gfxm::radian(-25.0f);
-
+/*
     auto& selected = editor->getSelectedObjects();
     if(selected.empty()) {
         gvp.resetCamera(
@@ -288,7 +288,7 @@ void EditorViewport::recenterCamera() {
     gvp.resetCamera(
         gfxm::lerp(o->getAabb().from, o->getAabb().to, 0.5f),
         gfxm::length(o->getAabb().to - o->getAabb().from) * 0.8f + 0.01f
-    );
+    ); */
 }
 
 GuiViewport& EditorViewport::getViewport() {

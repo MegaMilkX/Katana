@@ -17,11 +17,12 @@ class EditorDocScene : public EditorDocumentTyped<GameScene>, public InputListen
     GuiViewport gvp;
     EditorSceneInspector scene_inspector;
     EditorObjectInspector object_inspector;
-    std::shared_ptr<GameScene> scene;
     ObjectSet selected;
 public:
     EditorDocScene();
     EditorDocScene(std::shared_ptr<ResourceNode>& node);
+
+    void onFocus() override;
 
     virtual void onGui (Editor* ed);
 };

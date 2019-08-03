@@ -33,6 +33,8 @@ private:
 
     gfxm::vec3 cam_pos;
     float cam_zoom_actual = 0.0f;
+    float cam_angle_y_actual = gfxm::radian(45.0f);
+    float cam_angle_x_actual = gfxm::radian(-25.0f);
 
     bool is_mouse_over = false;
     bool window_in_focus = false;

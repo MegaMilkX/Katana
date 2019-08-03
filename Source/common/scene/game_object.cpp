@@ -26,7 +26,24 @@ GameObject::~GameObject() {
     }
 }
 
+void GameObject::setEnabled(bool v) { 
+    _enabled = v;
+    for(auto c : children) {
+        c->setEnabled(v);
+    }
+}
+bool GameObject::isEnabled() const { 
+    return _enabled; 
+}
+
 void GameObject::copy(GameObject* other, OBJECT_FLAGS f) {
+    for(auto o : children) {
+        delete o;
+    }
+    children.clear();
+    deleteAllComponents();
+    components.clear();
+
     std::vector<std::pair<GameObject*, GameObject*>> target_source_pairs;
 
     std::function<void(GameObject*, GameObject*)> copy_tree_fn;
@@ -35,8 +52,9 @@ void GameObject::copy(GameObject* other, OBJECT_FLAGS f) {
         if(target != this) {
             target->getTransform()->setTransform(source->getTransform()->getLocalTransform());
         } else {
-            target->getTransform()->setScale(source->getTransform()->getScale());
+            //target->getTransform()->setScale(source->getTransform()->getScale());
         }
+        target->_enabled = source->_enabled;
         for(auto c : source->children) {
             copy_tree_fn(target->createChild(f), c);
         }
@@ -299,6 +317,16 @@ void GameObject::onGui() {
     static int t_sync = -1;
     static gfxm::vec3 euler;
 
+    if(ImGui::Checkbox("Enabled", &_enabled)) {
+        setEnabled(_enabled);
+    }
+    char buf[256];
+    memset(buf, 0, 256);
+    memcpy(buf, getName().c_str(), getName().size());
+    if(ImGui::InputText("Name", buf, 256)) {
+        setName(buf);
+    }
+
     if(getParent() != 0) {
         if(last_transform != getTransform() || t_sync != getTransform()->getSyncId()) {
             last_transform = getTransform();
@@ -310,16 +338,6 @@ void GameObject::onGui() {
         auto r = getTransform()->getEulerAngles();
         auto s = getTransform()->getScale();
 
-        if(ImGui::Checkbox("Enabled", &_enabled)) {
-            // ?
-        }
-
-        char buf[256];
-        memset(buf, 0, 256);
-        memcpy(buf, getName().c_str(), getName().size());
-        if(ImGui::InputText("Name", buf, 256)) {
-            setName(buf);
-        }
         ImGui::Separator();
         if(ImGui::DragFloat3("Translation", (float*)&t, 0.001f)) {
             getTransform()->setPosition(t);
@@ -483,14 +501,14 @@ void GameObject::write(out_stream& out) {
             stack.pop();
         }
 
-        uint64_t id = oid_map.size();
-        oid_map[current] = id;
-        objects.emplace_back(current);
-
-        if(current->getType() == OBJECT_INSTANCE) {
+        if(current->getFlags() == OBJECT_FLAG_TRANSIENT) {
             current = 0;
             continue;
         }
+
+        uint64_t id = oid_map.size();
+        oid_map[current] = id;
+        objects.emplace_back(current);
 
         for(size_t i = 0; i < current->childCount(); ++i) {
             stack.push(current->getChild(i));

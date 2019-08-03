@@ -9,7 +9,7 @@
 #include "../common/behavior/behavior.hpp"
 
 void EditorObjectInspector::update(Editor* editor, const std::string& title) {
-    update(editor->getScene(), editor->getSelectedObjects(), title);
+    //update(editor->getScene(), editor->getSelectedObjects(), title);
 }
 
 void EditorObjectInspector::update(GameScene* scene, ObjectSet& selected, const std::string& title) {
