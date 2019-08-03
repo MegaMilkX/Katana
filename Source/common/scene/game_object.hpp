@@ -39,11 +39,6 @@ public:
 
     void                                copy(GameObject* other, OBJECT_FLAGS f = OBJECT_FLAG_NONE);
 
-    virtual void                        _onCreate() {
-        onCreate();
-    }
-    virtual void                        onCreate() {}
-
     void                                setName(const std::string& name);
     const std::string&                  getName() const;
 
