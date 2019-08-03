@@ -1,29 +1,28 @@
 #ifndef KT_WORLD_HPP
 #define KT_WORLD_HPP
 
-class ktRenderController;
-class ktDynamics;
-class ktConstraintController;
-class ktAudioController;
+#include "scene/controllers/render_controller.hpp"
+#include "scene/controllers/dynamics_ctrl.hpp"
+#include "scene/controllers/anim_controller.hpp"
 
-class ktWorld {
-    ktRenderController* render_controller = 0;
-    ktDynamicsController* dynamics_controller = 0;
-    ktAudioController* audio_controller = 0;
-    ktConstraintController* constraint_controller = 0;
-    
+#include "scene/game_object.hpp"
+
+class ktWorld : public GameObject {
+    std::unique_ptr<RenderController> render_ctrl;
+    std::unique_ptr<DynamicsCtrl> dynamics_ctrl;
+    std::unique_ptr<AnimController> anim_ctrl;
+
 public:
-    ktWorld(
-        ktRenderController* rCtrl,
-        ktDynamics*         dCtrl,
-        ktAudioController*  aCtrl,
-        ktConstraintController* cCtrl
-    ) {
-
+    RenderController* getRenderController() {
+        return render_ctrl.get();
+    }
+    DynamicsCtrl* getPhysics() {
+        return dynamics_ctrl.get();
     }
 
     void update(float dt) {
-
+        anim_ctrl->onUpdate();
+        dynamics_ctrl->onUpdate();
     }
 };
 
