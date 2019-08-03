@@ -3,7 +3,8 @@
 static KatanaApi* ktApi = 0;
 
 
-static class sessMain : public ktGameMode {
+static class $GAME_MODE_NAME : public ktGameMode {
+    RTTR_ENABLE(ktGameMode)
 public:
     virtual void onStart() {
         // TODO: Initialize your session here
@@ -16,11 +17,16 @@ public:
     virtual void onCleanup() {
         // TODO: Cleanup
     }
-} sess_main;
-
+} mode_main;
+STATIC_RUN($GAME_MODE_NAME) {
+    rttr::registration::class_<$GAME_MODE_NAME>("$GAME_MODE_NAME")
+        .constructor<>()(
+            rttr::policy::ctor::as_raw_ptr
+        );
+}
 
 int ktStartup(KatanaApi* kt_api) {
     ktApi = kt_api;
-    kt_api->run(&sess_main);
+    kt_api->run(&mode_main);
     return 0;
 }

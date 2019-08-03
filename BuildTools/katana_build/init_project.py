@@ -64,7 +64,9 @@ else:
 		os.mkdir(srcDir + '/../cmake')
 	
 	# === CPP starter files ====
-	replaceList = {}
+	replaceList = {
+		'GAME_MODE_NAME':projName + '_MainMode'
+	}
 	kt_util.createFileFromTemplate(
 		kt_config.MAIN_CPP_TPL,
 		srcDir, 'main.cpp', replaceList, False
