@@ -52,6 +52,9 @@ public:
     virtual void serialize(out_stream& out);
     virtual bool deserialize(in_stream& in, size_t sz);
 
+    void                _linkInstance(ktObjectInstance*);
+    void                _unlinkInstance(ktObjectInstance*);
+
     virtual const char* getWriteExtension() const { return "so"; }
 private:
     SceneController* createController(rttr::type t);
@@ -59,6 +62,10 @@ private:
     virtual void                        _registerComponent(Attribute* attrib);
     virtual void                        _unregisterComponent(Attribute* attrib);
     virtual void                        _readdComponent(Attribute* attrib);
+    virtual void                        _registerNode(GameObject* o);
+    virtual void                        _unregisterNode(GameObject* o);
+
+    std::set<ktObjectInstance*>                             instance_links;
 
     std::map<rttr::type, std::shared_ptr<SceneController>>  controllers;
     std::vector<SceneController*>                           updatable_controllers;

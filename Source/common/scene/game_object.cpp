@@ -88,6 +88,7 @@ GameObject* GameObject::createChild(OBJECT_FLAGS f) {
     o->getTransform()->setParent(&transform);
     o->_flags = f;
     children.insert(o);
+    _registerNode(o);
     return o;
 }
 
@@ -96,6 +97,7 @@ ktObjectInstance* GameObject::createInstance(std::shared_ptr<GameScene> scn) {
     o->parent = this;
     o->getTransform()->setParent(&transform);
     children.insert(o);
+    o->_registerNode(o);
 
     o->setScene(scn);
     
@@ -698,5 +700,28 @@ void GameObject::_readdComponent(Attribute* attrib) {
     }
     if(p) {
         p->_readdComponent(attrib);
+    }
+}
+
+void GameObject::_registerNode(GameObject* o) {
+    GameObject* current = parent;
+    GameObject* p = 0;
+    while(current) {
+        p = current;
+        current = current->parent;
+    }
+    if(p) {
+        p->_registerNode(o);
+    }
+}
+void GameObject::_unregisterNode(GameObject* o) {
+    GameObject* current = parent;
+    GameObject* p = 0;
+    while(current) {
+        p = current;
+        current = current->parent;
+    }
+    if(p) {
+        p->_unregisterNode(o);
     }
 }

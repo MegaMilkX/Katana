@@ -92,6 +92,8 @@ protected:
     std::shared_ptr<Attribute>          createComponent(rttr::type t);
     virtual void                        _registerComponent(Attribute* attrib);
     virtual void                        _unregisterComponent(Attribute* attrib);
+    virtual void                        _registerNode(GameObject* o);
+    virtual void                        _unregisterNode(GameObject* o);
 
     ktProperty<bool> _enabled = true;
     OBJECT_FLAGS _flags = OBJECT_FLAG_NONE;

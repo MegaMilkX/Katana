@@ -124,6 +124,13 @@ bool GameScene::deserialize(in_stream& in, size_t sz) {
     return true;
 }
 
+void GameScene::_linkInstance(ktObjectInstance* inst) {
+    instance_links.insert(inst);
+}
+void GameScene::_unlinkInstance(ktObjectInstance* inst) {
+    instance_links.erase(inst);
+}
+
 SceneController* GameScene::createController(rttr::type t) {
     if(!t.is_valid()) {
         LOG_WARN("Scene controller type is not valid: " << t.get_name().to_string());
@@ -179,6 +186,10 @@ void GameScene::_registerComponent(Attribute* c) {
             kv.second->attribCreated(b, c);
         }   
     }
+
+    for(auto inst : instance_links) {
+        inst->_createInstancedAttrib(c);
+    }
 }
 void GameScene::_unregisterComponent(Attribute* c) {
     auto& vec = object_components[c->get_type()];
@@ -198,8 +209,23 @@ void GameScene::_unregisterComponent(Attribute* c) {
             kv.second->attribDeleted(b, c);
         }   
     }
+
+    for(auto inst : instance_links) {
+        inst->_removeInstancedAttrib(c);
+    }
 }
 void GameScene::_readdComponent(Attribute* attrib) {
     _unregisterComponent(attrib);
     _registerComponent(attrib);   
+}
+
+void GameScene::_registerNode(GameObject* o) {
+    for(auto inst : instance_links) {
+        inst->_createInstancedNode(o);
+    }
+}
+void GameScene::_unregisterNode(GameObject* o) {
+    for(auto inst : instance_links) {
+        inst->_removeInstancedNode(o);
+    }
 }
