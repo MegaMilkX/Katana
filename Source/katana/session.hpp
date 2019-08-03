@@ -7,41 +7,28 @@
 #include <vector>
 #include <set>
 
-class ktSession {
+class ktGameMode {
+    RTTR_ENABLE()
+
     GameScene               scene;
-    std::set<Actor*>        actors;
 public:
-    virtual ~ktSession() {
-        clearActors();
+    virtual ~ktGameMode() {
     }
 
     GameScene*  getScene() { return &scene; }
 
-    template<typename T>
-    T*          createActor() {
-        T* a = new T();
-        actors.insert(a);
-        a->session = this;
-        return a;
-    }
-    void        removeActor(Actor* a) {
-        actors.erase(a);
-        delete a;
-    }
-    void        clearActors() {
-        for(auto a : actors) {
-            delete a;
-        }
-        actors.clear();
-    }
+
 
     virtual void onStart() {}
     virtual void onUpdate() {}
     virtual void onCleanup() {}
-
-    void        start           () { onStart(); for(auto o : actors) { o->onInit(); } }
-    void        update          () { onUpdate(); for(auto o : actors) { o->onUpdate(); } }
-    void        stop            () { onCleanup(); for(auto o : actors) { o->onCleanup(); } }
 };
+STATIC_RUN(ktGameMode) {
+    rttr::registration::class_<ktGameMode>("BasicGameMode")
+        .constructor<>()(
+            rttr::policy::ctor::as_raw_ptr
+        );
+}
+
 
 #endif

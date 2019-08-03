@@ -13,7 +13,7 @@ static float sFrameDelta = .0f;
 static float sTime = .0f;
 
 class KatanaImpl : public KatanaApi {
-    ktSession* _session = 0;
+    ktGameMode* _session = 0;
     RenderViewport vp;
     RendererPBR renderer;
 
@@ -24,7 +24,7 @@ public:
         vp.init(640, 480);
     }
 
-    virtual void run(ktSession* sess) {
+    virtual void run(ktGameMode* sess) {
         _session = sess;
         _session->start();
     }

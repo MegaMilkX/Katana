@@ -3,7 +3,7 @@
 static KatanaApi* ktApi = 0;
 
 
-static class sessMain : public ktSession {
+static class sessMain : public ktGameMode {
 public:
     virtual void onStart() {
         // TODO: Initialize your session here

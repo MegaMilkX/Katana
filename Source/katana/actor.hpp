@@ -5,18 +5,18 @@
 #include <string>
 
 
-class ktSession;
+class ktGameMode;
 
 
 class Actor {
-    friend ktSession;
+    friend ktGameMode;
 
     std::string         name            = "Actor";
-    ktSession*          session         = 0;
+    ktGameMode*          session         = 0;
 public:
     virtual             ~Actor     () {}
 
-    ktSession*          getSession      () { return session; }
+    ktGameMode*          getSession      () { return session; }
     const std::string&  getName         () { return name; }
 
     virtual void        onInit          () {}
