@@ -65,10 +65,6 @@ public:
             prog->bindFragData(GBuffer::METALLIC, "out_metallic");
             prog->bindFragData(GBuffer::ROUGHNESS, "out_roughness");
             prog->bindFragData(0, "out_frag");
-            if(!prog->link()) {
-                LOG_WARN("Failed to link program '" << name << "'");
-                return 0;
-            }
             prog->use();
 
             GLuint u = 0;
@@ -106,6 +102,7 @@ public:
 
             if(!prog->validate()) {
                 LOG_WARN("Failed to validate shader program '" << name << "'");
+                return 0;
             }
             glUseProgram(0);
 
