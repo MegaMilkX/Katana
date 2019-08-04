@@ -45,6 +45,13 @@ void Editor::onInit() {
     input().getTable().addActionKey("Z", "KB_Z");
     input().getTable().addActionKey("S", "KB_S");
 
+    input().getTable().addActionKey("F1", "KB_F1");
+    input().getTable().addActionKey("F2", "KB_F2");
+    input().getTable().addActionKey("F3", "KB_F3");
+    input().getTable().addActionKey("F4", "KB_F4");
+    input().getTable().addActionKey("F5", "KB_F5");
+    input().getTable().addActionKey("F6", "KB_F6");
+
     input_lis = input().createListener();
     input_lis->bindActionPress("MouseLeft", [this](){
         ImGui::GetIO().MouseDown[0] = true;
@@ -99,6 +106,13 @@ void Editor::onInit() {
         }
     });
 
+    input_lis->bindActionPress("F1", [](){ dbg_renderBufferId = 0; });
+    input_lis->bindActionPress("F2", [](){ dbg_renderBufferId = 1; });
+    input_lis->bindActionPress("F3", [](){ dbg_renderBufferId = 2; });
+    input_lis->bindActionPress("F4", [](){ dbg_renderBufferId = 3; });
+    input_lis->bindActionPress("F5", [](){ dbg_renderBufferId = 4; });
+    input_lis->bindActionPress("F6", [](){ dbg_renderBufferId = 5; });
+
     LOG("Editor initialized");
 }
 
@@ -112,6 +126,8 @@ void Editor::onUpdate() {
 }
 
 void Editor::onGui() {
+    platformMouseSetEnabled(true);
+    
     ImGuizmo::BeginFrame();
 
     bool p_open = true;

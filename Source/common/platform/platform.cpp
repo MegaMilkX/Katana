@@ -123,6 +123,10 @@ void* platformGetGlfwWindow() {
     return (void*)window;
 }
 
+void platformMouseSetEnabled(bool v) {
+    glfwSetInputMode(window, GLFW_CURSOR, v ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+}
+
 static void cbWindowResize(GLFWwindow *, int w, int h) {
     
 }

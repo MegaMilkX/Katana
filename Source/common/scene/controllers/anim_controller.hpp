@@ -7,7 +7,7 @@
 
 #include "../../components/animation_stack.hpp"
 
-class AnimController : public SceneControllerEventFilter<AnimationStack> {
+class AnimController : public SceneEventFilter<AnimationStack> {
     RTTR_ENABLE(SceneController)
 public:
     virtual void onAttribCreated(AnimationStack* s) { stacks.insert(s); }

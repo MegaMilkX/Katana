@@ -56,7 +56,12 @@ void GameObject::copy(GameObject* other, OBJECT_FLAGS f) {
         }
         target->_enabled = source->_enabled;
         for(auto c : source->children) {
-            copy_tree_fn(target->createChild(f), c);
+            if(c->getType() == OBJECT_INSTANCE) {
+                auto inst = target->createInstance(((ktObjectInstance*)c)->getScene());
+                inst->getTransform()->setTransform(c->getTransform()->getLocalTransform());
+            } else {
+                copy_tree_fn(target->createChild(f), c);
+            }
         }
         target_source_pairs.emplace_back(std::make_pair(target, source));
     };

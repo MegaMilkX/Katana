@@ -5,25 +5,45 @@
 #include "scene/controllers/dynamics_ctrl.hpp"
 #include "scene/controllers/anim_controller.hpp"
 
-#include "scene/game_object.hpp"
+#include "scene/game_scene.hpp"
 
-class ktWorld : public GameObject {
-    std::unique_ptr<RenderController> render_ctrl;
-    std::unique_ptr<DynamicsCtrl> dynamics_ctrl;
-    std::unique_ptr<AnimController> anim_ctrl;
+#include "components/actors/actor.hpp"
 
+class ktActor;
+class ktWorld : public SceneEventFilter<ktActor> {
+    std::unique_ptr<GameScene> scene;
+
+    RenderController* render_ctrl;
+    DynamicsCtrl* dynamics_ctrl;
+    AnimController* anim_ctrl;
+
+    std::set<ktActor*> actors;
+
+    void onAttribCreated(ktActor* a);
+    void onAttribRemoved(ktActor* a);
 public:
+    ktWorld()
+    : scene(new GameScene()) {
+        render_ctrl = scene->getController<RenderController>();
+        dynamics_ctrl = scene->getController<DynamicsCtrl>();
+        anim_ctrl = scene->getController<AnimController>();
+
+        scene->addListener(this);
+    }
+
+    GameScene* getScene() {
+        return scene.get();
+    }
     RenderController* getRenderController() {
-        return render_ctrl.get();
+        return render_ctrl;
     }
     DynamicsCtrl* getPhysics() {
-        return dynamics_ctrl.get();
+        return dynamics_ctrl;
     }
 
-    void update(float dt) {
-        anim_ctrl->onUpdate();
-        dynamics_ctrl->onUpdate();
-    }
+    void start();
+    void update(float dt);
+    void cleanup();
 };
 
 #endif

@@ -7,7 +7,6 @@
 
 #include "../common/scene/controllers/render_controller.hpp"
 #include "../common/scene/controllers/dynamics_ctrl.hpp"
-#include "../common/scene/controllers/actor_ctrl.hpp"
 #include "../common/scene/controllers/anim_controller.hpp"
 #include "../common/scene/controllers/audio_controller.hpp"
 #include "../common/scene/controllers/constraint_ctrl.hpp"
@@ -33,7 +32,6 @@ public:
         scene->getController<AnimController>();
         scene->getController<DynamicsCtrl>();
         scene->getController<AudioController>();
-        scene->getController<ActorCtrl>();
         scene->startSession();
     }
     virtual void onCleanup() {

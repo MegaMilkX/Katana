@@ -15,7 +15,6 @@
 
 #include "../../common/debug_draw.hpp"
 
-#include "actor_object.hpp"
 #include "scene_controller.hpp"
 #include "../serializable.hpp"
 
@@ -43,6 +42,9 @@ public:
     size_t controllerCount() const;
     SceneController* getController(size_t i);
 
+    void addListener(SceneController* lis);
+    void removeListener(SceneController* lis);
+
     void startSession();
     void stopSession();
 
@@ -60,6 +62,7 @@ private:
     virtual void                        _unregisterComponent(Attribute* attrib);
     virtual void                        _readdComponent(Attribute* attrib);
 
+    std::set<SceneController*>                              foreign_listeners;
     std::map<rttr::type, std::shared_ptr<SceneController>>  controllers;
     std::vector<SceneController*>                           updatable_controllers;
     std::map<

@@ -92,10 +92,12 @@ void EditorDocScene::onGui (Editor* ed) {
             if(v.is_valid()) {
                 if(v.get_type().is_pointer()) {
                     auto mode = v.get_value<ktGameMode*>();
+                    
                     dstream strm;
                     _resource->write(strm);
                     strm.jump(0);
                     mode->getScene().read(strm);
+                    //mode->getScene().copy(_resource.get());
 
                     kt_play_mode.reset(new KatanaImpl());
                     kt_play_mode->run(mode);

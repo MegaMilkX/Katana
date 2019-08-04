@@ -66,10 +66,10 @@ public:
 };
 
 template<typename ...Ts>
-class SceneControllerEventFilter;
+class SceneEventFilter;
 
 template<typename TA>
-class SceneControllerEventFilter<TA> : public SceneController {
+class SceneEventFilter<TA> : public SceneController {
 public:
     virtual void attribCreated(rttr::type t, Attribute* attr) {
         if(t == rttr::type::get<TA>()) {
@@ -87,16 +87,16 @@ public:
 };
 
 template<typename TA, typename ...Ts>
-class SceneControllerEventFilter<TA, Ts...> : public SceneControllerEventFilter<Ts...> {
+class SceneEventFilter<TA, Ts...> : public SceneEventFilter<Ts...> {
 public:
     virtual void attribCreated(rttr::type t, Attribute* attr) {
-        SceneControllerEventFilter<Ts...>::attribCreated(t, attr);
+        SceneEventFilter<Ts...>::attribCreated(t, attr);
         if(t == rttr::type::get<TA>()) {
             onAttribCreated((TA*)attr);
         }
     }
     virtual void attribDeleted(rttr::type t, Attribute* attr) {
-        SceneControllerEventFilter<Ts...>::attribDeleted(t, attr);
+        SceneEventFilter<Ts...>::attribDeleted(t, attr);
         if(t == rttr::type::get<TA>()) {
             onAttribRemoved((TA*)attr);
         }

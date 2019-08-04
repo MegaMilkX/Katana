@@ -22,10 +22,16 @@
 
 #include "draw_primitive.hpp"
 
+extern int dbg_renderBufferId;
+
+class ktWorld;
 class Renderer {
 public:
     Renderer() {
         {
+            env_map.reset(new CubeMap());
+            irradiance_map.reset(new CubeMap());
+
             curve<gfxm::vec3> curv;
             curv[0.0f] = gfxm::vec3(0 / 255.0f, 0 / 255.0f, 0 / 255.0f);
             curv[.5f] = gfxm::vec3(3 / 255.0f, 3 / 255.0f, 5 / 255.0f);
@@ -33,20 +39,7 @@ public:
             curv[.60f] = gfxm::vec3(160 / 255.0f, 137 / 255.0f, 129 / 255.0f);
             curv[.7f] = gfxm::vec3(1 / 255.0f, 44 / 255.0f, 95 / 255.0f);
             curv[1.0f] = gfxm::vec3(1 / 255.0f, 11 / 255.0f, 36 / 255.0f);
-            char color[300];
-            for(int i = 0; i < 300; i += 3) {
-                float y = i / 300.0f;
-                gfxm::vec3 c = curv.at(y);
-                color[i] = c.x * 255;
-                color[i + 1] = c.y * 255;
-                color[i + 2] = c.z * 255;
-            }
-            //env_map = retrieve<CubeMap>("env.hdr");
-            env_map.reset(new CubeMap());
-            env_map->data(color, 1, 100, 3);
-
-            irradiance_map.reset(new CubeMap());
-            irradiance_map->makeIrradianceMap(env_map);
+            setSkyGradient(curv);
         }
         
         tex_ibl_brdf_lut.reset(new Texture2D());
@@ -54,6 +47,12 @@ public:
         dstrm.setBuffer(std::vector<char>(ibl_brdf_lut_png, ibl_brdf_lut_png + sizeof(ibl_brdf_lut_png)));
         tex_ibl_brdf_lut->deserialize(dstrm, sizeof(ibl_brdf_lut_png));
 
+        prog_quad = ShaderFactory::getOrCreate(
+            "screen_quad",
+            #include "../common/shaders/v_screen_quad.glsl"
+            ,
+            #include "../common/shaders/f_plain_texture.glsl"
+        );
         prog_skybox = ShaderFactory::getOrCreate(
             "skybox",
             #include "../common/shaders/v_skybox.glsl"
@@ -77,7 +76,7 @@ public:
         glClear(GL_DEPTH_BUFFER_BIT);
     }
 
-    void endFrame() {
+    void endFrame(RenderViewport* vp) {
         // ==== Skybox ========================
         glDisable(GL_CULL_FACE);
         glDepthFunc(GL_LEQUAL);
@@ -85,8 +84,33 @@ public:
         gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, env_map->getId());
         drawCube();
 
-        glUseProgram(0);
+        // ==== 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        prog_quad->use();
+        switch(dbg_renderBufferId) {
+        case 0:
+            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getFinalBuffer()->getTextureId(0));
+            break;
+        case 1:
+            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getAlbedoTexture());
+            break;
+        case 2:
+            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getNormalTexture());
+            break;
+        case 3:
+            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getRoughnessTexture());
+            break;
+        case 4:
+            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getMetallicTexture());
+            break;
+        case 5:
+            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getDepthTexture());
+            break;
+        }
+        drawQuad();
+
+        glUseProgram(0);
     }
 
     template<typename T>
@@ -104,10 +128,15 @@ public:
         }
     }
 
+    void drawWorld(RenderViewport* vp, ktWorld* world);
+
     virtual void draw(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen = false) = 0;
+
+    void setSkyGradient(curve<gfxm::vec3> grad);
 protected:
     RenderState state;
 
+    gl::ShaderProgram* prog_quad;
     gl::ShaderProgram* prog_skybox;
 
     std::shared_ptr<Texture2D> tex_ibl_brdf_lut;
@@ -121,26 +150,7 @@ class RendererPBR : public Renderer {
     gl::ShaderProgram* prog_light_pass;
 
 public:
-    RendererPBR() {
-        prog_light_pass = ShaderFactory::getOrCreate(
-            "light_pass",
-            #include "../common/shaders/v_quad.glsl"
-            ,
-            #include "../common/shaders/f_light_pass.glsl"
-        );
-        prog_gbuf_solid = ShaderFactory::getOrCreate(
-            "gbuf_solid_pbr",
-            #include "../common/shaders/v_solid_deferred_pbr.glsl"
-            ,
-            #include "../common/shaders/f_deferred_pbr.glsl"
-        );
-        prog_gbuf_skin = ShaderFactory::getOrCreate(
-            "gbuf_skin_pbr",
-            #include "../common/shaders/v_skin_deferred_pbr.glsl"
-            ,
-            #include "../common/shaders/f_deferred_pbr.glsl"
-        );
-    }
+    RendererPBR();
 
     virtual void draw(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen = false) {
         beginFrame(vp, proj, view);
@@ -157,11 +167,8 @@ public:
         );
 
         // ==== Light pass ===============
-        if(draw_final_on_screen) {
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        } else {
-            glBindFramebuffer(GL_FRAMEBUFFER, vp->getFinalBuffer()->getId());
-        }
+        glBindFramebuffer(GL_FRAMEBUFFER, vp->getFinalBuffer()->getId());
+        
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         prog_light_pass->use();
         
@@ -202,7 +209,7 @@ public:
         glUniformMatrix4fv(prog_light_pass->getUniform("inverse_view_projection"), 1, GL_FALSE, (float*)&inverse_view_projection);
         drawQuad();
 
-        endFrame();
+        endFrame(vp);
     }
 };
 

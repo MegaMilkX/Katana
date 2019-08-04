@@ -21,7 +21,7 @@ enum COLLISION_GROUP {
     COLLISION_GROUP_5
 };
 
-class DynamicsCtrl : public SceneControllerEventFilter<Collider, RigidBody, CollisionListener> {
+class DynamicsCtrl : public SceneEventFilter<Collider, RigidBody, CollisionListener> {
     RTTR_ENABLE(SceneController)
 public:
     struct ColliderInfo {

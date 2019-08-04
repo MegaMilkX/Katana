@@ -13,6 +13,7 @@ void platformSwapBuffers();
 
 void platformGetViewportSize(unsigned& width, unsigned& height);
 void platformGetMousePos(unsigned& x, unsigned& y);
+void platformMouseSetEnabled(bool);
 void* platformGetGlfwWindow();
 
 #endif

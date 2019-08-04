@@ -9,7 +9,7 @@
 
 #include "../../../common/util/imgui_helpers.hpp"
 
-class AudioController : public SceneControllerEventFilter<AudioSource, AudioListener> {
+class AudioController : public SceneEventFilter<AudioSource, AudioListener> {
     RTTR_ENABLE(SceneController)
 public:
     virtual void onAttribCreated(AudioSource* s) { sources.insert(s); }

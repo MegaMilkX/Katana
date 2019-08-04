@@ -6,6 +6,8 @@
 
 #include "../common/lib/imguizmo/ImGuizmo.h"
 
+#include "../common/components/render_environment.hpp"
+
 GuiViewport::GuiViewport() {
     rvp.init(640, 480);
     dd.init();
@@ -173,6 +175,10 @@ void GuiViewport::draw(GameScene* scn, GameObject* selected_object, gfxm::ivec2 
 
         DrawList dl;
         scn->getController<RenderController>()->getDrawList(dl);
+        auto env = scn->find<RenderEnvironment>();
+        if(env) { 
+            renderer.setSkyGradient(env->getSkyGradient());
+        }
         renderer.draw(&rvp, _proj, _view, dl);
         
         rvp.getFinalBuffer()->bind();

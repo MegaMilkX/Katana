@@ -92,6 +92,13 @@ SceneController* GameScene::getController(size_t i) {
     return it->second.get();
 }
 
+void GameScene::addListener(SceneController* lis) {
+    foreign_listeners.insert(lis);
+}
+void GameScene::removeListener(SceneController* lis) {
+    foreign_listeners.erase(lis);
+}
+
 void GameScene::startSession() {
     for(auto& kv : controllers) {
         kv.second->onStart();
@@ -179,6 +186,13 @@ void GameScene::_registerComponent(Attribute* c) {
             kv.second->attribCreated(b, c);
         }   
     }
+
+    for(auto l : foreign_listeners) {
+        l->attribCreated(c->get_type(), c);
+        for(auto b : bases) {
+            l->attribCreated(b, c);
+        }
+    }
 }
 void GameScene::_unregisterComponent(Attribute* c) {
     auto& vec = object_components[c->get_type()];
@@ -197,6 +211,13 @@ void GameScene::_unregisterComponent(Attribute* c) {
         for(auto& kv : controllers) {
             kv.second->attribDeleted(b, c);
         }   
+    }
+
+    for(auto l : foreign_listeners) {
+        l->attribDeleted(c->get_type(), c);
+        for(auto b : bases) {
+            l->attribDeleted(b, c);
+        }
     }
 }
 void GameScene::_readdComponent(Attribute* attrib) {

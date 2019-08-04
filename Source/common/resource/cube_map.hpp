@@ -131,6 +131,9 @@ public:
         glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
         glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 
+        glDeleteFramebuffers(1, &capFbo);
+        glDeleteRenderbuffers(1, &capRbo);
+
         /*
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, glId);
@@ -280,6 +283,9 @@ public:
             drawCube();
         }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        glDeleteFramebuffers(1, &fbo);
+        glDeleteRenderbuffers(1, &rbo);
     }
 
     GLuint getId() {

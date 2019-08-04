@@ -5,7 +5,7 @@
 #include "../game_scene.hpp"
 #include "../../components/constraint_stack.hpp"
 
-class ConstraintCtrl : public SceneControllerEventFilter<ConstraintStack> {
+class ConstraintCtrl : public SceneEventFilter<ConstraintStack> {
     RTTR_ENABLE(SceneController)
 public:
     virtual void onAttribCreated(ConstraintStack* s) { stacks.insert(s); }

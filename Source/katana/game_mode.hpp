@@ -2,7 +2,7 @@
 #define GAME_MODE_HPP
 
 #include "actor.hpp"
-#include "../common/scene/game_scene.hpp"
+#include "../common/world.hpp"
 
 #include <vector>
 #include <set>
@@ -10,14 +10,28 @@
 class ktGameMode {
     RTTR_ENABLE()
 
-    GameScene               scene;
+    ktWorld world;
 public:
     virtual ~ktGameMode() {
     }
 
-    GameScene& getScene() { return scene; }
+    ktWorld& getWorld() { return world; }
+    GameScene& getScene() { return *world.getScene(); }
 
 
+
+    void _start() {
+        world.start();
+        onStart();
+    }
+    void _update(float dt) {
+        world.update(dt);
+        onUpdate();
+    }
+    void _cleanup() {
+        world.cleanup();
+        onCleanup();
+    }
 
     virtual void onStart() {}
     virtual void onUpdate() {}

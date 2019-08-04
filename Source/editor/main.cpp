@@ -4,8 +4,6 @@
 #include "editor.hpp"
 #include "game_state.hpp"
 
-#include "../common/components/volume_trigger_test.hpp"
-
 #include "../common/resource/resource_desc_library.hpp"
 
 #include "../katana/timer.hpp"

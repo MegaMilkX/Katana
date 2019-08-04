@@ -2,7 +2,6 @@
 #define KT_ACTOR_HPP
 
 #include "../component.hpp"
-//#include "../../world.hpp"
 
 class ktWorld;
 class ktActor : public Attribute {

@@ -17,10 +17,10 @@ KatanaImpl::KatanaImpl() {
 
 void KatanaImpl::run(ktGameMode* sess) {
     _session = sess;
-    _session->onStart();
+    _session->_start();
 }
 void KatanaImpl::stop() {
-    //platformShutDown();
+    _session->_cleanup();
 }
 
 float KatanaImpl::getTime() { return sTime; }
@@ -29,27 +29,13 @@ float KatanaImpl::getDt() { return sFrameDelta; }
 void KatanaImpl::update() {
     if(!_session) return;
 
-    _session->getScene().getController<DynamicsCtrl>()->update(1/60.0f);
-    _session->getScene().getController<AudioController>()->onUpdate();
-    _session->getScene().getController<AnimController>()->onUpdate();
-
-    _session->onUpdate();
+    _session->_update(sFrameDelta);
     
     unsigned w, h;
     platformGetViewportSize(w, h);
     vp.resize(w, h);
 
-    DrawList dl;
-    _session->getScene().getController<RenderController>()->getDrawList(dl);
-    Camera* cam = _session->getScene().getController<RenderController>()->getDefaultCamera();
-    gfxm::mat4 proj = gfxm::mat4(1.0f);
-    gfxm::mat4 view = gfxm::mat4(1.0f);
-    if(cam) {
-        proj = cam->getProjection(w, h);
-        view = cam->getView();
-    }
-    
-    renderer.draw(&vp, proj, view, dl, true);
+    renderer.drawWorld(&vp, &_session->getWorld());
 }
 
 void KatanaImpl::update_time(float delta_time) {
