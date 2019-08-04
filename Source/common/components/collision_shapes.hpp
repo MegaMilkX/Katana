@@ -53,7 +53,7 @@ public:
     }
     virtual bool onGui(GameObject* o) {
         auto s = (btSphereShape*)bt_shape.get();
-        if(ImGui::DragFloat("radius", &radius, radius * 0.01f)) {
+        if(ImGui::DragFloat(MKSTR("radius##" << this).c_str(), &radius, radius * 0.01f)) {
             *s = btSphereShape(radius);
         }
         return false;
@@ -78,7 +78,7 @@ public:
     }
     virtual bool onGui(GameObject* o) {
         auto s = (btBoxShape*)bt_shape.get();
-        if(ImGui::DragFloat3("extents", (float*)&extents, 0.01f)) {
+        if(ImGui::DragFloat3(MKSTR("extents##" << this).c_str(), (float*)&extents, 0.01f)) {
             *s = btBoxShape(btVector3(extents.x, extents.y, extents.z));
         }
         return false;
@@ -102,10 +102,10 @@ public:
     }
     virtual bool onGui(GameObject* o) {
         auto s = (btCapsuleShape*)bt_shape.get();
-        if(ImGui::DragFloat("radius", &radius, std::max(radius * 0.01f, 0.01f))) {
+        if(ImGui::DragFloat(MKSTR("radius##" << this).c_str(), &radius, std::max(radius * 0.01f, 0.01f))) {
             *s = btCapsuleShape(radius, height);
         }
-        if(ImGui::DragFloat("height", &height, std::max(height * 0.01f, 0.01f))) {
+        if(ImGui::DragFloat(MKSTR("height##" << this).c_str(), &height, std::max(height * 0.01f, 0.01f))) {
             *s = btCapsuleShape(radius, height);
         }
         return false;

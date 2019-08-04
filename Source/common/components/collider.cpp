@@ -48,7 +48,7 @@ void Collider::onGui() {
     }
 
     imguiHeapObjectCombo(
-        "shape",
+        MKSTR("shape##" << this).c_str(),
         shape,
         false,
         [this]() {
@@ -65,7 +65,7 @@ void Collider::onGui() {
     if(ImGui::DragFloat3Autospeed(MKSTR("offset##" << this).c_str(), (float*)&offset_)) {
         setOffset(offset_);
     }
-    if(ImGui::ColorEdit3("debug color", (float*)&debug_color)) {
+    if(ImGui::ColorEdit3(MKSTR("debug color##" << this).c_str(), (float*)&debug_color)) {
         resetAttribute();
     }
 }

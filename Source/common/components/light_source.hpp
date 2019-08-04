@@ -38,9 +38,9 @@ public:
         return true;
     }
     void onGui() {
-        ImGui::ColorEdit3("color", (float*)&color);
-        ImGui::DragFloat("intensity", &intensity, 0.001f);
-        ImGui::DragFloat("radius", &radius, 0.001f);
+        ImGui::ColorEdit3(MKSTR("color##" << this).c_str(), (float*)&color);
+        ImGui::DragFloat(MKSTR("intensity##" << this).c_str(), &intensity, 0.001f);
+        ImGui::DragFloat(MKSTR("radius##" << this).c_str(), &radius, 0.001f);
     }
     void onGizmo(GuiViewport& vp);
     virtual const char* getIconCode() const { return ICON_MDI_LIGHTBULB_ON; }
