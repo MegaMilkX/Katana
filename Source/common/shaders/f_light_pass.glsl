@@ -139,6 +139,7 @@ void main()
         );
     }
     
+    
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);     
     vec3 kS = F;
     vec3 kD = 1.0 - kS;
@@ -159,7 +160,7 @@ void main()
     vec3 color = albedo * (ambient + Lo);
 
     color = color / (color + vec3(1));
-    //color = pow(color, vec3(1/2.2));
+    color = pow(color, vec3(1/2.2));
 
     fragOut = vec4(color, 1.0);
 })"
