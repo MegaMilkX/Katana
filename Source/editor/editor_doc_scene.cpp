@@ -66,6 +66,7 @@ void EditorDocScene::onFocus() {
 
 void EditorDocScene::onGui (Editor* ed) {
     auto& scene = _resource;
+    scene->getController<DynamicsCtrl>();
 
     if(ImGui::BeginMenuBar()) {
         ImGui::PushItemWidth(200);
