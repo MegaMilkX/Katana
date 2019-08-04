@@ -1,6 +1,12 @@
 cmake_minimum_required (VERSION 2.6)
 project ($PROJECT_NAME)
 
+if(MSVC)
+  add_definitions(/MP)
+  add_definitions(/incremental)
+  add_definitions(/Debug:fastlink)
+endif()
+
 foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
