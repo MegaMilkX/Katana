@@ -19,6 +19,8 @@
 
 #include "../../common/util/materialdesign_icons.hpp"
 
+#include "attrib_type_lib.hpp"
+
 class GameObject;
 class GameScene;
 class Attribute {
@@ -67,20 +69,13 @@ public:
     virtual void copy(const T& other) = 0;
 };
 
-#define REG_ATTRIB(TYPE) \
+#define REG_ATTRIB(TYPE, NAME, CATEGORY) \
 STATIC_RUN(TYPE) { \
-    rttr::registration::class_<TYPE>(#TYPE) \
+    rttr::registration::class_<TYPE>(#NAME) \
         .constructor<>()( \
             rttr::policy::ctor::as_raw_ptr \
         ); \
+    getAttribTypeLib().add(#CATEGORY, rttr::type::get<TYPE>()); \
 }
-
-template<typename OBJECT_TYPE>
-class RestrictedComponent : public Attribute {
-public:
-    virtual rttr::type getRequiredOwnerType() {
-        return rttr::type::get<OBJECT_TYPE>();
-    }
-};
 
 #endif

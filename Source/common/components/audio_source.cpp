@@ -6,9 +6,4 @@ AudioSource::~AudioSource() {
 
 void AudioSource::onCreate() {}
 
-STATIC_RUN(AudioSource) {
-    rttr::registration::class_<AudioSource>("AudioSource")
-        .constructor<>()(
-            rttr::policy::ctor::as_raw_ptr
-        );
-}
+REG_ATTRIB(AudioSource, AudioSource, Audio)

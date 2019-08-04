@@ -34,6 +34,6 @@ public:
     }
 private:
 };
-REG_ATTRIB(VolumeTriggerTest);
+REG_ATTRIB(VolumeTriggerTest, VolumeTriggerTest, Test);
 
 #endif

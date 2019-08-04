@@ -105,6 +105,6 @@ private:
     gfxm::vec3 offset;
     gfxm::vec3 debug_color = gfxm::vec3(1,1,1);
 };
-REG_ATTRIB(Collider);
+REG_ATTRIB(Collider, Collider, Physics);
 
 #endif

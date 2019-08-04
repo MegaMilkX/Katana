@@ -45,11 +45,6 @@ public:
     void onGizmo(GuiViewport& vp);
     virtual const char* getIconCode() const { return ICON_MDI_LIGHTBULB_ON; }
 };
-STATIC_RUN(OmniLight) {
-    rttr::registration::class_<OmniLight>("OmniLight")
-        .constructor<>()(
-            rttr::policy::ctor::as_raw_ptr
-        );
-}
+REG_ATTRIB(OmniLight, OmniLight, Rendering)
 
 #endif

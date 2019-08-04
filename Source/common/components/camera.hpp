@@ -80,11 +80,6 @@ private:
     float znear = 0.01f;
     float zfar = 1000.0f;
 };
-STATIC_RUN(Camera) {
-    rttr::registration::class_<Camera>("Camera")
-        .constructor<>()(
-            rttr::policy::ctor::as_raw_ptr
-        );
-}
+REG_ATTRIB(Camera, Camera, Rendering);
 
 #endif

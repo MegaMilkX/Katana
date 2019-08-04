@@ -191,11 +191,6 @@ private:
 
     std::vector<Segment> segments;
 };
-STATIC_RUN(Model) {
-    rttr::registration::class_<Model>("Model")
-        .constructor<>()(
-            rttr::policy::ctor::as_raw_ptr
-        );
-}
+REG_ATTRIB(Model, Model, Rendering)
 
 #endif

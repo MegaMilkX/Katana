@@ -99,6 +99,6 @@ public:
         platformMouseSetEnabled(true);
     }
 };
-REG_ATTRIB(actorTpsCamera);
+REG_ATTRIB(actorTpsCamera, TpsCameraActor, Actors);
 
 #endif

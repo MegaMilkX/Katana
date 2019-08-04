@@ -11,6 +11,8 @@
 
 class ktActor;
 class ktWorld : public SceneEventFilter<ktActor> {
+    bool started = false;
+
     std::unique_ptr<GameScene> scene;
 
     RenderController* render_ctrl;

@@ -260,11 +260,6 @@ private:
 
     bool root_motion_enabled = true;
 };
-STATIC_RUN(AnimationStack) {
-    rttr::registration::class_<AnimationStack>("AnimationStack")
-        .constructor<>()(
-            rttr::policy::ctor::as_raw_ptr
-        );
-};
+REG_ATTRIB(AnimationStack, AnimationStack, Animation);
 
 #endif

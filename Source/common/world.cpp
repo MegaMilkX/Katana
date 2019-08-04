@@ -5,6 +5,9 @@
 
 void ktWorld::onAttribCreated(ktActor* a) {
     actors.insert(a);
+    if(started) {
+        a->onStart(this);
+    }
 }
 void ktWorld::onAttribRemoved(ktActor* a) {
     actors.erase(a);
@@ -12,6 +15,7 @@ void ktWorld::onAttribRemoved(ktActor* a) {
 
 
 void ktWorld::start() {
+    started = true;
     for(auto a : actors) {
         a->onStart(this);
     }
@@ -24,6 +28,7 @@ void ktWorld::update(float dt) {
     }
 }
 void ktWorld::cleanup() {
+    started = false;
     for(auto a : actors) {
         a->onCleanup();
     }

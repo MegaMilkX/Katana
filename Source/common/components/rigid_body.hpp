@@ -82,6 +82,6 @@ private:
     float mass = 1.0f;
     std::shared_ptr<BaseShape_> shape;
 };
-REG_ATTRIB(RigidBody);
+REG_ATTRIB(RigidBody, RigidBody, Physics);
 
 #endif

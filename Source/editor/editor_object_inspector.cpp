@@ -16,17 +16,20 @@ void EditorObjectInspector::update(GameScene* scene, ObjectSet& selected, const 
     if(ImGui::Begin(title.c_str(), 0, ImGuiWindowFlags_MenuBar)) {
         if(ImGui::BeginMenuBar()) {
             if(ImGui::BeginMenu("Add component...")) {
-                rttr::type t = rttr::type::get<Attribute>();
-                auto derived_array = t.get_derived_classes();
-                for(auto& d : derived_array) {
-                    if(ImGui::MenuItem(d.get_name().to_string().c_str())) {
-                        for(auto& o : selected.getAll()) {
-                            o->get(d);
+                auto& table = getAttribTypeLib().getTable();
+                for(auto& kv : table) {
+                    if(ImGui::BeginMenu(kv.first.c_str())) {
+                        for(auto t : kv.second) {
+                            if(ImGui::MenuItem(t.get_name().to_string().c_str())) {
+                                for(auto& o : selected.getAll()) {
+                                    o->get(t);
+                                    // TODO: editor->backupScene("component added");
+                                }
+                            }
                         }
-                        // TODO: editor->backupScene("component added");
+                        ImGui::EndMenu();
                     }
-                }   
-                //imguiRecursiveDerivedMenu(scene, t);
+                }
                 ImGui::EndMenu();
             }
             ImGui::EndMenuBar();

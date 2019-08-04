@@ -23,11 +23,6 @@ public:
 private:
 
 };
-STATIC_RUN(AudioListener) {
-    rttr::registration::class_<AudioListener>("AudioListener")
-        .constructor<>()(
-            rttr::policy::ctor::as_raw_ptr
-        );
-}
+REG_ATTRIB(AudioListener, AudioListener, Audio);
 
 #endif

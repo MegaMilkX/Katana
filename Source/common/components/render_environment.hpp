@@ -18,6 +18,6 @@ public:
     bool serialize(out_stream& out) override;
     bool deserialize(in_stream& in, size_t sz) override;
 };
-REG_ATTRIB(RenderEnvironment);
+REG_ATTRIB(RenderEnvironment, RenderEnvironment, Rendering);
 
 #endif
