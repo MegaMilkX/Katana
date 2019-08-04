@@ -569,7 +569,7 @@ void GameObject::read(in_stream& in) {
     
     DataReader dr(&in);
     uint64_t object_count = dr.read<uint64_t>();
-    objects.resize(object_count - 1);/*
+    objects.resize(object_count);/*
     for(uint64_t i = 1; i < object_count; ++i) {
         objects.emplace_back(new GameObject());
     } */
