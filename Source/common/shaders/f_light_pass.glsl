@@ -158,8 +158,8 @@ void main()
 
     vec3 color = albedo * (ambient + Lo);
 
-    //color = color / (color + vec3(1));
-    color = pow(color, vec3(1/2.2));
+    color = color / (color + vec3(1));
+    //color = pow(color, vec3(1/2.2));
 
     fragOut = vec4(color, 1.0);
 })"

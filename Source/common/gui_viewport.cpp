@@ -188,7 +188,15 @@ void GuiViewport::draw(GameScene* scn, GameObject* selected_object, gfxm::ivec2 
         }
         dd.clear();
 
-        ImGui::GetWindowDrawList()->AddImage((void*)rvp.getFinalImage(),
+        GLuint buffers[] = {
+            rvp.getFinalImage(),
+            rvp.getGBuffer()->getAlbedoTexture(),
+            rvp.getGBuffer()->getNormalTexture(),
+            rvp.getGBuffer()->getRoughnessTexture(),
+            rvp.getGBuffer()->getMetallicTexture(),
+            rvp.getGBuffer()->getDepthTexture()
+        };
+        ImGui::GetWindowDrawList()->AddImage((void*)buffers[dbg_renderBufferId],
             bb.Min,
             bb.Max,
             ImVec2(0, 1),

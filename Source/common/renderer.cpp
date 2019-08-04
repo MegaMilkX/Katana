@@ -39,6 +39,13 @@ void Renderer::setSkyGradient(curve<gfxm::vec3> curv) {
     irradiance_map->makeIrradianceMap(env_map);
 }
 
+void Renderer::drawToScreen(GLuint textureId) {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDisable(GL_DEPTH_TEST);
+    prog_quad->use();
+    gl::bindTexture2d(gl::TEXTURE_ALBEDO, textureId);
+    drawQuad();
+}
 
 // == PBR ===
 

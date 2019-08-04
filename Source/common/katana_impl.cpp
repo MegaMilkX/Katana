@@ -36,6 +36,15 @@ void KatanaImpl::update() {
     vp.resize(w, h);
 
     renderer.drawWorld(&vp, &_session->getWorld());
+    GLuint buffers[] = {
+        vp.getFinalImage(),
+        vp.getGBuffer()->getAlbedoTexture(),
+        vp.getGBuffer()->getNormalTexture(),
+        vp.getGBuffer()->getRoughnessTexture(),
+        vp.getGBuffer()->getMetallicTexture(),
+        vp.getGBuffer()->getDepthTexture()
+    };
+    renderer.drawToScreen(buffers[dbg_renderBufferId]);
 }
 
 void KatanaImpl::update_time(float delta_time) {
