@@ -27,6 +27,7 @@ class RenderState {
     std::shared_ptr<Texture2D> texture_black_px;
     std::shared_ptr<Texture2D> texture_normal_px;
     std::shared_ptr<Texture2D> texture_def_roughness_px;
+    std::shared_ptr<Texture2D> texture_def_metallic_px;
 public:
     gl::UniformBuffer<uCommon3d, 0> ubufCommon3d;
     gl::UniformBuffer<uBones, 1> ubufBones;
@@ -44,6 +45,10 @@ public:
         texture_def_roughness_px.reset(new Texture2D());
         unsigned char rgh[3] = { 230, 230, 230 };
         texture_def_roughness_px->Data(rgh, 1, 1, 3);
+
+        texture_def_metallic_px.reset(new Texture2D());
+        unsigned char mtl[3] = { 0, 0, 0 };
+        texture_def_metallic_px->Data(mtl, 1, 1, 3);
     }
 
     void bindUniformBuffers() {
@@ -65,8 +70,8 @@ public:
         GLuint textures[4] = {
             texture_white_px->GetGlName(),
             texture_normal_px->GetGlName(),
-            texture_black_px->GetGlName(),
-            texture_white_px->GetGlName()
+            texture_def_metallic_px->GetGlName(),
+            texture_def_roughness_px->GetGlName()
         };
         gfxm::vec3 tint(1,1,1);
         if(m) {
