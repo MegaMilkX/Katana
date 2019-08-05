@@ -86,8 +86,12 @@ static void imguiDragDropTarget(const std::string& name) {
     }
 }
 
-void EditorResourceTree::imguiContextMenu(const ResourceNode* node) {
+void EditorResourceTree::imguiContextMenu(Editor* ed, const std::shared_ptr<ResourceNode>& node) {
     if (ImGui::BeginPopupContextItem()) {
+        if(ImGui::MenuItem("Open")) {
+            ed->tryOpenDocument(node);
+            setSelected(node.get(), false);
+        }
         if(ImGui::MenuItem("Open in default program")) {
             ShellExecuteA(NULL, "open", MKSTR(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + node->getFullName()).c_str(), NULL, NULL, SW_SHOWDEFAULT);
         }
@@ -119,7 +123,7 @@ void EditorResourceTree::imguiContextMenu(const ResourceNode* node) {
         }
         ImGui::Separator();
         if(ImGui::MenuItem("Rename")) {
-            renaming_node = (ResourceNode*)node;
+            renaming_node = (ResourceNode*)node.get();
         }
         if(ImGui::MenuItem("Delete")) {
             
@@ -188,7 +192,7 @@ void EditorResourceTree::update(Editor* editor) {
                     }
                     imguiDragDropSource(IMGUI_DND_RESOURCE, (void*)node.get(), node->getFullName());
                     imguiDragDropTarget(IMGUI_DND_RESOURCE);
-                    imguiContextMenu(node.get());
+                    imguiContextMenu(editor, node);
                 }                
             }
         };

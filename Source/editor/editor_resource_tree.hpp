@@ -21,7 +21,7 @@ class EditorResourceTree {
     void initDirWatch(const std::string& dir);
     void checkDirChanges();
 
-    void imguiContextMenu(const ResourceNode* node);
+    void imguiContextMenu(Editor* ed, const std::shared_ptr<ResourceNode>& node);
 
 public:
     EditorResourceTree();
