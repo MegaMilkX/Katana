@@ -8,7 +8,7 @@
 
 #include "../resource/resource.h"
 
-#include "game_object.hpp"
+#include "node.hpp"
 #include "object_instance.hpp"
 
 #include "../components/camera.hpp"
@@ -18,14 +18,14 @@
 #include "scene_controller.hpp"
 #include "../serializable.hpp"
 
-class GameScene : public GameObject, public Resource {
+class GameScene : public ktNode, public Resource {
 public:
     GameScene();
     ~GameScene();
 
     void clear();
 
-    std::vector<GameObject*> findObjectsFuzzy(const std::string& name);
+    std::vector<ktNode*> findObjectsFuzzy(const std::string& name);
 
     // Components
     template<typename T>

@@ -3,7 +3,7 @@
 
 #include "component.hpp"
 #include "../../common/gfxm.hpp"
-#include "../scene/game_object.hpp"
+#include "../scene/node.hpp"
 #include "../../common/util/serialization.hpp"
 
 class Camera : public Attribute {

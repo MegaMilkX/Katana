@@ -2,8 +2,6 @@
 
 #include "game_scene.hpp"
 
-#include "../behavior/behavior.hpp"
-
 #include "../../common/util/levenshtein_distance.hpp"
 
 #include "../../common/util/zip_writer.hpp"
@@ -30,13 +28,13 @@ void GameScene::clear() {
     //updatable_controllers.clear();
 }
 
-std::vector<GameObject*> GameScene::findObjectsFuzzy(const std::string& name) {
-    std::vector<GameObject*> r;
+std::vector<ktNode*> GameScene::findObjectsFuzzy(const std::string& name) {
+    std::vector<ktNode*> r;
     getAllObjects(r);
 
-    std::vector<GameObject*> result;
+    std::vector<ktNode*> result;
     struct tmp {
-        GameObject* o;
+        ktNode* o;
         size_t cost;
     };
     std::vector<tmp> sorted;

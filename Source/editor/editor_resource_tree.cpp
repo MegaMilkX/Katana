@@ -79,7 +79,7 @@ static void imguiDragDropSource(const std::string& name, void* payload, const st
 static void imguiDragDropTarget(const std::string& name) {
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(name.c_str())) {
-            //GameObject* tgt_dnd_so = *(GameObject**)payload->Data;
+            //ktNode* tgt_dnd_so = *(ktNode**)payload->Data;
             //o->takeOwnership(tgt_dnd_so);
         }
         ImGui::EndDragDropTarget();

@@ -86,7 +86,7 @@ void EditorViewport::update(Editor* editor) {
         mouse_is_over_vp = ImGui::IsWindowHovered();
         window_in_focus = ImGui::IsRootWindowFocused();
 
-        GameObject* selected_object = 0;
+        ktNode* selected_object = 0;
         if(!editor->getSelectedObjects().empty()) {
             selected_object = *editor->getSelectedObjects().getAll().begin();
         }
@@ -100,7 +100,7 @@ void EditorViewport::update(Editor* editor) {
                     fname[i] = (std::tolower(fname[i]));
                 }
                 if(has_suffix(fname, ".fbx")) {
-                    //GameObject* new_so = editor->getScene()->getRoot()->createChild();
+                    //ktNode* new_so = editor->getScene()->getRoot()->createChild();
                     //objectFromFbx(fname, new_so);
                     //new_so->get<Transform>()->position(wpt_xy);
                     //editor->setSelectedObject(new_so);
@@ -256,7 +256,7 @@ void EditorViewport::update(Editor* editor) {
                     fname[i] = (std::tolower(fname[i]));
                 }
                 if(has_suffix(fname, ".fbx")) {
-                    GameObject* new_so = editor->getScene()->getRoot()->createChild();
+                    ktNode* new_so = editor->getScene()->getRoot()->createChild();
                     objectFromFbx(fname, new_so);
                     //new_so->get<Transform>()->position(wpt_xy);
                     editor->setSelectedObject(new_so);
@@ -283,7 +283,7 @@ void EditorViewport::recenterCamera() {
         );
         return;
     }
-    GameObject* o = *selected.getAll().begin();
+    ktNode* o = *selected.getAll().begin();
 
     gvp.resetCamera(
         gfxm::lerp(o->getAabb().from, o->getAabb().to, 0.5f),

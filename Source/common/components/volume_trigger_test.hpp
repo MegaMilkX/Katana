@@ -13,7 +13,7 @@ class VolumeTriggerTest : public CollisionListener {
 public:
     void onCreate() {}
 
-    void onEnter(GameObject* other) {
+    void onEnter(ktNode* other) {
         getOwner()->get<AudioSource>()->play(true);
         getOwner()->get<OmniLight>()->color = gfxm::vec3(0, 1.0f, .2f);
 /*
@@ -22,7 +22,7 @@ public:
         }*/
         // TODO: ?
     }
-    void onLeave(GameObject* other) {
+    void onLeave(ktNode* other) {
         getOwner()->get<OmniLight>()->color = gfxm::vec3(1, .2f, .0f);
     }
 

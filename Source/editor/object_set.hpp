@@ -3,17 +3,17 @@
 
 #include <set>
 
-#include "../common/scene/game_object.hpp"
+#include "../common/scene/node.hpp"
 
 struct ObjectSet {
-    std::set<GameObject*> objects;
+    std::set<ktNode*> objects;
 public:
     bool empty() { return objects.empty(); }
     void clear() { objects.clear(); }
-    bool contains(GameObject* o) { return objects.find(o) != objects.end(); }
-    void add(GameObject* o) { objects.insert(o); }
-    void clearAndAdd(GameObject* o) { clear(); add(o); }
-    const std::set<GameObject*>& getAll() { return objects; }
+    bool contains(ktNode* o) { return objects.find(o) != objects.end(); }
+    void add(ktNode* o) { objects.insert(o); }
+    void clearAndAdd(ktNode* o) { clear(); add(o); }
+    const std::set<ktNode*>& getAll() { return objects; }
 };
 
 #endif

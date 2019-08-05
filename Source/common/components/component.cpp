@@ -7,14 +7,14 @@ Attribute::~Attribute() {
 }
 
 rttr::type Attribute::getRequiredOwnerType() {
-    return rttr::type::get<GameObject>();
+    return rttr::type::get<ktNode>();
 }
 
 void Attribute::onCreate() {}
 
 void Attribute::copy(Attribute* other) {}
 
-GameObject* Attribute::getOwner() { return owner; }
+ktNode* Attribute::getOwner() { return owner; }
 void Attribute::resetAttribute() {
     getOwner()->_readdComponent(this);
 }

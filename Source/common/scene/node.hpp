@@ -26,10 +26,10 @@ enum OBJECT_FLAGS {
 
 class ktObjectInstance;
 class GameScene;
-class GameObject {
+class ktNode {
 public:
-    GameObject();
-    virtual ~GameObject();
+    ktNode();
+    virtual ~ktNode();
 
     void                                setEnabled(bool v);
     bool                                isEnabled() const;
@@ -37,24 +37,24 @@ public:
     OBJECT_FLAGS                        getFlags() const { return _flags; }
     virtual OBJECT_TYPE                 getType() const { return OBJECT_NORMAL; }
 
-    void                                copy(GameObject* other, OBJECT_FLAGS f = OBJECT_FLAG_NONE);
+    void                                copy(ktNode* other, OBJECT_FLAGS f = OBJECT_FLAG_NONE);
 
     void                                setName(const std::string& name);
     const std::string&                  getName() const;
 
-    GameObject*                         getRoot();
-    GameObject*                         getParent();
+    ktNode*                         getRoot();
+    ktNode*                         getParent();
 
     TransformNode*                      getTransform();
 
-    GameObject*                         createChild(OBJECT_FLAGS f = OBJECT_FLAG_NONE);
+    ktNode*                         createChild(OBJECT_FLAGS f = OBJECT_FLAG_NONE);
     ktObjectInstance*                   createInstance(std::shared_ptr<GameScene> scn);
     size_t                              childCount();
-    GameObject*                         getChild(size_t i);
-    GameObject*                         getChild(const std::string& name);
-    GameObject*                         findObject(const std::string& name);
-    void                                getAllObjects(std::vector<GameObject*>& result);
-    void                                takeOwnership(GameObject* o);
+    ktNode*                         getChild(size_t i);
+    ktNode*                         getChild(const std::string& name);
+    ktNode*                         findObject(const std::string& name);
+    void                                getAllObjects(std::vector<ktNode*>& result);
+    void                                takeOwnership(ktNode* o);
     void                                remove(bool keep_children = false);
     void                                duplicate();
 
@@ -96,17 +96,17 @@ protected:
         gfxm::vec3(-.5f, -.5f, -.5f),
         gfxm::vec3(.5f, .5f, .5f)
     );
-    GameObject* parent = 0;
-    std::set<GameObject*> children;
+    ktNode* parent = 0;
+    std::set<ktNode*> children;
     std::map<rttr::type, std::shared_ptr<Attribute>> components;
 };
 
 template<typename COMPONENT_T>
-std::shared_ptr<COMPONENT_T> GameObject::get() {
+std::shared_ptr<COMPONENT_T> ktNode::get() {
     return std::dynamic_pointer_cast<COMPONENT_T>(get(rttr::type::get<COMPONENT_T>()));
 }
 template<typename COMPONENT_T>
-std::shared_ptr<COMPONENT_T> GameObject::find() {
+std::shared_ptr<COMPONENT_T> ktNode::find() {
     return std::dynamic_pointer_cast<COMPONENT_T>(find(rttr::type::get<COMPONENT_T>()));
 }
 

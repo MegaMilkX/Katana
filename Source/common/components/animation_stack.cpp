@@ -1,6 +1,6 @@
 #include "animation_stack.hpp"
 
-#include "../scene/game_object.hpp"
+#include "../scene/node.hpp"
 #include "../scene/game_scene.hpp"
 
 AnimationStack::~AnimationStack() {}

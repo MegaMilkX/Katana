@@ -23,7 +23,7 @@ class ModelSource : public Resource {
     void loadMeshes(const aiScene* ai_scene);
     void loadAnims(const aiScene* ai_scene);
     void loadResources(const aiScene* ai_scene);
-    void loadSceneGraph(const aiScene* ai_scene, aiNode* node, GameObject* o);
+    void loadSceneGraph(const aiScene* ai_scene, aiNode* node, ktNode* o);
     void loadSceneGraph(const aiScene* ai_scene);
 public:
     std::shared_ptr<GameScene> scene;

@@ -114,7 +114,7 @@ public:
         ImGui::Button(chara ? chara->getName().c_str() : "empty");
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
-                GameObject* tgt_dnd_so = *(GameObject**)payload->Data;
+                ktNode* tgt_dnd_so = *(ktNode**)payload->Data;
                 /*
                 if(tgt_dnd_so->get_type().is_derived_from<CharacterActor>()) {
                     setTargetCharacter((CharacterActor*)tgt_dnd_so);

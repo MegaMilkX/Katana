@@ -12,7 +12,7 @@
 
 #include "../common/util/has_suffix.hpp"
 
-static bool showSaveGameObjectDialog(GameObject* o, bool forceDialog) {
+static bool showSaveGameObjectDialog(ktNode* o, bool forceDialog) {
     char* outPath;
     auto r = NFD_SaveDialog("so", NULL, &outPath);
     if(r == NFD_OKAY) {
@@ -31,7 +31,7 @@ static bool showSaveGameObjectDialog(GameObject* o, bool forceDialog) {
     return true;
 }
 
-static GameObject* guiGameObjectContextMenu(GameObject* o, ObjectSet& selected) {
+static ktNode* guiGameObjectContextMenu(ktNode* o, ObjectSet& selected) {
     if (ImGui::BeginPopupContextItem()) {
         if(ImGui::MenuItem("Create child")) {
             selected.clearAndAdd(o->createChild());
@@ -107,7 +107,7 @@ void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const s
                 }
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
-                        GameObject* tgt_dnd_so = *(GameObject**)payload->Data;
+                        ktNode* tgt_dnd_so = *(ktNode**)payload->Data;
                         o->takeOwnership(tgt_dnd_so);
                     }
                     ImGui::EndDragDropTarget();
@@ -130,7 +130,7 @@ void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const s
     }
 }
 
-void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected) {
+void EditorSceneInspector::sceneTreeViewNode(ktNode* o, ObjectSet& selected) {
     std::string name_with_uid = MKSTR(o->getName() << "###" << o);
 
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
@@ -168,7 +168,7 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected)
         }
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
-                GameObject* tgt_dnd_so = *(GameObject**)payload->Data;
+                ktNode* tgt_dnd_so = *(ktNode**)payload->Data;
                 o->takeOwnership(tgt_dnd_so);
             }
             ImGui::EndDragDropTarget();
@@ -196,7 +196,7 @@ void EditorSceneInspector::sceneTreeViewNode(GameObject* o, ObjectSet& selected)
         }
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
-                GameObject* tgt_dnd_so = *(GameObject**)payload->Data;
+                ktNode* tgt_dnd_so = *(ktNode**)payload->Data;
                 o->takeOwnership(tgt_dnd_so);
             }
             ImGui::EndDragDropTarget();

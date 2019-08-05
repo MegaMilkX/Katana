@@ -21,13 +21,13 @@
 
 #include "attrib_type_lib.hpp"
 
-class GameObject;
+class ktNode;
 class GameScene;
 class Attribute {
     RTTR_ENABLE()
 
     friend GameScene;
-    friend GameObject;
+    friend ktNode;
 public:
     virtual ~Attribute();
 
@@ -38,7 +38,7 @@ public:
 
     virtual void copy(Attribute* other);
 
-    GameObject* getOwner();
+    ktNode* getOwner();
     void resetAttribute();
 
     virtual bool buildAabb(gfxm::aabb& out);
@@ -50,7 +50,7 @@ public:
     virtual bool serialize(out_stream& out);
     virtual bool deserialize(in_stream& in, size_t sz);
 private:
-    GameObject* owner = 0;
+    ktNode* owner = 0;
 };
 
 template<typename T>

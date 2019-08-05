@@ -2,7 +2,7 @@
 #define ATTRIB_TILED_ROOM_HPP
 
 #include "component.hpp"
-#include "../scene/game_object.hpp"
+#include "../scene/node.hpp"
 #include "model.hpp"
 
 #include <limits>
@@ -10,7 +10,7 @@
 class attribTiledRoomCtrl : public Attribute {
     RTTR_ENABLE(Attribute)
 
-    std::map<std::pair<int, int>, GameObject*> tiles;
+    std::map<std::pair<int, int>, ktNode*> tiles;
 
     // editor
     std::string current_tile;
@@ -65,7 +65,7 @@ public:
         );
 
         if(vp.isMouseClicked(0)) {
-            GameObject*& o = tiles[std::make_pair(wpos.x / 2, wpos.z / 2)];
+            ktNode*& o = tiles[std::make_pair(wpos.x / 2, wpos.z / 2)];
             if(!o) {
                 o = getOwner()->createChild();
                 o->read(current_tile);

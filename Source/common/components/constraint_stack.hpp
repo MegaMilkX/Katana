@@ -4,7 +4,7 @@
 #include "component.hpp"
 #include "../../common/util/log.hpp"
 
-#include "../scene/game_object.hpp"
+#include "../scene/node.hpp"
 
 #include "constraint/constraint.hpp"
 

@@ -11,7 +11,7 @@
 #include "../resource/resource_tree.hpp"
 
 #include "../components/component.hpp"
-#include "../scene/game_object.hpp"
+#include "../scene/node.hpp"
 #include "../scene/game_scene.hpp"
 
 template<typename BASE_T>
@@ -182,7 +182,7 @@ inline void imguiComponentCombo(
     }
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
-            GameObject* tgt_dnd_so = *(GameObject**)payload->Data;
+            ktNode* tgt_dnd_so = *(ktNode**)payload->Data;
             auto comp = tgt_dnd_so->find<COMP_T>();
             if(comp) {
                 c = comp.get();
@@ -194,7 +194,7 @@ inline void imguiComponentCombo(
 
 inline void imguiObjectCombo(
     const char* label,
-    GameObject*& o,
+    ktNode*& o,
     GameScene* scene,
     std::function<void(void)> callback = nullptr
 ) {
@@ -206,7 +206,7 @@ inline void imguiObjectCombo(
         if(ImGui::Selectable("<null>", o == 0)) {
             o = 0;
         }
-        std::vector<GameObject*> list;
+        std::vector<ktNode*> list;
         scene->getRoot()->getAllObjects(list);
         for(auto l : list) {
             if(ImGui::Selectable(l->getName().c_str(), o == l)) {
@@ -218,7 +218,7 @@ inline void imguiObjectCombo(
     }
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
-            GameObject* tgt_dnd_so = *(GameObject**)payload->Data;
+            ktNode* tgt_dnd_so = *(ktNode**)payload->Data;
             o = tgt_dnd_so;
         }
         ImGui::EndDragDropTarget();

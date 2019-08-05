@@ -10,7 +10,7 @@
 #include "../../common/resource/mesh.hpp"
 #include "model.hpp"
 
-#include "../scene/game_object.hpp"
+#include "../scene/node.hpp"
 
 class BaseShape_ {
     RTTR_ENABLE()
@@ -18,7 +18,7 @@ public:
     void setDirty() { dirty = true; }
     bool isDirty() const { return dirty; }
 
-    virtual bool onGui(GameObject* o) = 0;
+    virtual bool onGui(ktNode* o) = 0;
 
     virtual void serialize(out_stream& out) {}
     virtual void deserialize(in_stream& in) {}
@@ -41,7 +41,7 @@ public:
     EmptyShape_() {
         bt_shape.reset(new btEmptyShape());
     }
-    virtual bool onGui(GameObject* o) {
+    virtual bool onGui(ktNode* o) {
         return false;
     }
 };
@@ -51,7 +51,7 @@ public:
     SphereShape_() {
         bt_shape.reset(new btSphereShape(radius));
     }
-    virtual bool onGui(GameObject* o) {
+    virtual bool onGui(ktNode* o) {
         auto s = (btSphereShape*)bt_shape.get();
         if(ImGui::DragFloat(MKSTR("radius##" << this).c_str(), &radius, radius * 0.01f)) {
             *s = btSphereShape(radius);
@@ -76,7 +76,7 @@ public:
     BoxShape_() {
         bt_shape.reset(new btBoxShape(btVector3(extents.x,extents.y,extents.z)));
     }
-    virtual bool onGui(GameObject* o) {
+    virtual bool onGui(ktNode* o) {
         auto s = (btBoxShape*)bt_shape.get();
         if(ImGui::DragFloat3(MKSTR("extents##" << this).c_str(), (float*)&extents, 0.01f)) {
             *s = btBoxShape(btVector3(extents.x, extents.y, extents.z));
@@ -100,7 +100,7 @@ public:
     CapsuleShape_() {
         bt_shape.reset(new btCapsuleShape(radius, height));
     }
-    virtual bool onGui(GameObject* o) {
+    virtual bool onGui(ktNode* o) {
         auto s = (btCapsuleShape*)bt_shape.get();
         if(ImGui::DragFloat(MKSTR("radius##" << this).c_str(), &radius, std::max(radius * 0.01f, 0.01f))) {
             *s = btCapsuleShape(radius, height);
@@ -134,7 +134,7 @@ public:
         empty.reset(new btEmptyShape());
         bt_shape = empty;
     }
-    virtual bool onGui(GameObject* o) {
+    virtual bool onGui(ktNode* o) {
         bool need_rebuild = false;
         ImGui::TextWrapped("Debug display for collision meshes is disabled for performance");
         imguiResourceTreeCombo(MKSTR("mesh##" << this).c_str(), mesh, "msh", [this, &need_rebuild](){

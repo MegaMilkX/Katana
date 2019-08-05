@@ -6,8 +6,8 @@
 class CollisionListener : public Attribute {
     RTTR_ENABLE(Attribute)
 public:
-    virtual void onEnter(GameObject* other) = 0;
-    virtual void onLeave(GameObject* other) = 0;
+    virtual void onEnter(ktNode* other) = 0;
+    virtual void onLeave(ktNode* other) = 0;
 };
 //REG_ATTRIB(CollisionListener);
 

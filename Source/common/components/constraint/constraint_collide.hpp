@@ -3,7 +3,7 @@
 
 #include "constraint.hpp"
 
-#include "../../scene/game_object.hpp"
+#include "../../scene/node.hpp"
 
 #include "../../../common/util/imgui_helpers.hpp"
 
@@ -19,7 +19,7 @@ public:
         weight = o->weight;
     }
 
-    virtual void update(GameObject* t) {
+    virtual void update(ktNode* t) {
         gfxm::vec3 new_pos = t->getTransform()->getWorldPosition();
         auto col = t->find<Collider>();
         
@@ -40,7 +40,7 @@ public:
     }
 private:
     float weight = 1.0f;
-    GameObject* obj = 0;
+    ktNode* obj = 0;
 };
 
 }

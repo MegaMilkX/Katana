@@ -1,6 +1,6 @@
 #include "dynamics_ctrl.hpp"
 
-#include "../game_object.hpp"
+#include "../node.hpp"
 
 #include "../../components/rigid_body.hpp"
 
@@ -252,14 +252,14 @@ void DynamicsCtrl::update(float dt) {
     world->stepSimulation(dt);
     // =================================
 
-    std::set<std::pair<GameObject*, GameObject*>> pairs;
+    std::set<std::pair<ktNode*, ktNode*>> pairs;
     int manifold_count = dispatcher->getNumManifolds();
     for(int i = 0; i < manifold_count; ++i) {
         auto m = dispatcher->getManifoldByIndexInternal(i);
         if(m->getNumContacts() > 0) {
             auto p = std::make_pair(
-                (GameObject*)m->getBody0()->getUserPointer(), 
-                (GameObject*)m->getBody1()->getUserPointer()
+                (ktNode*)m->getBody0()->getUserPointer(), 
+                (ktNode*)m->getBody1()->getUserPointer()
             );
             pairs.insert(p);
             if(pair_cache.count(p) == 0) {
@@ -276,7 +276,7 @@ void DynamicsCtrl::update(float dt) {
         }
     }
     
-    std::set<std::pair<GameObject*, GameObject*>> missing_pairs;
+    std::set<std::pair<ktNode*, ktNode*>> missing_pairs;
     std::set_difference(pair_cache.begin(), pair_cache.end(), pairs.begin(), pairs.end(), std::inserter(missing_pairs, missing_pairs.begin()));
     pair_cache = pairs;
     for(auto& p : missing_pairs) {

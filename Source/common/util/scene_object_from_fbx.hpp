@@ -25,7 +25,7 @@
 #include "../components/model.hpp"
 #include "../components/animation_stack.hpp"
 
-#include "../scene/game_object.hpp"
+#include "../scene/node.hpp"
 
 #include "../platform/platform.hpp"
 
@@ -398,7 +398,7 @@ inline void resourcesFromAssimpScene(
     animFromAssimpScene(ai_scene, skel, asset_params, dirname, root_name);
 }
 
-inline void createGraphFromAssimpNode(aiNode* node, GameObject* o) {
+inline void createGraphFromAssimpNode(aiNode* node, ktNode* o) {
     o->setName(node->mName.C_Str());
     o->getTransform()->setTransform(
         gfxm::transpose(*(gfxm::mat4*)&node->mTransformation)
@@ -413,7 +413,7 @@ inline void createGraphFromAssimpNode(aiNode* node, GameObject* o) {
 inline void finalizeObjectsFromAssimpNode(
     const aiScene* ai_scene,
     aiNode* node,
-    GameObject* object,
+    ktNode* object,
     const std::string& dirname,
     const std::string& root_name
 ) {
@@ -428,7 +428,7 @@ inline void finalizeObjectsFromAssimpNode(
         );
     }
 
-    GameObject* root_object = object->getRoot();
+    ktNode* root_object = object->getRoot();
 
     if(node->mNumMeshes) {
         auto m = object->get<Model>();
@@ -444,7 +444,7 @@ inline void finalizeObjectsFromAssimpNode(
                         aiBone* ai_bone = ai_mesh->mBones[j];
                         std::string name(ai_bone->mName.data, ai_bone->mName.length);
 
-                        GameObject* o = root_object->findObject(name);
+                        ktNode* o = root_object->findObject(name);
                         if(o) {
                             seg.skin_data->bone_nodes.emplace_back(o);
                             seg.skin_data->bind_transforms.emplace_back(
@@ -458,7 +458,7 @@ inline void finalizeObjectsFromAssimpNode(
     }
 }
 
-inline bool objectFromFbx(const std::vector<char>& buffer, GameObject* o, const std::string& filename_hint = "") {
+inline bool objectFromFbx(const std::vector<char>& buffer, ktNode* o, const std::string& filename_hint = "") {
     auto sanitizeString = [](const std::string& str)->std::string {
         std::string name = str;
         for(size_t i = 0; i < name.size(); ++i) {
@@ -597,7 +597,7 @@ inline bool objectFromFbx(const std::vector<char>& buffer, GameObject* o, const 
     return true;
 }
 
-inline bool objectFromFbx(const std::string& filename, GameObject* o) {
+inline bool objectFromFbx(const std::string& filename, ktNode* o) {
     std::ifstream f(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + filename, std::ios::binary | std::ios::ate);
     if(!f.is_open()) {
         LOG_WARN("Failed to open " << filename);

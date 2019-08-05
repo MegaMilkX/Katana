@@ -31,7 +31,7 @@ EditorDocScene::EditorDocScene() {
             );
             return;
         }
-        GameObject* o = *selected.getAll().begin();
+        ktNode* o = *selected.getAll().begin();
         o->refreshAabb();
 
         gvp.resetCamera(
@@ -48,8 +48,8 @@ EditorDocScene::EditorDocScene(std::shared_ptr<ResourceNode>& node)
 
 void EditorDocScene::onFocus() {
     if(_resource) {
-        std::function<void(GameObject*)> update_instances_recursive_fn;
-        update_instances_recursive_fn = [&update_instances_recursive_fn](GameObject* o) {
+        std::function<void(ktNode*)> update_instances_recursive_fn;
+        update_instances_recursive_fn = [&update_instances_recursive_fn](ktNode* o) {
             if(o->getType() == OBJECT_INSTANCE) {
                 auto inst = (ktObjectInstance*)o;
                 inst->setScene(inst->getScene());

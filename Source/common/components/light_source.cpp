@@ -1,6 +1,6 @@
 #include "light_source.hpp"
 
-#include "../scene/game_object.hpp"
+#include "../scene/node.hpp"
 
 OmniLight::~OmniLight() {
 }

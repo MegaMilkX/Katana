@@ -19,5 +19,5 @@ void ktObjectInstance::onGui() {
         setScene(scene);
     });
 
-    GameObject::onGui();
+    ktNode::onGui();
 }

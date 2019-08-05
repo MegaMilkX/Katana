@@ -34,7 +34,7 @@ public:
     };
     std::map<Collider*, ColliderInfo> colliders_;
     std::map<RigidBody*, RigidBodyInfo> rigid_bodies;
-    std::map<GameObject*, CollisionListener*> col_listeners;
+    std::map<ktNode*, CollisionListener*> col_listeners;
 
     virtual void onAttribCreated(Collider* c) {
         auto& col_info = colliders_[c];
@@ -164,7 +164,7 @@ public:
 private:
     std::string col_group_names[6];
 
-    std::set<std::pair<GameObject*, GameObject*>> pair_cache;
+    std::set<std::pair<ktNode*, ktNode*>> pair_cache;
 
     btDefaultCollisionConfiguration* collisionConf;
     btCollisionDispatcher* dispatcher;

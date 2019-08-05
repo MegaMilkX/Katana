@@ -351,7 +351,7 @@ void ModelSource::loadResources(const aiScene* ai_scene) {
     }
 }
 
-void ModelSource::loadSceneGraph(const aiScene* ai_scene, aiNode* node, GameObject* o) {
+void ModelSource::loadSceneGraph(const aiScene* ai_scene, aiNode* node, ktNode* o) {
     o->setName(node->mName.C_Str());
     o->getTransform()->setTransform(
         gfxm::transpose(*(gfxm::mat4*)&node->mTransformation)
@@ -376,7 +376,7 @@ void ModelSource::loadSceneGraph(const aiScene* ai_scene, aiNode* node, GameObje
                         aiBone* ai_bone = ai_mesh->mBones[j];
                         std::string name(ai_bone->mName.data, ai_bone->mName.length);
 
-                        GameObject* bone_object = o->getRoot()->findObject(name);
+                        ktNode* bone_object = o->getRoot()->findObject(name);
                         if(bone_object) {
                             seg.skin_data->bone_nodes.emplace_back(bone_object);
                             seg.skin_data->bind_transforms.emplace_back(

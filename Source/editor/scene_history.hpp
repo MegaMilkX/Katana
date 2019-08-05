@@ -37,7 +37,7 @@ public:
         strm.setBuffer(stack[cursor].data);
         //scn->clear();
         /*
-        std::vector<GameObject*> objects_to_delete;
+        std::vector<ktNode*> objects_to_delete;
         for(size_t i = 0; i < scn->objectCount(); ++i) {
             objects_to_delete.emplace_back(scn->getObject(i));
         }*/
@@ -56,7 +56,7 @@ public:
         strm.setBuffer(stack[cursor].data);
         //scn->clear();
         /*
-        std::vector<GameObject*> objects_to_delete;
+        std::vector<ktNode*> objects_to_delete;
         for(size_t i = 0; i < scn->objectCount(); ++i) {
             objects_to_delete.emplace_back(scn->getObject(i));
         }*/

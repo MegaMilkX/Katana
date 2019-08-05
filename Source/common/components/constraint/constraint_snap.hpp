@@ -3,7 +3,7 @@
 
 #include "constraint.hpp"
 
-#include "../../scene/game_object.hpp"
+#include "../../scene/node.hpp"
 
 #include "../../../common/util/imgui_helpers.hpp"
 
@@ -13,7 +13,7 @@ class Snap : public Constraint {
     RTTR_ENABLE(Constraint)
 public:
 
-    virtual void update(GameObject* o) {
+    virtual void update(ktNode* o) {
         auto t = o->getTransform();
         if(target) {
             auto pos = target->getTransform()->getWorldPosition();
@@ -51,7 +51,7 @@ public:
         // TODO
     }
 private:
-    GameObject* target = 0;
+    ktNode* target = 0;
     float weight = 1.0f;
 };
 

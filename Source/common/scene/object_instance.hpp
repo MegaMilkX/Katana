@@ -1,10 +1,10 @@
 #ifndef OBJECT_INSTANCE_HPP
 #define OBJECT_INSTANCE_HPP
 
-#include "game_object.hpp"
+#include "node.hpp"
 
 class GameScene;
-class ktObjectInstance : public GameObject {
+class ktObjectInstance : public ktNode {
     std::shared_ptr<GameScene> scene;
 public:
     ktObjectInstance() {}

@@ -12,7 +12,7 @@ class Model : public Attribute {
     RTTR_ENABLE(Attribute)
 public:
     struct SkinData {
-        std::vector<GameObject*> bone_nodes;
+        std::vector<ktNode*> bone_nodes;
         std::vector<gfxm::mat4> bind_transforms;
     };
     struct Segment {
@@ -145,7 +145,7 @@ public:
                 for(uint32_t j = 0; j < bone_count; ++j) {
                     std::string bone_name = r.readStr();
                     gfxm::mat4 t = r.read<gfxm::mat4>();
-                    GameObject* bo = getOwner()->getRoot()->findObject(bone_name);
+                    ktNode* bo = getOwner()->getRoot()->findObject(bone_name);
                     getSegment(i).skin_data->bone_nodes.emplace_back(bo);
                     getSegment(i).skin_data->bind_transforms.emplace_back(t);
                 }
@@ -176,7 +176,7 @@ public:
     virtual const char* getIconCode() const { return ICON_MDI_CUBE; }
 private:
 /* TODO: This needs to work
-    virtual void onObjectRemoved(GameObject* sender) {
+    virtual void onObjectRemoved(ktNode* sender) {
         for(size_t i = 0; i < segmentCount(); ++i) {
             auto& seg = getSegment(i);
             if(seg.skin_data) {

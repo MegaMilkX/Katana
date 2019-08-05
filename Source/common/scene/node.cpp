@@ -1,8 +1,6 @@
-#include "game_object.hpp"
+#include "node.hpp"
 
 #include <stack>
-
-#include "../behavior/behavior.hpp"
 
 #define MINIZ_HEADER_FILE_ONLY
 #include "../../common/lib/miniz.c"
@@ -12,10 +10,10 @@
 #include "game_scene.hpp"
 #include "object_instance.hpp"
 
-GameObject::GameObject() {
+ktNode::ktNode() {
 
 }
-GameObject::~GameObject() {
+ktNode::~ktNode() {
     // Tell parent transform that this one doesn't exist anymore
     transform.setParent(0);
 
@@ -26,17 +24,17 @@ GameObject::~GameObject() {
     }
 }
 
-void GameObject::setEnabled(bool v) { 
+void ktNode::setEnabled(bool v) { 
     _enabled = v;
     for(auto c : children) {
         c->setEnabled(v);
     }
 }
-bool GameObject::isEnabled() const { 
+bool ktNode::isEnabled() const { 
     return _enabled; 
 }
 
-void GameObject::copy(GameObject* other, OBJECT_FLAGS f) {
+void ktNode::copy(ktNode* other, OBJECT_FLAGS f) {
     for(auto o : children) {
         delete o;
     }
@@ -44,10 +42,10 @@ void GameObject::copy(GameObject* other, OBJECT_FLAGS f) {
     deleteAllComponents();
     components.clear();
 
-    std::vector<std::pair<GameObject*, GameObject*>> target_source_pairs;
+    std::vector<std::pair<ktNode*, ktNode*>> target_source_pairs;
 
-    std::function<void(GameObject*, GameObject*)> copy_tree_fn;
-    copy_tree_fn = [this, &copy_tree_fn, &target_source_pairs, &f](GameObject* target, GameObject* source){
+    std::function<void(ktNode*, ktNode*)> copy_tree_fn;
+    copy_tree_fn = [this, &copy_tree_fn, &target_source_pairs, &f](ktNode* target, ktNode* source){
         target->name = source->name;
         if(target != this) {
             target->getTransform()->setTransform(source->getTransform()->getLocalTransform());
@@ -84,30 +82,30 @@ void GameObject::copy(GameObject* other, OBJECT_FLAGS f) {
     }
 }
 
-void GameObject::setName(const std::string& name) { 
+void ktNode::setName(const std::string& name) { 
     this->name = name; 
 }
-const std::string& GameObject::getName() const { 
+const std::string& ktNode::getName() const { 
     return name; 
 }
 
-GameObject* GameObject::getRoot() {
+ktNode* ktNode::getRoot() {
     if(!parent) {
         return this;
     } else {
         return parent->getRoot();
     }
 }
-GameObject* GameObject::getParent() {
+ktNode* ktNode::getParent() {
     return parent;
 }
 
-TransformNode* GameObject::getTransform() {
+TransformNode* ktNode::getTransform() {
     return &transform;
 }
 
-GameObject* GameObject::createChild(OBJECT_FLAGS f) {
-    GameObject* o = new GameObject();
+ktNode* ktNode::createChild(OBJECT_FLAGS f) {
+    ktNode* o = new ktNode();
     o->parent = this;
     o->getTransform()->setParent(&transform);
     o->_flags = f;
@@ -115,7 +113,7 @@ GameObject* GameObject::createChild(OBJECT_FLAGS f) {
     return o;
 }
 
-ktObjectInstance* GameObject::createInstance(std::shared_ptr<GameScene> scn) {
+ktObjectInstance* ktNode::createInstance(std::shared_ptr<GameScene> scn) {
     ktObjectInstance* o = new ktObjectInstance();
     o->parent = this;
     o->getTransform()->setParent(&transform);
@@ -126,15 +124,15 @@ ktObjectInstance* GameObject::createInstance(std::shared_ptr<GameScene> scn) {
     return o;
 }
 
-size_t GameObject::childCount() {
+size_t ktNode::childCount() {
     return children.size();
 }
-GameObject* GameObject::getChild(size_t i) {
+ktNode* ktNode::getChild(size_t i) {
     auto it = children.begin();
     std::advance(it, i);
     return (*it);
 }
-GameObject* GameObject::getChild(const std::string& name) {
+ktNode* ktNode::getChild(const std::string& name) {
     for(auto o : children) {
         if(o->getName() == name) {
             return o;
@@ -142,22 +140,22 @@ GameObject* GameObject::getChild(const std::string& name) {
     }
     return 0;
 }
-GameObject* GameObject::findObject(const std::string& name) {
+ktNode* ktNode::findObject(const std::string& name) {
     for(auto o : children) {
         if(o->getName() == name) return o;
-        GameObject* r = o->findObject(name);
+        ktNode* r = o->findObject(name);
         if(r) return r;
     }
     return 0;
 }
-void GameObject::getAllObjects(std::vector<GameObject*>& result) {
+void ktNode::getAllObjects(std::vector<ktNode*>& result) {
     for(auto o : children) {
         o->getAllObjects(result);
     }
     result.emplace_back(this);
 }
-void GameObject::takeOwnership(GameObject* o) {
-    GameObject* cmp = this;
+void ktNode::takeOwnership(ktNode* o) {
+    ktNode* cmp = this;
     while(cmp) {
         if(cmp == o) return;
         cmp = cmp->getParent();
@@ -165,48 +163,48 @@ void GameObject::takeOwnership(GameObject* o) {
 
     // TODO
 }
-void GameObject::remove(bool keep_children) {
+void ktNode::remove(bool keep_children) {
     // TODO
 }
-void GameObject::duplicate() {
+void ktNode::duplicate() {
     // TODO
 }
 
-std::shared_ptr<Attribute> GameObject::find(rttr::type component_type) {
+std::shared_ptr<Attribute> ktNode::find(rttr::type component_type) {
     if(components.count(component_type) == 0) {
         return std::shared_ptr<Attribute>();
     }
     return components[component_type];
 }
-std::shared_ptr<Attribute> GameObject::get(rttr::type component_type) {
+std::shared_ptr<Attribute> ktNode::get(rttr::type component_type) {
     auto c = find(component_type);
     if(!c) {
         return createComponent(component_type);
     }
     return c;
 }
-size_t GameObject::componentCount() {
+size_t ktNode::componentCount() {
     return components.size();
 }
-std::shared_ptr<Attribute> GameObject::getById(size_t id) {
+std::shared_ptr<Attribute> ktNode::getById(size_t id) {
     auto it = components.begin();
     std::advance(it, id);
     return it->second;
 }
-void GameObject::deleteComponentById(size_t id) {
+void ktNode::deleteComponentById(size_t id) {
     auto it = components.begin();
     std::advance(it, id);
     _unregisterComponent(it->second.get());
     components.erase(it);
 }
-void GameObject::deleteAllComponents() {
+void ktNode::deleteAllComponents() {
     for(auto& kv : components) {
         _unregisterComponent(kv.second.get());
     }
     components.clear();
 }
 
-void GameObject::refreshAabb() {
+void ktNode::refreshAabb() {
     for(size_t i = 0; i < childCount(); ++i) {
         getChild(i)->refreshAabb();
     }
@@ -267,10 +265,10 @@ void GameObject::refreshAabb() {
         gfxm::expand_aabb(aabb, child_box.to);
     }
 }
-void GameObject::setAabb(const gfxm::aabb& box) {
+void ktNode::setAabb(const gfxm::aabb& box) {
     aabb = box;
 }
-const gfxm::aabb& GameObject::getAabb() const {
+const gfxm::aabb& ktNode::getAabb() const {
     return aabb;
 }
 
@@ -317,7 +315,7 @@ enum TRANSFORM_GIZMO_SPACE {
 static TRANSFORM_GIZMO_MODE sGizmoMode;
 static TRANSFORM_GIZMO_SPACE sGizmoSpace;
 
-void GameObject::onGui() {
+void ktNode::onGui() {
     static TransformNode* last_transform = 0;
     static int t_sync = -1;
     static gfxm::vec3 euler;
@@ -374,7 +372,7 @@ void GameObject::onGui() {
     }
 }
 
-void GameObject::onGizmo(GuiViewport& vp) {
+void ktNode::onGizmo(GuiViewport& vp) {
     if(getParent() != 0) {
         auto vp_pos = vp.getPos();
         auto vp_size = vp.getSize();
@@ -440,7 +438,7 @@ void GameObject::onGizmo(GuiViewport& vp) {
 
 // ==== Private ====================================
 
-std::shared_ptr<Attribute> GameObject::createComponent(rttr::type t) {
+std::shared_ptr<Attribute> ktNode::createComponent(rttr::type t) {
     if(!t.is_valid()) {
         LOG_WARN(t.get_name().to_string() << " - not a valid type");
         return std::shared_ptr<Attribute>();
@@ -464,7 +462,7 @@ std::shared_ptr<Attribute> GameObject::createComponent(rttr::type t) {
     return ptr;
 }
 
-bool GameObject::serializeComponents(std::ostream& out) {
+bool ktNode::serializeComponents(std::ostream& out) {
     mz_zip_archive archive;
     memset(&archive, 0, sizeof(archive));
     if(!mz_zip_writer_init_heap(&archive, 0, 65537)) {
@@ -491,15 +489,15 @@ bool GameObject::serializeComponents(std::ostream& out) {
     return true;
 }
 
-void GameObject::write(out_stream& out) {
-    GameObject* obj = this;
+void ktNode::write(out_stream& out) {
+    ktNode* obj = this;
 
-    std::map<GameObject*, uint64_t> oid_map;
-    std::vector<GameObject*> objects;
+    std::map<ktNode*, uint64_t> oid_map;
+    std::vector<ktNode*> objects;
     std::map<rttr::type, std::vector<Attribute*>> attribs;
 
-    std::stack<GameObject*> stack;
-    GameObject* current = obj;
+    std::stack<ktNode*> stack;
+    ktNode* current = obj;
     while(current != 0 || (!stack.empty())) {
         if(current == 0) {
             current = stack.top();
@@ -568,15 +566,15 @@ void GameObject::write(out_stream& out) {
         }
     }
 }
-void GameObject::read(in_stream& in) {
-    std::vector<GameObject*> objects;
+void ktNode::read(in_stream& in) {
+    std::vector<ktNode*> objects;
     objects.emplace_back(this);
     
     DataReader dr(&in);
     uint64_t object_count = dr.read<uint64_t>();
     objects.resize(object_count);/*
     for(uint64_t i = 1; i < object_count; ++i) {
-        objects.emplace_back(new GameObject());
+        objects.emplace_back(new ktNode());
     } */
 
     if(object_count == 0) {
@@ -586,7 +584,7 @@ void GameObject::read(in_stream& in) {
 
     {
         // TODO: Problem: Root can't be an instance?
-        GameObject* o = 0;
+        ktNode* o = 0;
         uint64_t p = dr.read<uint64_t>();
         std::string name = dr.readStr();
         gfxm::vec3 t = dr.read<gfxm::vec3>();
@@ -597,7 +595,7 @@ void GameObject::read(in_stream& in) {
             std::string ref_name = dr.readStr();
             //((ktObjectInstance*)o)->setScene(retrieve<GameScene>(ref_name));
         } else {
-            //o = new GameObject();
+            //o = new ktNode();
         }
         o = objects[0];
         o->setName(name);
@@ -607,7 +605,7 @@ void GameObject::read(in_stream& in) {
     }
 
     for(uint64_t i = 1; i < object_count; ++i) {
-        GameObject* o = 0;
+        ktNode* o = 0;
 
         uint64_t p = dr.read<uint64_t>();
         std::string name = dr.readStr();
@@ -620,7 +618,7 @@ void GameObject::read(in_stream& in) {
             ref_name = dr.readStr();
             o = new ktObjectInstance();
         } else {
-            o = new GameObject();
+            o = new ktNode();
         }
         
         objects[i] = o;
@@ -669,7 +667,7 @@ void GameObject::read(in_stream& in) {
     }
 }
 
-bool GameObject::write(const std::string& fname) {
+bool ktNode::write(const std::string& fname) {
     file_stream strm(fname, file_stream::F_OUT);
     if(!strm.is_open()) {
         return false;
@@ -679,7 +677,7 @@ bool GameObject::write(const std::string& fname) {
 
     return true;
 }
-bool GameObject::read(const std::string& fname) {
+bool ktNode::read(const std::string& fname) {
     file_stream strm(fname, file_stream::F_IN);
     if(!strm.is_open()) {
         return false;
@@ -691,9 +689,9 @@ bool GameObject::read(const std::string& fname) {
 }
 
 
-void GameObject::_registerComponent(Attribute* attrib) {
-    GameObject* current = parent;
-    GameObject* p = 0;
+void ktNode::_registerComponent(Attribute* attrib) {
+    ktNode* current = parent;
+    ktNode* p = 0;
     while(current) {
         p = current;
         current = current->parent;
@@ -702,9 +700,9 @@ void GameObject::_registerComponent(Attribute* attrib) {
         p->_registerComponent(attrib);
     }
 }
-void GameObject::_unregisterComponent(Attribute* attrib) {
-    GameObject* current = parent;
-    GameObject* p = 0;
+void ktNode::_unregisterComponent(Attribute* attrib) {
+    ktNode* current = parent;
+    ktNode* p = 0;
     while(current) {
         p = current;
         current = current->parent;
@@ -713,9 +711,9 @@ void GameObject::_unregisterComponent(Attribute* attrib) {
         p->_unregisterComponent(attrib);
     }
 }
-void GameObject::_readdComponent(Attribute* attrib) {
-    GameObject* current = parent;
-    GameObject* p = 0;
+void ktNode::_readdComponent(Attribute* attrib) {
+    ktNode* current = parent;
+    ktNode* p = 0;
     while(current) {
         p = current;
         current = current->parent;

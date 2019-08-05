@@ -23,7 +23,7 @@ public:
     void setScene(GameScene* s) { scene = s; }
     GameScene* getScene() { return scene; }
 
-    virtual void update(GameObject* t) = 0;
+    virtual void update(ktNode* t) = 0;
     virtual void onGui() = 0;
 
     virtual void serialize(out_stream& out) = 0;

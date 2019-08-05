@@ -13,7 +13,7 @@ public:
     void update(Editor* editor, const std::string& title = "Scene Inspector");
     void update(GameScene* scene, ObjectSet& selected, const std::string& title = "Scene Inspector");
 private:
-    void sceneTreeViewNode(GameObject* o, ObjectSet& selected);
+    void sceneTreeViewNode(ktNode* o, ObjectSet& selected);
 
     char search_string_buf[256];
 };

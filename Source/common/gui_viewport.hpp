@@ -8,7 +8,7 @@
 #include "../common/debug_draw.hpp"
 
 class GameScene;
-class GameObject;
+class ktNode;
 
 class GuiViewport {
 public:
@@ -75,7 +75,7 @@ public:
     void camRotate(gfxm::vec2 v);
     void camZoom(float v);
 
-    void draw(GameScene* scn, GameObject* selected_object = 0, gfxm::ivec2 sz = gfxm::ivec2(0,0));
+    void draw(GameScene* scn, ktNode* selected_object = 0, gfxm::ivec2 sz = gfxm::ivec2(0,0));
 };
 
 #endif

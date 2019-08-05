@@ -2,7 +2,7 @@
 #define SCENE_WRITER_HPP
 
 #include "resource/resource.h"
-#include "scene/game_object.hpp"
+#include "scene/node.hpp"
 
 class ktISceneWriter {
 public:
@@ -19,7 +19,7 @@ public:
 
 class ktSceneWriter : public ktISceneWriter {
 public:
-    void push(GameObject* o);
+    void push(ktNode* o);
     void push(Attribute* attrib);
     void pop();
 };
