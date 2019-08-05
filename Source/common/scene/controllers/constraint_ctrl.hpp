@@ -3,7 +3,7 @@
 
 #include "../scene_controller.hpp"
 #include "../game_scene.hpp"
-#include "../../components/constraint_stack.hpp"
+#include "../../attributes/constraint_stack.hpp"
 
 class ConstraintCtrl : public SceneEventFilter<ConstraintStack> {
     RTTR_ENABLE(SceneController)

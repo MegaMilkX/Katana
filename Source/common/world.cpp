@@ -1,6 +1,6 @@
 #include "world.hpp"
 
-#include "components/actors/actor.hpp"
+#include "attributes/actors/actor.hpp"
 
 
 void ktWorld::onAttribCreated(ktActor* a) {

@@ -1,7 +1,7 @@
 #ifndef SAMPLE_ACTOR_HPP
 #define SAMPLE_ACTOR_HPP
 
-#include <common/components/actors/actor.hpp>
+#include <common/attributes/actors/actor.hpp>
 #include <common/world.hpp>
 
 class actorSample : public ktActor {

@@ -1,7 +1,7 @@
 #ifndef AUDIO_LISTENER_HPP
 #define AUDIO_LISTENER_HPP
 
-#include "component.hpp"
+#include "attribute.hpp"
 #include "../../common/gfxm.hpp"
 #include "../scene/node.hpp"
 

@@ -1,7 +1,7 @@
 #ifndef CONSTRAINT_STACK_HPP
 #define CONSTRAINT_STACK_HPP
 
-#include "component.hpp"
+#include "attribute.hpp"
 #include "../../common/util/log.hpp"
 
 #include "../scene/node.hpp"

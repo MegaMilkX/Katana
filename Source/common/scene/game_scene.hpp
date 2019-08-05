@@ -11,7 +11,7 @@
 #include "node.hpp"
 #include "object_instance.hpp"
 
-#include "../components/camera.hpp"
+#include "../attributes/camera.hpp"
 
 #include "../../common/debug_draw.hpp"
 

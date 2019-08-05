@@ -3,9 +3,9 @@
 
 #include "../scene_controller.hpp"
 #include "../game_scene.hpp"
-#include "../../components/model.hpp"
-#include "../../components/camera.hpp"
-#include "../../components/light_source.hpp"
+#include "../../attributes/model.hpp"
+#include "../../attributes/camera.hpp"
+#include "../../attributes/light_source.hpp"
 
 #include "../../../common/draw_list.hpp"
 

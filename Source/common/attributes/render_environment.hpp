@@ -1,7 +1,7 @@
 #ifndef RENDER_ENVIRONMENT_HPP
 #define RENDER_ENVIRONMENT_HPP
 
-#include "component.hpp"
+#include "attribute.hpp"
 #include "../util/animation/curve.h"
 #include "../gfxm.hpp"
 

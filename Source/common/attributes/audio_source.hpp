@@ -1,7 +1,7 @@
 #ifndef AUDIO_SOURCE_HPP
 #define AUDIO_SOURCE_HPP
 
-#include "component.hpp"
+#include "attribute.hpp"
 #include "../../common/gfxm.hpp"
 #include "../scene/node.hpp"
 

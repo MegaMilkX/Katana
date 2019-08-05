@@ -2,7 +2,7 @@
 
 #include "../node.hpp"
 
-#include "../../components/rigid_body.hpp"
+#include "../../attributes/rigid_body.hpp"
 
 class ConvexSweepCallback_ : public btCollisionWorld::ConvexResultCallback {
 public:

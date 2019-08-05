@@ -7,7 +7,7 @@
 
 #include "../../../common/util/imgui_helpers.hpp"
 
-#include "../../components/collider.hpp"
+#include "../../attributes/collider.hpp"
 
 namespace Constraint {
 

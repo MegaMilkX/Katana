@@ -53,22 +53,6 @@ private:
     ktNode* owner = 0;
 };
 
-template<typename T>
-class AttributeCopyable : public Attribute {
-    RTTR_ENABLE(Attribute)
-public:
-    virtual void copy(Attribute* other) {
-        if(other->get_type() != get_type()) {
-            LOG_WARN("Can't copy from " << other->get_type().get_name().to_string() << " to " <<
-                get_type().get_name().to_string());
-            return;
-        }
-        T* o = (T*)other;
-        copy(*o);
-    }
-    virtual void copy(const T& other) = 0;
-};
-
 #define REG_ATTRIB(TYPE, NAME, CATEGORY) \
 STATIC_RUN(TYPE) { \
     rttr::registration::class_<TYPE>(#NAME) \

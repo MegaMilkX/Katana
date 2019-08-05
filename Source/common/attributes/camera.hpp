@@ -1,7 +1,7 @@
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
 
-#include "component.hpp"
+#include "attribute.hpp"
 #include "../../common/gfxm.hpp"
 #include "../scene/node.hpp"
 #include "../../common/util/serialization.hpp"

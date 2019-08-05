@@ -12,7 +12,7 @@
 
 #include "stateful_actor.hpp"
 
-#include "../components/animation_stack.hpp"
+#include "../attributes/animation_stack.hpp"
 #include "../../common/resource/audio_clip.hpp"
 #include "../../common/audio.hpp"
 

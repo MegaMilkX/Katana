@@ -1,4 +1,4 @@
-#include "component.hpp"
+#include "attribute.hpp"
 
 #include "../scene/game_scene.hpp"
 

@@ -4,8 +4,8 @@
 #include "../scene_controller.hpp"
 #include "../game_scene.hpp"
 
-#include "../../components/audio_source.hpp"
-#include "../../components/audio_listener.hpp"
+#include "../../attributes/audio_source.hpp"
+#include "../../attributes/audio_listener.hpp"
 
 #include "../../../common/util/imgui_helpers.hpp"
 

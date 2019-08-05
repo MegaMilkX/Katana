@@ -1,7 +1,7 @@
 #ifndef ANIMATION_STACK_HPP
 #define ANIMATION_STACK_HPP
 
-#include "component.hpp"
+#include "attribute.hpp"
 
 #include "../../common/resource/animation.hpp"
 #include "../../common/resource/skeleton.hpp"

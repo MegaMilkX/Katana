@@ -1,7 +1,7 @@
 #ifndef ATTRIB_TILED_ROOM_HPP
 #define ATTRIB_TILED_ROOM_HPP
 
-#include "component.hpp"
+#include "attribute.hpp"
 #include "../scene/node.hpp"
 #include "model.hpp"
 

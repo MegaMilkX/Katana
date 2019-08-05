@@ -6,7 +6,7 @@
 
 #include "../common/lib/imguizmo/ImGuizmo.h"
 
-#include "../common/components/render_environment.hpp"
+#include "../common/attributes/render_environment.hpp"
 
 GuiViewport::GuiViewport() {
     rvp.init(640, 480);

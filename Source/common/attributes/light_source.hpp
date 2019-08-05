@@ -1,7 +1,7 @@
 #ifndef LIGHT_SOURCE_HPP
 #define LIGHT_SOURCE_HPP
 
-#include "component.hpp"
+#include "attribute.hpp"
 #include "../../common/util/log.hpp"
 
 class OmniLight : public Attribute {

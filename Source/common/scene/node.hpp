@@ -12,7 +12,7 @@
 
 #include "../transform.hpp"
 
-#include "../components/component.hpp"
+#include "../attributes/attribute.hpp"
 #include "../scene/scene_controller.hpp"
 
 enum OBJECT_TYPE {

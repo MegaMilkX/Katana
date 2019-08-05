@@ -1,9 +1,9 @@
 #ifndef SAMPLE_ATTRIB_HPP
 #define SAMPLE_ATTRIB_HPP
 
-#include "component.hpp"
+#include "attribute.hpp"
 
-class SampleAttrib : public AttributeCopyable<SampleAttrib> {
+class SampleAttrib : public Attribute {
     RTTR_ENABLE(Attribute)
 public:
     virtual void copy(const SampleAttrib& other) {

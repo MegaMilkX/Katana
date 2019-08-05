@@ -1,7 +1,7 @@
 #ifndef COLLISION_TRIGGER_HPP
 #define COLLISION_TRIGGER_HPP
 
-#include "component.hpp"
+#include "attribute.hpp"
 
 class CollisionListener : public Attribute {
     RTTR_ENABLE(Attribute)

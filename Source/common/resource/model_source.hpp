@@ -11,8 +11,8 @@
 #include "skeleton.hpp"
 #include "../scene/game_scene.hpp"
 
-#include "../components/animation_stack.hpp"
-#include "../components/model.hpp"
+#include "../attributes/animation_stack.hpp"
+#include "../attributes/model.hpp"
 
 class aiScene;
 class aiNode;

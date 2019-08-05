@@ -22,8 +22,8 @@
 #include "../resource/animation.hpp"
 #include "../resource/mesh.hpp"
 
-#include "../components/model.hpp"
-#include "../components/animation_stack.hpp"
+#include "../attributes/model.hpp"
+#include "../attributes/animation_stack.hpp"
 
 #include "../scene/node.hpp"
 

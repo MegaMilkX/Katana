@@ -3,9 +3,9 @@
 
 #include "../scene_controller.hpp"
 #include "../game_scene.hpp"
-#include "../../components/model.hpp"
+#include "../../attributes/model.hpp"
 
-#include "../../components/animation_stack.hpp"
+#include "../../attributes/animation_stack.hpp"
 
 class AnimController : public SceneEventFilter<AnimationStack> {
     RTTR_ENABLE(SceneController)

@@ -6,9 +6,9 @@
 
 #include "../../../common/util/bullet_debug_draw.hpp"
 
-#include "../../components/rigid_body.hpp"
-#include "../../components/collider.hpp"
-#include "../../components/collision_listener.hpp"
+#include "../../attributes/rigid_body.hpp"
+#include "../../attributes/collider.hpp"
+#include "../../attributes/collision_listener.hpp"
 
 #include <algorithm>
 

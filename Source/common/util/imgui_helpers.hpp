@@ -10,7 +10,7 @@
 #include "../resource/resource.h"
 #include "../resource/resource_tree.hpp"
 
-#include "../components/component.hpp"
+#include "../attributes/attribute.hpp"
 #include "../scene/node.hpp"
 #include "../scene/game_scene.hpp"
 

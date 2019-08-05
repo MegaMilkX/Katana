@@ -2,7 +2,7 @@
 
 #include "world.hpp"
 
-#include "components/render_environment.hpp"
+#include "attributes/render_environment.hpp"
 
 int dbg_renderBufferId = 0;
 

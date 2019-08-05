@@ -11,7 +11,7 @@
 #include "../../common/util/data_reader.hpp"
 #include "../../common/util/data_writer.hpp"
 
-#include "../components/component.hpp"
+#include "../attributes/attribute.hpp"
 
 enum FRAME_PRIORITY {
     FRAME_PRIORITY_FIRST,

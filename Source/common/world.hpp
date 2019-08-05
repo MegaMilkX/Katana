@@ -7,7 +7,7 @@
 
 #include "scene/game_scene.hpp"
 
-#include "components/actors/actor.hpp"
+#include "attributes/actors/actor.hpp"
 
 class ktActor;
 class ktWorld : public SceneEventFilter<ktActor> {

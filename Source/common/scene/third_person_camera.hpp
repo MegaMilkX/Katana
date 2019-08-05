@@ -2,7 +2,7 @@
 #define TPS_CAMERA_HPP
 
 #include "actor_object.hpp"
-#include "../components/camera.hpp"
+#include "../attributes/camera.hpp"
 #include "../input_listener.hpp"
 
 #include "../../common/util/serialization.hpp"

@@ -13,7 +13,7 @@ void EditorObjectInspector::update(Editor* editor, const std::string& title) {
 void EditorObjectInspector::update(GameScene* scene, ObjectSet& selected, const std::string& title) {
     if(ImGui::Begin(title.c_str(), 0, ImGuiWindowFlags_MenuBar)) {
         if(ImGui::BeginMenuBar()) {
-            if(ImGui::BeginMenu("Add component...")) {
+            if(ImGui::BeginMenu("Add attribute...")) {
                 auto& table = getAttribTypeLib().getTable();
                 for(auto& kv : table) {
                     if(ImGui::BeginMenu(kv.first.c_str())) {

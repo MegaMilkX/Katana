@@ -1,25 +1,18 @@
-#ifndef COLLIDER_HPP
-#define COLLIDER_HPP
+#ifndef RIGID_BODY2_HPP
+#define RIGID_BODY2_HPP
 
-#include "component.hpp"
+#include "attribute.hpp"
 #include "collision_shapes.hpp"
+#include <btBulletDynamicsCommon.h>
 
-class Collider : public AttributeCopyable<Collider> {
+class RigidBody : public Attribute {
     RTTR_ENABLE(Attribute)
 public:
-    Collider() {
-        setShape<SphereShape_>();
+    RigidBody() {
+        shape.reset(new SphereShape_());
     }
 
     void onCreate();
-
-    void setGhost(bool b) {
-        is_ghost = b;
-        resetAttribute();
-    }
-    bool isGhost() const {
-        return is_ghost;
-    }
 
     void setCollisionGroup(uint32_t g) {
         col_group = g;
@@ -36,39 +29,27 @@ public:
         return col_mask;
     }
 
-    template<typename S>
-    void setShape() {
-        shape.reset(new S());
-    }
-    BaseShape_* getShape() { return shape.get(); }
-
-    void setOffset(const gfxm::vec3& offset) {
-        this->offset = offset;
-        getOwner()->getTransform()->dirty();
-    }
-    const gfxm::vec3 getOffset() const {
-        return offset;
-    }
-
-    void setDebugColor(const gfxm::vec3& col) {
-        debug_color = col;
+    void setMass(float m) {
+        mass = m;
         resetAttribute();
     }
-    const gfxm::vec3 getDebugColor() const {
-        return debug_color;
+    float getMass() const {
+        return mass;
     }
 
-    virtual void copy(const Collider& other) {
+    BaseShape_* getShape() {
+        return shape.get();
+    }
 
+    void copy(const RigidBody& other) {
+        
     }
     virtual void onGui();
     virtual bool serialize(out_stream& out) {
         DataWriter w(&out);
         w.write(col_group);
         w.write(col_mask);
-        w.write<uint8_t>((uint8_t)is_ghost);
-        w.write(offset);
-        w.write(debug_color);
+        w.write(mass);
         w.write(shape->get_type().get_name().to_string());
         shape->serialize(out);
         return true;
@@ -77,9 +58,7 @@ public:
         DataReader r(&in);
         r.read(col_group);
         r.read(col_mask);
-        is_ghost = (bool)r.read<uint8_t>();
-        r.read(offset);
-        r.read(debug_color);
+        r.read(mass);
         
         std::string typestr = r.readStr();
         rttr::type t = rttr::type::get_by_name(typestr);
@@ -98,13 +77,11 @@ public:
         return true;
     }
 private:
-    bool is_ghost = false;
     uint32_t col_group = 1;
     uint32_t col_mask = 1;
+    float mass = 1.0f;
     std::shared_ptr<BaseShape_> shape;
-    gfxm::vec3 offset;
-    gfxm::vec3 debug_color = gfxm::vec3(1,1,1);
 };
-REG_ATTRIB(Collider, Collider, Physics);
+REG_ATTRIB(RigidBody, RigidBody, Physics);
 
 #endif

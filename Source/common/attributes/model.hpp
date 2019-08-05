@@ -1,7 +1,7 @@
 #ifndef MODEL_HPP
 #define MODEL_HPP
 
-#include "component.hpp"
+#include "attribute.hpp"
 
 #include "../../common/resource/mesh.hpp"
 #include "../../common/resource/material.hpp"
