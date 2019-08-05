@@ -17,7 +17,7 @@ public:
     virtual void onCleanup() {
         // TODO: Cleanup
     }
-} mode_main;
+};
 STATIC_RUN($GAME_MODE_NAME) {
     rttr::registration::class_<$GAME_MODE_NAME>("$GAME_MODE_NAME")
         .constructor<>()(
@@ -27,6 +27,6 @@ STATIC_RUN($GAME_MODE_NAME) {
 
 int ktStartup(KatanaApi* kt_api) {
     ktApi = kt_api;
-    kt_api->run(&mode_main);
+    kt_api->run(new $GAME_MODE_NAME());
     return 0;
 }
