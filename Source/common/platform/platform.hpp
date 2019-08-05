@@ -8,7 +8,7 @@ Config& platformGetConfig();
 bool platformInit();
 void platformCleanup();
 bool platformIsShuttingDown();
-void platformUpdate();
+void platformUpdate(float dt);
 void platformSwapBuffers();
 
 void platformGetViewportSize(unsigned& width, unsigned& height);

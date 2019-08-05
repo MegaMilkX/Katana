@@ -85,7 +85,7 @@ bool platformIsShuttingDown() {
     return glfwWindowShouldClose(window);
 }
 
-void platformUpdate() {
+void platformUpdate(float dt) {
     glfwPollEvents();
     updateGlfwInput(window);
     //eventMgr().pollEvents();
@@ -94,7 +94,7 @@ void platformUpdate() {
     unsigned cx, cy;
     platformGetViewportSize(w, h);
     platformGetMousePos(cx, cy);
-    ImGuiUpdate(1.0f/60.0f, w, h);
+    ImGuiUpdate(dt, w, h);
     ImGuiIO& io = ImGui::GetIO();
     io.MousePos = ImVec2((float)cx, (float)cy);
 }

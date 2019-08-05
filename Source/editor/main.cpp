@@ -59,13 +59,13 @@ int main(int argc, char* argv[]) {
     }
 
     timer frameTimer;
-
+    float dt = 1.0f/60.0f;
     //try {
         app_state->onInit();
         while(!platformIsShuttingDown()) {
             frameTimer.start();
 
-            platformUpdate();
+            platformUpdate(dt);
             unsigned w, h;
             unsigned cx, cy;
             platformGetViewportSize(w, h);
@@ -80,8 +80,9 @@ int main(int argc, char* argv[]) {
             }
             
             platformSwapBuffers();
+            dt = frameTimer.end();
             if(kt_play_mode) {
-                kt_play_mode->update_time(frameTimer.end());
+                kt_play_mode->update_time(dt);
             }
         }
         app_state->onCleanup();

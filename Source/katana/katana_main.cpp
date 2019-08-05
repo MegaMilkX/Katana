@@ -17,16 +17,18 @@ int main(int argc, char **argv) {
 
     KatanaImpl kt;
     timer frameTimer;
+    float dt = 1.0f/60.0f;
 
     ktStartup(&kt);
     while(!platformIsShuttingDown()) {
         frameTimer.start();
-        platformUpdate();
+        platformUpdate(dt);
 
         kt.update();
 
         platformSwapBuffers();
-        kt.update_time(frameTimer.end());
+        dt = frameTimer.end();
+        kt.update_time(dt);
     }
 
     platformCleanup();
