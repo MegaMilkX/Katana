@@ -66,6 +66,7 @@ public:
 
     void beginFrame(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view) {
         glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
         glBindFramebuffer(GL_FRAMEBUFFER, vp->getGBuffer()->getGlFramebuffer());
         glViewport(0, 0, (GLsizei)vp->getWidth(), (GLsizei)vp->getHeight());
 
@@ -76,39 +77,42 @@ public:
         glClear(GL_DEPTH_BUFFER_BIT);
     }
 
-    void endFrame(RenderViewport* vp) {
+    void endFrame(RenderViewport* vp, bool draw_final_on_screen) {
         // ==== Skybox ========================
+        
         glDisable(GL_CULL_FACE);
         glDepthFunc(GL_LEQUAL);
         prog_skybox->use();
         gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, env_map->getId());
         drawCube();
-
+ 
         // ==== 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glClear(GL_DEPTH_BUFFER_BIT);
-        prog_quad->use();
-        switch(dbg_renderBufferId) {
-        case 0:
-            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getFinalBuffer()->getTextureId(0));
-            break;
-        case 1:
-            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getAlbedoTexture());
-            break;
-        case 2:
-            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getNormalTexture());
-            break;
-        case 3:
-            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getRoughnessTexture());
-            break;
-        case 4:
-            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getMetallicTexture());
-            break;
-        case 5:
-            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getDepthTexture());
-            break;
+        if(draw_final_on_screen) {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glClear(GL_DEPTH_BUFFER_BIT);
+            prog_quad->use();
+            switch(dbg_renderBufferId) {
+            case 0:
+                gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getFinalImage());
+                break;
+            case 1:
+                gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getAlbedoTexture());
+                break;
+            case 2:
+                gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getNormalTexture());
+                break;
+            case 3:
+                gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getRoughnessTexture());
+                break;
+            case 4:
+                gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getMetallicTexture());
+                break;
+            case 5:
+                gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getDepthTexture());
+                break;
+            }
+            drawQuad();
         }
-        drawQuad();
 
         glUseProgram(0);
     }
@@ -154,6 +158,8 @@ public:
     RendererPBR();
 
     virtual void draw(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen = false) {
+        glDisable(GL_SCISSOR_TEST);
+
         beginFrame(vp, proj, view);
 
         drawMultiple(
@@ -210,7 +216,7 @@ public:
         glUniformMatrix4fv(prog_light_pass->getUniform("inverse_view_projection"), 1, GL_FALSE, (float*)&inverse_view_projection);
         drawQuad();
 
-        endFrame(vp);
+        endFrame(vp, draw_final_on_screen);
     }
 };
 

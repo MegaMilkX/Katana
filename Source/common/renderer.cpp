@@ -11,8 +11,8 @@ void Renderer::drawWorld(RenderViewport* vp, ktWorld* world) {
     world->getRenderController()->getDrawList(dl);
 
     Camera* cam = world->getRenderController()->getDefaultCamera();
-    gfxm::mat4 proj = gfxm::mat4(1.0f);
-    gfxm::mat4 view = gfxm::mat4(1.0f);
+    static gfxm::mat4 proj = gfxm::perspective(1.0f, 16.0f/9.0f, 0.1f, 1000.0f);
+    static gfxm::mat4 view = gfxm::inverse(gfxm::mat4(1.0f));
     if(cam) {
         proj = cam->getProjection(vp->getWidth(), vp->getHeight());
         view = cam->getView();
@@ -21,7 +21,7 @@ void Renderer::drawWorld(RenderViewport* vp, ktWorld* world) {
     auto env = world->getScene()->get<RenderEnvironment>();
     setSkyGradient(env->getSkyGradient());
 
-    draw(vp, proj, view, dl, true);
+    draw(vp, proj, view, dl);
 }
 
 void Renderer::setSkyGradient(curve<gfxm::vec3> curv) {
