@@ -77,9 +77,24 @@ void EditorSceneInspector::update(Editor* editor, const std::string& title) {
 void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const std::string& title) {
     if(ImGui::Begin(title.c_str(), 0, ImGuiWindowFlags_MenuBar)) {
         if(ImGui::BeginMenuBar()) {
-            if(ImGui::MenuItem("Create")) {
-                selected.clearAndAdd(scene->createChild());
-                // TODO: editor->backupScene("object created");
+            if(ImGui::BeginMenu("Create node...")) {
+                if(ImGui::MenuItem("Empty")) {
+                    selected.clearAndAdd(scene->createChild());    
+                }
+                auto& table = getAttribTypeLib().getTable();
+                for(auto& kv : table) {
+                    if(ImGui::BeginMenu(kv.first.c_str())) {
+                        for(auto t : kv.second) {
+                            if(ImGui::MenuItem(t.get_name().to_string().c_str())) {
+                                auto o = scene->createChild();
+                                o->get(t);
+                                selected.clearAndAdd(o);
+                            }
+                        }
+                        ImGui::EndMenu();
+                    }
+                }
+                ImGui::EndMenu();
             }
             ImGui::EndMenuBar();
         }
