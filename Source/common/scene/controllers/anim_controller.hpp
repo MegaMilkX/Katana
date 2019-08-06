@@ -6,10 +6,13 @@
 #include "../../attributes/model.hpp"
 
 #include "../../attributes/animation_stack.hpp"
+#include "../../attributes/action_state_machine.hpp"
 
-class AnimController : public SceneEventFilter<AnimationStack> {
+class AnimController : public SceneEventFilter<ActionStateMachine, AnimationStack> {
     RTTR_ENABLE(SceneController)
 public:
+    virtual void onAttribCreated(ActionStateMachine* s) { asms.insert(s); }
+    virtual void onAttribRemoved(ActionStateMachine* s) { asms.erase(s); }
     virtual void onAttribCreated(AnimationStack* s) { stacks.insert(s); }
     virtual void onAttribRemoved(AnimationStack* s) { stacks.erase(s); }
 
@@ -18,12 +21,16 @@ public:
     }
 
     virtual void onUpdate() {
+        for(auto m : asms) {
+            m->update(1.0f/60.0f);
+        }
         for(auto s : stacks) {
             s->update(1.0f/60.0f);
         }
     }
 
 private:
+    std::set<ActionStateMachine*> asms;
     std::set<AnimationStack*> stacks;
 };
 STATIC_RUN(AnimController) {
