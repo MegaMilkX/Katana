@@ -76,7 +76,7 @@ private:
     gfxm::mat4 view;
     PROJECTION ptype = PERSPECTIVE;
     gfxm::vec2 vp = gfxm::vec2(640, 480);
-    float fov = 0.90f;
+    float fov = gfxm::radian(45.0f);
     float znear = 0.01f;
     float zfar = 1000.0f;
 };

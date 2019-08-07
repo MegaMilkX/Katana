@@ -26,9 +26,9 @@ public:
         platformMouseSetEnabled(false);
 
         cam = getOwner()->get<Camera>().get();
-        cam->setZFar(500.0f);
-        cam->setZNear(0.1f);
-        cam->setFov(0.76f);
+        //cam->setZFar(500.0f);
+        //cam->setZNear(0.1f);
+        //cam->setFov(0.76f);
 
         wrld = world;
 
@@ -93,7 +93,12 @@ public:
         }
 
         tcam.translate(tcam.back() * _distance);
-        getOwner()->getTransform()->setTransform(tcam.matrix());
+
+        getOwner()->getTransform()->setPosition(pivot);
+        getOwner()->getTransform()->translate(getOwner()->getTransform()->back() * _distance);
+        getOwner()->getTransform()->setRotation(gfxm::angle_axis(_angle_y, gfxm::vec3(.0f, 1.0f, .0f)));
+        getOwner()->getTransform()->rotate(_angle_x, getOwner()->getTransform()->right());
+        //getOwner()->getTransform()->setTransform(tcam.matrix());
     }
     void onCleanup() override {
         platformMouseSetEnabled(true);
