@@ -120,13 +120,6 @@ void main()
     float roughness = texture(tex_roughness, uv_frag).x;
     normal = normalize(normal * 2.0 - 1.0);
 
-    vec3 light_dir = normalize(vec3(1, 1, -1));
-    vec3 light_pos = vec3(0, 0.5, 0);
-
-    float lightness = dot(normal, light_dir);
-
-    vec3 light_color = vec3(0,1,0.8);
-
     vec3 N = normal;
     vec3 V = normalize(view_pos - position);
     vec3 F0 = vec3(0.04);
