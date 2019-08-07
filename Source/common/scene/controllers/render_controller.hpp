@@ -43,10 +43,15 @@ public:
             for(size_t i = 0; i < m->segmentCount(); ++i) {
                 if(!m->getSegment(i).mesh) continue;
                 if(!m->getSegment(i).skin_data) {
+                    auto& seg = m->getSegment(i);
+                    size_t indexOffset = seg.mesh->submeshes.size() > 0 ? seg.mesh->submeshes[seg.submesh_index].indexOffset : 0;
+                    size_t indexCount = seg.mesh->submeshes.size() > 0 ? (seg.mesh->submeshes[seg.submesh_index].indexCount) : seg.mesh->mesh.getIndexCount();
+
                     DrawCmdSolid s;
                     s.vao = m->getSegment(i).mesh->mesh.getVao();
                     s.material = m->getSegment(i).material.get();
-                    s.indexCount = m->getSegment(i).mesh->mesh.getIndexCount();
+                    s.indexCount = indexCount;
+                    s.indexOffset = indexOffset;
                     s.transform = m->getOwner()->getTransform()->getWorldTransform();
                     dl.solids.emplace_back(s);
                     /*
@@ -57,6 +62,10 @@ public:
                         m->getOwner()->getTransform()->getWorldTransform()
                     });*/
                 } else {
+                    auto& seg = m->getSegment(i);
+                    size_t indexOffset = seg.mesh->submeshes.size() > 0 ? seg.mesh->submeshes[seg.submesh_index].indexOffset : 0;
+                    size_t indexCount = seg.mesh->submeshes.size() > 0 ? (seg.mesh->submeshes[seg.submesh_index].indexCount) : seg.mesh->mesh.getIndexCount();
+
                     std::vector<gfxm::mat4> bone_transforms;
                     for(auto t : m->getSegment(i).skin_data->bone_nodes) {
                         if(t) {
@@ -65,10 +74,12 @@ public:
                             bone_transforms.emplace_back(gfxm::mat4(1.0f));
                         }
                     }
+
                     DrawCmdSkin s;
                     s.vao = m->getSegment(i).mesh->mesh.getVao();
                     s.material = m->getSegment(i).material.get();
-                    s.indexCount = m->getSegment(i).mesh->mesh.getIndexCount();
+                    s.indexCount = indexCount;
+                    s.indexOffset = indexOffset;
                     s.transform = m->getOwner()->getTransform()->getWorldTransform();
                     s.bone_transforms = bone_transforms;
                     s.bind_transforms = m->getSegment(i).skin_data->bind_transforms;

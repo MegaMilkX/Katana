@@ -6,8 +6,14 @@
 
 class Mesh : public Resource {
 public:
+    struct SubMesh {
+        uint32_t indexOffset = 0; // BYTE OFFSET
+        uint32_t indexCount = 0;
+    };
+
     gl::IndexedMesh mesh;
     gfxm::aabb aabb;
+    std::vector<SubMesh> submeshes;
 
     const float* getPermanentVertexData();
     const uint32_t* getPermanentIndexData();
@@ -15,9 +21,20 @@ public:
     size_t indexCount();
 
     virtual void serialize(out_stream& out) {
+        assert(submeshes.size() < 255);
+        out.write<uint8_t>((uint8_t)submeshes.size());
+        for(unsigned i = 0; i < submeshes.size(); ++i) {
+            out.write<uint32_t>(submeshes[i].indexOffset);
+            out.write<uint32_t>(submeshes[i].indexCount);
+        }
         mesh.serialize(out);
     }
     virtual bool deserialize(in_stream& in, size_t sz) { 
+        submeshes.resize(in.read<uint8_t>());
+        for(unsigned i = 0; i < submeshes.size(); ++i) {
+            submeshes[i].indexOffset = in.read<uint32_t>();
+            submeshes[i].indexCount = in.read<uint32_t>();
+        }
         mesh.deserialize(in);
 
         std::vector<gfxm::vec3> vertices;

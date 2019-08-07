@@ -17,6 +17,7 @@ public:
 
     GLuint vao;
     Material* material;
+    size_t indexOffset;
     size_t indexCount;
 };
 

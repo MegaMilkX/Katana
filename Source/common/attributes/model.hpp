@@ -17,6 +17,7 @@ public:
     };
     struct Segment {
         std::shared_ptr<Mesh> mesh;
+        uint8_t               submesh_index;
         std::shared_ptr<Material> material;
         std::shared_ptr<SkinData> skin_data;
     };
@@ -102,7 +103,10 @@ public:
             if(getSegment(i).material) mat_name = getSegment(i).material->Name();
 
             w.write(mesh_name);
-            w.write<uint64_t>(0); // reserved
+            w.write<uint8_t>(getSegment(i).submesh_index);
+            w.write<uint8_t>(0); // reserved
+            w.write<uint16_t>(0);
+            w.write<uint32_t>(0); // ~
             w.write(mat_name);
 
             if(getSegment(i).skin_data) {
@@ -130,7 +134,10 @@ public:
             std::string mat_name = "";
 
             mesh_name = r.readStr();
-            uint64_t reserved = r.read<uint64_t>();
+            getSegment(i).submesh_index = (uint8_t)r.read<uint8_t>();
+            r.read<uint8_t>(); // reserved
+            r.read<uint16_t>();
+            r.read<uint32_t>(); // ~
             mat_name = r.readStr();
             if(!mesh_name.empty()) {
                 getSegment(i).mesh = retrieve<Mesh>(mesh_name);
@@ -161,6 +168,12 @@ public:
             imguiResourceTreeCombo(MKSTR("mesh##" << i).c_str(), seg.mesh, "msh", [this](){
                 LOG("Mesh changed");
             });
+            if(seg.mesh && (seg.mesh->submeshes.size() > 1)) {
+                int submesh_index = (int)seg.submesh_index;
+                if(ImGui::DragInt(MKSTR("submesh##" << i).c_str(), &submesh_index, 1.0f, 0, seg.mesh->submeshes.size() - 1)) {
+                    seg.submesh_index = (uint8_t)submesh_index;
+                }
+            }
             imguiResourceTreeCombo(MKSTR("material##" << i).c_str(), seg.material, "mat", [this](){
                 LOG("Material changed");
             });

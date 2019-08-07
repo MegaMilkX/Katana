@@ -128,7 +128,7 @@ public:
             e.bind(getState());
 
             glBindVertexArray(e.vao);
-            glDrawElements(GL_TRIANGLES, e.indexCount, GL_UNSIGNED_INT, 0);
+            glDrawElements(GL_TRIANGLES, e.indexCount, GL_UNSIGNED_INT, (GLvoid*)e.indexOffset);
         }
     }
 
