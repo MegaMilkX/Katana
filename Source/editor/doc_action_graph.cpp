@@ -34,7 +34,9 @@ ImVec2 GraphEditGridScreenToPos(const ImVec2& pos) {
     return r;
 }
 
-void TransitionLine(const ImVec2& from, const ImVec2& to) {
+bool TransitionLine(const ImVec2& from, const ImVec2& to, bool selected = false) {
+    bool clicked = false;
+
     ImVec2 diff = to - from;
     gfxm::vec2 p(diff.y, -diff.x);
     p = gfxm::normalize(p);
@@ -51,10 +53,15 @@ void TransitionLine(const ImVec2& from, const ImVec2& to) {
 
     ImVec2 graph_space_mouse_pos = GraphEditGridScreenToPos(ImGui::GetMousePos());
     bool is_mouse_over = pointVsLine(gfxm::vec2(from_.x, from_.y), gfxm::vec2(to_.x, to_.y), gfxm::vec2(graph_space_mouse_pos.x, graph_space_mouse_pos.y), 0.5f);
+    if(is_mouse_over) {
+        if(ImGui::IsMouseClicked(0)) {
+            clicked = true;
+        }
+    }
 
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     ImU32 line_col = ImGui::GetColorU32(ImGuiCol_Text);
-    if(is_mouse_over) {
+    if(is_mouse_over || selected) {
         line_col = ImGui::GetColorU32(ImGuiCol_PlotHistogram);
     }
     window->DrawList->AddLine(
@@ -66,6 +73,8 @@ void TransitionLine(const ImVec2& from, const ImVec2& to) {
     window->DrawList->AddTriangleFilled(
         triangle[0], triangle[1], triangle[2], line_col
     );
+
+    return clicked;
 }
 
 static const char* s_node_drag_id = 0;
@@ -260,7 +269,9 @@ void DocActionGraph::onGui(Editor* ed) {
             for(auto& t : action_graph->getTransitions()) {
                 gfxm::vec2 from = t->from->getEditorPos();
                 gfxm::vec2 to = t->to->getEditorPos();
-                TransitionLine(ImVec2(from.x, from.y), ImVec2(to.x, to.y));
+                if(TransitionLine(ImVec2(from.x, from.y), ImVec2(to.x, to.y), selected_transition == t)) {
+                    selected_transition = t;
+                }
             }
 
             for(auto& a : action_graph->getActions()) {
@@ -303,6 +314,20 @@ void DocActionGraph::onGui(Editor* ed) {
             memcpy(buf, selected_action->getName().c_str(), selected_action->getName().size());
             if(ImGui::InputText("name", buf, sizeof(buf))) {
                 action_graph->renameAction(selected_action, buf);
+            }
+            if(ImGui::Button("Delete action")) {
+                action_graph->deleteAction(selected_action);
+                selected_action = 0;
+                selected_transition = 0;
+            }
+        }
+        if(selected_transition) {
+            ImGui::Separator();
+            ImGui::Text("Selected transition");
+            ImGui::Text(MKSTR(selected_transition->from->getName() << " -> " << selected_transition->to->getName()).c_str());
+            if(ImGui::Button("Delete transition")) {
+                action_graph->deleteTransition(selected_transition);
+                selected_transition = 0;
             }
         }
         ImGui::End();

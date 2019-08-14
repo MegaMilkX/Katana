@@ -41,6 +41,9 @@ public:
 
     ActionGraphNode* findAction(const std::string& name);
 
+    void            deleteAction(ActionGraphNode* action);
+    void            deleteTransition(ActionGraphTransition* transition);
+
     const std::vector<ActionGraphNode*>       getActions() const;
     const std::vector<ActionGraphTransition*> getTransitions() const;
 

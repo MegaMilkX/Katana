@@ -8,6 +8,7 @@
 class DocActionGraph : public EditorDocumentTyped<ActionGraph> {
     bool first_use = true;
     ActionGraphNode* selected_action = 0;
+    ActionGraphTransition* selected_transition = 0;
 public:
     DocActionGraph();
     DocActionGraph(std::shared_ptr<ResourceNode>& node);

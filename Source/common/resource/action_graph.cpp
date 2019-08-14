@@ -84,6 +84,38 @@ ActionGraphNode* ActionGraph::findAction(const std::string& name) {
     return node;
 }
 
+void ActionGraph::deleteAction(ActionGraphNode* action) {
+    std::set<size_t> transitions_to_remove;
+    for(size_t i = 0; i < actions.size(); ++i) {
+        auto& a = actions[i];
+        if(a == action) {
+            delete a;
+            actions.erase(actions.begin() + i);
+            
+            for(auto it = transitions.begin(); it != transitions.end(); ) {
+                if((*it)->from == action || (*it)->to == action) {
+                    it = transitions.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+
+            break;
+        }
+    }
+}
+void ActionGraph::deleteTransition(ActionGraphTransition* transition) {
+    for(size_t i = 0; i < transitions.size(); ++i) {
+        auto& t = transitions[i];
+        if(t == transition) {
+            delete t;
+            transitions.erase(transitions.begin() + i);
+            // TODO: Remove reference to this transition from the 'from' action
+            break;
+        }
+    }
+}
+
 const std::vector<ActionGraphNode*>       ActionGraph::getActions() const {
     return actions;
 }

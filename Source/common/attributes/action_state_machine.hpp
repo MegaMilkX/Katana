@@ -13,6 +13,8 @@ public:
     void update(float dt);
 
     void onGui() override;
+
+    const char* getIconCode() const override { return ICON_MDI_RUN_FAST; }
 };
 REG_ATTRIB(ActionStateMachine, ActionStateMachine, Animation);
 
