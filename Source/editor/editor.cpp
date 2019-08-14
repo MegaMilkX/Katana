@@ -171,6 +171,9 @@ void Editor::onGui() {
                 if(ImGui::MenuItem("Scene")) {
                     addNewDocument(new EditorDocScene());
                 }
+                if(ImGui::MenuItem("ActionGraph")) {
+                    addNewDocument(new DocActionGraph());
+                }
                 if(ImGui::MenuItem("Texture2D")) {}
                 if(ImGui::MenuItem("Material")) {}
                 if(ImGui::MenuItem("Mesh")) {}

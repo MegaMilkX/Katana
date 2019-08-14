@@ -14,6 +14,7 @@
 #include "../../editor/editor_doc_texture2d.hpp"
 #include "../../editor/editor_doc_audio_clip.hpp"
 #include "../../editor/editor_doc_model_source.hpp"
+#include "../../editor/doc_action_graph.hpp"
 
 class ResourceDescLibrary : public Singleton<ResourceDescLibrary> {
     std::map<std::string, ResourceDesc> descs;
@@ -79,6 +80,12 @@ public:
                 rttr::type::get<ModelSource>(),
                 [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
                     return new EditorDocModelSource(node);
+                }
+            }},
+            { "action_graph", ResourceDesc{
+                rttr::type::get<ActionGraph>(),
+                [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
+                    return new DocActionGraph(node);
                 }
             }}
         };

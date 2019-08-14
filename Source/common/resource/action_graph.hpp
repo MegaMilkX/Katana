@@ -2,13 +2,23 @@
 #define ACTION_GRAPH_HPP
 
 #include "resource.h"
+#include "../gfxm.hpp"
 
+class ActionGraphNode;
 struct ActionGraphTransition {
     float blendTime = 0.1f;
+    ActionGraphNode* from = 0;
+    ActionGraphNode* to = 0;
 };
 
 class ActionGraphNode {
-    
+    std::string name = "Action";
+    gfxm::vec2 editor_pos;
+public:
+    const std::string& getName() const { return name; }
+    void               setName(const std::string& value) { name = value; }
+    const gfxm::vec2&  getEditorPos() const { return editor_pos; }
+    void               setEditorPos(const gfxm::vec2& value) { editor_pos = value; }
 };
 
 class ActionGraphLayer {
@@ -19,10 +29,23 @@ public:
 
 class ActionGraph : public Resource {
     RTTR_ENABLE(Resource)
+
+    std::vector<ActionGraphTransition*> transitions;
+    std::vector<ActionGraphNode*> actions;
 public:
     const char* getWriteExtension() const override { return "action_graph"; }
 
+    ActionGraphNode* createAction(const std::string& name = "Action");
+    void             renameAction(ActionGraphNode* action, const std::string& name);
+    ActionGraphTransition* createTransition(const std::string& from, const std::string& to);
 
+    ActionGraphNode* findAction(const std::string& name);
+
+    const std::vector<ActionGraphNode*>       getActions() const;
+    const std::vector<ActionGraphTransition*> getTransitions() const;
+
+    void serialize(out_stream& out) override;
+    bool deserialize(in_stream& in, size_t sz) override;
 };
 STATIC_RUN(ActionGraph) {
     rttr::registration::class_<ActionGraph>("ActionGraph")
