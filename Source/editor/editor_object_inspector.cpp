@@ -43,7 +43,7 @@ void EditorObjectInspector::update(GameScene* scene, ObjectSet& selected, const 
             for(size_t i = 0; i < so->componentCount(); ++i) {
                 auto c = so->getById(i);
                 bool exists = true;
-                if(ImGui::CollapsingHeader(c->get_type().get_name().to_string().c_str(), &exists, ImGuiTreeNodeFlags_DefaultOpen)) {
+                if(ImGui::CollapsingHeader(MKSTR(c->getIconCode() << " " << c->get_type().get_name().to_string()).c_str(), &exists, ImGuiTreeNodeFlags_DefaultOpen)) {
                     c->onGui();
                 }
                 if(!exists) {
