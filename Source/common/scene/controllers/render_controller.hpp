@@ -13,15 +13,15 @@
 
 #include "../../../common/util/imgui_helpers.hpp"
 
-class RenderController : public SceneEventFilter<Model, Camera, OmniLight> {
+class RenderController : public SceneEventFilter<RenderableBase, Camera, OmniLight> {
     RTTR_ENABLE(SceneController)
 public:
     virtual void init(GameScene* s) {
         scene = s;
     }
 
-    virtual void onAttribCreated(Model* m) { models.insert(m); }
-    virtual void onAttribRemoved(Model* m) { models.erase(m); } 
+    virtual void onAttribCreated(RenderableBase* m) { renderables.insert(m); }
+    virtual void onAttribRemoved(RenderableBase* m) { renderables.erase(m); } 
     virtual void onAttribCreated(OmniLight* l) { omnis.insert(l); }
     virtual void onAttribRemoved(OmniLight* l) { omnis.erase(l); }
     virtual void onAttribCreated(Camera* c) {
@@ -36,65 +36,8 @@ public:
     }
 
     void getDrawList(DrawList& dl) {
-        for(auto m : models) {
-            if(!m->getOwner()->isEnabled()) {
-                continue;
-            }
-            for(size_t i = 0; i < m->segmentCount(); ++i) {
-                if(!m->getSegment(i).mesh) continue;
-                if(!m->getSegment(i).skin_data) {
-                    auto& seg = m->getSegment(i);
-                    size_t indexOffset = seg.mesh->submeshes.size() > 0 ? seg.mesh->submeshes[seg.submesh_index].indexOffset : 0;
-                    size_t indexCount = seg.mesh->submeshes.size() > 0 ? (seg.mesh->submeshes[seg.submesh_index].indexCount) : seg.mesh->mesh.getIndexCount();
-
-                    DrawCmdSolid s;
-                    s.vao = m->getSegment(i).mesh->mesh.getVao();
-                    s.material = m->getSegment(i).material.get();
-                    s.indexCount = indexCount;
-                    s.indexOffset = indexOffset;
-                    s.transform = m->getOwner()->getTransform()->getWorldTransform();
-                    dl.solids.emplace_back(s);
-                    /*
-                    dl.add(DrawList::Solid{
-                        m->getSegment(i).mesh->mesh.getVao(),
-                        m->getSegment(i).material.get(),
-                        m->getSegment(i).mesh->mesh.getIndexCount(),
-                        m->getOwner()->getTransform()->getWorldTransform()
-                    });*/
-                } else {
-                    auto& seg = m->getSegment(i);
-                    size_t indexOffset = seg.mesh->submeshes.size() > 0 ? seg.mesh->submeshes[seg.submesh_index].indexOffset : 0;
-                    size_t indexCount = seg.mesh->submeshes.size() > 0 ? (seg.mesh->submeshes[seg.submesh_index].indexCount) : seg.mesh->mesh.getIndexCount();
-
-                    std::vector<gfxm::mat4> bone_transforms;
-                    for(auto t : m->getSegment(i).skin_data->bone_nodes) {
-                        if(t) {
-                            bone_transforms.emplace_back(t->getTransform()->getWorldTransform());
-                        } else {
-                            bone_transforms.emplace_back(gfxm::mat4(1.0f));
-                        }
-                    }
-
-                    DrawCmdSkin s;
-                    s.vao = m->getSegment(i).mesh->mesh.getVao();
-                    s.material = m->getSegment(i).material.get();
-                    s.indexCount = indexCount;
-                    s.indexOffset = indexOffset;
-                    s.transform = m->getOwner()->getTransform()->getWorldTransform();
-                    s.bone_transforms = bone_transforms;
-                    s.bind_transforms = m->getSegment(i).skin_data->bind_transforms;
-                    dl.skins.emplace_back(s);
-                    /*
-                    dl.add(DrawList::Skin{
-                        m->getSegment(i).mesh->mesh.getVao(),
-                        m->getSegment(i).material.get(),
-                        m->getSegment(i).mesh->mesh.getIndexCount(),
-                        m->getOwner()->getTransform()->getWorldTransform(),
-                        bone_transforms,
-                        m->getSegment(i).skin_data->bind_transforms
-                    });*/
-                }
-            }
+        for(auto r : renderables) {
+            r->addToDrawList(dl);
         }
         for(auto l : omnis) {
             dl.omnis.emplace_back(DrawList::OmniLight{l->getOwner()->getTransform()->getWorldPosition(), l->color, l->intensity, l->radius});
@@ -130,7 +73,7 @@ public:
         //default_camera = scene->getRoot()->find<Camera>(r.readStr());
     }
 private:
-    std::set<Model*> models;
+    std::set<RenderableBase*> renderables;
     std::set<OmniLight*> omnis;
     Camera* default_camera = 0;
     GameScene* scene = 0;
