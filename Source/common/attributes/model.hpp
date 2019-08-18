@@ -1,15 +1,15 @@
 #ifndef MODEL_HPP
 #define MODEL_HPP
 
-#include "attribute.hpp"
+#include "renderable_base.hpp"
 
 #include "../../common/resource/mesh.hpp"
 #include "../../common/resource/material.hpp"
 
 #include "../../common/util/imgui_helpers.hpp"
 
-class Model : public Attribute {
-    RTTR_ENABLE(Attribute)
+class Model : public RenderableBase {
+    RTTR_ENABLE(RenderableBase)
 public:
     struct SkinData {
         std::vector<ktNode*> bone_nodes;
@@ -23,6 +23,49 @@ public:
     };
 
     ~Model();
+
+    void addToDrawList(DrawList& dl) override {
+        if(!getOwner()->isEnabled()) return;
+
+        for(auto& seg : segments) {
+            if(!seg.mesh) continue;
+            
+            GLuint vao = seg.mesh->mesh.getVao();
+            Material* mat = seg.material.get();
+            gfxm::mat4 transform = getOwner()->getTransform()->getWorldTransform();
+            size_t indexOffset = seg.mesh->submeshes.size() > 0 ? seg.mesh->submeshes[seg.submesh_index].indexOffset : 0;
+            size_t indexCount = seg.mesh->submeshes.size() > 0 ? (seg.mesh->submeshes[seg.submesh_index].indexCount) : seg.mesh->mesh.getIndexCount();
+            
+            if(!seg.skin_data) {    // Static mesh
+                DrawCmdSolid s;
+                s.vao = vao;
+                s.material = mat;
+                s.indexCount = indexCount;
+                s.indexOffset = indexOffset;
+                s.transform = transform;
+                dl.solids.emplace_back(s);
+            } else {                // Skinned mesh
+                std::vector<gfxm::mat4> bone_transforms;
+                for(auto t : seg.skin_data->bone_nodes) {
+                    if(t) {
+                        bone_transforms.emplace_back(t->getTransform()->getWorldTransform());
+                    } else {
+                        bone_transforms.emplace_back(gfxm::mat4(1.0f));
+                    }
+                }
+
+                DrawCmdSkin s;
+                s.vao = vao;
+                s.material = mat;
+                s.indexCount = indexCount;
+                s.indexOffset = indexOffset;
+                s.transform = transform;
+                s.bone_transforms = bone_transforms;
+                s.bind_transforms = seg.skin_data->bind_transforms;
+                dl.skins.emplace_back(s);
+            }
+        }
+    }
 
     virtual void onCreate();
 
