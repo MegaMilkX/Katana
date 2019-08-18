@@ -458,6 +458,7 @@ int Editor::setupImguiLayout() {
 
     ImGui::DockBuilderFinish(dockspace_id);
     current_dockspace = dockspace_id;
+
     return 0;
 }
 

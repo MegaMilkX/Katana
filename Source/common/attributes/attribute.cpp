@@ -41,3 +41,10 @@ bool Attribute::serialize(out_stream& out) {
 bool Attribute::deserialize(in_stream& in, size_t sz) {
     return false;
 }
+
+void Attribute::write(SceneWriteCtx& out) {
+
+}
+void Attribute::read(SceneReadCtx& in) {
+
+}

@@ -21,6 +21,8 @@
 
 #include "attrib_type_lib.hpp"
 
+#include "../scene_byte_stream.hpp"
+
 class ktNode;
 class GameScene;
 class Attribute {
@@ -49,6 +51,9 @@ public:
 
     virtual bool serialize(out_stream& out);
     virtual bool deserialize(in_stream& in, size_t sz);
+
+    virtual void write(SceneWriteCtx& out);
+    virtual void read(SceneReadCtx& in);
 private:
     ktNode* owner = 0;
 };

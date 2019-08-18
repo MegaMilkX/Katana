@@ -1,13 +1,23 @@
 #ifndef SCENE_SERIALIZER_HPP
 #define SCENE_SERIALIZER_HPP
 
-#include "data_stream.hpp"
+#include "util/data_stream.hpp"
 
 #include "resource/resource.h"
-#include "scene/node.hpp"
 
-class SceneByteStream {
+class ktNode;
+class Attribute;
+
+class SceneWriteCtx {
 public:
+    SceneWriteCtx(out_stream* strm)
+    : strm(strm) { }
+
+    out_stream* strm = 0;
+    std::map<ktNode*, uint64_t> oid_map;
+    std::vector<ktNode*> objects;
+    std::map<rttr::type, std::vector<Attribute*>> attribs;
+
     template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
     void write(const T& value);
     template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
@@ -16,72 +26,64 @@ public:
     template<typename T>
     void write(const std::shared_ptr<T>& resource);
     void write(ktNode* node);
+};
 
-    template<typename T>
+class SceneReadCtx {
+public:
+    SceneReadCtx(in_stream* strm)
+    : strm(strm) {}
+
+    in_stream* strm = 0;
+    std::vector<ktNode*> objects;
+
+    template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
     T read();
-    template<typename T>
+    template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
     std::vector<T> readArray();
-    template<typename T>
     std::string readStr();
     template<typename T>
     std::shared_ptr<T> readResource();
     ktNode* readNode();
-private:
-    dstream strm;
-
-    std::map<ktNode*, uint64_t> oid_map;
-    std::vector<ktNode*> objects;
-    std::map<rttr::type, std::vector<Attribute*>> attribs;
 };
 
 template<typename T, typename>
-void SceneByteStream::write(const T& value) {
-    out_stream& o = strm;
-    o.write(value);
+void SceneWriteCtx::write(const T& value) {
+    strm->write(value);
 }
 template<typename T, typename>
-void SceneByteStream::write(const std::vector<T>& values) {
-    out_stream& o = strm;
-    o.write<uint64_t>((uint64_t)values.size());
-    o.write(values);
+void SceneWriteCtx::write(const std::vector<T>& values) {
+    strm->write<uint64_t>((uint64_t)values.size());
+    strm->write(values);
 }
 template<typename T>
-void SceneByteStream::write(const std::shared_ptr<T>& resource) {
+void SceneWriteCtx::write(const std::shared_ptr<T>& resource) {
     std::string res_name;
     if(resource) {
-        res_name = resource->getName();
+        res_name = resource->Name();
     }
     write(res_name);
 }
 
-template<typename T>
-T SceneByteStream::read() {
-    in_stream& in = strm;
+template<typename T, typename>
+T SceneReadCtx::read() {
     T v;
-    in.read(v);
+    strm->read(v);
     return v;
 }
-template<typename T>
-std::vector<T> SceneByteStream::readArray() {
-    in_stream& in = strm;
+template<typename T, typename>
+std::vector<T> SceneReadCtx::readArray() {
     std::vector<T> vec;
     uint64_t sz = 0;
-    in.read(sz);
-    in.read(vec, sz);
+    strm->read(sz);
+    strm->read(vec, sz);
     return vec;
 }
 template<typename T>
-std::string SceneByteStream::readStr() {
-    in_stream& in = strm;
-    std::string str;
-    uint64_t sz = 0;
-    in.read(sz);
-    in.read(str, sz);
-    return str;
-}
-template<typename T>
-std::shared_ptr<T> SceneByteStream::readResource() {
+std::shared_ptr<T> SceneReadCtx::readResource() {
     std::string res_name = readStr();
+    if(res_name.empty()) {
+        return std::shared_ptr<T>();
+    }
     return retrieve<T>(res_name);
 }
 

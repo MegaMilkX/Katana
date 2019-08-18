@@ -136,6 +136,70 @@ public:
         return segments.size();
     }
 
+    void write(SceneWriteCtx& o) {
+        o.write<uint32_t>(segmentCount());
+        for(size_t i = 0; i < segmentCount(); ++i) {
+            std::string mesh_name = "";
+            std::string mat_name = "";
+            if(getSegment(i).mesh) mesh_name = getSegment(i).mesh->Name();
+            if(getSegment(i).material) mat_name = getSegment(i).material->Name();
+
+            o.write(mesh_name);
+            o.write<uint8_t>(getSegment(i).submesh_index);
+            o.write<uint8_t>(0); // reserved
+            o.write<uint16_t>(0);
+            o.write<uint32_t>(0); // ~
+            o.write(mat_name);
+
+            if(getSegment(i).skin_data) {
+                auto& skin_data = getSegment(i).skin_data;
+                o.write<uint32_t>(skin_data->bone_nodes.size());
+                for(size_t j = 0; j < skin_data->bone_nodes.size(); ++j) {
+                    if(skin_data->bone_nodes[j]) {
+                        o.write(skin_data->bone_nodes[j]->getName());
+                    } else {
+                        o.write(std::string(""));
+                    }
+                    o.write<gfxm::mat4>(skin_data->bind_transforms[j]);
+                }
+            } else {
+                o.write<uint32_t>(0);
+            }
+        }
+    }
+    void read(SceneReadCtx& in) {
+        uint32_t seg_count = in.read<uint32_t>();
+        for(uint32_t i = 0; i < seg_count; ++i) {
+            std::string mesh_name = "";
+            std::string mat_name = "";
+
+            mesh_name = in.readStr();
+            getSegment(i).submesh_index = (uint8_t)in.read<uint8_t>();
+            in.read<uint8_t>(); // reserved
+            in.read<uint16_t>();
+            in.read<uint32_t>(); // ~
+            mat_name = in.readStr();
+            if(!mesh_name.empty()) {
+                getSegment(i).mesh = retrieve<Mesh>(mesh_name);
+            }
+            if(!mat_name.empty()) {
+                getSegment(i).material = retrieve<Material>(mat_name);
+            }
+
+            uint32_t bone_count = in.read<uint32_t>();
+            if(bone_count) {
+                getSegment(i).skin_data.reset(new SkinData());
+                for(uint32_t j = 0; j < bone_count; ++j) {
+                    std::string bone_name = in.readStr();
+                    gfxm::mat4 t = in.read<gfxm::mat4>();
+                    ktNode* bo = getOwner()->getRoot()->findObject(bone_name);
+                    getSegment(i).skin_data->bone_nodes.emplace_back(bo);
+                    getSegment(i).skin_data->bind_transforms.emplace_back(t);
+                }
+            }
+        }
+    }
+
     virtual bool serialize(out_stream& out) {
         DataWriter w(&out);
         w.write<uint32_t>(segmentCount());

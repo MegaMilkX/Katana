@@ -26,7 +26,9 @@ enum OBJECT_FLAGS {
 
 class ktObjectInstance;
 class GameScene;
+class SceneByteStream;
 class ktNode {
+    friend SceneByteStream;
 public:
     ktNode();
     virtual ~ktNode();

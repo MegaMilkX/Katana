@@ -10,6 +10,8 @@
 #include "game_scene.hpp"
 #include "object_instance.hpp"
 
+#include "../scene_byte_stream.hpp"
+
 ktNode::ktNode() {
 
 }
@@ -486,9 +488,7 @@ bool ktNode::serializeComponents(std::ostream& out) {
 void ktNode::write(out_stream& out) {
     ktNode* obj = this;
 
-    std::map<ktNode*, uint64_t> oid_map;
-    std::vector<ktNode*> objects;
-    std::map<rttr::type, std::vector<Attribute*>> attribs;
+    SceneWriteCtx writeCtx(&out);
 
     std::stack<ktNode*> stack;
     ktNode* current = obj;
@@ -503,9 +503,9 @@ void ktNode::write(out_stream& out) {
             continue;
         }
 
-        uint64_t id = oid_map.size();
-        oid_map[current] = id;
-        objects.emplace_back(current);
+        uint64_t id = writeCtx.oid_map.size();
+        writeCtx.oid_map[current] = id;
+        writeCtx.objects.emplace_back(current);
 
         for(size_t i = 0; i < current->childCount(); ++i) {
             stack.push(current->getChild(i));
@@ -513,18 +513,18 @@ void ktNode::write(out_stream& out) {
 
         for(size_t i = 0; i < current->componentCount(); ++i) {
             auto attrib = current->getById(i);
-            attribs[attrib->get_type()].emplace_back(attrib.get());
+            writeCtx.attribs[attrib->get_type()].emplace_back(attrib.get());
         }
 
         current = 0;
     }
 
     DataWriter dw(&out);
-    dw.write<uint64_t>(objects.size());
-    for(size_t i = 0; i < objects.size(); ++i) {
-        auto o = objects[i];
+    dw.write<uint64_t>(writeCtx.objects.size());
+    for(size_t i = 0; i < writeCtx.objects.size(); ++i) {
+        auto o = writeCtx.objects[i];
         if(o->getParent()) {
-            dw.write<uint64_t>(oid_map[o->getParent()]);
+            dw.write<uint64_t>(writeCtx.oid_map[o->getParent()]);
         } else {
             dw.write<uint64_t>(-1);
         }
@@ -543,33 +543,32 @@ void ktNode::write(out_stream& out) {
         }
     }
 
-    dw.write<uint32_t>(attribs.size());
-    for(auto kv : attribs) {
+    dw.write<uint32_t>(writeCtx.attribs.size());
+    for(auto kv : writeCtx.attribs) {
         rttr::type t = kv.first;
         auto& vec = kv.second;
         dw.write(t.get_name().to_string());
         dw.write<uint64_t>(vec.size());
         for(size_t i = 0; i < vec.size(); ++i) {
             auto a = vec[i];
-            dw.write<uint64_t>(oid_map[a->getOwner()]);
+            dw.write<uint64_t>(writeCtx.oid_map[a->getOwner()]);
             
             dstream sdata;
-            a->serialize(sdata);
+            writeCtx.strm = &sdata;
+            a->write(writeCtx);
+            //a->serialize(sdata);
             dw.write<uint64_t>(sdata.size()); // bytes written
             dw.write(sdata.getBuffer());
         }
     }
 }
 void ktNode::read(in_stream& in) {
-    std::vector<ktNode*> objects;
-    objects.emplace_back(this);
+    SceneReadCtx readCtx(&in);
+    readCtx.objects.emplace_back(this);
     
     DataReader dr(&in);
     uint64_t object_count = dr.read<uint64_t>();
-    objects.resize(object_count);/*
-    for(uint64_t i = 1; i < object_count; ++i) {
-        objects.emplace_back(new ktNode());
-    } */
+    readCtx.objects.resize(object_count);
 
     if(object_count == 0) {
         LOG_WARN("No objects in an .so data")
@@ -591,7 +590,7 @@ void ktNode::read(in_stream& in) {
         } else {
             //o = new ktNode();
         }
-        o = objects[0];
+        o = readCtx.objects[0];
         o->setName(name);
         o->getTransform()->setPosition(t);
         o->getTransform()->setRotation(r);
@@ -615,11 +614,11 @@ void ktNode::read(in_stream& in) {
             o = new ktNode();
         }
         
-        objects[i] = o;
-        o->parent = objects[p]; // OK: Thanks to order of writing of the scene tree objects[p] will never be 0 here (except if p is invalid for some reason)
-        objects[p]->children.insert(o);
+        readCtx.objects[i] = o;
+        o->parent = readCtx.objects[p]; // OK: Thanks to order of writing of the scene tree objects[p] will never be 0 here (except if p is invalid for some reason)
+        readCtx.objects[p]->children.insert(o);
         o->setName(name);
-        o->getTransform()->setParent(objects[p]->getTransform());
+        o->getTransform()->setParent(readCtx.objects[p]->getTransform());
 
         if(type == OBJECT_INSTANCE) {
             ((ktObjectInstance*)o)->setScene(retrieve<GameScene>(ref_name));
@@ -643,7 +642,7 @@ void ktNode::read(in_stream& in) {
             uint64_t owner_id = dr.read<uint64_t>();
             uint64_t data_sz = dr.read<uint64_t>();
             assert(t.is_valid());
-            auto a = objects[owner_id]->createComponent(t);
+            auto a = readCtx.objects[owner_id]->createComponent(t);
             if(!a) {
                 dr.skip(data_sz);
                 continue;
@@ -651,11 +650,14 @@ void ktNode::read(in_stream& in) {
             std::vector<char> data = dr.readArray<char>();
             dstream strm;
             strm.setBuffer(data);
+            
+            readCtx.strm = &strm;
 
             auto parent_cached = this->parent;
             this->parent = 0; // Tricking components into thinking that this is the root node,
                             // Which it is for purposes of deserialization
-            a->deserialize(strm, strm.bytes_available());
+            a->read(readCtx);
+            //a->deserialize(strm, strm.bytes_available());
             this->parent = parent_cached;
         }
     }
