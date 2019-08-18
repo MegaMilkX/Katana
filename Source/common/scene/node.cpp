@@ -154,20 +154,14 @@ void ktNode::getAllObjects(std::vector<ktNode*>& result) {
     }
     result.emplace_back(this);
 }
-void ktNode::takeOwnership(ktNode* o) {
-    ktNode* cmp = this;
-    while(cmp) {
-        if(cmp == o) return;
-        cmp = cmp->getParent();
-    }
 
-    // TODO
-}
-void ktNode::remove(bool keep_children) {
-    // TODO
-}
-void ktNode::duplicate() {
-    // TODO
+void ktNode::deleteChild(ktNode* child) {
+    auto it = children.find(child);
+    if(it == children.end()) {
+        return;
+    }
+    delete child;
+    children.erase(child);
 }
 
 std::shared_ptr<Attribute> ktNode::find(rttr::type component_type) {

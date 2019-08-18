@@ -42,21 +42,20 @@ public:
     void                                setName(const std::string& name);
     const std::string&                  getName() const;
 
-    ktNode*                         getRoot();
-    ktNode*                         getParent();
+    ktNode*                             getRoot();
+    ktNode*                             getParent();
 
     TransformNode*                      getTransform();
 
-    ktNode*                         createChild(OBJECT_FLAGS f = OBJECT_FLAG_NONE);
+    ktNode*                             createChild(OBJECT_FLAGS f = OBJECT_FLAG_NONE);
     ktObjectInstance*                   createInstance(std::shared_ptr<GameScene> scn);
     size_t                              childCount();
-    ktNode*                         getChild(size_t i);
-    ktNode*                         getChild(const std::string& name);
-    ktNode*                         findObject(const std::string& name);
+    ktNode*                             getChild(size_t i);
+    ktNode*                             getChild(const std::string& name);
+    ktNode*                             findObject(const std::string& name);
     void                                getAllObjects(std::vector<ktNode*>& result);
-    void                                takeOwnership(ktNode* o);
-    void                                remove(bool keep_children = false);
-    void                                duplicate();
+
+    void                                deleteChild(ktNode* child);
 
     std::shared_ptr<Attribute>          find(rttr::type component_type);
     std::shared_ptr<Attribute>          get(rttr::type component_type);
