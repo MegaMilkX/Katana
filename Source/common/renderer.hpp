@@ -67,6 +67,8 @@ public:
     void beginFrame(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view) {
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
+        glCullFace(GL_BACK);
+        glEnable(GL_CULL_FACE);
         glBindFramebuffer(GL_FRAMEBUFFER, vp->getGBuffer()->getGlFramebuffer());
         glViewport(0, 0, (GLsizei)vp->getWidth(), (GLsizei)vp->getHeight());
 
