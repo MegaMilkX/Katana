@@ -67,8 +67,8 @@ public:
         glVertexAttribPointer((GLuint)index, attrib_size, type, normalized, 0/*stride*/, 0);
         glBindVertexArray(0);
     }
-    void setIndices(uint32_t* data, size_t count) {
-        indices.data(data, sizeof(uint32_t) * count);
+    void setIndices(const uint32_t* data, size_t count) {
+        indices.data((uint32_t*)data, sizeof(uint32_t) * count);
         index_count = count;
         glBindVertexArray(id);
         indices.bind();
