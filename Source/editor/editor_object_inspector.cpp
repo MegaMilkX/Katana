@@ -38,8 +38,10 @@ void EditorObjectInspector::update(GameScene* scene, ObjectSet& selected, const 
             ktNode* so = *selected.getAll().begin();
             so->onGui();
 
-            ImGui::Separator();
-            ImGui::Text("Components");
+            if(so->componentCount()) {
+                ImGui::Separator();
+                ImGui::Text("Attributes");
+            }
             for(size_t i = 0; i < so->componentCount(); ++i) {
                 auto c = so->getById(i);
                 bool exists = true;

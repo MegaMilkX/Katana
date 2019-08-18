@@ -79,7 +79,7 @@ bool TransitionLine(const ImVec2& from, const ImVec2& to, bool selected = false)
 
 static const char* s_node_drag_id = 0;
 
-bool Node(const char* id, ImVec2& pos, const ImVec2& node_size, bool selected = false, bool* double_clicked = 0) {
+bool Node(const char* id, ImVec2& pos, const ImVec2& node_size, bool selected = false, bool highlight = false, bool* double_clicked = 0) {
     if(double_clicked) {
         *double_clicked = false;
     }
@@ -90,10 +90,10 @@ bool Node(const char* id, ImVec2& pos, const ImVec2& node_size, bool selected = 
     ImVec2 node_frame_min = (s_graph_edit_bb.Min + (pos - node_half_size + s_graph_edit_grid_offset_plus_drag_delta) * s_graph_edit_zoom);
     ImVec2 node_frame_max = node_frame_min + node_size * s_graph_edit_zoom;
     ImU32 node_col = ImGui::GetColorU32(ImGuiCol_WindowBg, 1);
-/*
-    if(selected) {
-        node_col = ImGui::GetColorU32(ImGuiCol_FrameBg);
-    }*/
+
+    if(highlight) {
+        node_col = ImGui::GetColorU32(ImGuiCol_PlotHistogram);
+    }
     //ImGui::PushClipRect(node_frame_min, node_frame_max, true);
 
     ImGuiWindowFlags flags = 0;
@@ -278,7 +278,7 @@ void DocActionGraph::onGui(Editor* ed) {
                 gfxm::vec2 ed_pos = a->getEditorPos();
                 ImVec2 node_pos(ed_pos.x, ed_pos.y);
                 bool dbl_clicked = false;
-                if(Node(a->getName().c_str(), node_pos, ImVec2(200, 50), selected_action == a, &dbl_clicked)) {
+                if(Node(a->getName().c_str(), node_pos, ImVec2(200, 50), selected_action == a, a == action_graph->getEntryAction(), &dbl_clicked)) {
                     if(s_creating_transition && (selected_action != a)) {
                         action_graph->createTransition(selected_action->getName(), a->getName());
                         s_creating_transition = false;

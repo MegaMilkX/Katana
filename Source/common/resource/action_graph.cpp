@@ -41,13 +41,20 @@ std::string pickUnusedName(const std::vector<ActionGraphNode*>& actions, const s
     return pickUnusedName(names, name);
 }
 
+void ActionGraph::pickEntryAction() {
+    if(actions.empty()) {
+        return;
+    }
+    entry_action = actions.front();
+}
+
 ActionGraphNode* ActionGraph::createAction(const std::string& name) {
     ActionGraphNode* node = new ActionGraphNode();
     node->setName(pickUnusedName(actions, name));
-
-    
-
     actions.emplace_back(node);
+
+    pickEntryAction();
+
     return node;
 }
 
@@ -103,6 +110,10 @@ void ActionGraph::deleteAction(ActionGraphNode* action) {
             break;
         }
     }
+
+    if(action == entry_action) {
+        pickEntryAction();
+    }
 }
 void ActionGraph::deleteTransition(ActionGraphTransition* transition) {
     for(size_t i = 0; i < transitions.size(); ++i) {
@@ -121,6 +132,14 @@ const std::vector<ActionGraphNode*>       ActionGraph::getActions() const {
 }
 const std::vector<ActionGraphTransition*> ActionGraph::getTransitions() const {
     return transitions;
+}
+
+ActionGraphNode* ActionGraph::getEntryAction() {
+    return entry_action;
+}
+void ActionGraph::setEntryAction(const std::string& name) {
+    auto a = findAction(name);
+    entry_action = a;
 }
 
 void ActionGraph::serialize(out_stream& out) {

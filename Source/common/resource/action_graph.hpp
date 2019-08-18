@@ -32,6 +32,10 @@ class ActionGraph : public Resource {
 
     std::vector<ActionGraphTransition*> transitions;
     std::vector<ActionGraphNode*> actions;
+    ActionGraphNode* entry_action = 0;
+
+    void pickEntryAction();
+
 public:
     const char* getWriteExtension() const override { return "action_graph"; }
 
@@ -46,6 +50,9 @@ public:
 
     const std::vector<ActionGraphNode*>       getActions() const;
     const std::vector<ActionGraphTransition*> getTransitions() const;
+
+    ActionGraphNode*                          getEntryAction();
+    void                                      setEntryAction(const std::string& name);
 
     void serialize(out_stream& out) override;
     bool deserialize(in_stream& in, size_t sz) override;

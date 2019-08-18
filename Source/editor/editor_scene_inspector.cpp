@@ -45,25 +45,21 @@ static ktNode* guiGameObjectContextMenu(ktNode* o, ObjectSet& selected) {
         }
         ImGui::Separator();
         if(ImGui::MenuItem("Duplicate")) {
-            o->duplicate();
+            //o->duplicate();
             // TODO: editor->backupScene("object duplicated");
         }
         ImGui::Separator();
         if(ImGui::MenuItem("Save As...")) {
             showSaveGameObjectDialog(o, true);
         }
-        ImGui::Separator();
-        if(ImGui::MenuItem("Delete")) {
-            if(selected.contains(o)) selected.clear();
-            o->remove(true);
-            o = 0;
-            // TODO: editor->backupScene("object deleted");
-        }
-        if(ImGui::MenuItem("Delete tree")) {
-            if(selected.contains(o)) selected.clear();
-            o->remove();
-            o = 0;
-            // TODO: editor->backupScene("object tree deleted");
+        if(o->getParent()) {
+            ImGui::Separator();
+            if(ImGui::MenuItem("Delete")) {
+                if(selected.contains(o)) selected.clear();
+                o->getParent()->deleteChild(o);
+                o = 0;
+                // TODO: editor->backupScene("object deleted");
+            }
         }
         ImGui::EndPopup();
     }
@@ -88,6 +84,7 @@ void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const s
                             if(ImGui::MenuItem(t.get_name().to_string().c_str())) {
                                 auto o = scene->createChild();
                                 o->get(t);
+                                o->setName(t.get_name().to_string());
                                 selected.clearAndAdd(o);
                             }
                         }
@@ -123,7 +120,7 @@ void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const s
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
                         ktNode* tgt_dnd_so = *(ktNode**)payload->Data;
-                        o->takeOwnership(tgt_dnd_so);
+                        //o->takeOwnership(tgt_dnd_so);
                     }
                     ImGui::EndDragDropTarget();
                 }
@@ -184,7 +181,7 @@ void EditorSceneInspector::sceneTreeViewNode(ktNode* o, ObjectSet& selected) {
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
                 ktNode* tgt_dnd_so = *(ktNode**)payload->Data;
-                o->takeOwnership(tgt_dnd_so);
+                //o->takeOwnership(tgt_dnd_so);
             }
             ImGui::EndDragDropTarget();
         }
@@ -212,7 +209,7 @@ void EditorSceneInspector::sceneTreeViewNode(ktNode* o, ObjectSet& selected) {
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
                 ktNode* tgt_dnd_so = *(ktNode**)payload->Data;
-                o->takeOwnership(tgt_dnd_so);
+                //o->takeOwnership(tgt_dnd_so);
             }
             ImGui::EndDragDropTarget();
         }
