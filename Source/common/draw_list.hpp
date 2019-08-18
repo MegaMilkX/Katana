@@ -15,10 +15,10 @@ public:
 
     virtual void bind(RenderState& state) const = 0;
 
-    GLuint vao;
-    Material* material;
-    size_t indexOffset;
-    size_t indexCount;
+    GLuint vao = 0;
+    Material* material = 0;
+    size_t indexOffset = 0;
+    size_t indexCount = 0;
 };
 
 class DrawCmdSolid : public DrawCmd {
@@ -45,7 +45,7 @@ public:
         state.ubufBones.upload(bones);
     }
 
-    gfxm::mat4 transform;
+    gfxm::mat4 transform = gfxm::mat4(1.0f);
     std::vector<gfxm::mat4> bone_transforms;
     std::vector<gfxm::mat4> bind_transforms;
 };
