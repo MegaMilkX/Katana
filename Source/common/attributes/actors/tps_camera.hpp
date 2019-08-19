@@ -11,6 +11,8 @@
 class actorTpsCamera : public ktActor, public InputListenerWrap {
     RTTR_ENABLE(ktActor)
 
+    ktNode* pivot_node = 0;
+
     gfxm::vec3 pivot = gfxm::vec3(0.0f, 1.3f, 0.0f);
     float distance = 10.0f;
     float angle_y = 0.0f;
@@ -61,7 +63,7 @@ public:
     }
     void onUpdate() override {
         gfxm::vec3 tgt_pos;
-        TransformNode* t = 0;
+        TransformNode* t = pivot_node ? pivot_node->getTransform() : 0;
         float height = 1.6f;
 
         if(t) {
@@ -102,6 +104,18 @@ public:
     }
     void onCleanup() override {
         platformMouseSetEnabled(true);
+    }
+
+    void onGui() override {
+        imguiObjectCombo("target", pivot_node, getOwner()->getRoot(), [](){
+
+        });
+    }
+    void write(SceneWriteCtx& w) override {
+        w.write(pivot_node);
+    }
+    void read(SceneReadCtx& r) override {
+        pivot_node = r.readNode();
     }
 };
 REG_ATTRIB(actorTpsCamera, TpsCameraActor, Actors);
