@@ -195,7 +195,7 @@ inline void imguiComponentCombo(
 inline void imguiObjectCombo(
     const char* label,
     ktNode*& o,
-    GameScene* scene,
+    ktNode* root,
     std::function<void(void)> callback = nullptr
 ) {
     std::string name = "<null>";
@@ -207,7 +207,7 @@ inline void imguiObjectCombo(
             o = 0;
         }
         std::vector<ktNode*> list;
-        scene->getRoot()->getAllObjects(list);
+        root->getAllObjects(list);
         for(auto l : list) {
             if(ImGui::Selectable(l->getName().c_str(), o == l)) {
                 o = l;
