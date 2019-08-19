@@ -36,7 +36,7 @@ bool ktNode::isEnabled() const {
     return _enabled; 
 }
 
-void ktNode::copy(ktNode* other, OBJECT_FLAGS f) {
+void ktNode::copy(ktNode* other, OBJECT_FLAGS f, bool copy_root) {
     for(auto o : children) {
         delete o;
     }
@@ -44,6 +44,12 @@ void ktNode::copy(ktNode* other, OBJECT_FLAGS f) {
     deleteAllComponents();
     components.clear();
 
+    dstream strm;
+    other->write(strm);
+    strm.jump(0);
+    read(strm, copy_root);
+
+    /*
     std::vector<std::pair<ktNode*, ktNode*>> target_source_pairs;
 
     std::function<void(ktNode*, ktNode*)> copy_tree_fn;
@@ -81,7 +87,7 @@ void ktNode::copy(ktNode* other, OBJECT_FLAGS f) {
             attr->deserialize(strm, strm.bytes_available());
             this->parent = parent_cached;
         }
-    }
+    }*/
 }
 
 void ktNode::setName(const std::string& name) { 
@@ -458,33 +464,6 @@ std::shared_ptr<Attribute> ktNode::createComponent(rttr::type t) {
     return ptr;
 }
 
-bool ktNode::serializeComponents(std::ostream& out) {
-    mz_zip_archive archive;
-    memset(&archive, 0, sizeof(archive));
-    if(!mz_zip_writer_init_heap(&archive, 0, 65537)) {
-        LOG("Failed to create archive file in memory");
-        return false;
-    }
-
-    for(auto& kv : components) {
-        auto& c = kv.second;
-        dstream strm;
-        if(c->serialize(strm)) {
-            strm.jump(0);
-            zipAddFromStream(strm, archive, c->get_type().get_name().to_string());
-        }
-    }
-
-    void* archbuf = 0;
-    size_t sz = 0;
-    mz_zip_writer_finalize_heap_archive(&archive, &archbuf, &sz);
-    std::vector<char> buf = std::vector<char>((char*)archbuf, (char*)archbuf + sz);
-    mz_zip_writer_end(&archive);
-
-    out.write(buf.data(), buf.size());
-    return true;
-}
-
 void ktNode::write(out_stream& out) {
     ktNode* obj = this;
 
@@ -562,7 +541,7 @@ void ktNode::write(out_stream& out) {
         }
     }
 }
-void ktNode::read(in_stream& in) {
+void ktNode::read(in_stream& in, bool read_root) {
     SceneReadCtx readCtx(&in);
     readCtx.objects.emplace_back(this);
     
@@ -591,10 +570,12 @@ void ktNode::read(in_stream& in) {
             //o = new ktNode();
         }
         o = readCtx.objects[0];
-        o->setName(name);
-        o->getTransform()->setPosition(t);
-        o->getTransform()->setRotation(r);
-        o->getTransform()->setScale(s);
+        if(read_root) {
+            o->setName(name);
+            o->getTransform()->setPosition(t);
+            o->getTransform()->setRotation(r);
+            o->getTransform()->setScale(s);
+        }
     }
 
     for(uint64_t i = 1; i < object_count; ++i) {
@@ -650,7 +631,7 @@ void ktNode::read(in_stream& in) {
             std::vector<char> data = dr.readArray<char>();
             dstream strm;
             strm.setBuffer(data);
-            
+
             readCtx.strm = &strm;
 
             auto parent_cached = this->parent;

@@ -49,7 +49,7 @@ public:
         return view;
     }
 
-    virtual bool serialize(out_stream& out) {
+    void write(SceneWriteCtx& out) override {
         out.write(projection);
         out.write(view);
         out.write<uint8_t>(ptype);
@@ -57,9 +57,8 @@ public:
         out.write(fov);
         out.write(znear);
         out.write(zfar);
-        return true;
     }
-    virtual bool deserialize(in_stream& in, size_t sz) {
+    void read(SceneReadCtx& in) override {
         projection = in.read<gfxm::mat4>();
         view = in.read<gfxm::mat4>();
         ptype = (PROJECTION)in.read<uint8_t>();
@@ -67,7 +66,6 @@ public:
         fov = in.read<float>();
         znear = in.read<float>();
         zfar = in.read<float>();
-        return true;
     }
 
     virtual const char* getIconCode() const { return ICON_MDI_VIDEO_VINTAGE; }

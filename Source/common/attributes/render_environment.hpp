@@ -15,8 +15,8 @@ public:
 
     void onGui() override;
 
-    bool serialize(out_stream& out) override;
-    bool deserialize(in_stream& in, size_t sz) override;
+    void write(SceneWriteCtx& out) override;
+    void read(SceneReadCtx& in) override;
 };
 REG_ATTRIB(RenderEnvironment, RenderEnvironment, Rendering);
 

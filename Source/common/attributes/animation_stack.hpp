@@ -80,8 +80,8 @@ public:
     void setEventCallback(const std::string& name, std::function<void(void)> cb);
     float getCurveValue(const std::string& name);
 
-    virtual bool serialize(out_stream& out);
-    virtual bool deserialize(in_stream& in, size_t sz);
+    void write(SceneWriteCtx& out) override;
+    void read(SceneReadCtx& in) override;
 
     void onGui() {
         auto anim_stack = this;

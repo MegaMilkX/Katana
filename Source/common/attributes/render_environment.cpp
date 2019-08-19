@@ -20,15 +20,11 @@ void RenderEnvironment::onGui() {
     }
 }
 
-bool RenderEnvironment::serialize(out_stream& out) {
-    DataWriter dw(&out);
+void RenderEnvironment::write(SceneWriteCtx& dw) {
     dw.write(gradient.get_keyframes());
-    return true;
 }
-bool RenderEnvironment::deserialize(in_stream& in, size_t sz) {
-    DataReader dw(&in);
+void RenderEnvironment::read(SceneReadCtx& dw) {
     std::vector<keyframe<gfxm::vec3>> keyframes = dw.readArray<keyframe<gfxm::vec3>>();
     gradient = curve<gfxm::vec3>();
     gradient.set_keyframes(keyframes);
-    return true;
 }

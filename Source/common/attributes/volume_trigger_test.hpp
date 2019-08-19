@@ -26,11 +26,11 @@ public:
         getOwner()->get<OmniLight>()->color = gfxm::vec3(1, .2f, .0f);
     }
 
-    virtual bool serialize(out_stream& out) {
-        return true;
+    void write(SceneWriteCtx& out) override {
+
     }
-    virtual bool deserialize(in_stream& in, size_t sz) {
-        return true;
+    void read(SceneReadCtx& in) override {
+        
     }
 private:
 };

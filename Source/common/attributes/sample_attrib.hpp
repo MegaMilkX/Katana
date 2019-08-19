@@ -12,11 +12,11 @@ public:
     virtual void onGui() {
         ImGui::Text("Sample attribute");
     }
-    virtual bool serialize(out_stream& out) {
-        return true;
+    void write(SceneWriteCtx& out) override {
+
     }
-    virtual bool deserialize(in_stream& in, size_t sz) {
-        return true;
+    void read(SceneReadCtx& in) override {
+        
     }
 };
 REG_ATTRIB(SampleAttrib, SampleAttrib, Samples);

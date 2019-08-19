@@ -35,13 +35,6 @@ void Attribute::onGizmo(GuiViewport& vp) {
 
 }
 
-bool Attribute::serialize(out_stream& out) {
-    return false;
-}
-bool Attribute::deserialize(in_stream& in, size_t sz) {
-    return false;
-}
-
 void Attribute::write(SceneWriteCtx& out) {
 
 }

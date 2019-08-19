@@ -20,12 +20,17 @@ void SceneWriteCtx::write(ktNode* node) {
     }
 }
 
-std::string SceneReadCtx::readStr() {
-    std::string str;
+bool SceneReadCtx::read(std::string& value) {
     uint64_t sz = 0;
     strm->read(sz);
-    strm->read(str, sz);
-    return str;
+    strm->read(value, sz);
+    return true;
+}
+
+std::string SceneReadCtx::readStr() {
+    std::string v;
+    read(v);
+    return v;
 }
 ktNode* SceneReadCtx::readNode() {
     uint64_t node_id = strm->read<uint64_t>();

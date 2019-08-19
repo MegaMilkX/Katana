@@ -49,9 +49,6 @@ public:
     virtual void onGizmo(GuiViewport& vp);
     virtual const char* getIconCode() const { return ""; }
 
-    virtual bool serialize(out_stream& out);
-    virtual bool deserialize(in_stream& in, size_t sz);
-
     virtual void write(SceneWriteCtx& out);
     virtual void read(SceneReadCtx& in);
 private:

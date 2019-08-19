@@ -110,8 +110,7 @@ public:
         }
     }
 
-    virtual bool serialize(out_stream& out) {
-        DataWriter w(&out);
+    void write(SceneWriteCtx& w) override {
         if(clip) {
             w.write(clip->Name());
         } else {
@@ -120,10 +119,8 @@ public:
         w.write<uint8_t>(autoplay);
         w.write(volume);
         w.write<uint8_t>(looping);
-        return true;
     }
-    virtual bool deserialize(in_stream& in, size_t sz) {
-        DataReader r(&in);
+    void read(SceneReadCtx& r) {
         std::string clip_name = r.readStr();
         if(!clip_name.empty()) {
             setClip(retrieve<AudioClip>(clip_name));
@@ -131,7 +128,6 @@ public:
         autoplay = (bool)r.read<uint8_t>();
         volume = r.read<float>();
         setLooping((bool)r.read<uint8_t>());
-        return true;
     }
 
     virtual const char* getIconCode() const { return ICON_MDI_VOLUME_HIGH; }

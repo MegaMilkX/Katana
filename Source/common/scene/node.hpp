@@ -39,7 +39,7 @@ public:
     OBJECT_FLAGS                        getFlags() const { return _flags; }
     virtual OBJECT_TYPE                 getType() const { return OBJECT_NORMAL; }
 
-    void                                copy(ktNode* other, OBJECT_FLAGS f = OBJECT_FLAG_NONE);
+    void                                copy(ktNode* other, OBJECT_FLAGS f = OBJECT_FLAG_NONE, bool copy_root = false);
 
     void                                setName(const std::string& name);
     const std::string&                  getName() const;
@@ -76,10 +76,9 @@ public:
 
     virtual void                        onGui();
     void                                onGizmo(GuiViewport& vp);
-    bool                                serializeComponents(std::ostream& out);
 
     void                                write(out_stream& out);
-    void                                read(in_stream& in);
+    void                                read(in_stream& in, bool read_root = true);
     bool                                write(const std::string& fname);
     bool                                read(const std::string& fname);
 

@@ -45,17 +45,14 @@ public:
         
     }
     virtual void onGui();
-    virtual bool serialize(out_stream& out) {
-        DataWriter w(&out);
+    void write(SceneWriteCtx& w) override {
         w.write(col_group);
         w.write(col_mask);
         w.write(mass);
         w.write(shape->get_type().get_name().to_string());
-        shape->serialize(out);
-        return true;
+        shape->serialize(*w.strm);
     }
-    virtual bool deserialize(in_stream& in, size_t sz) {
-        DataReader r(&in);
+    void read(SceneReadCtx& r) override {
         r.read(col_group);
         r.read(col_mask);
         r.read(mass);
@@ -64,17 +61,16 @@ public:
         rttr::type t = rttr::type::get_by_name(typestr);
         if(!t.is_valid()) {
             LOG_WARN("Invalid shape type: " << typestr);
-            return false;
+            return;
         }
         auto v = t.create();
         if(!v.is_valid() || !v.get_type().is_pointer()) {
             LOG_WARN("Failed to create shape " << typestr);
-            return false;
+            return;
         }
         shape.reset(v.get_value<BaseShape_*>());
-        shape->deserialize(in);
+        shape->deserialize(*r.strm);
         resetAttribute();
-        return true;
     }
 private:
     uint32_t col_group = 1;

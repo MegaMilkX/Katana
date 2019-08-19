@@ -50,18 +50,14 @@ public:
         }
     }
 
-    virtual bool serialize(out_stream& out) {
-        DataWriter w(&out);
+    void write(SceneWriteCtx& w) override {
         w.write<uint16_t>(stack.size());
         for(size_t i = 0; i < stack.size(); ++i) {
             w.write(stack[i]->get_type().get_name().to_string());
-            stack[i]->serialize(out);
+            stack[i]->serialize(*w.strm);
         }
-
-        return true;
     }
-    virtual bool deserialize(in_stream& in, size_t sz) {
-        DataReader r(&in);
+    void read(SceneReadCtx& r) override {
         stack.resize((size_t)r.read<uint16_t>());
         for(size_t i = 0; i < stack.size(); ++i) {
             std::string tname = r.readStr();
@@ -69,20 +65,19 @@ public:
             if(!t.is_valid()) {
                 LOG_WARN("Invalid constraint type: " << tname);
                 stack.clear();
-                return false;
+                return;
             }
             rttr::variant v = t.create();
             if(!v.is_valid()) {
                 LOG_WARN("Failed to create constraint: " << tname);
                 stack.clear();
-                return false;
+                return;
             }
             auto p = v.get_value<Constraint::Constraint*>();
             stack[i].reset(p);
             //stack[i]->setScene(getOwner()->getScene());
-            stack[i]->deserialize(in);
+            stack[i]->deserialize(*r.strm);
         }
-        return true;
     }
 private:
     std::vector<std::shared_ptr<Constraint::Constraint>> stack;

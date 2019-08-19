@@ -169,47 +169,43 @@ float AnimationStack::getCurveValue(const std::string& name) {
     return curve_values[name];
 }
 
-bool AnimationStack::serialize(out_stream& out) {
-    DataWriter w(&out);
-    w.write<uint8_t>(root_motion_enabled);
+void AnimationStack::write(SceneWriteCtx& o) {
+    o.write<uint8_t>(root_motion_enabled);
     
-    w.write<uint32_t>(layers.size());
+    o.write<uint32_t>(layers.size());
     for(size_t i = 0; i < layers.size(); ++i) {
         auto& l = layers[i];
-        w.write<uint32_t>(l.anim_index);
-        w.write<uint32_t>(l.mode);
-        w.write(l.cursor);
-        w.write(l.speed);
-        w.write(l.weight);
+        o.write<uint32_t>(l.anim_index);
+        o.write<uint32_t>(l.mode);
+        o.write(l.cursor);
+        o.write(l.speed);
+        o.write(l.weight);
     }
 
-    w.write<uint32_t>(anims.size());
+    o.write<uint32_t>(anims.size());
     for(size_t i = 0; i < anims.size(); ++i) {
         AnimInfo& a = anims[i];
-        w.write(a.alias);
+        o.write(a.alias);
         if(a.anim) {
-            w.write(a.anim->Name());
+            o.write(a.anim->Name());
         } else {
-            w.write(std::string());
+            o.write(std::string());
         }
-        w.write<uint8_t>(a.looping);
-        w.write<uint32_t>(a.bone_remap.size());
+        o.write<uint8_t>(a.looping);
+        o.write<uint32_t>(a.bone_remap.size());
         for(auto& v : a.bone_remap) {
-            w.write<uint32_t>(v);
+            o.write<uint32_t>(v);
         }
     }
 
     if(skeleton) {
-        w.write(skeleton->Name());
+        o.write(skeleton->Name());
     } else {
-        w.write(std::string());
+        o.write(std::string());
     }
-    return true;
 }
 
-bool AnimationStack::deserialize(in_stream& in, size_t sz) {
-    DataReader r(&in);
-
+void AnimationStack::read(SceneReadCtx& r) {
     root_motion_enabled = r.read<uint8_t>();
     
     layers.resize(r.read<uint32_t>());
@@ -245,7 +241,6 @@ bool AnimationStack::deserialize(in_stream& in, size_t sz) {
     }
 
     setSkeleton(retrieve<Skeleton>(r.readStr()));
-    return true;
 }
 
 // ==== Private ===================

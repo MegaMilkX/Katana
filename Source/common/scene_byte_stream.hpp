@@ -37,6 +37,11 @@ public:
     std::vector<ktNode*> objects;
 
     template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
+    bool read(T& value);
+    template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
+    bool read(std::vector<T>& value);
+    bool read(std::string& value);
+    template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
     T read();
     template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
     std::vector<T> readArray();
@@ -65,18 +70,29 @@ void SceneWriteCtx::write(const std::shared_ptr<T>& resource) {
 }
 
 template<typename T, typename>
+bool SceneReadCtx::read(T& value) {
+    strm->read(value);
+    return true;
+}
+template<typename T, typename>
+bool SceneReadCtx::read(std::vector<T>& value) {
+    uint64_t sz = 0;
+    strm->read(sz);
+    strm->read(value, sz);
+    return true;
+}
+
+template<typename T, typename>
 T SceneReadCtx::read() {
     T v;
-    strm->read(v);
+    read(v);
     return v;
 }
 template<typename T, typename>
 std::vector<T> SceneReadCtx::readArray() {
-    std::vector<T> vec;
-    uint64_t sz = 0;
-    strm->read(sz);
-    strm->read(vec, sz);
-    return vec;
+    std::vector<T> v;
+    read(v);
+    return v;
 }
 template<typename T>
 std::shared_ptr<T> SceneReadCtx::readResource() {

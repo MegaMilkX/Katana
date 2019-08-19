@@ -25,17 +25,15 @@ public:
         intensity = o->intensity;
         radius = o->radius;
     }
-    virtual bool serialize(out_stream& out) {
+    void write(SceneWriteCtx& out) override {
         out.write(color);
         out.write(intensity);
         out.write(radius);
-        return true;
     }
-    virtual bool deserialize(in_stream& in, size_t sz) {
+    void read(SceneReadCtx& in) override {
         color = in.read<gfxm::vec3>();
         intensity = in.read<float>();
         radius = in.read<float>();
-        return true;
     }
     void onGui() {
         ImGui::ColorEdit3(MKSTR("color##" << this).c_str(), (float*)&color);
