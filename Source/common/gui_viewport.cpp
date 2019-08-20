@@ -103,7 +103,7 @@ void GuiViewport::camZoom(float v) {
 }
 
 void GuiViewport::draw(GameScene* scn, ktNode* selected_object, gfxm::ivec2 sz) {        
-    if(ImGui::BeginChildFrame(0, ImVec2(sz.x, sz.y))) {
+    if(ImGui::BeginChildFrame(ImGui::GetID(this), ImVec2(sz.x, sz.y))) {
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-10.0, .0f, -11.0f), gfxm::vec3(1.0f, .0f, .0f));
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, 1.0f, -11.0f), gfxm::vec3(.0f, 1.0f, .0f));
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, .0f, -10.0f), gfxm::vec3(.0f, .0f, 1.0f));
