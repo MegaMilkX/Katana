@@ -173,7 +173,20 @@ SceneController* GameScene::createController(rttr::type t) {
 
 
 void GameScene::_registerComponent(Attribute* c) {
-    object_components[c->get_type()].emplace_back(c);
+    bool attrib_found = false;
+    auto& vec = object_components[c->get_type()];
+    for(size_t i = 0; i < vec.size(); ++i) {
+        if(vec[i] == c) {
+            attrib_found = true;
+            break;
+        }
+    }
+
+    if(attrib_found) {
+        return;
+    }
+
+    vec.emplace_back(c);
 
     for(auto& kv : controllers) {
         kv.second->attribCreated(c->get_type(), c);
@@ -193,12 +206,18 @@ void GameScene::_registerComponent(Attribute* c) {
     }
 }
 void GameScene::_unregisterComponent(Attribute* c) {
+    bool attrib_found = false;
     auto& vec = object_components[c->get_type()];
     for(size_t i = 0; i < vec.size(); ++i) {
         if(vec[i] == c) {
             vec.erase(vec.begin() + i);
+            attrib_found = true;
             break;
         }
+    }
+
+    if(!attrib_found) {
+        return;
     }
     
     for(auto& kv : controllers) {

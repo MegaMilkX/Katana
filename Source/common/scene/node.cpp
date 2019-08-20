@@ -47,7 +47,7 @@ void ktNode::copy(ktNode* other, OBJECT_FLAGS f, bool copy_root) {
     dstream strm;
     other->write(strm);
     strm.jump(0);
-    read(strm, copy_root);
+    read(strm, f, copy_root);
 
     /*
     std::vector<std::pair<ktNode*, ktNode*>> target_source_pairs;
@@ -541,7 +541,7 @@ void ktNode::write(out_stream& out) {
         }
     }
 }
-void ktNode::read(in_stream& in, bool read_root) {
+void ktNode::read(in_stream& in, OBJECT_FLAGS child_flags, bool read_root_transform) {
     SceneReadCtx readCtx(&in);
     readCtx.objects.emplace_back(this);
     
@@ -570,7 +570,7 @@ void ktNode::read(in_stream& in, bool read_root) {
             //o = new ktNode();
         }
         o = readCtx.objects[0];
-        if(read_root) {
+        if(read_root_transform) {
             o->setName(name);
             o->getTransform()->setPosition(t);
             o->getTransform()->setRotation(r);
@@ -607,6 +607,7 @@ void ktNode::read(in_stream& in, bool read_root) {
         o->getTransform()->setPosition(t);
         o->getTransform()->setRotation(r);
         o->getTransform()->setScale(s);
+        o->setFlags(child_flags);
     }
 
     LOG("BYTES_AVAILABLE: " << in.bytes_available());
@@ -623,7 +624,7 @@ void ktNode::read(in_stream& in, bool read_root) {
             uint64_t owner_id = dr.read<uint64_t>();
             uint64_t data_sz = dr.read<uint64_t>();
             assert(t.is_valid());
-            auto a = readCtx.objects[owner_id]->createComponent(t);
+            auto a = readCtx.objects[owner_id]->get(t);
             if(!a) {
                 dr.skip(data_sz);
                 continue;
@@ -634,12 +635,7 @@ void ktNode::read(in_stream& in, bool read_root) {
 
             readCtx.strm = &strm;
 
-            auto parent_cached = this->parent;
-            this->parent = 0; // Tricking components into thinking that this is the root node,
-                            // Which it is for purposes of deserialization
             a->read(readCtx);
-            //a->deserialize(strm, strm.bytes_available());
-            this->parent = parent_cached;
         }
     }
 }

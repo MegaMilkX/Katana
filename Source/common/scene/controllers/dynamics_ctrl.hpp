@@ -36,7 +36,7 @@ public:
     std::map<RigidBody*, RigidBodyInfo> rigid_bodies;
     std::map<ktNode*, CollisionListener*> col_listeners;
 
-    virtual void onAttribCreated(Collider* c) {
+    void onAttribCreated(Collider* c) override {
         auto& col_info = colliders_[c];
         col_info.bt_object.reset(new btCollisionObject());
         col_info.bt_object->setCollisionShape(c->getShape()->getBtShape());
@@ -59,14 +59,14 @@ public:
             c->getCollisionMask()
         );
     }
-    virtual void onAttribRemoved(Collider* c) {
+    void onAttribRemoved(Collider* c) override {
         auto it = colliders_.find(c);
         if(it == colliders_.end()) return;
         auto& col_info = it->second;
         getBtWorld()->removeCollisionObject(col_info.bt_object.get());
         colliders_.erase(c);
     }
-    virtual void onAttribCreated(RigidBody* rb) {
+    void onAttribCreated(RigidBody* rb) override {
         auto& rb_info = rigid_bodies[rb];
         auto bt_shape = rb->getShape()->getBtShape();
         btVector3 local_inertia;
@@ -96,17 +96,17 @@ public:
             rb->getCollisionMask()
         );
     }
-    virtual void onAttribRemoved(RigidBody* rb) {
+    void onAttribRemoved(RigidBody* rb) override {
         auto it = rigid_bodies.find(rb);
         if(it == rigid_bodies.end()) return;
         auto& rb_info = it->second;
         getBtWorld()->removeRigidBody(rb_info.bt_object.get());
         rigid_bodies.erase(rb);
     }
-    virtual void onAttribCreated(CollisionListener* l) {
+    void onAttribCreated(CollisionListener* l) override {
         col_listeners[l->getOwner()] = l;
     }
-    virtual void onAttribRemoved(CollisionListener* l) {
+    void onAttribRemoved(CollisionListener* l) override {
         col_listeners.erase(l->getOwner());
     }
 
