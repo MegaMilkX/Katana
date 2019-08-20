@@ -1,19 +1,7 @@
 import os
 
-INCLUDE_PATHS=[
-    'C:/MyDocuments/Projects/lib/glfw/include',
-    'C:/MyDocuments/Projects/lib/rttr/src',
-    'C:/MyDocuments/Projects/lib/assimp-master/include',
-    'C:/MyDocuments/Projects/lib/assimp-master/build/include',
-    'C:/MyDocuments/Projects/lib/bullet3-2.86.1/src'
-]
-LIB_PATHS=[
-    'C:/MyDocuments/Projects/lib/glfw/lib',
-    'C:/MyDocuments/Projects/lib/rttr/lib',
-    'C:/MyDocuments/Projects/lib/assimp-master/build/code/Release',
-    'C:/MyDocuments/Projects/lib/assimp-master/build/contrib/zlib/Release',
-    'C:/MyDocuments/Projects/lib/bullet3-2.86.1/bin'
-]
+INCLUDE_PATHS=[]
+LIB_PATHS=[]
 
 # Necessary tools
 CMAKE_PATH="C:/Program Files/CMake/bin"
