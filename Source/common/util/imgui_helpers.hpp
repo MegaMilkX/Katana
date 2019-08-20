@@ -238,7 +238,7 @@ inline bool DragFloat3Autospeed(const char* label, float* v, float v_min = .0f, 
     bool value_changed = false;
     BeginGroup();
     PushID(label);
-    PushMultiItemsWidths(components);
+    PushMultiItemsWidths(components, CalcItemWidth());
     size_t type_size = sizeof(float);
     for (int i = 0; i < components; i++)
     {
