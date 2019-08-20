@@ -48,6 +48,9 @@ qt.conf
 .vs/
 .vscode/
 
+# Python
+__pycache__/
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
