@@ -208,8 +208,8 @@ public:
         if(ImGui::Begin("Audio_test")) {
             ImGui::PlotHistogram("buffer", buffer_float, AUDIO_BUFFER_SZ, 0, NULL, -1.0f, 1.0f, ImVec2(0,80));
             ImGui::PlotHistogram("buffer_back", buffer_back_float, AUDIO_BUFFER_SZ, 0, NULL, -1.0f, 1.0f, ImVec2(0,80));
-            ImGui::End();
         }
+        ImGui::End();
     }
 
     void __stdcall OnStreamEnd() {   }

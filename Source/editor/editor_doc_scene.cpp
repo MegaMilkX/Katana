@@ -159,8 +159,8 @@ void EditorDocScene::onGui (Editor* ed) {
             }
             ImGui::EndDragDropTarget();
         }
-        ImGui::End();
     }
+    ImGui::End();
 
     scene_inspector.update(scene.get(), selected, win_scene_insp_name);
     object_inspector.update(scene.get(), selected, win_obj_insp_name);

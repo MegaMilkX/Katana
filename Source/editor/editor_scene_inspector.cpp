@@ -138,8 +138,8 @@ void EditorSceneInspector::update(GameScene* scene, ObjectSet& selected, const s
             }            
         }
 */
-        ImGui::End();
     }
+    ImGui::End();
 }
 
 void EditorSceneInspector::sceneTreeViewNode(ktNode* o, ObjectSet& selected) {

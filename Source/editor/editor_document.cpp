@@ -70,7 +70,6 @@ void EditorDocument::update (Editor* ed) {
         }
         
         onGui(ed);
-
-        ImGui::End();
     }
+    ImGui::End();
 }

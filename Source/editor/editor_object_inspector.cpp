@@ -57,6 +57,6 @@ void EditorObjectInspector::update(GameScene* scene, ObjectSet& selected, const 
         } else {
             ImGui::Text("Nothing selected");
         }
-        ImGui::End();
     }
+    ImGui::End();
 }

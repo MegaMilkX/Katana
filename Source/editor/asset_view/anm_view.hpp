@@ -57,6 +57,8 @@ public:
             if(ImGui::SmallButton("+ add event")) {
                 anim->setEvent(new_evt_name, 0.0f);
             }
+        } else {
+            ImGui::EndTimeline();
         }
         for(size_t i = 0; i < markers.size(); ++i) {
             anim->setEvent(markers[i].name, markers[i].time, anim->getEvent(i).threshold);

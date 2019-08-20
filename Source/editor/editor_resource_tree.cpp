@@ -201,7 +201,6 @@ void EditorResourceTree::update(Editor* editor) {
             imguiResourceTree(kv.second);
         }
         ImGui::EndChildFrame();
-
-        ImGui::End();
     }
+    ImGui::End();
 }

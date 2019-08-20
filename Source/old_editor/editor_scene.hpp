@@ -27,8 +27,8 @@ public:
         ImGui::SetNextWindowDockID(dockspace_id);
         if(ImGui::Begin("Viewport", 0, ImGuiWindowFlags_MenuBar)) {
             vp.Update();
-            ImGui::End();
         }
+        ImGui::End();
     }
 
     void setScene(Scene* scn) {

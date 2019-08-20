@@ -229,8 +229,8 @@ public:
 
         if(ImGui::BeginChild("Directories", ImVec2(250, 0))) {
             imguiDirTree(root_dir);
-            ImGui::EndChild();
         } 
+        ImGui::EndChild();
         ImGui::SameLine();
 
         if(ImGui::BeginChild("Files")) {
@@ -329,9 +329,8 @@ public:
                 }
                 ImGui::EndColumns();
             }
-            
-            ImGui::EndChild();
         }
+        ImGui::EndChild();
     }
 private:
     int view_mode = 0;

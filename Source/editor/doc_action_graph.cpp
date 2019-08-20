@@ -297,10 +297,10 @@ void DocActionGraph::onGui(Editor* ed) {
                 node_pos.y = node_pos_gfxm.y;
                 TransitionLine(node_pos, GraphEditGridScreenToPos(ImGui::GetMousePos()));
             }
-            EndGridView();
         }
-        ImGui::End();
+        EndGridView();
     }
+    ImGui::End();
     if(ImGui::Begin(win_tools_name.c_str())) {
         if(ImGui::Button("Add action")) {
             auto act = action_graph->createAction();
@@ -330,6 +330,6 @@ void DocActionGraph::onGui(Editor* ed) {
                 selected_transition = 0;
             }
         }
-        ImGui::End();
     }
+    ImGui::End();
 }

@@ -127,6 +127,7 @@ inline bool CurveEdit(const char* id, ImVec2* points, size_t& point_count, size_
 
     ++curve_edit_id;
     if(!ImGui::BeginChild(name.c_str(), size + ImVec2(0, 15))) {
+        ImGui::EndChild();
         return false;
     }
     window = ImGui::GetCurrentWindow();
