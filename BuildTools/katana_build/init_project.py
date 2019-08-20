@@ -62,6 +62,8 @@ else:
 		os.mkdir(assetDir)
 	if not os.path.isdir(srcDir + '/../cmake'):
 		os.mkdir(srcDir + '/../cmake')
+	if not os.path.isdir(srcDir + '/../.vscode'):
+		os.mkdir(srcDir + '/../.vscode')
 	
 	# === CPP starter files ====
 	replaceList = {
