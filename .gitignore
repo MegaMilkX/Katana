@@ -45,6 +45,9 @@ qt.conf
 *.user
 *.sln.docstates
 
+.vs/
+.vscode/
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
