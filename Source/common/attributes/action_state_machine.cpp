@@ -7,7 +7,10 @@ void ActionStateMachine::update(float dt) {
 }
 
 void ActionStateMachine::onGui() {
-    imguiResourceTreeCombo("action graph", graph, "action_graph", [](){
+    imguiResourceTreeCombo("skeleton", skeleton, "skl", [](){
+
+    });
+    imguiResourceTreeCombo("graph", graph, "action_graph", [](){
 
     });
 
@@ -19,5 +22,15 @@ void ActionStateMachine::onGui() {
         ImGui::Selectable("AddBreath");
 
         ImGui::ListBoxFooter();
+    }
+
+    std::shared_ptr<Animation> anim;
+    imguiResourceTreeCombo("anim", anim, "anm", [](){
+
+    });
+    char buf[256];
+    memset(buf, 0, sizeof(buf));
+    if(ImGui::InputText("alias", buf, sizeof(buf))) {
+
     }
 }

@@ -3,11 +3,20 @@
 
 #include "attribute.hpp"
 
+#include "../resource/skeleton.hpp"
 #include "../resource/action_graph.hpp"
+#include "../resource/animation.hpp"
 
 class ActionStateMachine : public Attribute {
     RTTR_ENABLE(Attribute)
 
+    struct AnimMapping {
+        std::string alias;
+        std::shared_ptr<Animation> anim;
+        std::vector<size_t> bone_mapping;
+    };
+
+    std::shared_ptr<Skeleton> skeleton;
     std::shared_ptr<ActionGraph> graph;
 public:
     void update(float dt);
