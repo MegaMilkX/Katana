@@ -95,6 +95,10 @@ public:
     EditorDocumentTyped() {
         _resource.reset(new T());
     }
+    ~EditorDocumentTyped() {
+        _resource.reset();
+        gResourceTree.getRoot()->tryReleaseRecursive();
+    }
 
     virtual void save() {
         LOG("Saving document...");

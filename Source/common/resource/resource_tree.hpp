@@ -38,6 +38,8 @@ public:
     void                            overrideResource(std::shared_ptr<T> r);
 
     bool                            isLoaded() const;
+    void                            tryRelease();
+    void                            tryReleaseRecursive();
 
     // Remove nodes that don't exist in the other tree
     void                            difference(ResourceNode* other);

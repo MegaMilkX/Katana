@@ -69,6 +69,20 @@ bool ResourceNode::isLoaded() const {
     return (bool)resource;
 }
 
+void ResourceNode::tryRelease() {
+    if(resource.use_count() == 1) {
+        resource.reset();
+    }
+}
+
+void ResourceNode::tryReleaseRecursive() {
+    for(auto& kv : nodes) {
+        kv.second->tryReleaseRecursive();
+    }
+    tryRelease();
+}
+
+
 void ResourceNode::difference(ResourceNode* other) {
     std::set<std::string> to_delete;
     for(auto& n : nodes) {
