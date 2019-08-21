@@ -31,6 +31,7 @@ public:
     struct RigidBodyInfo {
         std::shared_ptr<btRigidBody> bt_object;
         btDefaultMotionState motion_state;
+        int transform_sync_id = -1;
     };
     std::map<Collider*, ColliderInfo> colliders_;
     std::map<RigidBody*, RigidBodyInfo> rigid_bodies;
@@ -144,6 +145,9 @@ public:
     btDynamicsWorld* getBtWorld();
 
     void update(float dt);
+
+    // For use in editor
+    void updateBodyTransforms();
 
     virtual void onGui() {
         ImGui::Text("Collision groups");

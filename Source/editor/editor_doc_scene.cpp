@@ -138,6 +138,7 @@ void EditorDocScene::onGui (Editor* ed) {
             ed->setFocusedDocument(this);
         }
 
+        scene->getController<DynamicsCtrl>()->updateBodyTransforms();
         gvp.draw(scene.get(), 0, gfxm::ivec2(0,0));
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_DND_RESOURCE)) {
@@ -155,6 +156,8 @@ void EditorDocScene::onGui (Editor* ed) {
                     gfxm::vec3 scale_world = scene->getTransform()->getScale();
                     o->getTransform()->setScale(gfxm::vec3(scale_new.x / scale_world.x, scale_new.y / scale_world.y, scale_new.z / scale_world.z));
                     o->getTransform()->translate(pos);
+
+                    selected.clearAndAdd(o);
                 }
             }
             ImGui::EndDragDropTarget();

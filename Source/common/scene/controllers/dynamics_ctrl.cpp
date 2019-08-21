@@ -300,6 +300,51 @@ void DynamicsCtrl::update(float dt) {
     }
 }
 
+void DynamicsCtrl::updateBodyTransforms() {
+    for(auto& kv : colliders_) {
+        auto& cinf = kv.second;
+        auto& c = kv.first;
+        auto t = c->getOwner()->getTransform();
+        if(t->getSyncId() != cinf.transform_sync_id) {
+            btTransform btt;
+            auto m = t->getWorldTransform();
+            auto p = t->getWorldPosition();
+            auto r = t->getWorldRotation();
+            auto s = t->getWorldScale();
+            auto o = c->getOffset();
+            o = m * gfxm::vec4(o, .0f);
+            p = p + o;
+            btt.setOrigin(btVector3(p.x, p.y, p.z));
+            btt.setRotation(btQuaternion(r.x, r.y, r.z, r.w));
+            cinf.bt_object->getCollisionShape()->setLocalScaling(btVector3(s.x, s.y, s.z));
+            
+            cinf.bt_object->setWorldTransform(btt);
+            cinf.transform_sync_id = t->getSyncId();   
+        }
+    }
+    for(auto& kv : rigid_bodies) {
+        auto& cinf = kv.second;
+        auto& c = kv.first;
+        auto t = c->getOwner()->getTransform();
+        if(t->getSyncId() != cinf.transform_sync_id) {
+            btTransform btt;
+            auto m = t->getWorldTransform();
+            auto p = t->getWorldPosition();
+            auto r = t->getWorldRotation();
+            auto s = t->getWorldScale();
+            //auto o = c->getOffset();
+            //o = m * gfxm::vec4(o, .0f);
+            //p = p + o;
+            btt.setOrigin(btVector3(p.x, p.y, p.z));
+            btt.setRotation(btQuaternion(r.x, r.y, r.z, r.w));
+            cinf.bt_object->getCollisionShape()->setLocalScaling(btVector3(s.x, s.y, s.z));
+            
+            cinf.bt_object->setWorldTransform(btt);
+            cinf.transform_sync_id = t->getSyncId();   
+        }
+    }
+}
+
 void DynamicsCtrl::debugDraw(DebugDraw& dd) {
     debugDrawer.setDD(&dd);
     world->debugDrawWorld();
