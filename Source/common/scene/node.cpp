@@ -610,15 +610,15 @@ void ktNode::read(in_stream& in, OBJECT_FLAGS child_flags, bool read_root_transf
         o->setFlags(child_flags);
     }
 
-    LOG("BYTES_AVAILABLE: " << in.bytes_available());
+    //LOG("BYTES_AVAILABLE: " << in.bytes_available());
 
     auto attrib_type_count = dr.read<uint32_t>();
-    LOG("ATTRIB_TYPE_COUNT: " << attrib_type_count);
+    //LOG("ATTRIB_TYPE_COUNT: " << attrib_type_count);
     for(uint32_t i = 0; i < attrib_type_count; ++i) {
         std::string type = dr.readStr();
-        LOG("TYPE: " << type);
+        //LOG("TYPE: " << type);
         auto attrib_count = dr.read<uint64_t>();
-        LOG("ATTRIB_COUNT: " << attrib_count);
+        //LOG("ATTRIB_COUNT: " << attrib_count);
         rttr::type t = rttr::type::get_by_name(type);
         for(uint64_t j = 0; j < attrib_count; ++j) {
             uint64_t owner_id = dr.read<uint64_t>();
