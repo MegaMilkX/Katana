@@ -4,7 +4,7 @@ project ($PROJECT_NAME)
 if(MSVC)
   add_definitions(/MP)
   #add_definitions(/incremental)
-  add_definitions(/Debug:fastlink)
+  #add_definitions(/Debug:fastlink)
 endif()
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
