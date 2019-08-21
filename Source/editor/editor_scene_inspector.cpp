@@ -43,10 +43,22 @@ static ktNode* guiGameObjectContextMenu(ktNode* o, ObjectSet& selected) {
                 // TODO:
             }
         }
-        ImGui::Separator();
-        if(ImGui::MenuItem("Duplicate")) {
-            //o->duplicate();
-            // TODO: editor->backupScene("object duplicated");
+        if(o->getParent()) {
+            ImGui::Separator();
+            if(ImGui::MenuItem("Duplicate")) {
+                ktNode* copy = 0;
+                if(o->getType() == OBJECT_INSTANCE) {
+                    copy = o->getParent()->createInstance(((ktObjectInstance*)o)->getScene());
+                } else {
+                    copy = o->getParent()->createChild();
+                }
+
+                copy->copy(o, OBJECT_FLAG_NONE, true);              
+
+                selected.clearAndAdd(copy);
+                //o->duplicate();
+                // TODO: editor->backupScene("object duplicated");
+            }
         }
         ImGui::Separator();
         if(ImGui::MenuItem("Save As...")) {
