@@ -155,11 +155,7 @@ public:
                 auto& skin_data = getSegment(i).skin_data;
                 o.write<uint32_t>(skin_data->bone_nodes.size());
                 for(size_t j = 0; j < skin_data->bone_nodes.size(); ++j) {
-                    if(skin_data->bone_nodes[j]) {
-                        o.write(skin_data->bone_nodes[j]->getName());
-                    } else {
-                        o.write(std::string(""));
-                    }
+                    o.write(skin_data->bone_nodes[j]);
                     o.write<gfxm::mat4>(skin_data->bind_transforms[j]);
                 }
             } else {
@@ -190,9 +186,8 @@ public:
             if(bone_count) {
                 getSegment(i).skin_data.reset(new SkinData());
                 for(uint32_t j = 0; j < bone_count; ++j) {
-                    std::string bone_name = in.readStr();
+                    ktNode* bo = in.readNode();
                     gfxm::mat4 t = in.read<gfxm::mat4>();
-                    ktNode* bo = getOwner()->getRoot()->findObject(bone_name);
                     getSegment(i).skin_data->bone_nodes.emplace_back(bo);
                     getSegment(i).skin_data->bind_transforms.emplace_back(t);
                 }
