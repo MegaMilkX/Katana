@@ -9,6 +9,8 @@
 
 #include "../util/filesystem.hpp"
 
+#include "../attributes/action_state_machine.hpp"
+
 void ModelSource::loadSkeleton(const aiScene* ai_scene) {
     skeleton.reset(new Skeleton());
 
@@ -583,6 +585,7 @@ bool ModelSource::deserialize(in_stream& in, size_t sz) {
     scene->getRoot()->setName(scene_name);
     scene->getRoot()->getTransform()->setScale((float)scaleFactor);
 
+/*
     if(anims.size() > 0) {
         auto anim_stack = scene->getRoot()->get<AnimationStack>();
         anim_stack->setSkeleton(skeleton);
@@ -591,7 +594,7 @@ bool ModelSource::deserialize(in_stream& in, size_t sz) {
         auto anim_stack = scene->getRoot()->get<AnimationStack>();
         anim_stack->addAnim(anims[i]);
     }
-
+*/
     scene->getRoot()->refreshAabb();
 
     scene->Name(scene_name + ".so");

@@ -111,11 +111,13 @@ void Animation::sample_remapped(
 void Animation::sample_remapped(
     std::vector<AnimSample>& samples,
     float cursor,
-    const std::vector<size_t>& remap
+    const std::vector<int32_t>& remap
 ) {
     for(size_t i = 0; i < nodes.size() && i < samples.size(); ++i) {
         auto& n = nodes[i];
-        size_t out_index = remap[i];
+        int32_t out_index = remap[i];
+        if(out_index < 0 || out_index >= samples.size()) continue;
+
         AnimSample& result = samples[out_index];
 
         result.t = n.t.at(cursor);
@@ -142,11 +144,13 @@ void Animation::blend_remapped(
 void Animation::blend_remapped(
     std::vector<AnimSample>& samples,
     float cursor, float weight,
-    const std::vector<size_t>& remap
+    const std::vector<int32_t>& remap
 ) {
     for(size_t i = 0; i < nodes.size() && i < samples.size(); ++i) {
         auto& n = nodes[i];
-        size_t out_index = remap[i];
+        int32_t out_index = remap[i];
+        if(out_index < 0 || out_index >= samples.size()) continue;
+
         AnimSample& result = samples[out_index];
 
         result.t = gfxm::lerp(result.t, n.t.at(cursor), weight);
@@ -184,11 +188,13 @@ void Animation::additive_blend_remapped(
 void Animation::additive_blend_remapped(
     std::vector<AnimSample>& samples,
     float cursor, float weight,
-    const std::vector<size_t>& remap
+    const std::vector<int32_t>& remap
 ) {
     for(size_t i = 0; i < nodes.size() && i < samples.size(); ++i) {
         auto& n = nodes[i];
-        size_t out_index = remap[i];
+        int32_t out_index = remap[i];
+        if(out_index < 0 || out_index >= samples.size()) continue;
+
         AnimSample& result = samples[out_index];
 
         gfxm::vec3 t_base = n.t.at(0.0f);

@@ -194,7 +194,7 @@ void AnimationStack::write(SceneWriteCtx& o) {
         o.write<uint8_t>(a.looping);
         o.write<uint32_t>(a.bone_remap.size());
         for(auto& v : a.bone_remap) {
-            o.write<uint32_t>(v);
+            o.write<int32_t>(v);
         }
     }
 
@@ -223,11 +223,11 @@ void AnimationStack::read(SceneReadCtx& r) {
         std::string alias = r.readStr();
         auto anim = retrieve<Animation>(r.readStr());
         bool looping = (bool)r.read<uint8_t>();
-        std::vector<size_t> bone_remap;
+        std::vector<int32_t> bone_remap;
 
         uint32_t bone_remap_sz = r.read<uint32_t>();
         for(uint32_t j = 0; j < bone_remap_sz; ++j) {
-            auto v = r.read<uint32_t>();
+            auto v = r.read<int32_t>();
             bone_remap.emplace_back(v);
         }
 
@@ -318,7 +318,7 @@ void AnimationStack::updateLayer(
 
 void AnimationStack::blendAnim(
     Animation* anim,
-    std::vector<size_t>& bone_remap,
+    std::vector<int32_t>& bone_remap,
     float cursor, 
     float cursor_prev,
     ANIM_BLEND_MODE mode,
@@ -393,7 +393,7 @@ void AnimationStack::resetSkeletonMapping() {
 void AnimationStack::resetSkeletonMapping(AnimInfo& anim_info) {
     if(!skeleton) return;
 
-    anim_info.bone_remap.resize(anim_info.anim->nodeCount());
+    anim_info.bone_remap = std::vector<int32_t>(anim_info.anim->nodeCount(), -1);
     for(size_t i = 0; i < skeleton->boneCount(); ++i) {
         Skeleton::Bone& b = skeleton->getBone(i);
         int32_t bone_index = (int32_t)i;

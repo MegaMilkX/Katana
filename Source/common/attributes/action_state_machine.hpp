@@ -13,14 +13,20 @@ class ActionStateMachine : public Attribute {
     struct AnimMapping {
         std::string alias;
         std::shared_ptr<Animation> anim;
-        std::vector<size_t> bone_mapping;
+        std::vector<int32_t> bone_mapping;
     };
 
     std::shared_ptr<Skeleton> skeleton;
-    bool skeleton_nodes_dirty = true;
-    std::vector<ktNode*> skeleton_nodes;
     std::shared_ptr<ActionGraph> graph;
     std::vector<AnimMapping> anim_mappings;
+
+    bool skeleton_nodes_dirty = true;
+    std::vector<ktNode*> skeleton_nodes;
+    std::vector<AnimSample> sample_buffer;
+
+    void buildAnimSkeletonMappings();
+    void resizeSampleBuffer();
+
 public:
     void update(float dt);
 

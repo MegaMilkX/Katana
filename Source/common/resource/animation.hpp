@@ -61,7 +61,7 @@ public:
     void                sample_remapped(
         std::vector<AnimSample>& samples,
         float cursor,
-        const std::vector<size_t>& remap
+        const std::vector<int32_t>& remap
     );
 
     void                blend_remapped(
@@ -72,7 +72,7 @@ public:
     void                blend_remapped(
         std::vector<AnimSample>& samples,
         float cursor, float weight,
-        const std::vector<size_t>& remap
+        const std::vector<int32_t>& remap
     );
 
     void                additive_blend_remapped(
@@ -83,7 +83,7 @@ public:
     void                additive_blend_remapped(
         std::vector<AnimSample>& samples,
         float cursor, float weight,
-        const std::vector<size_t>& remap
+        const std::vector<int32_t>& remap
     );
 
     virtual void        serialize(out_stream& out);

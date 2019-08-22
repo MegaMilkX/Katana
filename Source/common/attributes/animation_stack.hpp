@@ -49,7 +49,7 @@ public:
     struct AnimInfo {
         std::string                 alias;
         std::shared_ptr<Animation>  anim;
-        std::vector<size_t>         bone_remap;
+        std::vector<int32_t>        bone_remap;
         bool                        looping = true;
     };
 
@@ -230,7 +230,7 @@ private:
     );
     void blendAnim(
         Animation* anim,
-        std::vector<size_t>& bone_remap,
+        std::vector<int32_t>& bone_remap,
         float cursor, 
         float cursor_prev,
         ANIM_BLEND_MODE mode,
