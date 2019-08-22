@@ -41,8 +41,9 @@ void ktNode::copy(ktNode* other, OBJECT_FLAGS f, bool copy_root) {
         delete o;
     }
     children.clear();
+    /*
     deleteAllComponents();
-    components.clear();
+    components.clear();*/
 
     dstream strm;
     other->write(strm);
