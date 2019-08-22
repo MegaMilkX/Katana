@@ -1,5 +1,7 @@
 #include "doc_action_graph.hpp"
 
+#include "../common/util/imgui_helpers.hpp"
+
 DocActionGraph::DocActionGraph() {
 
 }
@@ -315,6 +317,9 @@ void DocActionGraph::onGui(Editor* ed) {
             if(ImGui::InputText("name", buf, sizeof(buf))) {
                 action_graph->renameAction(selected_action, buf);
             }
+            imguiResourceTreeCombo("anim", selected_action->anim, "anm", [](){
+
+            });
             if(ImGui::Button("Delete action")) {
                 action_graph->deleteAction(selected_action);
                 selected_action = 0;

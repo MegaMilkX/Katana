@@ -4,6 +4,8 @@
 #include "resource.h"
 #include "../gfxm.hpp"
 
+#include "../resource/animation.hpp"
+
 class ActionGraphNode;
 struct ActionGraphTransition {
     float blendTime = 0.1f;
@@ -15,6 +17,8 @@ class ActionGraphNode {
     std::string name = "Action";
     gfxm::vec2 editor_pos;
 public:
+    std::shared_ptr<Animation> anim;
+
     const std::string& getName() const { return name; }
     void               setName(const std::string& value) { name = value; }
     const gfxm::vec2&  getEditorPos() const { return editor_pos; }
