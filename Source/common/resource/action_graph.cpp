@@ -1,6 +1,20 @@
 #include "action_graph.hpp"
 
-#include "../lib/pugixml/pugixml.hpp"
+#include "resource_tree.hpp"
+
+static void buildAnimSkeletonMapping(Animation* anim, Skeleton* skel, std::vector<int32_t>& bone_mapping) {
+    if(!anim || !skel) return;
+
+    bone_mapping = std::vector<int32_t>(anim->nodeCount(), -1);
+    for(size_t i = 0; i < skel->boneCount(); ++i) {
+        auto& bone = skel->getBone(i);
+        int32_t bone_index = (int32_t)i;
+        int32_t node_index = anim->getNodeIndex(bone.name);
+        if(node_index < 0) continue;
+        
+        bone_mapping[node_index] = bone_index;
+    }
+}
 
 std::string pickUnusedName(const std::set<std::string>& names, const std::string& name) {
     std::string result = name;
@@ -41,11 +55,39 @@ std::string pickUnusedName(const std::vector<ActionGraphNode*>& actions, const s
     return pickUnusedName(names, name);
 }
 
+void ActionGraphNode::update(
+    float dt, 
+    std::vector<AnimSample>& samples, 
+    const std::map<Animation*, std::vector<int32_t>>& mappings
+) {
+    if(!anim) {
+        return;
+    }
+    auto& it = mappings.find(anim.get());
+    if(it == mappings.end()) {
+        return;
+    }
+
+    anim->sample_remapped(samples, cursor, it->second);
+
+    cursor += dt * anim->fps;
+    if(cursor > anim->length) {
+        cursor -= anim->length;
+    }
+}
+
+void ActionGraphNode::makeMappings(Skeleton* skel, std::map<Animation*, std::vector<int32_t>>& mappings) {
+    if(!anim) {
+        return;
+    }
+    buildAnimSkeletonMapping(anim.get(), skel, mappings[anim.get()]);
+}
+
 void ActionGraph::pickEntryAction() {
     if(actions.empty()) {
         return;
     }
-    entry_action = actions.front();
+    entry_action = 0;
 }
 
 ActionGraphNode* ActionGraph::createAction(const std::string& name) {
@@ -90,6 +132,15 @@ ActionGraphNode* ActionGraph::findAction(const std::string& name) {
     }
     return node;
 }
+int32_t ActionGraph::findActionId(const std::string& name) {
+    ActionGraphNode* node = 0;
+    for(size_t i = 0; i < actions.size(); ++i) {
+        if(name == actions[i]->getName()) {
+            return i;
+        }
+    }
+    return -1;
+}
 
 void ActionGraph::deleteAction(ActionGraphNode* action) {
     std::set<size_t> transitions_to_remove;
@@ -111,7 +162,7 @@ void ActionGraph::deleteAction(ActionGraphNode* action) {
         }
     }
 
-    if(action == entry_action) {
+    if(entry_action >= actions.size()) {
         pickEntryAction();
     }
 }
@@ -127,25 +178,99 @@ void ActionGraph::deleteTransition(ActionGraphTransition* transition) {
     }
 }
 
-const std::vector<ActionGraphNode*>       ActionGraph::getActions() const {
+const std::vector<ActionGraphNode*>&       ActionGraph::getActions() const {
     return actions;
 }
-const std::vector<ActionGraphTransition*> ActionGraph::getTransitions() const {
+const std::vector<ActionGraphTransition*>& ActionGraph::getTransitions() const {
     return transitions;
 }
 
-ActionGraphNode* ActionGraph::getEntryAction() {
+size_t ActionGraph::getEntryActionId() {
     return entry_action;
 }
+ActionGraphNode* ActionGraph::getEntryAction() {
+    if(entry_action < 0) return 0;
+    return actions[entry_action];
+}
 void ActionGraph::setEntryAction(const std::string& name) {
-    auto a = findAction(name);
-    entry_action = a;
+    entry_action = findActionId(name);
+}
+
+void ActionGraph::update(
+    float dt, 
+    std::vector<AnimSample>& samples, 
+    const std::map<Animation*, std::vector<int32_t>>& mappings
+) {
+    if(entry_action > actions.size()) {
+        return;
+    }
+    actions[entry_action]->update(dt, samples, mappings);
+}
+
+void ActionGraph::makeMappings(Skeleton* skel, std::map<Animation*, std::vector<int32_t>>& mappings) {
+    for(auto& a : actions) {
+        a->makeMappings(skel, mappings);
+    }
 }
 
 void ActionGraph::serialize(out_stream& out) {
-    pugi::xml_document doc;
-    
+    DataWriter w(&out);
+
+    std::map<ActionGraphNode*, uint32_t> node_ids;
+    std::map<ActionGraphTransition*, uint32_t> trans_ids;
+    for(size_t i = 0; i < actions.size(); ++i) {
+        node_ids[actions[i]] = (uint32_t)i;
+    }
+    for(size_t i = 0; i < transitions.size(); ++i) {
+        trans_ids[transitions[i]] = (uint32_t)i;
+    }
+
+    out.write<uint32_t>(actions.size());
+    out.write<uint32_t>(transitions.size());
+    out.write<uint32_t>(entry_action);
+    for(size_t i = 0; i < actions.size(); ++i) {
+        auto& a = actions[i];
+        w.write(a->getName());
+        w.write(a->getEditorPos());
+        if(a->anim) {
+            w.write(a->anim->Name());
+        } else {
+            w.write(std::string());
+        }
+    }
+    for(size_t i = 0; i < transitions.size(); ++i) {
+        auto& t = transitions[i];
+        w.write(t->blendTime);
+        w.write(node_ids[t->from]);
+        w.write(node_ids[t->to]);
+    }
 }
 bool ActionGraph::deserialize(in_stream& in, size_t sz) {
+    DataReader r(&in);
+
+    actions.resize(r.read<uint32_t>());
+    transitions.resize(r.read<uint32_t>());
+    for(size_t i = 0; i < actions.size(); ++i) {
+        actions[i] = new ActionGraphNode();
+    }
+    for(size_t i = 0; i < transitions.size(); ++i) {
+        transitions[i] = new ActionGraphTransition();
+    }
+    entry_action = r.read<uint32_t>();
+
+    for(size_t i = 0; i < actions.size(); ++i) {
+        auto& a = actions[i];
+        a->setName(r.readStr());
+        a->setEditorPos(r.read<gfxm::vec2>());
+        std::string anim_name = r.readStr();
+        a->anim = retrieve<Animation>(anim_name);
+    }
+    for(size_t i = 0; i < transitions.size(); ++i) {
+        auto& t = transitions[i];
+        t->blendTime = r.read<float>();
+        t->from = actions[r.read<uint32_t>()];
+        t->to = actions[r.read<uint32_t>()];
+    }
+
     return true;
 }

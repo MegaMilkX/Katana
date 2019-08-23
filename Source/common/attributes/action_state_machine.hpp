@@ -10,22 +10,20 @@
 class ActionStateMachine : public Attribute {
     RTTR_ENABLE(Attribute)
 
-    struct AnimMapping {
-        std::string alias;
-        std::shared_ptr<Animation> anim;
-        std::vector<int32_t> bone_mapping;
-    };
-
     std::shared_ptr<Skeleton> skeleton;
-    std::shared_ptr<ActionGraph> graph;
-    std::vector<AnimMapping> anim_mappings;
+    std::shared_ptr<ActionGraph> graph_ref;
+    std::map<Animation*, std::vector<int32_t>> mappings;
 
     bool skeleton_nodes_dirty = true;
     std::vector<ktNode*> skeleton_nodes;
     std::vector<AnimSample> sample_buffer;
 
+    ActionGraph graph;
+    int32_t current_action_id = -1;
+
     void buildAnimSkeletonMappings();
     void resizeSampleBuffer();
+    void makeGraphLocalCopy();
 
 public:
     void update(float dt);

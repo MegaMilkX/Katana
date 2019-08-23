@@ -19,9 +19,14 @@ void buildAnimSkeletonMapping(Animation* anim, Skeleton* skel, std::vector<int32
 }
 
 void ActionStateMachine::buildAnimSkeletonMappings() {
-    for(auto& m : anim_mappings) {
-        buildAnimSkeletonMapping(m.anim.get(), skeleton.get(), m.bone_mapping);
+    if(!skeleton) {
+        return;
     }
+    if(!graph_ref) {
+        return;
+    }
+
+    graph_ref->makeMappings(skeleton.get(), mappings);
 }
 void ActionStateMachine::resizeSampleBuffer() {
     if(!skeleton) {
@@ -29,6 +34,19 @@ void ActionStateMachine::resizeSampleBuffer() {
         return;
     }
     sample_buffer.resize(skeleton->boneCount());
+    for(auto& s : sample_buffer) {
+        s.r = gfxm::quat(.0f, .0f, .0f, 1.0f);
+        s.s = gfxm::vec3(1.0f, 1.0f, 1.0f);
+    }
+}
+void ActionStateMachine::makeGraphLocalCopy() {
+    if(graph_ref) {
+        dstream strm;
+        graph_ref->serialize(strm);
+        strm.jump(0);
+        graph.deserialize(strm, strm.bytes_available());
+    }
+    buildAnimSkeletonMappings();
 }
 
 void ActionStateMachine::update(float dt) {
@@ -43,22 +61,11 @@ void ActionStateMachine::update(float dt) {
         }
         skeleton_nodes_dirty = true;
     }
-
-    static float cursor = .0f;
-    if(anim_mappings.size()) {
-        auto& mapping = anim_mappings[0];
-        if(mapping.anim) {
-            cursor += dt * mapping.anim->fps;
-            if(cursor > mapping.anim->length) {
-                cursor -= mapping.anim->length;
-            }
-            mapping.anim->sample_remapped(
-                sample_buffer,
-                cursor,
-                mapping.bone_mapping
-            );
-        }
+    if(!graph_ref) {
+        return;
     }
+    
+    graph.update(dt, sample_buffer, mappings);
 
     assert(skeleton_nodes.size() == sample_buffer.size());
     for(size_t i = 0; i < skeleton_nodes.size(); ++i) {
@@ -81,71 +88,19 @@ void ActionStateMachine::onGui() {
         buildAnimSkeletonMappings();
         resizeSampleBuffer();
     });
-    imguiResourceTreeCombo("graph", graph, "action_graph", [](){
-
+    imguiResourceTreeCombo("graph", graph_ref, "action_graph", [this](){
+        makeGraphLocalCopy();
     });
-
-    static int selected_anim_mapping = 0;
-    if(ImGui::ListBoxHeader("animations")) {
-        for(size_t i = 0; i < anim_mappings.size(); ++i) {
-            if(ImGui::Selectable(anim_mappings[i].alias.c_str(), selected_anim_mapping == i)) {
-                selected_anim_mapping = i;
-            }
-        }
-
-        ImGui::ListBoxFooter();
-    }
-    if(ImGui::SmallButton(ICON_MDI_PLUS)) {
-        anim_mappings.emplace_back(
-            AnimMapping{ "Anim alias" }
-        );
-        selected_anim_mapping = anim_mappings.size() - 1;
-    }
-    ImGui::SameLine();
-    if(ImGui::SmallButton(ICON_MDI_MINUS)) {
-        if(selected_anim_mapping < anim_mappings.size()) {
-            anim_mappings.erase(anim_mappings.begin() + selected_anim_mapping);
-        }
-    }
-
-    if(selected_anim_mapping < anim_mappings.size()) {
-        auto& mapping = anim_mappings[selected_anim_mapping];
-        std::shared_ptr<Animation> anim;
-        imguiResourceTreeCombo("anim", mapping.anim, "anm", [this, &mapping](){
-            buildAnimSkeletonMapping(mapping.anim.get(), skeleton.get(), mapping.bone_mapping);
-        });
-        char buf[256];
-        memset(buf, 0, sizeof(buf));
-        memcpy(buf, mapping.alias.data(), std::min((int)mapping.alias.size(), 256));
-        if(ImGui::InputText("alias", buf, sizeof(buf))) {
-            mapping.alias = buf;
-        }
-    }
 }
 
 void ActionStateMachine::write(SceneWriteCtx& out) {
     out.write(skeleton);
-    out.write(graph);
-    out.write<uint32_t>(anim_mappings.size());
-    for(size_t i = 0; i < anim_mappings.size(); ++i) {
-        auto& mapping = anim_mappings[i];
-        out.write(mapping.alias);
-        out.write(mapping.anim);
-        out.write(mapping.bone_mapping);
-    }
+    out.write(graph_ref);
 } 
 void ActionStateMachine::read(SceneReadCtx& in) {
     skeleton = in.readResource<Skeleton>();
-    graph = in.readResource<ActionGraph>();
-    uint32_t mapping_count = in.read<uint32_t>();
-    anim_mappings.resize(mapping_count);
-    for(uint32_t i = 0; i < mapping_count; ++i) {
-        auto& mapping = anim_mappings[i];
-        mapping.alias = in.readStr();
-        mapping.anim = in.readResource<Animation>();
-        mapping.bone_mapping = in.readArray<int32_t>();
-    }
+    graph_ref = in.readResource<ActionGraph>();
 
-    buildAnimSkeletonMappings();
     resizeSampleBuffer();
+    makeGraphLocalCopy();
 }

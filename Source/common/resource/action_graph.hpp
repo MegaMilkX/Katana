@@ -5,6 +5,9 @@
 #include "../gfxm.hpp"
 
 #include "../resource/animation.hpp"
+#include "../resource/skeleton.hpp"
+
+class ActionGraph;
 
 class ActionGraphNode;
 struct ActionGraphTransition {
@@ -18,11 +21,23 @@ class ActionGraphNode {
     gfxm::vec2 editor_pos;
 public:
     std::shared_ptr<Animation> anim;
+    float cursor = .0f;
 
     const std::string& getName() const { return name; }
     void               setName(const std::string& value) { name = value; }
     const gfxm::vec2&  getEditorPos() const { return editor_pos; }
     void               setEditorPos(const gfxm::vec2& value) { editor_pos = value; }
+
+    void               update(
+        float dt, 
+        std::vector<AnimSample>& samples, 
+        const std::map<Animation*, std::vector<int32_t>>& mappings
+    );
+
+    void               makeMappings(Skeleton* skel, std::map<Animation*, std::vector<int32_t>>& mappings);
+
+    void               write(out_stream& out);
+    void               read(in_stream& in);
 };
 
 class ActionGraphLayer {
@@ -36,7 +51,7 @@ class ActionGraph : public Resource {
 
     std::vector<ActionGraphTransition*> transitions;
     std::vector<ActionGraphNode*> actions;
-    ActionGraphNode* entry_action = 0;
+    size_t entry_action = 0;
 
     void pickEntryAction();
 
@@ -48,15 +63,27 @@ public:
     ActionGraphTransition* createTransition(const std::string& from, const std::string& to);
 
     ActionGraphNode* findAction(const std::string& name);
+    int32_t          findActionId(const std::string& name);
 
     void            deleteAction(ActionGraphNode* action);
     void            deleteTransition(ActionGraphTransition* transition);
 
-    const std::vector<ActionGraphNode*>       getActions() const;
-    const std::vector<ActionGraphTransition*> getTransitions() const;
+    const std::vector<ActionGraphNode*>&       getActions() const;
+    const std::vector<ActionGraphTransition*>& getTransitions() const;
 
-    ActionGraphNode*                          getEntryAction();
-    void                                      setEntryAction(const std::string& name);
+    ActionGraphNode*                           getAction(size_t i);
+
+    size_t                                     getEntryActionId();
+    ActionGraphNode*                           getEntryAction();
+    void                                       setEntryAction(const std::string& name);
+
+    void                                       update(
+        float dt, 
+        std::vector<AnimSample>& samples, 
+        const std::map<Animation*, std::vector<int32_t>>& mappings
+    );
+
+    void               makeMappings(Skeleton* skel, std::map<Animation*, std::vector<int32_t>>& mappings);
 
     void serialize(out_stream& out) override;
     bool deserialize(in_stream& in, size_t sz) override;
