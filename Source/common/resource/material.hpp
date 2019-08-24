@@ -9,6 +9,7 @@
 #include "../resource/resource_tree.hpp"
 
 class Material : public Resource {
+    RTTR_ENABLE(Resource)
 public:
     gfxm::vec3 tint = gfxm::vec3(1,1,1);
 

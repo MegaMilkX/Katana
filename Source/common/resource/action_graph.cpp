@@ -196,6 +196,10 @@ void ActionGraph::setEntryAction(const std::string& name) {
     entry_action = findActionId(name);
 }
 
+ActionGraphParams& ActionGraph::getParams() {
+    return param_table;
+}
+
 void ActionGraph::update(
     float dt, 
     std::vector<AnimSample>& samples, 

@@ -22,6 +22,7 @@ struct AnimNode {
 };
 
 class Animation : public Resource {
+    RTTR_ENABLE(Resource)
 public:
     struct event {
         float time;

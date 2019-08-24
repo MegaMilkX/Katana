@@ -15,25 +15,13 @@ void EditorDocModelSource::onGui(Editor* ed) {
     ImVec2 winSize = ImVec2(winMax - winMin);
     float column0_ratio = 0.75f;
 
-    ImGuiID dock_id = ImGui::GetID(getName().c_str());
-    ImGui::DockSpace(dock_id);
-    const std::string win_vp_name = MKSTR("viewport##" << getName());
-    const std::string win_toolbar = MKSTR("toolbar##" << getName());
-    if(first_use) {
-        ImGuiID dsid_right = ImGui::DockBuilderSplitNode(dock_id, ImGuiDir_Right, 0.2f, NULL, &dock_id);
-
-        ImGui::DockBuilderDockWindow(win_vp_name.c_str(), dock_id);
-        ImGui::DockBuilderDockWindow(win_toolbar.c_str(), dsid_right);
-
-        first_use = false;
-    }
-
-    ImGui::Begin(win_vp_name.c_str());
     gvp.draw(mdl_src->scene.get(), 0, gfxm::ivec2(0,0));
-    ImGui::End();
+}
 
-    ImGui::Begin(win_toolbar.c_str());
-    if(ImGui::Button("Unpack")) {
+void EditorDocModelSource::onGuiToolbox(Editor* ed) {
+    auto& mdl_src = _resource;
+
+    if(ImGui::Button("Import")) {
         mdl_src->unpack(get_module_dir() + "/" + platformGetConfig().data_dir);
     }
 
@@ -66,5 +54,4 @@ void EditorDocModelSource::onGui(Editor* ed) {
         ImGui::TreePop();
     }
     ImGui::EndChildFrame();
-    ImGui::End();
 }

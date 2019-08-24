@@ -8,8 +8,6 @@
 #include "../common/lib/imgui/imgui_internal.h"
 #include "../common/util/log.hpp"
 
-#include "../common/util/has_suffix.hpp"
-#include "../common/lib/nativefiledialog/nfd.h"
 #include "../common/util/filesystem.hpp"
 
 #include "../common/platform/platform.hpp"
@@ -17,6 +15,8 @@
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <shlwapi.h>
+
+#include "dialog_save.hpp"
 
 class Resource;
 class ResourceNode;
@@ -57,24 +57,11 @@ public:
     void update(Editor* ed);
 
     virtual void onGui(Editor* ed) = 0;
+    virtual void onGuiToolbox(Editor* ed) {}
 protected:
     bool is_open = true;
     bool is_unsaved = false;
 };
-
-inline std::string dialogSave(const std::string& ext) {
-    char* outPath;
-    auto r = NFD_SaveDialog(ext.c_str(), NULL, &outPath);
-    if(r == NFD_OKAY) {
-        std::string filePath(outPath);
-        if(!has_suffix(filePath, ("." + ext).c_str())) {
-            filePath = filePath + ("." + ext).c_str();
-        }
-
-        return filePath;
-    }
-    return "";
-}
 
 inline std::string sanitizeString(const std::string& str) {
     std::string name = str;

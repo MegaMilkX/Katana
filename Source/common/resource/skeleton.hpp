@@ -11,6 +11,7 @@
 #include "../util/serialization.hpp"
 
 class Skeleton : public Resource {
+    RTTR_ENABLE(Resource)
 public:
     struct Bone {
         int32_t id;

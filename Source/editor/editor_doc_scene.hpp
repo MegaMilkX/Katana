@@ -29,6 +29,7 @@ public:
     void onFocus() override;
 
     virtual void onGui (Editor* ed);
+    void onGuiToolbox(Editor* ed) override;
 };
 
 #endif

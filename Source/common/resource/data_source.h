@@ -107,7 +107,7 @@ public:
     virtual std::istream&   open_stream() {
         mz_zip_archive_file_stat f_stat;
         mz_zip_reader_file_stat(archive.get(), file_index, &f_stat);
-        data.resize(f_stat.m_uncomp_size);
+        data.resize((size_t)f_stat.m_uncomp_size);
         mz_zip_reader_extract_file_to_mem(archive.get(), f_stat.m_filename, (char*)data.data(), data.size(), 0);
 
         buf_view = charbuf_view(data.data(), data.size());
@@ -124,7 +124,7 @@ public:
         std::vector<char> data;
         mz_zip_archive_file_stat f_stat;
         mz_zip_reader_file_stat(archive.get(), file_index, &f_stat);
-        data.resize(f_stat.m_uncomp_size);
+        data.resize((size_t)f_stat.m_uncomp_size);
         mz_zip_reader_extract_file_to_mem(archive.get(), f_stat.m_filename, (char*)data.data(), data.size(), 0);
 
         pstrm->setBuffer(data);

@@ -21,6 +21,10 @@
 
 #include "../common/resource/resource_desc_library.hpp"
 
+#include "editor_doc_scene.hpp"
+#include "doc_action_graph.hpp"
+#include "doc_material.hpp"
+
 int setupImguiLayout();
 
 Editor::Editor() {
@@ -174,11 +178,13 @@ void Editor::onGui() {
                 if(ImGui::MenuItem("ActionGraph")) {
                     addNewDocument(new DocActionGraph());
                 }
-                if(ImGui::MenuItem("Texture2D")) {}
-                if(ImGui::MenuItem("Material")) {}
-                if(ImGui::MenuItem("Mesh")) {}
-                if(ImGui::MenuItem("Shader")) {}
-                if(ImGui::MenuItem("AudioClip")) {}
+                if(ImGui::MenuItem("Material")) {
+                    addNewDocument(new DocMaterial());
+                }
+                if(ImGui::MenuItem("Texture2D", 0, false, false)) {}
+                if(ImGui::MenuItem("Mesh", 0, false, false)) {}
+                if(ImGui::MenuItem("Shader", 0, false, false)) {}
+                if(ImGui::MenuItem("AudioClip", 0, false, false)) {}
                 ImGui::EndMenu();
             }
             if(ImGui::MenuItem("Save")) {
@@ -194,41 +200,6 @@ void Editor::onGui() {
             if(ImGui::MenuItem("Exit")) {}
             ImGui::EndMenu();
         }
-        /*
-        if(ImGui::BeginMenu("Scene")) {
-            if(ImGui::MenuItem("New")) {
-                scene->clear();
-                currentSceneFile = "";
-                history.clear();
-                backupScene("new scene");
-                selected_objects.clear();
-            }
-            if(ImGui::MenuItem("Open")) {
-                if(showOpenSceneDialog()) {
-                    history.clear();
-                    backupScene("scene loaded");
-                }
-            }
-            ImGui::Separator();
-            if(ImGui::MenuItem("Save")) {
-                showSaveSceneDialog(scene.get());
-            }
-            if(ImGui::MenuItem("Save As...")) {
-                showSaveSceneDialog(scene.get(), true);
-            }
-            ImGui::EndMenu();
-        } */
-        /*
-        if(ImGui::MenuItem("Play mode")) {
-            std::string play_cache_path = get_module_dir() + "\\play_cache.scn";
-            //serializeScene(play_cache_path, getScene());
-            create_process(get_module_path(), "play \"" + play_cache_path + "\"");
-            /*
-            editorState().is_play_mode = true;
-            editorState().game_state->getScene()->clear();
-            editorState().game_state->getScene()->copy(getScene());
-            editorState().game_state->getScene()->startSession();
-        } */
         ImGui::EndMenuBar();
     }
 
@@ -267,38 +238,16 @@ void Editor::onGui() {
     for(auto d : open_documents) {
         d->update(this);
     }
-
-    //viewport.update(this);
-    //scene_inspector.update(this);
-    //dir_view.update(this);
-    //object_inspector.update(this);
-    //asset_inspector.update(this);
-
-    /*
     if(ImGui::Begin("Toolbox")) {
-        ImGui::Separator();
-        bool dd = viewport.getViewport().debugDrawEnabled();
-        ImGui::Checkbox("Debug draw", &dd);
-        viewport.getViewport().enableDebugDraw(dd);
-
-        ImGui::End();
-    }
-    if(ImGui::Begin("History", &history_open, ImVec2(100, 200))) {
-        history.onGui();
-
-        ImGui::End();
-    }
-    if(ImGui::Begin("Session")) {
-        if(ImGui::BeginCombo("session", "<null>")) {
-            
-            ImGui::EndCombo();
+        if(focused_document) {
+            focused_document->onGuiToolbox(this);
         }
-        ImGui::End();
-    } */
-    // TODO: 
+    }
+    ImGui::End();
 
     ImGui::End();
 
+    ImGui::PushID(ImGui::GetID("PopupHint1"));
     bool dummy = true;
     if(ImGui::BeginPopupModal("Hint1", &dummy)) {
         ImGui::Text(MKSTR("No editor or viewer exist for this resource type").c_str());
@@ -307,13 +256,7 @@ void Editor::onGui() {
         }
         ImGui::EndPopup();
     }
-    if(ImGui::BeginPopupModal("Hint2", &dummy)) {
-        ImGui::Text(MKSTR("Can't deduce resource type without extension").c_str());
-        if(ImGui::Button("OK")) {
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
-    }
+    ImGui::PopID();
 
     //bool demo = true;
     //ImGui::ShowDemoWindow(&demo);
@@ -351,10 +294,13 @@ void Editor::addNewDocument(EditorDocument* doc) {
     setFocusedDocument(doc);
 }
 void Editor::tryOpenDocument(const std::shared_ptr<ResourceNode>& node) {
+    tryOpenDocument(node->getFullName());
+}
+void Editor::tryOpenDocument(const std::string& res_path) {
     EditorDocument* doc = 0;
     for(auto &d : open_documents) {
         // TODO: 
-        if(d->getName() == node->getFullName()) {
+        if(d->getName() == res_path) {
             doc = d;
             break;
         }
@@ -367,19 +313,14 @@ void Editor::tryOpenDocument(const std::shared_ptr<ResourceNode>& node) {
         return;
     }
 
-    std::string node_name = node->getName();
-    size_t dot_pos = node_name.find_last_of(".");
-    if(dot_pos != node_name.npos) {
-        std::string ext = node_name.substr(dot_pos + 1);
-        ResourceDesc* desc = ResourceDescLibrary::get()->find(ext);
-        if(!desc) {
-            ImGui::OpenPopup("Hint1");
-        } else {
-            addDocument(desc->create_resource_doc_fn((std::shared_ptr<ResourceNode>&)node));
-        }
-    } else {
-        ImGui::OpenPopup("Hint2");
-    }    
+    doc = ResourceDescLibrary::get()->createEditorDocument(res_path);
+    if(!doc) {
+        ImGui::PushID(ImGui::GetID("PopupHint1"));
+        ImGui::OpenPopup("Hint1");
+        ImGui::PopID();
+        return;
+    }
+    addDocument(doc);
 }
 
 EditorState& Editor::getState() {
@@ -453,8 +394,10 @@ int Editor::setupImguiLayout() {
      */
 
     ImGuiID dsid_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.15f, NULL, &dockspace_id);
+    ImGuiID dsid_right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.20f, NULL, &dockspace_id);
 
     ImGui::DockBuilderDockWindow("Resource Tree", dsid_left);
+    ImGui::DockBuilderDockWindow("Toolbox", dsid_right);
 
     ImGui::DockBuilderFinish(dockspace_id);
     current_dockspace = dockspace_id;

@@ -12,25 +12,27 @@ void EditorObjectInspector::update(Editor* editor, const std::string& title) {
 
 void EditorObjectInspector::update(GameScene* scene, ObjectSet& selected, const std::string& title) {
     if(ImGui::Begin(title.c_str(), 0, ImGuiWindowFlags_MenuBar)) {
-        if(ImGui::BeginMenuBar()) {
-            if(ImGui::BeginMenu("Add attribute...")) {
-                auto& table = getAttribTypeLib().getTable();
-                for(auto& kv : table) {
-                    if(ImGui::BeginMenu(kv.first.c_str())) {
-                        for(auto t : kv.second) {
-                            if(ImGui::MenuItem(t.get_name().to_string().c_str())) {
-                                for(auto& o : selected.getAll()) {
-                                    o->get(t);
-                                    // TODO: editor->backupScene("component added");
+        if(!selected.empty()) {
+            if(ImGui::BeginMenuBar()) {
+                if(ImGui::BeginMenu("Add attribute...")) {
+                    auto& table = getAttribTypeLib().getTable();
+                    for(auto& kv : table) {
+                        if(ImGui::BeginMenu(kv.first.c_str())) {
+                            for(auto t : kv.second) {
+                                if(ImGui::MenuItem(t.get_name().to_string().c_str())) {
+                                    for(auto& o : selected.getAll()) {
+                                        o->get(t);
+                                        // TODO: editor->backupScene("component added");
+                                    }
                                 }
                             }
+                            ImGui::EndMenu();
                         }
-                        ImGui::EndMenu();
                     }
+                    ImGui::EndMenu();
                 }
-                ImGui::EndMenu();
+                ImGui::EndMenuBar();
             }
-            ImGui::EndMenuBar();
         }
 
         // TODO: Handle multiple selected objects

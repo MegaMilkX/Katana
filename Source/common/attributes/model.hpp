@@ -267,6 +267,11 @@ public:
         for(size_t i = 0; i < segmentCount(); ++i) {
             auto& seg = getSegment(i);
             ImGui::Text(MKSTR("Segment " << i).c_str());
+            bool seg_removed = false;
+            ImGui::SameLine();
+            if(ImGui::SmallButton(ICON_MDI_DELETE)) {
+                seg_removed = true;
+            }
             imguiResourceTreeCombo(MKSTR("mesh##" << i).c_str(), seg.mesh, "msh", [this](){
                 LOG("Mesh changed");
             });
@@ -279,11 +284,11 @@ public:
             imguiResourceTreeCombo(MKSTR("material##" << i).c_str(), seg.material, "mat", [this](){
                 LOG("Material changed");
             });
-            if(ImGui::SmallButton(MKSTR("- remove segment##" << i).c_str())) {
+            if(seg_removed) {
                 removeSegment(i);
             }
         }
-        if(ImGui::Button("+ Add segment")) {
+        if(ImGui::Button(ICON_MDI_PLUS " Add segment")) {
             getSegment(segmentCount());
         }
     }

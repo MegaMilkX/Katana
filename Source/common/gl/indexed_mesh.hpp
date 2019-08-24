@@ -115,17 +115,17 @@ public:
             out.write((char*)&data_size, sizeof(data_size));
 
             std::vector<char> buf;
-            buf.resize(data_size);
-            ptr->copyData((void*)buf.data(), data_size);
-            out.write(buf.data(), data_size);
+            buf.resize((size_t)data_size);
+            ptr->copyData((void*)buf.data(), (size_t)data_size);
+            out.write(buf.data(), (size_t)data_size);
         }
 
         uint64_t index_data_size = indices.getDataSize();
         out.write((char*)&index_data_size, sizeof(index_data_size));
 
         std::vector<char> buf;
-        buf.resize(index_data_size);
-        indices.copyData((void*)buf.data(), index_data_size);
+        buf.resize((size_t)index_data_size);
+        indices.copyData((void*)buf.data(), (size_t)index_data_size);
         out.write(buf.data(), buf.size());
     }
     void deserialize(in_stream& in) {

@@ -201,10 +201,15 @@ void EditorSceneInspector::sceneTreeViewNode(ktNode* o, ObjectSet& selected) {
         ImGui::PopID();
     } else {
         ImGui::PushID(o);
+        ImGuiTreeNodeFlags flags = 
+            ImGuiTreeNodeFlags_OpenOnDoubleClick |
+            ImGuiTreeNodeFlags_OpenOnArrow;
+        if(o->getRoot() == o) {
+            flags |= ImGuiTreeNodeFlags_DefaultOpen;
+        }
         bool node_open = ImGui::TreeNodeEx(
             (void*)o, 
-            ImGuiTreeNodeFlags_OpenOnDoubleClick |
-            ImGuiTreeNodeFlags_OpenOnArrow, 
+            flags, 
             ""
         );
         ImGui::SameLine();

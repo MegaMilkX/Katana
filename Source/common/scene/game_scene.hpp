@@ -19,6 +19,7 @@
 #include "../serializable.hpp"
 
 class GameScene : public ktNode, public Resource {
+    RTTR_ENABLE(Resource)
 public:
     GameScene();
     ~GameScene();

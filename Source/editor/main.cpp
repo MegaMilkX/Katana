@@ -5,6 +5,7 @@
 #include "game_state.hpp"
 
 #include "../common/resource/resource_desc_library.hpp"
+#include "../common/input_listener.hpp"
 
 #include "../katana/timer.hpp"
 #include "../common/katana_impl.hpp"

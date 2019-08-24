@@ -14,6 +14,12 @@
 #include "../scene/node.hpp"
 #include "../scene/game_scene.hpp"
 
+#include "../../editor/dialog_save.hpp"
+
+#include "../util/materialdesign_icons.hpp"
+
+#include "../resource/resource_desc_library.hpp"
+
 template<typename BASE_T>
 inline void imguiHeapObjectCombo(
     const char* label,
@@ -55,6 +61,8 @@ inline void imguiHeapObjectCombo(
     }
 }
 
+void tryOpenDocument(const std::string& res_path);
+
 template<typename T>
 void imguiResourceTreeCombo(
     const char* label,
@@ -66,7 +74,36 @@ void imguiResourceTreeCombo(
     if(res) {
         current_name = res->Name();
     }
-    if(ImGui::BeginCombo(label, current_name.c_str())) {
+    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), label);
+    if(res) {
+        auto res_flags = ResourceDescLibrary::get()->getFlags(res->get_type());
+        if((res_flags & ResourceDescLibrary::FLAG_VIEWABLE) == 0) {
+            ImGui::TextDisabled(ICON_MDI_OPEN_IN_NEW);
+        } else {
+            if(ImGui::Button(MKSTR(ICON_MDI_OPEN_IN_NEW << "###" << res.get()).c_str())) {
+                tryOpenDocument(res->Name());
+            }
+        }
+        ImGui::SameLine();
+    } else {
+        auto res_flags = ResourceDescLibrary::get()->getFlags(rttr::type::get<T>());
+        if((res_flags & ResourceDescLibrary::FLAG_WRITABLE) == 0) {
+            ImGui::TextDisabled(ICON_MDI_PLUS);
+        } else {
+            if(ImGui::Button(MKSTR(ICON_MDI_PLUS << "###" << res.get()).c_str())) {
+                std::shared_ptr<T> ptr(new T());
+                std::string save_path = dialogSave(ext);
+                if (!save_path.empty()) {
+                  ptr->write_to_file(save_path);
+
+                  res = ptr;
+                  if (callback) callback();
+                }
+            }
+        }
+        ImGui::SameLine();
+    }
+    if(ImGui::BeginCombo(MKSTR("###" << label).c_str(), current_name.c_str())) {
         std::set<const ResourceNode*> valid_nodes;
         std::function<bool(const std::shared_ptr<ResourceNode>&, const std::string&, std::set<const ResourceNode*>&)> walkNodes;
         walkNodes = [&walkNodes](const std::shared_ptr<ResourceNode>& node, const std::string& suffix,  std::set<const ResourceNode*>& valid_nodes)->bool {
@@ -120,6 +157,10 @@ void imguiResourceTreeCombo(
             }
         };
 
+        if(ImGui::Selectable("<null>", res == 0)) {
+            res.reset();
+            if(callback) callback();
+        }
         for(auto& kv : gResourceTree.getRoot()->getChildren()) {
             imguiResourceTree(kv.second, valid_nodes);
         }

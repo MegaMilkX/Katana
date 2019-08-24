@@ -12,8 +12,7 @@ extern "C"{
 
 #include "resource.h"
 
-class Texture2D : public Resource
-{
+class Texture2D : public Resource {
     RTTR_ENABLE(Resource)
 public:
     Texture2D()

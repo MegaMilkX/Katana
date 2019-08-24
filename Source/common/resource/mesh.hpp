@@ -5,6 +5,7 @@
 #include "../gl/indexed_mesh.hpp"
 
 class Mesh : public Resource {
+    RTTR_ENABLE(Resource)
 public:
     struct SubMesh {
         uint32_t indexOffset = 0; // BYTE OFFSET

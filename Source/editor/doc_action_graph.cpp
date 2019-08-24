@@ -247,94 +247,93 @@ void EndGridView() {
 
 bool s_creating_transition = false;
 void DocActionGraph::onGui(Editor* ed) {
-    ImGuiID dock_id = ImGui::GetID(getName().c_str());
-    ImGui::DockSpace(dock_id);
-
-    const std::string win_vp_name = MKSTR("viewport##" << getName());
-    const std::string win_tools_name = MKSTR("Tools##" << getName());
-    //const std::string win_obj_insp_name = MKSTR("Object Inspector##" << getName());
-
-    if(first_use) {
-        ImGuiID dsid_right = ImGui::DockBuilderSplitNode(dock_id, ImGuiDir_Right, 0.2f, NULL, &dock_id);
-        //ImGuiID dsid_right_bottom = ImGui::DockBuilderSplitNode(dsid_right, ImGuiDir_Down, 0.5f, NULL, &dsid_right);
-
-        ImGui::DockBuilderDockWindow(win_vp_name.c_str(), dock_id);
-        //ImGui::DockBuilderDockWindow(win_obj_insp_name.c_str(), dsid_right);
-        ImGui::DockBuilderDockWindow(win_tools_name.c_str(), dsid_right);
-
-        first_use = false;
-    }
-
     auto& action_graph = _resource;
-    if(ImGui::Begin(win_vp_name.c_str())) {
-        if(BeginGridView("test")) {
-            for(auto& t : action_graph->getTransitions()) {
-                gfxm::vec2 from = t->from->getEditorPos();
-                gfxm::vec2 to = t->to->getEditorPos();
-                if(TransitionLine(ImVec2(from.x, from.y), ImVec2(to.x, to.y), selected_transition == t)) {
-                    selected_transition = t;
+    if(BeginGridView("test")) {
+        for(auto& t : action_graph->getTransitions()) {
+            gfxm::vec2 from = t->from->getEditorPos();
+            gfxm::vec2 to = t->to->getEditorPos();
+            if(TransitionLine(ImVec2(from.x, from.y), ImVec2(to.x, to.y), selected_transition == t)) {
+                selected_transition = t;
+            }
+        }
+
+        for(auto& a : action_graph->getActions()) {
+            gfxm::vec2 ed_pos = a->getEditorPos();
+            ImVec2 node_pos(ed_pos.x, ed_pos.y);
+            bool dbl_clicked = false;
+            if(Node(a->getName().c_str(), node_pos, ImVec2(200, 50), selected_action == a, a == action_graph->getEntryAction(), &dbl_clicked)) {
+                if(s_creating_transition && (selected_action != a)) {
+                    action_graph->createTransition(selected_action->getName(), a->getName());
+                    s_creating_transition = false;
+                }
+                selected_action = a;
+                if(dbl_clicked) {
+                    s_creating_transition = true;
                 }
             }
-
-            for(auto& a : action_graph->getActions()) {
-                gfxm::vec2 ed_pos = a->getEditorPos();
-                ImVec2 node_pos(ed_pos.x, ed_pos.y);
-                bool dbl_clicked = false;
-                if(Node(a->getName().c_str(), node_pos, ImVec2(200, 50), selected_action == a, a == action_graph->getEntryAction(), &dbl_clicked)) {
-                    if(s_creating_transition && (selected_action != a)) {
-                        action_graph->createTransition(selected_action->getName(), a->getName());
-                        s_creating_transition = false;
-                    }
-                    selected_action = a;
-                    if(dbl_clicked) {
-                        s_creating_transition = true;
-                    }
-                }
-                a->setEditorPos(gfxm::vec2(node_pos.x, node_pos.y));
-            }
-            if(s_creating_transition && selected_action) {
-                ImVec2 node_pos;
-                gfxm::vec2 node_pos_gfxm = selected_action->getEditorPos();
-                node_pos.x = node_pos_gfxm.x;
-                node_pos.y = node_pos_gfxm.y;
-                TransitionLine(node_pos, GraphEditGridScreenToPos(ImGui::GetMousePos()));
-            }
+            a->setEditorPos(gfxm::vec2(node_pos.x, node_pos.y));
         }
-        EndGridView();
-    }
-    ImGui::End();
-    if(ImGui::Begin(win_tools_name.c_str())) {
-        if(ImGui::Button("Add action")) {
-            auto act = action_graph->createAction();
-            ImVec2 new_pos = GraphEditGridScreenToPos(s_graph_edit_bb.Min + s_graph_edit_bb.Max * 0.5f);
-            act->setEditorPos(gfxm::vec2(new_pos.x, new_pos.y));
-            selected_action = act;
-        }
-        if(selected_action) {
-            char buf[256];
-            memset(buf, 0, sizeof(buf));
-            memcpy(buf, selected_action->getName().c_str(), selected_action->getName().size());
-            if(ImGui::InputText("name", buf, sizeof(buf))) {
-                action_graph->renameAction(selected_action, buf);
-            }
-            imguiResourceTreeCombo("anim", selected_action->anim, "anm", [](){
-
-            });
-            if(ImGui::Button("Delete action")) {
-                action_graph->deleteAction(selected_action);
-                selected_action = 0;
-                selected_transition = 0;
-            }
-        }
-        if(selected_transition) {
-            ImGui::Separator();
-            ImGui::Text("Selected transition");
-            ImGui::Text(MKSTR(selected_transition->from->getName() << " -> " << selected_transition->to->getName()).c_str());
-            if(ImGui::Button("Delete transition")) {
-                action_graph->deleteTransition(selected_transition);
-                selected_transition = 0;
-            }
+        if(s_creating_transition && selected_action) {
+            ImVec2 node_pos;
+            gfxm::vec2 node_pos_gfxm = selected_action->getEditorPos();
+            node_pos.x = node_pos_gfxm.x;
+            node_pos.y = node_pos_gfxm.y;
+            TransitionLine(node_pos, GraphEditGridScreenToPos(ImGui::GetMousePos()));
         }
     }
-    ImGui::End();
+    EndGridView();
+}
+
+void DocActionGraph::onGuiToolbox(Editor* ed) {
+    auto& action_graph = _resource;
+    if(ImGui::Button("Add action")) {
+        auto act = action_graph->createAction();
+        ImVec2 new_pos = GraphEditGridScreenToPos(s_graph_edit_bb.Min + s_graph_edit_bb.Max * 0.5f);
+        act->setEditorPos(gfxm::vec2(new_pos.x, new_pos.y));
+        selected_action = act;
+    }
+    if(selected_action) {
+        char buf[256];
+        memset(buf, 0, sizeof(buf));
+        memcpy(buf, selected_action->getName().c_str(), selected_action->getName().size());
+        if(ImGui::InputText("name", buf, sizeof(buf))) {
+            action_graph->renameAction(selected_action, buf);
+        }
+        imguiResourceTreeCombo("anim", selected_action->anim, "anm", [](){
+
+        });
+        if(ImGui::Button("Delete action")) {
+            action_graph->deleteAction(selected_action);
+            selected_action = 0;
+            selected_transition = 0;
+        }
+    }
+    if(selected_transition) {
+        ImGui::Separator();
+        ImGui::Text("Selected transition");
+        ImGui::Text(MKSTR(selected_transition->from->getName() << " -> " << selected_transition->to->getName()).c_str());
+        if(ImGui::Button("Delete transition")) {
+            action_graph->deleteTransition(selected_transition);
+            selected_transition = 0;
+        }
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Parameters");
+    auto& params = action_graph->getParams();
+    for(size_t i = 0; i < params.paramCount(); ++i) {
+        auto& p = params.getParam(i);
+        ImGui::Text(p.name.c_str());
+        ImGui::SameLine();
+        ImGui::DragFloat(MKSTR("###" << &p).c_str(), &p.value, 0.01f);
+    }
+
+    if(ImGui::SmallButton(ICON_MDI_PLUS)) {
+        action_graph->getParams().createParam("Param");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::Text("Add parameter");
+        ImGui::EndTooltip();
+    }
 }

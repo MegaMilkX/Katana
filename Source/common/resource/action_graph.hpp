@@ -9,6 +9,27 @@
 
 class ActionGraph;
 
+class ActionGraphParams {
+    struct Param {
+        std::string name;
+        float value;
+    };
+    std::vector<Param> params;
+
+public:
+    size_t paramCount() const {
+        return params.size();
+    }
+    size_t createParam(const std::string& name) {
+        size_t i = params.size();
+        params.emplace_back(Param{name, .0f});
+        return i;
+    }
+    Param& getParam(size_t i) {
+        return params[i];
+    }
+};
+
 class ActionGraphNode;
 struct ActionGraphTransition {
     float blendTime = 0.1f;
@@ -52,6 +73,7 @@ class ActionGraph : public Resource {
     std::vector<ActionGraphTransition*> transitions;
     std::vector<ActionGraphNode*> actions;
     size_t entry_action = 0;
+    ActionGraphParams param_table;
 
     void pickEntryAction();
 
@@ -76,6 +98,8 @@ public:
     size_t                                     getEntryActionId();
     ActionGraphNode*                           getEntryAction();
     void                                       setEntryAction(const std::string& name);
+
+    ActionGraphParams&                         getParams();
 
     void                                       update(
         float dt, 

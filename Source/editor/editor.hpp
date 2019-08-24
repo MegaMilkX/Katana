@@ -21,6 +21,8 @@
 
 #include "object_set.hpp"
 
+#include "../common/util/singleton.hpp"
+
 enum TRANSFORM_GIZMO_MODE {
     TGIZMO_T,
     TGIZMO_R,
@@ -39,7 +41,7 @@ struct EditorState {
     bool debug_draw = true;
 };
 
-class Editor : public AppState {
+class Editor : public AppState, public Singleton<Editor> {
 public:
     Editor();
     ~Editor();
@@ -56,6 +58,7 @@ public:
     void addDocument(EditorDocument* doc);
     void addNewDocument(EditorDocument* doc);
     void tryOpenDocument(const std::shared_ptr<ResourceNode>& node);
+    void tryOpenDocument(const std::string& res_path);
 
     EditorState& getState();
 private:

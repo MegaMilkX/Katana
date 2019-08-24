@@ -14,6 +14,7 @@ public:
     EditorDocModelSource(std::shared_ptr<ResourceNode>& node);
 
     virtual void onGui(Editor* ed);
+    void onGuiToolbox(Editor* ed) override;
 };
 
 #endif
