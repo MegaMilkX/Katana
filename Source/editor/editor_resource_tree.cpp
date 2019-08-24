@@ -137,7 +137,11 @@ void EditorResourceTree::update(Editor* editor) {
 
     if(ImGui::Begin("Resource Tree")) {
         // TODO: ImGui::CalcTextSize()
-        ImGui::BeginChild("ResourcePreview", ImVec2(0, 150));
+        ImGui::BeginChild("ResourcePreview", ImVec2(0, 200));
+        ImGui::Image(
+            (ImTextureID)ImGui::GetIO().Fonts->TexID, ImVec2(150, 150), 
+            ImVec2(0, 1), ImVec2(1, 0)
+        );
         ImGui::TextWrapped("Select a resource to see it's description and preview here");
         ImGui::EndChild();
 
