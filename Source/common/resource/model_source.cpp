@@ -188,6 +188,8 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
 
     mesh->mesh.setIndices(indices.data(), indices.size());
 
+    mesh->makeAabb();
+
     return mesh;
 }
 
@@ -529,6 +531,7 @@ void ModelSource::loadSceneGraph(const aiScene* ai_scene, aiNode* node, ktNode* 
                 ai_meshes.emplace_back(ai_scene->mMeshes[node->mMeshes[i]]);
             }
             std::shared_ptr<Mesh> mesh = mergeMeshes(ai_meshes);
+            
             mesh->Name(MKSTR(node->mName.C_Str() << ".msh"));
             meshes.emplace_back(mesh);
             for(unsigned i = 0; i < node->mNumMeshes; ++i) {
