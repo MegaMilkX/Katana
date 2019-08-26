@@ -312,6 +312,22 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
         ImGui::Separator();
         ImGui::Text("Selected transition");
         ImGui::Text(MKSTR(selected_transition->from->getName() << " -> " << selected_transition->to->getName()).c_str());
+        ImGui::Text("Conditions");
+        ImGui::Text("Param"); ImGui::SameLine();
+        ImGui::Text(">=");
+        ImGui::SameLine();
+        float v = .0f;
+        ImGui::DragFloat("###cond_value", &v, .01f);
+        if(ImGui::BeginCombo("###add_cond", "<add condition>")) {
+            auto& params = action_graph->getParams();
+            for(size_t i = 0; i < params.paramCount(); ++i) {
+                auto& p = params.getParam(i);
+                if(ImGui::Selectable(p.name.c_str(), false)) {
+
+                }
+            }
+            ImGui::EndCombo();
+        }
         if(ImGui::Button("Delete transition")) {
             action_graph->deleteTransition(selected_transition);
             selected_transition = 0;
