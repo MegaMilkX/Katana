@@ -51,7 +51,7 @@ std::shared_ptr<Texture2D> makePreview<GameScene>(std::shared_ptr<GameScene> res
     cam_pivot = (box.from + box.to) * 0.5f;
     cam_zoom = gfxm::length(box.to - box.from);
 
-    _proj = gfxm::perspective(gfxm::radian(45.0f), vp_sz.x/(float)vp_sz.y, 0.01f, 1000.0f);
+    _proj = gfxm::perspective(gfxm::radian(45.0f), vp_sz.x/(float)vp_sz.y, 0.01f, cam_zoom * 2.0f);
     gfxm::transform tcam;
     tcam.position(cam_pivot);
     tcam.rotate(cam_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
