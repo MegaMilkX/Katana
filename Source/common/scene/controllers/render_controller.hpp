@@ -13,7 +13,7 @@
 
 #include "../../../common/util/imgui_helpers.hpp"
 
-class RenderController : public SceneEventFilter<RenderableBase, Camera, OmniLight> {
+class RenderController : public SceneEventFilter<RenderableBase, Camera, OmniLight, DirLight> {
     RTTR_ENABLE(SceneController)
 public:
     virtual void init(GameScene* s) {
@@ -24,6 +24,8 @@ public:
     virtual void onAttribRemoved(RenderableBase* m) { renderables.erase(m); } 
     virtual void onAttribCreated(OmniLight* l) { omnis.insert(l); }
     virtual void onAttribRemoved(OmniLight* l) { omnis.erase(l); }
+    virtual void onAttribCreated(DirLight* l) { dir_lights.insert(l); }
+    virtual void onAttribRemoved(DirLight* l) { dir_lights.erase(l); }
     virtual void onAttribCreated(Camera* c) {
         if(!default_camera) {
             default_camera = c;
@@ -41,6 +43,15 @@ public:
         }
         for(auto l : omnis) {
             dl.omnis.emplace_back(DrawList::OmniLight{l->getOwner()->getTransform()->getWorldPosition(), l->color, l->intensity, l->radius});
+        }
+        for(auto l : dir_lights) {
+            dl.dir_lights.emplace_back(
+                DrawList::DirLight{
+                    l->getOwner()->getTransform()->forward(),
+                    l->color,
+                    l->intensity
+                }
+            );
         }
     }
 
@@ -75,6 +86,7 @@ public:
 private:
     std::set<RenderableBase*> renderables;
     std::set<OmniLight*> omnis;
+    std::set<DirLight*> dir_lights;
     Camera* default_camera = 0;
     GameScene* scene = 0;
 };

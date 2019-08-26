@@ -70,6 +70,7 @@ public:
     void                                deleteComponentById(size_t id);
     void                                deleteAllComponents();
 
+    void                                makeAabb(gfxm::aabb& box);
     void                                refreshAabb();
     void                                setAabb(const gfxm::aabb& box);
     const gfxm::aabb&                   getAabb() const;

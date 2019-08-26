@@ -35,6 +35,7 @@ void Renderer::setSkyGradient(curve<gfxm::vec3> curv) {
         color[i + 2] = c.z * 255;
     }
     //env_map = retrieve<CubeMap>("env.hdr");
+    
     env_map->data(color, 1, 512, 3);
     irradiance_map->makeIrradianceMap(env_map);
 }
@@ -45,6 +46,64 @@ void Renderer::drawToScreen(GLuint textureId) {
     prog_quad->use();
     gl::bindTexture2d(gl::TEXTURE_ALBEDO, textureId);
     drawQuad();
+}
+
+void Renderer::beginFrame(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view) {
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glCullFace(GL_BACK);
+    glEnable(GL_CULL_FACE);
+    vp->getGBuffer()->bind();
+    glViewport(0, 0, (GLsizei)vp->getWidth(), (GLsizei)vp->getHeight());
+
+    getState().ubufCommon3d.upload(uCommon3d{view, proj});
+
+    getState().bindUniformBuffers();
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void Renderer::endFrame(RenderViewport* vp, bool draw_final_on_screen, bool draw_skybox) {
+    // ==== Skybox ========================
+    
+    if(draw_skybox) {
+        vp->getFinalBuffer()->bind();
+        glDisable(GL_CULL_FACE);
+        glDepthFunc(GL_LEQUAL);
+        prog_skybox->use();
+        gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, env_map->getId());
+        drawCube();
+    }
+
+    // ==== 
+    if(draw_final_on_screen) {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        prog_quad->use();
+        switch(dbg_renderBufferId) {
+        case 0:
+            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getFinalImage());
+            break;
+        case 1:
+            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getAlbedoTexture());
+            break;
+        case 2:
+            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getNormalTexture());
+            break;
+        case 3:
+            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getRoughnessTexture());
+            break;
+        case 4:
+            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getMetallicTexture());
+            break;
+        case 5:
+            gl::bindTexture2d(gl::TEXTURE_ALBEDO, vp->getGBuffer()->getDepthTexture());
+            break;
+        }
+        drawQuad();
+    }
+
+    glUseProgram(0);
 }
 
 // == PBR ===
@@ -68,4 +127,82 @@ RendererPBR::RendererPBR() {
         ,
         #include "../common/shaders/f_deferred_pbr.glsl"
     );
+}
+
+void RendererPBR::draw(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen, bool draw_skybox) {
+    
+    glDisable(GL_SCISSOR_TEST);
+
+    beginFrame(vp, proj, view);
+/**/
+    drawMultiple(
+        prog_gbuf_solid,
+        draw_list.solids.data(),
+        draw_list.solids.size()
+    );
+    drawMultiple(
+        prog_gbuf_skin,
+        draw_list.skins.data(),
+        draw_list.skins.size()
+    );
+    
+    // ==== Light pass ===============
+    vp->getFinalBuffer()->bind();
+    
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    prog_light_pass->use();
+    
+    const int MAX_OMNI_LIGHT = 10;
+    gfxm::vec3 light_omni_pos[MAX_OMNI_LIGHT];
+    gfxm::vec3 light_omni_col[MAX_OMNI_LIGHT];
+    float light_omni_radius[MAX_OMNI_LIGHT];
+    {
+        int count = std::min((int)draw_list.omnis.size(), MAX_OMNI_LIGHT);
+        for(size_t i = 0; i < count && i < MAX_OMNI_LIGHT; ++i) {
+            auto& l = draw_list.omnis[i];
+            light_omni_pos[i] = l.translation;
+            light_omni_col[i] = l.color * l.intensity;
+            light_omni_radius[i] = l.radius;
+        }
+        glUniform3fv(prog_light_pass->getUniform("light_omni_pos"), count, (float*)light_omni_pos);
+        glUniform3fv(prog_light_pass->getUniform("light_omni_col"), count, (float*)light_omni_col);
+        glUniform1fv(prog_light_pass->getUniform("light_omni_radius"), count, (float*)light_omni_radius);
+        glUniform1i(prog_light_pass->getUniform("light_omni_count"), count);
+    }
+    const int MAX_DIR_LIGHT = 3;
+    gfxm::vec3 light_dir[MAX_DIR_LIGHT];
+    gfxm::vec3 light_dir_col[MAX_DIR_LIGHT];
+    {
+        int count = std::min((int)draw_list.dir_lights.size(), MAX_DIR_LIGHT);
+        for(size_t i = 0; i < count; ++i) {
+            auto& l = draw_list.dir_lights[i];
+            light_dir[i] = l.dir;
+            light_dir_col[i] = l.color * l.intensity;
+        }
+        glUniform3fv(prog_light_pass->getUniform("light_dir"), count, (float*)light_dir);
+        glUniform3fv(prog_light_pass->getUniform("light_dir_col"), count, (float*)light_dir_col);
+        glUniform1i(prog_light_pass->getUniform("light_dir_count"), count);
+    }
+
+    auto g_buffer = vp->getGBuffer();
+    gl::bindTexture2d(gl::TEXTURE_ALBEDO, g_buffer->getAlbedoTexture());
+    gl::bindTexture2d(gl::TEXTURE_NORMAL, g_buffer->getNormalTexture());
+    gl::bindTexture2d(gl::TEXTURE_METALLIC, g_buffer->getMetallicTexture());
+    gl::bindTexture2d(gl::TEXTURE_ROUGHNESS, g_buffer->getRoughnessTexture());
+    gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, irradiance_map->getId());
+    gl::bindTexture2d(gl::TEXTURE_DEPTH, g_buffer->getDepthTexture());
+    gl::bindTexture2d(gl::TEXTURE_EXT0, tex_ibl_brdf_lut->GetGlName());
+    gl::bindCubeMap(gl::TEXTURE_EXT1, env_map->getId());
+
+    auto w = vp->getWidth();
+    auto h = vp->getHeight();
+    gfxm::vec4 view_pos4 = gfxm::inverse(view) * gfxm::vec4(0,0,0,1);
+    glUniform3f(prog_light_pass->getUniform("view_pos"), view_pos4.x, view_pos4.y, view_pos4.z);
+    glUniform2f(prog_light_pass->getUniform("viewport_size"), (float)w, (float)h);
+    gfxm::mat4 inverse_view_projection =
+        gfxm::inverse(proj * view);
+    glUniformMatrix4fv(prog_light_pass->getUniform("inverse_view_projection"), 1, GL_FALSE, (float*)&inverse_view_projection);
+    drawQuad();
+    
+    endFrame(vp, draw_final_on_screen, draw_skybox);
 }

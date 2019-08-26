@@ -119,9 +119,11 @@ void ImGuiDraw() {
     ImGui::Render();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glActiveTexture(GL_TEXTURE0);
 
     glEnable(GL_SCISSOR_TEST);
+    glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
 
     ImGuiIO& io = ImGui::GetIO();
@@ -202,6 +204,4 @@ void ImGuiDraw() {
     glUseProgram(0);
 
     glDeleteVertexArrays(1, &vao_handle);
-
-    glDisable(GL_SCISSOR_TEST);
 }

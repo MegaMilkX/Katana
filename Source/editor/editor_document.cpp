@@ -48,7 +48,7 @@ void EditorDocument::backup() {
 
 }
 
-void EditorDocument::update (Editor* ed) {
+void EditorDocument::update (Editor* ed, float dt) {
     ImGuiWindowFlags flags = imgui_win_flags;
     if(isUnsaved()) {
         flags |= ImGuiWindowFlags_UnsavedDocument;
@@ -64,12 +64,12 @@ void EditorDocument::update (Editor* ed) {
     std::string icon = getExtIconCode(ext.c_str());
     if(ImGui::Begin(MKSTR(icon << " " << win_title).c_str(), &is_open, flags)) {
         if(ImGui::IsRootWindowOrAnyChildFocused()) {
-            ed->getResourceTree().setSelected(_node.lock().get());
+            //ed->getResourceTree().setSelected(_node.lock().get());
             ed->setCurrentDockspace(ImGui::GetWindowDockID());
             ed->setFocusedDocument(this);
         }
         
-        onGui(ed);
+        onGui(ed, dt);
     }
     ImGui::End();
 }

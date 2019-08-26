@@ -43,7 +43,7 @@ EditorDocScene::EditorDocScene() {
 EditorDocScene::EditorDocScene(std::shared_ptr<ResourceNode>& node)
 : EditorDocScene() {
     setResourceNode(node);
-    gvp.enableDebugDraw(true);    
+    gvp.enableDebugDraw(false);
 }
 
 void EditorDocScene::onFocus() {
@@ -64,16 +64,43 @@ void EditorDocScene::onFocus() {
     }
 }
 
-void EditorDocScene::onGui (Editor* ed) {
+void EditorDocScene::onGui (Editor* ed, float dt) {
     auto& scene = _resource;
     scene->getController<DynamicsCtrl>();
+    if(running) {
+        scn_ptr = world.getScene();
+        world.update(dt);
+    } else {
+        scn_ptr = scene.get();
+    }
 
     if(ImGui::BeginMenuBar()) {
+        bool dd = gvp.debugDrawEnabled();
+        if(ImGui::Checkbox("Debug draw", &dd)) {
+            gvp.enableDebugDraw(dd);
+        }
+        if(!running) {
+            if(ImGui::Button(ICON_MDI_PLAY "Run")) {
+                world.getScene()->copy(scene.get());
+                world.start();
+                running = true;
+            }
+        } else {
+            if(ImGui::Button(ICON_MDI_STOP "Stop")) {
+                world.cleanup();
+                world.getScene()->clear();
+                running = false;
+                scn_ptr = scene.get();
+                selected.clear();
+            }
+        }
+        /*
         ImGui::PushItemWidth(200);
         std::string selected_game_mode_name = "<null>";
         if(selected_game_mode.is_valid()) {
             selected_game_mode_name = selected_game_mode.get_name().to_string();
         }
+        
         if(ImGui::BeginCombo("", selected_game_mode_name.c_str())) {
             auto derived = rttr::type::get<ktGameMode>().get_derived_classes();
             for(auto d : derived) {
@@ -109,31 +136,32 @@ void EditorDocScene::onGui (Editor* ed) {
                 LOG_WARN("Failed to create game mode " << selected_game_mode.get_name().to_string());
             }
         }
+        */
         ImGui::EndMenuBar();
     }
 
     if(ImGui::IsRootWindowOrAnyChildFocused()) {
         // TODO: Shouldn't be here
-        ed->getResourceTree().setSelected(getNode());
+        //ed->getResourceTree().setSelected(getNode());
         ed->setFocusedDocument(this);
     }
 
     scene->getController<DynamicsCtrl>()->updateBodyTransforms();
-    gvp.draw(scene.get(), 0, gfxm::ivec2(0,0));
+    gvp.draw(scn_ptr, 0, gfxm::ivec2(0,0));
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_DND_RESOURCE)) {
             ResourceNode* node = *(ResourceNode**)payload->Data;
             LOG("Payload received: " << node->getFullName());
             if(has_suffix(node->getName(), ".so")) {
-                auto o = scene->createInstance(node->getResource<GameScene>());
+                auto o = scn_ptr->createInstance(node->getResource<GameScene>());
                 o->getTransform()->setScale(
                     node->getResource<GameScene>()->getTransform()->getScale()
                 );
 
                 gfxm::vec3 pos = gvp.getMouseScreenToWorldPos(0);
-                pos = gfxm::inverse(scene->getTransform()->getWorldTransform()) * gfxm::vec4(pos, 1.0f);
+                pos = gfxm::inverse(scn_ptr->getTransform()->getWorldTransform()) * gfxm::vec4(pos, 1.0f);
                 gfxm::vec3 scale_new = o->getTransform()->getScale();
-                gfxm::vec3 scale_world = scene->getTransform()->getScale();
+                gfxm::vec3 scale_world = scn_ptr->getTransform()->getScale();
                 o->getTransform()->setScale(gfxm::vec3(scale_new.x / scale_world.x, scale_new.y / scale_world.y, scale_new.z / scale_world.z));
                 o->getTransform()->translate(pos);
 
@@ -166,6 +194,6 @@ void EditorDocScene::onGuiToolbox(Editor* ed) {
         first_use = false;
     }
 
-    scene_inspector.update(scene.get(), selected, win_scene_insp_name);
-    object_inspector.update(scene.get(), selected, win_obj_insp_name);
+    scene_inspector.update(scn_ptr, selected, win_scene_insp_name);
+    object_inspector.update(scn_ptr, selected, win_obj_insp_name);
 }

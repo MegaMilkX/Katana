@@ -105,14 +105,19 @@ public:
 
     virtual bool buildAabb(gfxm::aabb& out) {
         gfxm::aabb r;
+        bool has_aabb = false;
         if(segmentCount()) {
             auto& seg = getSegment(0);
             auto& m = seg.mesh;
-            r = m->aabb;
+            if (m) {
+                r = m->aabb;
+                has_aabb = true;
+            }
             for(size_t i = 1; i < segmentCount(); ++i) {
                 auto& seg = getSegment(i);
                 auto& m = seg.mesh;
-                
+                if (!m) continue;
+                has_aabb = true;
                 gfxm::expand_aabb(r, m->aabb.from);
                 gfxm::expand_aabb(r, m->aabb.to);
             }

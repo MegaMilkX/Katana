@@ -12,7 +12,7 @@ public:
 
     virtual void setResourceNode(std::shared_ptr<ResourceNode>& node);
 
-    virtual void onGui(Editor* ed);
+    virtual void onGui(Editor* ed, float dt);
 };
 
 #endif

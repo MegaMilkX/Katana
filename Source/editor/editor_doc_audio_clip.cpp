@@ -16,7 +16,7 @@ void EditorDocAudioClip::setResourceNode(std::shared_ptr<ResourceNode>& node) {
     audio().setBuffer(chan, clip->getBuffer());
 }
 
-void EditorDocAudioClip::onGui(Editor* ed) {
+void EditorDocAudioClip::onGui(Editor* ed, float dt) {
     auto& clip = _resource;
 
     ImVec2 winMin = ImGui::GetWindowContentRegionMin();

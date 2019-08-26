@@ -114,7 +114,7 @@ void GuiViewport::draw(GameScene* scn, ktNode* selected_object, gfxm::ivec2 sz) 
             gfxm::vec3(0.2f, 0.2f, 0.2f)
         );
 
-        if(scn->hasController<DynamicsCtrl>()) {
+        if(scn->hasController<DynamicsCtrl>() && debug_draw_enabled) {
             scn->getController<DynamicsCtrl>()->debugDraw(getDebugDraw());
         }
         /*

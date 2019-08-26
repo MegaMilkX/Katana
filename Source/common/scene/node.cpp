@@ -207,6 +207,41 @@ void ktNode::deleteAllComponents() {
     components.clear();
 }
 
+void ktNode::makeAabb(gfxm::aabb& aabb) {
+    for(size_t i = 0; i < childCount(); ++i) {
+        getChild(i)->makeAabb(aabb);
+    }
+
+    for(auto& kv : components) {
+        auto c = kv.second;
+        gfxm::aabb box;
+        if(c->buildAabb(box)) {
+            gfxm::vec3 cube_pts[8] = {
+                { box.from.x, box.from.y, box.from.z },
+                { box.to.x, box.from.y, box.from.z },
+                { box.to.x, box.to.y, box.from.z },
+                { box.from.x, box.to.y, box.from.z },
+                { box.from.x, box.from.y, box.to.z },
+                { box.to.x, box.from.y, box.to.z },
+                { box.to.x, box.to.y, box.to.z },
+                { box.from.x, box.to.y, box.to.z }
+            };
+            for(size_t i = 0; i < 8; ++i) {
+                cube_pts[i] = transform.getWorldTransform() * gfxm::vec4(cube_pts[i], 1.0f);
+            }
+            box = gfxm::aabb(
+                cube_pts[0],
+                cube_pts[0]
+            );
+            for(size_t i = 0; i < 8; ++i) {
+                gfxm::expand_aabb(box, cube_pts[i]);
+            }
+
+            gfxm::expand_aabb(aabb, box.from);
+            gfxm::expand_aabb(aabb, box.to);
+        } 
+    }
+}
 void ktNode::refreshAabb() {
     for(size_t i = 0; i < childCount(); ++i) {
         getChild(i)->refreshAabb();

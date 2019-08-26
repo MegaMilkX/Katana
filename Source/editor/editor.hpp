@@ -48,7 +48,7 @@ public:
     virtual void onInit();
     virtual void onCleanup();
     virtual void onUpdate();
-    virtual void onGui();
+    virtual void onGui(float dt);
 
     EditorDocument* getFocusedDocument();
     EditorResourceTree& getResourceTree();

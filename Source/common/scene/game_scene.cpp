@@ -23,6 +23,7 @@ void GameScene::clear() {
     for(auto o : children) {
         delete o;
     }
+    children.clear();
 
     //controllers.clear();
     //updatable_controllers.clear();

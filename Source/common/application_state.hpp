@@ -7,7 +7,7 @@ public:
     virtual void onCleanup() {}
 
     virtual void onUpdate() {}
-    virtual void onGui() {}
+    virtual void onGui(float dt) {}
     virtual void onRender(int w, int h) {}
 };
 

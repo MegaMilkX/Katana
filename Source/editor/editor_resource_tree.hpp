@@ -7,12 +7,16 @@
 
 #include <string>
 
+#include "../common/resource/texture2d.h"
+#include "../common/lib/sqlite/sqlite3.h"
+
 const char* const IMGUI_DND_RESOURCE = "DND_RESOURCE";
 
 class ResourceNode;
 class Editor;
 class EditorResourceTree {
     const ResourceNode* selected_node = 0;
+    const ResourceNode* selected_branch_node = 0;
     ResourceNode*       renaming_node = 0;
     bool needs_autoscroll = false;
 

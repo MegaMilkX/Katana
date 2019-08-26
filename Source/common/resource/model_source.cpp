@@ -117,11 +117,11 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
                     uv_layer.emplace_back(uv.x);
                     uv_layer.emplace_back(uv.y);
                 }
-                uv_layers[j].insert(uv_layers[j].begin(), uv_layer.begin(), uv_layer.end());
+                uv_layers[j].insert(uv_layers[j].end(), uv_layer.begin(), uv_layer.end());
             } else {
                 std::vector<float> dummy_uv;
                 dummy_uv.resize(vertexCount * 2);
-                uv_layers[j].insert(uv_layers[j].begin(), dummy_uv.begin(), dummy_uv.end());
+                uv_layers[j].insert(uv_layers[j].end(), dummy_uv.begin(), dummy_uv.end());
             }
         }
 
@@ -492,6 +492,20 @@ void ModelSource::loadResources(const aiScene* ai_scene) {
         mat.reset(new Material());
         aiMaterial* ai_mat = ai_scene->mMaterials[i];
         mat->Name(MKSTR(ai_mat->GetName().C_Str() << ".mat"));
+        aiString path;
+        if(ai_mat->GetTexture(aiTextureType_DIFFUSE, 0, &path) == AI_SUCCESS) {
+            std::string tex_path = path.data;
+            LOG(tex_path);
+            //mat->albedo = retrieve<Texture2D>(tex_path);
+        }
+        if(ai_mat->GetTexture(aiTextureType_NORMALS, 0, &path) == AI_SUCCESS) {
+            std::string tex_path = path.data;
+            LOG(tex_path);
+        }
+        if(ai_mat->GetTexture(aiTextureType_SPECULAR, 0, &path) == AI_SUCCESS) {
+            std::string tex_path = path.data;
+            LOG(tex_path);
+        }
         materials.emplace_back(mat);
     }
 }
@@ -520,6 +534,7 @@ void ModelSource::loadSceneGraph(const aiScene* ai_scene, aiNode* node, ktNode* 
             for(unsigned i = 0; i < node->mNumMeshes; ++i) {
                 auto& seg = m->getSegment(i);
                 seg.mesh = mesh;
+                seg.material = materials[ai_scene->mMeshes[node->mMeshes[i]]->mMaterialIndex];
                 seg.submesh_index = i;
                 aiMesh* ai_mesh = ai_scene->mMeshes[node->mMeshes[i]];
                 if(ai_mesh->mNumBones) {

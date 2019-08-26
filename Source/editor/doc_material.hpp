@@ -10,7 +10,7 @@ public:
     DocMaterial();
     DocMaterial(std::shared_ptr<ResourceNode>& node);
 
-    void onGui(Editor* ed);
+    void onGui(Editor* ed, float dt);
 };
 
 #endif

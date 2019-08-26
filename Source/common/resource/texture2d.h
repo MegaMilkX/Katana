@@ -9,8 +9,14 @@
 extern "C"{
 #include "../lib/stb_image.h"
 }
+#include "../lib/stb_image_write.h"
 
 #include "resource.h"
+
+inline void stbi_write_cb(void *context, void *data, int size) {
+    out_stream* out = (out_stream*)context;
+    out->write(data, size);
+}
 
 class Texture2D : public Resource {
     RTTR_ENABLE(Resource)
@@ -43,9 +49,15 @@ public:
         return glTexName; 
     }
 
+    unsigned char* getData() { return _data.data(); }
+    int getBpp() { return bpp; }
     int Width() { return width; }
     int Height() { return height; }
 
+    void serialize(out_stream& out) {
+        stbi_flip_vertically_on_write(1);
+        stbi_write_tga_to_func(&stbi_write_cb, &out, Width(), Height(), getBpp(), getData());
+    }
     virtual bool deserialize(in_stream& in, size_t sz) { 
         std::vector<char> buf;
         buf.resize(sz);
@@ -62,7 +74,7 @@ public:
         return true;
     }
 
-    virtual const char* getWriteExtension() const { return ""; }
+    virtual const char* getWriteExtension() const { return "tga"; }
 private:
     bool dirty;
     std::vector<unsigned char> _data;

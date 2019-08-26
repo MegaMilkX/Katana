@@ -129,7 +129,7 @@ void Editor::onUpdate() {
     
 }
 
-void Editor::onGui() {
+void Editor::onGui(float dt) {
     platformMouseSetEnabled(true);
     
     ImGuizmo::BeginFrame();
@@ -236,7 +236,7 @@ void Editor::onGui() {
     }
     
     for(auto d : open_documents) {
-        d->update(this);
+        d->update(this, dt);
     }
     if(ImGui::Begin("Toolbox")) {
         if(focused_document) {
@@ -395,8 +395,10 @@ int Editor::setupImguiLayout() {
 
     ImGuiID dsid_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.15f, NULL, &dockspace_id);
     ImGuiID dsid_right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.20f, NULL, &dockspace_id);
+    ImGuiID dsid_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.40f, NULL, &dockspace_id);
 
     ImGui::DockBuilderDockWindow("Resource Tree", dsid_left);
+    ImGui::DockBuilderDockWindow("Directory", dsid_down);
     ImGui::DockBuilderDockWindow("Toolbox", dsid_right);
 
     ImGui::DockBuilderFinish(dockspace_id);

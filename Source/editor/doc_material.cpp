@@ -9,7 +9,7 @@ DocMaterial::DocMaterial(std::shared_ptr<ResourceNode>& node) {
     setResourceNode(node);
 }
 
-void DocMaterial::onGui(Editor* ed) {
+void DocMaterial::onGui(Editor* ed, float dt) {
     auto& mat = _resource;
 
     ImGui::ColorEdit3("tint", (float*)&mat->tint);

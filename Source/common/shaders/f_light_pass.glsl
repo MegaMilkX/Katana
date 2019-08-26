@@ -1,5 +1,6 @@
 R"(#version 450
 #define MAX_OMNI_LIGHT 10
+#define MAX_DIR_LIGHT 3
 
 in vec2 uv_frag;
 
@@ -23,6 +24,9 @@ uniform int light_omni_count;
 uniform vec3 light_omni_pos[MAX_OMNI_LIGHT];
 uniform vec3 light_omni_col[MAX_OMNI_LIGHT];
 uniform float light_omni_radius[MAX_OMNI_LIGHT];
+uniform int light_dir_count;
+uniform vec3 light_dir[MAX_DIR_LIGHT];
+uniform vec3 light_dir_col[MAX_DIR_LIGHT];
 
 const float PI = 3.14159265359;
 
@@ -68,6 +72,38 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
     float ggx1  = geometrySchlickGGX(NdotL, roughness);
 	
     return ggx1 * ggx2;
+}
+
+vec3 calcLightDir(
+    vec3 light_dir,
+    vec3 light_color,
+    vec3 world_pos, 
+    vec3 albedo,
+    float roughness,
+    float metallic,
+    vec3 N, 
+    vec3 V, 
+    vec3 F0
+) {
+    vec3 L = light_dir;
+    vec3 H = normalize(V + L);
+    float attenuation = 1.0;
+    vec3 radiance = light_color * attenuation;
+
+    float NDF = distributionGGX(N, H, roughness);
+    float G = geometrySmith(N, V, L, roughness);
+    vec3 F = fresnelSchlick(min(1.0, max(dot(H, V), 0.0)), F0);
+
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - metallic;
+
+    vec3 numerator = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+    vec3 specular = numerator / max(denominator, 0.001);
+
+    float NdotL = max(dot(N, L), 0.0);
+    return (kD * albedo / PI + specular) * radiance * NdotL;
 }
 
 vec3 calcLightSource(
@@ -126,6 +162,11 @@ void main()
     F0 = mix(F0, albedo, metallic);
 
     vec3 Lo = vec3(0.0);
+    for(int i = 0; i < light_dir_count; ++i) {
+        Lo += calcLightDir(
+            light_dir[i], light_dir_col[i], position, albedo, roughness, metallic, N, V, F0
+        );
+    }
     for(int i = 0; i < light_omni_count; ++i) {
         Lo += calcLightSource(
             light_omni_pos[i], light_omni_col[i], light_omni_radius[i], position, albedo, roughness, metallic, N, V, F0

@@ -17,6 +17,13 @@ static std::string sanitizeString(const std::string& str) {
 }
 
 
+ResourceNode::ResourceNode() {
+
+}
+ResourceNode::ResourceNode(const std::string& name) {
+    this->name = name;
+}
+
 void ResourceNode::setDataSource(DataSource* src) {
     data_src.reset(src);
 }
@@ -128,11 +135,11 @@ void ResourceNode::print() {
 
 
 ResourceTree::ResourceTree() {
-    root.reset(new ResourceNode());
+    root.reset(new ResourceNode(""));
 }
 
 void ResourceTree::clear() {
-    root.reset(new ResourceNode());
+    root.reset(new ResourceNode(""));
 }
 
 void ResourceTree::mapType(const std::string& mask, rttr::type type) {

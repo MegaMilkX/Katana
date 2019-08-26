@@ -9,7 +9,7 @@ class EditorDocTexture2d : public EditorDocumentTyped<Texture2D> {
 public:
     EditorDocTexture2d(std::shared_ptr<ResourceNode>& node);
 
-    virtual void onGui(Editor* ed);
+    virtual void onGui(Editor* ed, float dt);
 };
 
 #endif

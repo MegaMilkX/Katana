@@ -7,7 +7,7 @@ EditorDocTexture2d::EditorDocTexture2d(std::shared_ptr<ResourceNode>& node)
     setResourceNode(node);
 }
 
-void EditorDocTexture2d::onGui(Editor* ed) {
+void EditorDocTexture2d::onGui(Editor* ed, float dt) {
     auto& texture = _resource;
     ImVec2 winMin = ImGui::GetWindowContentRegionMin();
     ImVec2 winMax = ImGui::GetWindowContentRegionMax();

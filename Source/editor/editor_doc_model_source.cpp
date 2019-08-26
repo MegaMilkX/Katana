@@ -7,7 +7,7 @@ EditorDocModelSource::EditorDocModelSource(std::shared_ptr<ResourceNode>& node)
     setResourceNode(node);
 }
 
-void EditorDocModelSource::onGui(Editor* ed) {
+void EditorDocModelSource::onGui(Editor* ed, float dt) {
     auto& mdl_src = _resource;
 
     ImVec2 winMin = ImGui::GetWindowContentRegionMin();

@@ -21,6 +21,11 @@ class EditorDocScene : public EditorDocumentTyped<GameScene>, public InputListen
     EditorObjectInspector object_inspector;
     ObjectSet selected;
 
+    GameScene* scn_ptr = 0;
+
+    ktWorld world;
+    bool running = false;
+
     rttr::type selected_game_mode = rttr::type::get<ktGameMode>();
 public:
     EditorDocScene();
@@ -28,7 +33,7 @@ public:
 
     void onFocus() override;
 
-    virtual void onGui (Editor* ed);
+    virtual void onGui (Editor* ed, float dt);
     void onGuiToolbox(Editor* ed) override;
 };
 

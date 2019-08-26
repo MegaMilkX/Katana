@@ -246,7 +246,7 @@ void EndGridView() {
 }
 
 bool s_creating_transition = false;
-void DocActionGraph::onGui(Editor* ed) {
+void DocActionGraph::onGui(Editor* ed, float dt) {
     auto& action_graph = _resource;
     if(BeginGridView("test")) {
         for(auto& t : action_graph->getTransitions()) {

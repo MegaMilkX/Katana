@@ -54,9 +54,9 @@ public:
     void redo();
     void backup();
     
-    void update(Editor* ed);
+    void update(Editor* ed, float dt);
 
-    virtual void onGui(Editor* ed) = 0;
+    virtual void onGui(Editor* ed, float dt) = 0;
     virtual void onGuiToolbox(Editor* ed) {}
 protected:
     bool is_open = true;

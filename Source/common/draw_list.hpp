@@ -58,10 +58,16 @@ public:
         float intensity = 1.0f;
         float radius = 5.0f;
     };
+    struct DirLight {
+        gfxm::vec3 dir;
+        gfxm::vec3 color = gfxm::vec3(1,1,1);
+        float intensity = 1.0f;
+    };
 
     std::vector<DrawCmdSolid> solids;
     std::vector<DrawCmdSkin> skins;
     std::vector<OmniLight> omnis;
+    std::vector<DirLight> dir_lights;
 private:
     
 };

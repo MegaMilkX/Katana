@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
                 kt_play_mode->update();
             } else if(app_state) {
                 app_state->onUpdate();
-                app_state->onGui();
+                app_state->onGui(dt);
                 app_state->onRender(w, h);
             }
             

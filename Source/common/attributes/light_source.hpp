@@ -45,4 +45,25 @@ public:
 };
 REG_ATTRIB(OmniLight, OmniLight, Rendering)
 
+class DirLight : public Attribute {
+    RTTR_ENABLE(Attribute)
+public:
+    gfxm::vec3 color = gfxm::vec3(1,1,1);
+    float intensity = 1.0f;
+    
+    void onGui() override {
+        ImGui::ColorEdit3(MKSTR("color##" << this).c_str(), (float*)&color);
+        ImGui::DragFloat(MKSTR("intensity##" << this).c_str(), &intensity, 0.001f);
+    }
+    void write(SceneWriteCtx& out) override {
+        out.write(color);
+        out.write(intensity);
+    }
+    void read(SceneReadCtx& in) override {
+        color = in.read<gfxm::vec3>();
+        intensity = in.read<float>();
+    } 
+};
+REG_ATTRIB(DirLight, DirLight, Rendering)
+
 #endif

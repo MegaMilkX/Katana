@@ -22,6 +22,8 @@ class ResourceNode {
     std::shared_ptr<DataSource> data_src;
     std::shared_ptr<Resource> resource;
 public:
+    ResourceNode();
+    ResourceNode(const std::string& name);
     // ResourceNode claims ownership of the DataSource ptr
     void                            setDataSource(DataSource* src);
     size_t                          childCount() const;
