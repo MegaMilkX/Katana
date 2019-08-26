@@ -20,6 +20,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 #    endif(${flag_var} MATCHES "/MDd")
 #endforeach(flag_var)
 
+# TODO: Fix. Files with h at the end not being processed
 file(GLOB_RECURSE GENBINFILES $ENGINE_SRC_DIR/common/gen/*[!.h])
 
 foreach(gen_bin_file ${GENBINFILES})
