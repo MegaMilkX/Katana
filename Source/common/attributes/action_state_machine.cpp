@@ -91,6 +91,11 @@ void ActionStateMachine::onGui() {
     imguiResourceTreeCombo("graph", graph_ref, "action_graph", [this](){
         makeGraphLocalCopy();
     });
+
+    for(size_t i = 0; i < graph.getParams().paramCount(); ++i) {
+        auto& p = graph.getParams().getParam(i);
+        ImGui::DragFloat(p.name.c_str(), &p.value, 0.001f);
+    }
 }
 
 void ActionStateMachine::write(SceneWriteCtx& out) {

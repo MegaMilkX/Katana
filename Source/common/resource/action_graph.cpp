@@ -58,7 +58,8 @@ std::string pickUnusedName(const std::vector<ActionGraphNode*>& actions, const s
 void ActionGraphNode::update(
     float dt, 
     std::vector<AnimSample>& samples, 
-    const std::map<Animation*, std::vector<int32_t>>& mappings
+    const std::map<Animation*, std::vector<int32_t>>& mappings,
+    float weight
 ) {
     if(!anim) {
         return;
@@ -68,7 +69,7 @@ void ActionGraphNode::update(
         return;
     }
 
-    anim->sample_remapped(samples, cursor, it->second);
+    anim->blend_remapped(samples, cursor, weight, it->second);
 
     cursor += dt * anim->fps;
     if(cursor > anim->length) {
@@ -88,6 +89,7 @@ void ActionGraph::pickEntryAction() {
         return;
     }
     entry_action = 0;
+    current_action = entry_action;
 }
 
 ActionGraphNode* ActionGraph::createAction(const std::string& name) {
@@ -119,6 +121,9 @@ ActionGraphTransition* ActionGraph::createTransition(const std::string& from, co
         0.1f, a, b
     };
     transitions.emplace_back(trans);
+
+    a->getTransitions().insert(trans);
+
     return trans;
 }
 
@@ -170,9 +175,9 @@ void ActionGraph::deleteTransition(ActionGraphTransition* transition) {
     for(size_t i = 0; i < transitions.size(); ++i) {
         auto& t = transitions[i];
         if(t == transition) {
+            t->from->getTransitions().erase(t);
             delete t;
             transitions.erase(transitions.begin() + i);
-            // TODO: Remove reference to this transition from the 'from' action
             break;
         }
     }
@@ -194,6 +199,7 @@ ActionGraphNode* ActionGraph::getEntryAction() {
 }
 void ActionGraph::setEntryAction(const std::string& name) {
     entry_action = findActionId(name);
+    current_action = entry_action;
 }
 
 ActionGraphParams& ActionGraph::getParams() {
@@ -205,10 +211,51 @@ void ActionGraph::update(
     std::vector<AnimSample>& samples, 
     const std::map<Animation*, std::vector<int32_t>>& mappings
 ) {
-    if(entry_action > actions.size()) {
+    if(current_action > actions.size()) {
         return;
     }
-    actions[entry_action]->update(dt, samples, mappings);
+    auto act = actions[current_action];
+
+    for(auto& t : act->getTransitions()) {
+        bool res = false;
+        for(auto& cond : t->conditions) {
+            float val = param_table.getParam(cond.param).value;
+            float ref_val = cond.ref_value;
+            switch(cond.type) {
+            case ActionGraphTransition::LARGER: res = val > ref_val; break;
+            case ActionGraphTransition::LARGER_EQUAL: res = val >= ref_val; break;
+            case ActionGraphTransition::LESS: res = val < ref_val; break;
+            case ActionGraphTransition::LESS_EQUAL: res = val <= ref_val; break;
+            case ActionGraphTransition::EQUAL: res = val == ref_val; break;
+            case ActionGraphTransition::NOT_EQUAL: res = val != ref_val; break;
+            };
+            if(res == false) {
+                break;
+            }
+        }
+        if(res) {
+            for(size_t i = 0; i < actions.size(); ++i) {
+                if(actions[i] == t->to) {
+                    current_action = i;
+                }
+            }
+            act = actions[current_action];
+            trans_samples = samples;
+            trans_speed = 1.0f / t->blendTime;
+            trans_weight = .0f;
+        }
+    }
+
+    if(trans_weight < 1.0f) {
+        samples = trans_samples;
+    }
+    if(trans_weight < 1.0f) {
+        trans_weight += dt * trans_speed;
+        if(trans_weight > 1.0f) {
+            trans_weight = 1.0f;
+        }
+    }
+    act->update(dt, samples, mappings, trans_weight);
 }
 
 void ActionGraph::makeMappings(Skeleton* skel, std::map<Animation*, std::vector<int32_t>>& mappings) {
@@ -231,6 +278,7 @@ void ActionGraph::serialize(out_stream& out) {
 
     out.write<uint32_t>(actions.size());
     out.write<uint32_t>(transitions.size());
+    out.write<uint32_t>(param_table.paramCount());
     out.write<uint32_t>(entry_action);
     for(size_t i = 0; i < actions.size(); ++i) {
         auto& a = actions[i];
@@ -247,6 +295,19 @@ void ActionGraph::serialize(out_stream& out) {
         w.write(t->blendTime);
         w.write(node_ids[t->from]);
         w.write(node_ids[t->to]);
+
+        w.write<uint32_t>(t->conditions.size());
+        for(size_t j = 0; j < t->conditions.size(); ++j) {
+            auto& cond = t->conditions[j];
+            w.write<uint32_t>(cond.param);
+            w.write<uint8_t>(cond.type);
+            w.write<float>(cond.ref_value);
+        }
+    }
+    for(size_t i = 0; i < param_table.paramCount(); ++i) {
+        auto& param = param_table.getParam(i);
+        w.write(param.name);
+        w.write(param.value);
     }
 }
 bool ActionGraph::deserialize(in_stream& in, size_t sz) {
@@ -254,6 +315,7 @@ bool ActionGraph::deserialize(in_stream& in, size_t sz) {
 
     actions.resize(r.read<uint32_t>());
     transitions.resize(r.read<uint32_t>());
+    param_table.resize(r.read<uint32_t>());
     for(size_t i = 0; i < actions.size(); ++i) {
         actions[i] = new ActionGraphNode();
     }
@@ -261,6 +323,7 @@ bool ActionGraph::deserialize(in_stream& in, size_t sz) {
         transitions[i] = new ActionGraphTransition();
     }
     entry_action = r.read<uint32_t>();
+    current_action = entry_action;
 
     for(size_t i = 0; i < actions.size(); ++i) {
         auto& a = actions[i];
@@ -273,7 +336,21 @@ bool ActionGraph::deserialize(in_stream& in, size_t sz) {
         auto& t = transitions[i];
         t->blendTime = r.read<float>();
         t->from = actions[r.read<uint32_t>()];
+        t->from->getTransitions().insert(t);
         t->to = actions[r.read<uint32_t>()];
+
+        t->conditions.resize(r.read<uint32_t>());
+        for(size_t j = 0; j < t->conditions.size(); ++j) {
+            auto& cond = t->conditions[j];
+            cond.param = (size_t)r.read<uint32_t>();
+            cond.type = (ActionGraphTransition::CONDITION)r.read<uint8_t>();
+            cond.ref_value = r.read<float>();
+        }
+    }
+    for(size_t i = 0; i < param_table.paramCount(); ++i) {
+        auto& param = param_table.getParam(i);
+        param.name = r.readStr();
+        param.value = r.read<float>();
     }
 
     return true;

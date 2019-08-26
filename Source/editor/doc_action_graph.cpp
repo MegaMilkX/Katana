@@ -174,13 +174,14 @@ bool BeginGridView(const char* id) {
         s_graph_edit_offset -= zoom_pos_adjustment;
     }
 
+    s_graph_edit_tmp_offset = ImGui::GetMouseDragDelta(2) / s_graph_edit_zoom;
+
+    s_graph_edit_grid_offset_plus_drag_delta = s_graph_edit_offset + s_graph_edit_tmp_offset;
     if(ImGui::IsMouseReleased(2)) {
         s_graph_edit_offset += s_graph_edit_tmp_offset;
         s_graph_edit_tmp_offset = ImVec2();
     }
-    s_graph_edit_tmp_offset = ImGui::GetMouseDragDelta(2) / s_graph_edit_zoom;
-
-    s_graph_edit_grid_offset_plus_drag_delta = s_graph_edit_offset + s_graph_edit_tmp_offset;
+    
 
     if(ImGui::BeginChild(id)) {
         ImGui::PushClipRect(bb.Min, bb.Max, false);
@@ -284,6 +285,19 @@ void DocActionGraph::onGui(Editor* ed, float dt) {
     EndGridView();
 }
 
+const char* condTypeToCStr(ActionGraphTransition::CONDITION cond) {
+    const char* cstr = 0;
+    switch(cond) {
+    case ActionGraphTransition::LARGER: cstr = ">"; break;
+    case ActionGraphTransition::LARGER_EQUAL: cstr = ">="; break;
+    case ActionGraphTransition::LESS: cstr = "<"; break;
+    case ActionGraphTransition::LESS_EQUAL: cstr = "<="; break;
+    case ActionGraphTransition::EQUAL: cstr = "=="; break;
+    case ActionGraphTransition::NOT_EQUAL: cstr = "!="; break;
+    };
+    return cstr;
+}
+
 void DocActionGraph::onGuiToolbox(Editor* ed) {
     auto& action_graph = _resource;
     if(ImGui::Button("Add action")) {
@@ -310,27 +324,55 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
     }
     if(selected_transition) {
         ImGui::Separator();
-        ImGui::Text("Selected transition");
         ImGui::Text(MKSTR(selected_transition->from->getName() << " -> " << selected_transition->to->getName()).c_str());
-        ImGui::Text("Conditions");
-        ImGui::Text("Param"); ImGui::SameLine();
-        ImGui::Text(">=");
         ImGui::SameLine();
-        float v = .0f;
-        ImGui::DragFloat("###cond_value", &v, .01f);
-        if(ImGui::BeginCombo("###add_cond", "<add condition>")) {
-            auto& params = action_graph->getParams();
-            for(size_t i = 0; i < params.paramCount(); ++i) {
-                auto& p = params.getParam(i);
-                if(ImGui::Selectable(p.name.c_str(), false)) {
-
-                }
-            }
-            ImGui::EndCombo();
-        }
-        if(ImGui::Button("Delete transition")) {
+        if(ImGui::SmallButton(ICON_MDI_DELETE_EMPTY )) {
             action_graph->deleteTransition(selected_transition);
             selected_transition = 0;
+        } else {
+            ImGui::DragFloat("blend time", &selected_transition->blendTime);
+            if(action_graph->getParams().paramCount()) {
+                auto& conds = selected_transition->conditions;
+                for(size_t i = 0; i < conds.size(); ++i) {
+                    auto& cond = conds[i];
+                    ImGui::PushItemWidth(70);
+                    if(ImGui::BeginCombo(MKSTR("###cond_id"<<i).c_str(), action_graph->getParams().getParam(conds[i].param).name.c_str(), ImGuiComboFlags_NoArrowButton)) {
+                        auto& params = action_graph->getParams();
+                        for(size_t j = 0; j < params.paramCount(); ++j) {
+                            auto& p = params.getParam(j);
+                            if(ImGui::Selectable(p.name.c_str(), j == cond.param)) {
+                                cond.param = j;
+                            }
+                        }
+                        ImGui::EndCombo();
+                    } 
+                    ImGui::PopItemWidth();
+                    ImGui::SameLine();
+                    ImGui::PushItemWidth(30);
+                    if(ImGui::BeginCombo(MKSTR("###cond_type"<<i).c_str(), condTypeToCStr(cond.type), ImGuiComboFlags_NoArrowButton)) {
+                        if(ImGui::Selectable(">")) { cond.type = ActionGraphTransition::LARGER; }
+                        if(ImGui::Selectable(">=")) { cond.type = ActionGraphTransition::LARGER_EQUAL; }
+                        if(ImGui::Selectable("<")) { cond.type = ActionGraphTransition::LESS; }
+                        if(ImGui::Selectable("<=")) { cond.type = ActionGraphTransition::LESS_EQUAL; }
+                        if(ImGui::Selectable("==")) { cond.type = ActionGraphTransition::EQUAL; }
+                        if(ImGui::Selectable("!=")) { cond.type = ActionGraphTransition::NOT_EQUAL; }
+                        ImGui::EndCombo();
+                    }
+                    ImGui::PopItemWidth();
+                    //ImGui::Text(">=");
+                    ImGui::SameLine();
+                    ImGui::PushItemWidth(60);
+                    ImGui::DragFloat(MKSTR("###cond_value" << i).c_str(), &cond.ref_value, .01f);
+                    ImGui::PopItemWidth();
+                }
+                if(ImGui::SmallButton(ICON_MDI_PLUS "###cond_add")) {
+                    selected_transition->conditions.emplace_back(
+                        ActionGraphTransition::Condition{
+                            0, ActionGraphTransition::CONDITION::LARGER, .0f
+                        }
+                    );
+                }
+            }
         }
     }
 
@@ -339,12 +381,17 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
     auto& params = action_graph->getParams();
     for(size_t i = 0; i < params.paramCount(); ++i) {
         auto& p = params.getParam(i);
-        ImGui::Text(p.name.c_str());
+        char buf[256];
+        memset(buf, 0, sizeof(buf));
+        memcpy(buf, p.name.c_str(), p.name.size());
+        if(ImGui::InputText(MKSTR("###param_name" << &p).c_str(), buf, sizeof(buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
+            params.renameParam(i, buf);
+        }
         ImGui::SameLine();
         ImGui::DragFloat(MKSTR("###" << &p).c_str(), &p.value, 0.01f);
     }
 
-    if(ImGui::SmallButton(ICON_MDI_PLUS)) {
+    if(ImGui::SmallButton(ICON_MDI_PLUS "###param_add")) {
         action_graph->getParams().createParam("Param");
     }
     if (ImGui::IsItemHovered()) {

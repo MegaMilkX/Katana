@@ -7,6 +7,8 @@
 #include "../resource/animation.hpp"
 #include "../resource/skeleton.hpp"
 
+#include "../util/make_unique_string.hpp"
+
 class ActionGraph;
 
 class ActionGraphParams {
@@ -17,13 +19,35 @@ class ActionGraphParams {
     std::vector<Param> params;
 
 public:
+    void resize(size_t sz) {
+        params.resize(sz);
+    }
     size_t paramCount() const {
         return params.size();
     }
     size_t createParam(const std::string& name) {
+        std::set<std::string> names;
+        for(auto& p : params) {
+            names.insert(p.name);
+        }
+        std::string name_ = makeUniqueString(names, name);
+        
         size_t i = params.size();
-        params.emplace_back(Param{name, .0f});
+        params.emplace_back(Param{name_, .0f});
         return i;
+    }
+    void renameParam(size_t i, const std::string& new_name) {
+        if(i >= params.size()) {
+            return;
+        }
+        
+        std::set<std::string> names;
+        for(auto& p : params) {
+            names.insert(p.name);
+        }
+        std::string name_ = makeUniqueString(names, new_name);
+
+        params[i].name = name_;
     }
     Param& getParam(size_t i) {
         return params[i];
@@ -32,14 +56,30 @@ public:
 
 class ActionGraphNode;
 struct ActionGraphTransition {
+    enum CONDITION {
+        LARGER,
+        LARGER_EQUAL,
+        LESS,
+        LESS_EQUAL,
+        EQUAL,
+        NOT_EQUAL
+    };
+    struct Condition {
+        size_t param;
+        CONDITION type;
+        float ref_value;
+    };
+
     float blendTime = 0.1f;
     ActionGraphNode* from = 0;
     ActionGraphNode* to = 0;
+    std::vector<Condition> conditions;
 };
 
 class ActionGraphNode {
     std::string name = "Action";
     gfxm::vec2 editor_pos;
+    std::set<ActionGraphTransition*> out_transitions;
 public:
     std::shared_ptr<Animation> anim;
     float cursor = .0f;
@@ -49,10 +89,15 @@ public:
     const gfxm::vec2&  getEditorPos() const { return editor_pos; }
     void               setEditorPos(const gfxm::vec2& value) { editor_pos = value; }
 
+    std::set<ActionGraphTransition*>& getTransitions() {
+        return out_transitions;
+    }
+
     void               update(
         float dt, 
         std::vector<AnimSample>& samples, 
-        const std::map<Animation*, std::vector<int32_t>>& mappings
+        const std::map<Animation*, std::vector<int32_t>>& mappings,
+        float weight
     );
 
     void               makeMappings(Skeleton* skel, std::map<Animation*, std::vector<int32_t>>& mappings);
@@ -73,6 +118,10 @@ class ActionGraph : public Resource {
     std::vector<ActionGraphTransition*> transitions;
     std::vector<ActionGraphNode*> actions;
     size_t entry_action = 0;
+    size_t current_action = 0;
+    float trans_weight = 1.0f;
+    float trans_speed = 0.1f;
+    std::vector<AnimSample> trans_samples;
     ActionGraphParams param_table;
 
     void pickEntryAction();
