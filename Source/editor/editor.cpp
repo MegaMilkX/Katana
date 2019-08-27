@@ -23,6 +23,7 @@
 
 #include "editor_doc_scene.hpp"
 #include "doc_action_graph.hpp"
+#include "doc_blend_tree.hpp"
 #include "doc_material.hpp"
 
 int setupImguiLayout();
@@ -177,6 +178,9 @@ void Editor::onGui(float dt) {
                 }
                 if(ImGui::MenuItem("ActionGraph")) {
                     addNewDocument(new DocActionGraph());
+                }
+                if(ImGui::MenuItem("BlendTree")) {
+                    addNewDocument(new DocBlendTree());
                 }
                 if(ImGui::MenuItem("Material")) {
                     addNewDocument(new DocMaterial());
