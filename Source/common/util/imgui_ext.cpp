@@ -7,6 +7,11 @@
 
 namespace ImGuiExt {
 
+struct NodeInOutCollection {
+    std::vector<ImVec2> ins;
+    std::vector<ImVec2> outs;
+};
+
 static ImRect s_graph_edit_bb;
 static ImVec2 s_graph_edit_offset;
 static ImVec2 s_graph_edit_tmp_offset;
@@ -22,6 +27,28 @@ static ImVec2 s_node_current_pos;
 static const char* s_node_drag_id = 0;
 
 static std::map<std::string, ImVec4> s_connection_map;
+static std::vector<NodeInOutCollection> s_node_cache;
+enum NEW_CONN_TYPE {
+    NEW_CONN_NONE,
+    NEW_CONN_OUT,
+    NEW_CONN_IN
+};
+static NEW_CONN_TYPE s_new_conn_type = NEW_CONN_NONE;
+static size_t s_new_connection_origin_node = 0;
+static size_t s_new_connection_origin_node_point = 0;
+static ImVec2 s_new_connection_origin;
+
+static ImVec2 GridPosToScreen(const ImVec2& pos) {
+    return s_graph_edit_bb.Min + (pos + s_graph_edit_grid_offset_plus_drag_delta) * s_graph_edit_zoom;
+}
+
+static ImVec2 GridScreenToPos(const ImVec2& pos) {
+    ImVec2 r = pos;
+    r = r - s_graph_edit_bb.Min;
+    r = r / s_graph_edit_zoom;
+    r = r - s_graph_edit_offset;
+    return r;
+}
 
 void BeginTreeNode(const char* name, ImVec2* pos, const ImVec2& size) {
     s_node_pos_out = pos;
@@ -54,6 +81,7 @@ void BeginTreeNode(const char* name, ImVec2* pos, const ImVec2& size) {
 
 
     ImGui::GetWindowDrawList()->ChannelsSplit(2);
+    s_node_cache.emplace_back(NodeInOutCollection{});
 }
 
 void EndTreeNode() {
@@ -75,6 +103,9 @@ void EndTreeNode() {
     bool pressed = ImGui::ButtonBehavior(ImRect(s_node_bb.Min, s_node_bb.Max), ImGui::GetID(s_node_name), &hovered, &held);
 
     if(ImGui::IsMouseHoveringRect(s_node_bb.Min, s_node_bb.Max, true)) {
+        if(ImGui::IsMouseDragging(0)) {
+            s_new_conn_type = NEW_CONN_NONE;
+        }
         if(ImGui::IsMouseClicked(0)) {
             s_node_drag_id = s_node_name;
             clicked = true;
@@ -91,30 +122,59 @@ void EndTreeNode() {
 
     ImGui::RenderFrame(
         s_node_bb.Min, s_node_bb.Max, 
-        node_col, true, ImGui::GetStyle().FrameRounding
+        node_col, true, 10.0f * s_graph_edit_zoom //ImGui::GetStyle().FrameRounding
     );
     if(
         (s_node_drag_id == s_node_name || ImGui::IsMouseHoveringRect(s_node_bb.Min, s_node_bb.Max, true))
     ) {
+        ImGui::GetWindowDrawList()->AddRect(
+            s_node_bb.Min, s_node_bb.Max, ImGui::GetColorU32(ImGuiCol_Text, 1.0f),
+            10.0f * s_graph_edit_zoom, 15, 2.0f
+        );
+        /*
         ImGui::GetWindowDrawList()->AddQuad(
             s_node_bb.Min,
             ImVec2(s_node_bb.Max.x, s_node_bb.Min.y), 
             s_node_bb.Max,
             ImVec2(s_node_bb.Min.x, s_node_bb.Max.y),
             ImGui::GetColorU32(ImGuiCol_Text, 1.0f), 2.0f
-        );
+        ); */
     }
-    ImGui::RenderText(s_node_bb.Min, s_node_name);
+    ImGui::RenderText(ImGui::GetStyle().WindowPadding * s_graph_edit_zoom + s_node_bb.Min, s_node_name);
 
     ImGui::GetWindowDrawList()->ChannelsMerge();
 }
 
-bool TreeNodeIn(const char* name) {
+bool TreeNodeIn(const char* name, size_t* new_conn_node, size_t* new_conn_node_out) {
+    bool new_connection_occured = false;
     ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
-    
-    ImGui::GetWindowDrawList()->AddCircle(
-        s_node_next_in_pos, 10 * s_graph_edit_zoom, ImGui::GetColorU32(ImGuiCol_Text), 4, 4.0f * s_graph_edit_zoom
-    );
+
+    if(ImGui::IsMouseHoveringRect(s_node_next_in_pos + ImVec2(-10, -10) * s_graph_edit_zoom, s_node_next_in_pos + ImVec2(10, 10) * s_graph_edit_zoom, true)) {
+        if(ImGui::IsMouseClicked(0)) {
+            if(s_new_conn_type == NEW_CONN_NONE || s_new_conn_type == NEW_CONN_IN) {
+                s_new_conn_type = NEW_CONN_IN;
+                s_new_connection_origin = GridScreenToPos(s_node_next_in_pos);
+                s_new_connection_origin_node = s_node_cache.size() - 1;
+                s_new_connection_origin_node_point = s_node_cache.back().ins.size();
+            } else if (s_new_conn_type == NEW_CONN_OUT) {
+                s_new_conn_type = NEW_CONN_NONE;
+                new_connection_occured = true;
+                if(new_conn_node) {
+                    *new_conn_node = s_new_connection_origin_node;
+                }
+                if(new_conn_node_out) {
+                    *new_conn_node_out = s_new_connection_origin_node_point;
+                }
+            }
+        }
+        ImGui::GetWindowDrawList()->AddCircleFilled(
+            s_node_next_in_pos, 9.5f * s_graph_edit_zoom, ImGui::GetColorU32(ImGuiCol_Text), 4
+        );
+    } else {
+        ImGui::GetWindowDrawList()->AddCircle(
+            s_node_next_in_pos, 8 * s_graph_edit_zoom, ImGui::GetColorU32(ImGuiCol_Text), 4, 3.0f * s_graph_edit_zoom
+        );
+    }
     ImGui::GetWindowDrawList()->AddText(s_node_next_in_pos + ImVec2(20, 0) * s_graph_edit_zoom - ImVec2(0, ImGui::GetTextLineHeight()) * 0.5f, ImGui::GetColorU32(ImGuiCol_Text), name);
 
     float new_node_height = s_node_bb.Max.y;
@@ -127,16 +187,42 @@ bool TreeNodeIn(const char* name) {
 
     s_node_next_in_pos += ImVec2(0, ImGui::GetTextLineHeight()) * 2;
     s_node_next_out_pos += ImVec2(0, ImGui::GetTextLineHeight()) * 2;
+
+    s_node_cache.back().ins.emplace_back(s_node_current_pos);
     
-    return false;
+    return new_connection_occured;
 }
 
-bool TreeNodeOut(const char* name) {
+bool TreeNodeOut(const char* name, size_t* new_conn_node, size_t* new_conn_node_in) {
+    bool new_connection_occured = false;
     ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
     
-    ImGui::GetWindowDrawList()->AddCircle(
-        s_node_next_out_pos, 10 * s_graph_edit_zoom, ImGui::GetColorU32(ImGuiCol_Text), 4, 4.0f * s_graph_edit_zoom
-    );
+    if(ImGui::IsMouseHoveringRect(s_node_next_out_pos + ImVec2(-10, -10) * s_graph_edit_zoom, s_node_next_out_pos + ImVec2(10, 10) * s_graph_edit_zoom, true)) {
+        if(ImGui::IsMouseClicked(0)) {
+            if(s_new_conn_type == NEW_CONN_NONE || s_new_conn_type == NEW_CONN_OUT) {
+                s_new_conn_type = NEW_CONN_OUT;
+                s_new_connection_origin = GridScreenToPos(s_node_next_out_pos);
+                s_new_connection_origin_node = s_node_cache.size() - 1;
+                s_new_connection_origin_node_point = s_node_cache.back().outs.size();
+            } else if(s_new_conn_type == NEW_CONN_IN) {
+                s_new_conn_type = NEW_CONN_NONE;
+                new_connection_occured = true;
+                if(new_conn_node) {
+                    *new_conn_node = s_new_connection_origin_node;
+                }
+                if(new_conn_node_in) {
+                    *new_conn_node_in = s_new_connection_origin_node_point;
+                }
+            }
+        }
+        ImGui::GetWindowDrawList()->AddCircleFilled(
+            s_node_next_out_pos, 9.5f * s_graph_edit_zoom, ImGui::GetColorU32(ImGuiCol_Text), 4
+        );
+    } else {
+        ImGui::GetWindowDrawList()->AddCircle(
+            s_node_next_out_pos, 8 * s_graph_edit_zoom, ImGui::GetColorU32(ImGuiCol_Text), 4, 3.0f * s_graph_edit_zoom
+        );
+    }
     ImGui::GetWindowDrawList()->AddText(s_node_next_in_pos + ImVec2(20, 0) * s_graph_edit_zoom - ImVec2(0, ImGui::GetTextLineHeight()) * 0.5f, ImGui::GetColorU32(ImGuiCol_Text), name);
 
     float new_node_height = s_node_bb.Max.y;
@@ -150,7 +236,9 @@ bool TreeNodeOut(const char* name) {
     s_node_next_in_pos += ImVec2(0, ImGui::GetTextLineHeight()) * 2;
     s_node_next_out_pos += ImVec2(0, ImGui::GetTextLineHeight()) * 2;
 
-    return false;
+    s_node_cache.back().outs.emplace_back(s_node_current_pos);
+
+    return new_connection_occured;
 }
 
 void TreeNodeConnectionOut(const char* name) {
@@ -172,9 +260,28 @@ void CommitTreeNodeConnections() {
             a + ImVec2(100, 0) * s_graph_edit_zoom, b + ImVec2(-100, 0) * s_graph_edit_zoom,
             b,
             ImGui::GetColorU32(ImGuiCol_Text),
-            4.0f * s_graph_edit_zoom, 50
+            3.0f * s_graph_edit_zoom, 50
         );
     }
+}
+
+void TreeNodeConnection(size_t node_from, size_t node_to, size_t out_n, size_t in_n) {
+    if(node_from >= s_node_cache.size()) return;
+    if(node_to >= s_node_cache.size()) return;
+    auto& inouts_a = s_node_cache[node_from];
+    auto& inouts_b = s_node_cache[node_to];
+    if(out_n >= inouts_a.outs.size()) return;
+    if(in_n >= inouts_b.ins.size()) return;
+    ImVec2 a = inouts_a.outs[out_n];
+    ImVec2 b = inouts_b.ins[in_n];
+
+    ImGui::GetWindowDrawList()->AddBezierCurve(
+        a,
+        a + ImVec2(100, 0) * s_graph_edit_zoom, b + ImVec2(-100, 0) * s_graph_edit_zoom,
+        b,
+        ImGui::GetColorU32(ImGuiCol_Text),
+        3.0f * s_graph_edit_zoom, 50
+    );
 }
 
 void NodeConnection(const ImVec2& from, const ImVec2& to) {
@@ -190,7 +297,7 @@ void NodeConnection(const ImVec2& from, const ImVec2& to) {
         cp0, cp1,
         p1,
         ImGui::GetColorU32(ImGuiCol_Text),
-        4.0f * s_graph_edit_zoom, 50
+        3.0f * s_graph_edit_zoom, 50
     );
 }
 
@@ -276,7 +383,7 @@ bool BeginGridView(const char* id) {
         ImGui::PopClipRect();
 
         
-
+        
         return true;
     } else {
         return false;
@@ -284,7 +391,26 @@ bool BeginGridView(const char* id) {
 }
 
 void EndGridView() {
+    if(s_new_conn_type != NEW_CONN_NONE) {
+        ImVec2 a;
+        ImVec2 b;
+        if(s_new_conn_type == NEW_CONN_OUT) {
+            a = s_new_connection_origin;
+            b = GridScreenToPos(ImGui::GetMousePos());
+        } else if(s_new_conn_type == NEW_CONN_IN) {
+            a = GridScreenToPos(ImGui::GetMousePos());
+            b = s_new_connection_origin;
+        }
+
+        NodeConnection(a, b);
+
+        if(ImGui::IsMouseClicked(1)) {
+            s_new_conn_type = NEW_CONN_NONE;
+        }
+    }
+
     ImGui::EndChild();
+    s_node_cache.clear();
 
     ImGui::RenderText(s_graph_edit_bb.Min, MKSTR("Zoom: " << s_graph_edit_zoom).c_str());
     ImGui::RenderText(s_graph_edit_bb.Min + ImVec2(0, ImGui::GetTextLineHeight() * 1), MKSTR("x: " << s_graph_edit_grid_offset_plus_drag_delta.x).c_str());
