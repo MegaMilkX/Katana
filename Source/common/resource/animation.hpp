@@ -99,4 +99,7 @@ private:
     std::map<std::string, event> events;
 };
 
+class Skeleton;
+void buildAnimSkeletonMapping(Animation* anim, Skeleton* skel, std::vector<int32_t>& bone_mapping);
+
 #endif

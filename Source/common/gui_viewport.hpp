@@ -74,6 +74,7 @@ public:
     void camTranslate(gfxm::vec2 v);
     void camRotate(gfxm::vec2 v);
     void camZoom(float v);
+    void camSetPivot(const gfxm::vec3& pivot);
 
     void draw(GameScene* scn, ktNode* selected_object = 0, gfxm::ivec2 sz = gfxm::ivec2(0,0));
 };

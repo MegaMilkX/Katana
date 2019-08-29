@@ -332,6 +332,7 @@ void EditorResourceTree::update(Editor* editor) {
             ImVec2 textSize = ImGui::CalcTextSize(node_name.c_str(), 0, true, 64);
             ImVec2 itemSize(64, 64);
             itemSize.y += textSize.y;
+            itemSize += ImGui::GetStyle().FramePadding * 2.0f;
             
             ImGuiWindow* window = ImGui::GetCurrentWindow();
             if (window->SkipItems)
@@ -341,7 +342,7 @@ void EditorResourceTree::update(Editor* editor) {
             ImGui::ItemSize(bb);
             ImGui::ItemAdd(bb, ImGui::GetID(node_name.c_str()));
 
-            ImVec2 itemRectMin = ImGui::GetItemRectMin();
+            ImVec2 itemRectMin = ImGui::GetItemRectMin() + ImGui::GetStyle().FramePadding;
             bool hovered = false;
             bool held = false;
             if(ImGui::ButtonBehavior(bb, ImGui::GetID(node_name.c_str()), &hovered, &held)) {

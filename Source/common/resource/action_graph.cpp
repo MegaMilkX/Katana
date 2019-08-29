@@ -2,20 +2,6 @@
 
 #include "resource_tree.hpp"
 
-static void buildAnimSkeletonMapping(Animation* anim, Skeleton* skel, std::vector<int32_t>& bone_mapping) {
-    if(!anim || !skel) return;
-
-    bone_mapping = std::vector<int32_t>(anim->nodeCount(), -1);
-    for(size_t i = 0; i < skel->boneCount(); ++i) {
-        auto& bone = skel->getBone(i);
-        int32_t bone_index = (int32_t)i;
-        int32_t node_index = anim->getNodeIndex(bone.name);
-        if(node_index < 0) continue;
-        
-        bone_mapping[node_index] = bone_index;
-    }
-}
-
 std::string pickUnusedName(const std::set<std::string>& names, const std::string& name) {
     std::string result = name;
     for(auto& a : names) {

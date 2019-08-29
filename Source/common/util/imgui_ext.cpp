@@ -12,6 +12,8 @@ struct NodeInOutCollection {
     std::vector<ImVec2> outs;
 };
 
+static ImGuiID s_grid_id;
+static ImGuiID s_grid_scroll_id;
 static ImRect s_graph_edit_bb;
 static ImVec2 s_graph_edit_offset;
 static ImVec2 s_graph_edit_tmp_offset;
@@ -33,6 +35,7 @@ enum NEW_CONN_TYPE {
     NEW_CONN_OUT,
     NEW_CONN_IN
 };
+static ImGuiID s_new_conn_grid_owner = 0;
 static NEW_CONN_TYPE s_new_conn_type = NEW_CONN_NONE;
 static size_t s_new_connection_origin_node = 0;
 static size_t s_new_connection_origin_node_point = 0;
@@ -152,11 +155,12 @@ bool TreeNodeIn(const char* name, size_t* new_conn_node, size_t* new_conn_node_o
     if(ImGui::IsMouseHoveringRect(s_node_next_in_pos + ImVec2(-10, -10) * s_graph_edit_zoom, s_node_next_in_pos + ImVec2(10, 10) * s_graph_edit_zoom, true)) {
         if(ImGui::IsMouseClicked(0)) {
             if(s_new_conn_type == NEW_CONN_NONE || s_new_conn_type == NEW_CONN_IN) {
+                s_new_conn_grid_owner = s_grid_id;
                 s_new_conn_type = NEW_CONN_IN;
                 s_new_connection_origin = GridScreenToPos(s_node_next_in_pos);
                 s_new_connection_origin_node = s_node_cache.size() - 1;
                 s_new_connection_origin_node_point = s_node_cache.back().ins.size();
-            } else if (s_new_conn_type == NEW_CONN_OUT) {
+            } else if (s_new_conn_type == NEW_CONN_OUT && s_new_conn_grid_owner == s_grid_id) {
                 s_new_conn_type = NEW_CONN_NONE;
                 new_connection_occured = true;
                 if(new_conn_node) {
@@ -200,11 +204,12 @@ bool TreeNodeOut(const char* name, size_t* new_conn_node, size_t* new_conn_node_
     if(ImGui::IsMouseHoveringRect(s_node_next_out_pos + ImVec2(-10, -10) * s_graph_edit_zoom, s_node_next_out_pos + ImVec2(10, 10) * s_graph_edit_zoom, true)) {
         if(ImGui::IsMouseClicked(0)) {
             if(s_new_conn_type == NEW_CONN_NONE || s_new_conn_type == NEW_CONN_OUT) {
+                s_new_conn_grid_owner = s_grid_id;
                 s_new_conn_type = NEW_CONN_OUT;
                 s_new_connection_origin = GridScreenToPos(s_node_next_out_pos);
                 s_new_connection_origin_node = s_node_cache.size() - 1;
                 s_new_connection_origin_node_point = s_node_cache.back().outs.size();
-            } else if(s_new_conn_type == NEW_CONN_IN) {
+            } else if(s_new_conn_type == NEW_CONN_IN && s_new_conn_grid_owner == s_grid_id) {
                 s_new_conn_type = NEW_CONN_NONE;
                 new_connection_occured = true;
                 if(new_conn_node) {
@@ -302,40 +307,52 @@ void NodeConnection(const ImVec2& from, const ImVec2& to) {
 }
 
 bool BeginGridView(const char* id) {
-    std::string name = id;
-    auto window = ImGui::GetCurrentWindow();
-
-    auto bb = s_graph_edit_bb = window->ContentsRegionRect;
-    ImVec2 size = ImVec2(bb.Max.x - bb.Min.x, bb.Max.y - bb.Min.y);
-
-    ImGuiIO& io = ImGui::GetIO();
-    ImVec2 cursor_pos = io.MousePos;
-    cursor_pos.x = cursor_pos.x - bb.Min.x;
-    cursor_pos.y = cursor_pos.y - bb.Min.y;
-
-    if(io.MouseWheel != .0f && ImGui::IsMouseHoveringRect(bb.Min, bb.Max)) {
-        ImVec2 observed_size_before_zoom_change = size / s_graph_edit_zoom;
-        s_graph_edit_zoom += io.MouseWheel * 0.1f;
-        if(s_graph_edit_zoom < 0.1f) {
-            s_graph_edit_zoom = 0.1f;
-        }
-        ImVec2 observed_size_after_zoom_change = size / s_graph_edit_zoom;
-        ImVec2 observed_box_size_delta = observed_size_before_zoom_change - observed_size_after_zoom_change;
-        ImVec2 cursor_pos_factor = cursor_pos / size;
-        ImVec2 zoom_pos_adjustment = observed_box_size_delta * cursor_pos_factor;
-        s_graph_edit_offset -= zoom_pos_adjustment;
-    }
-
-    s_graph_edit_tmp_offset = ImGui::GetMouseDragDelta(2) / s_graph_edit_zoom;
-
-    s_graph_edit_grid_offset_plus_drag_delta = s_graph_edit_offset + s_graph_edit_tmp_offset;
-    if(ImGui::IsMouseReleased(2)) {
-        s_graph_edit_offset += s_graph_edit_tmp_offset;
-        s_graph_edit_tmp_offset = ImVec2();
-    }
-    
-
     if(ImGui::BeginChild(id)) {
+        s_grid_id = ImGui::GetID(id);
+        std::string name = id;
+        auto window = ImGui::GetCurrentWindow();
+
+        auto bb = window->ContentsRegionRect;
+        bb = window->WorkRect;
+        bb = window->InnerRect;
+        s_graph_edit_bb = bb;
+        ImVec2 size = ImVec2(bb.Max.x - bb.Min.x, bb.Max.y - bb.Min.y);
+
+        ImGuiIO& io = ImGui::GetIO();
+        ImVec2 cursor_pos = io.MousePos;
+        cursor_pos.x = cursor_pos.x - bb.Min.x;
+        cursor_pos.y = cursor_pos.y - bb.Min.y;
+
+        bool hovered = ImGui::IsWindowHovered();
+
+        if(io.MouseWheel != .0f && hovered) {
+            ImVec2 observed_size_before_zoom_change = size / s_graph_edit_zoom;
+            s_graph_edit_zoom += io.MouseWheel * 0.1f;
+            if(s_graph_edit_zoom < 0.1f) {
+                s_graph_edit_zoom = 0.1f;
+            }
+            ImVec2 observed_size_after_zoom_change = size / s_graph_edit_zoom;
+            ImVec2 observed_box_size_delta = observed_size_before_zoom_change - observed_size_after_zoom_change;
+            ImVec2 cursor_pos_factor = cursor_pos / size;
+            ImVec2 zoom_pos_adjustment = observed_box_size_delta * cursor_pos_factor;
+            s_graph_edit_offset -= zoom_pos_adjustment;
+        }
+
+        if(hovered && ImGui::IsMouseDown(2)) {
+            s_grid_scroll_id = s_grid_id;
+        }
+        
+        if(s_grid_scroll_id == s_grid_id) {
+            s_graph_edit_tmp_offset = ImGui::GetMouseDragDelta(2) / s_graph_edit_zoom;
+        }
+
+        s_graph_edit_grid_offset_plus_drag_delta = s_graph_edit_offset + s_graph_edit_tmp_offset;
+        if(s_grid_scroll_id == s_grid_id && ImGui::IsMouseReleased(2)) {
+            s_graph_edit_offset += s_graph_edit_tmp_offset;
+            s_grid_scroll_id = 0;
+        }
+        s_graph_edit_tmp_offset = ImVec2();
+
         ImGui::PushClipRect(bb.Min, bb.Max, false);
         ImGui::RenderFrame(
             bb.Min, bb.Max, 
@@ -391,7 +408,7 @@ bool BeginGridView(const char* id) {
 }
 
 void EndGridView() {
-    if(s_new_conn_type != NEW_CONN_NONE) {
+    if(s_new_conn_type != NEW_CONN_NONE && s_new_conn_grid_owner == s_grid_id) {
         ImVec2 a;
         ImVec2 b;
         if(s_new_conn_type == NEW_CONN_OUT) {
