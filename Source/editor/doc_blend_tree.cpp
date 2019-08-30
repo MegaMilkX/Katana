@@ -29,34 +29,93 @@ struct Trans {
     }
 };
 
-static std::vector<Node> nodes;
-static std::set<Trans> transitions;
+#include "../common/util/node_graph.hpp"
 
+std::vector<std::shared_ptr<IFuncNode>> nodes_;
+std::vector<ImVec2> node_poses;
+static std::vector<Trans> transitions;
+
+void printer(float value) {
+    LOG("VALUE: " << value);
+}
+void foo(float a, float b, float& result) {
+    result = a * b;
+}
+void hello(float& result) {
+    static float s = .0f;
+    s += 0.01f;
+    result = s;
+}
 int initNodes() {
-    nodes.emplace_back(
-        Node{
-            "test",
-            { "r", "g", "b", "a" },
-            { "out" },
-            ImVec2(0,0)
-        }
-    );
-    nodes.emplace_back(
-        Node{
-            "blend",
-            { "fuck", "this", "shit", "I'm" },
-            { "out" },
-            ImVec2(300,0)
-        }
-    );
+    nodes_.emplace_back(createFuncNode(hello));
+    nodes_.emplace_back(createFuncNode(foo));
+    nodes_.emplace_back(createFuncNode(printer));
+    
+    node_poses.resize(3);
     return 0;
+}
+
+STATIC_RUN(FUNC_NODES) {
+  regFuncNode("foo", foo, { "a", "b", "result" });
+  regFuncNode("hello", hello, { "a", "b", "result" });
 }
 
 void DocBlendTree::onGui(Editor* ed, float dt) {
     static int dummy = initNodes();
+    for(auto& n : nodes_) {
+        n->invoke();
+    }
+
+    transitions.clear();
+    for(size_t ni = 0; ni < nodes_.size(); ++ni) {
+        auto& n = nodes_[ni];
+        for(size_t i = 0; i < n->inputCount(); ++i) {
+            size_t src_pt_index;
+            IFuncNode* src = n->getInputSource(i, src_pt_index);
+            if(src) {
+                for(size_t j = 0; j < nodes_.size(); ++j) {
+                    if(nodes_[j].get() == src) {
+                        transitions.push_back({
+                            j, src_pt_index, ni, i
+                        });
+                    }
+                }
+            }
+        }
+    }
 
     ImGui::BeginColumns("First", 2);
     if(ImGuiExt::BeginGridView("BlendTreeGrid")) {
+        for(size_t i = 0; i < nodes_.size(); ++i){
+            auto& n = nodes_[i];
+            auto& desc = n->getDesc();
+            
+            ImGuiExt::BeginTreeNode(desc.name.c_str(), &node_poses[i], ImVec2(200, 0));
+            for(size_t j = 0; j < desc.ins.size(); ++j) {
+                auto& in = desc.ins[j];
+                size_t new_conn_node;
+                size_t out_pt;
+                std::string pt_name = MKSTR(in.name << " (" << in.type.get_name().to_string() << ")");
+                if(ImGuiExt::TreeNodeIn(pt_name.c_str(), &new_conn_node, &out_pt)) {
+                    n->connectInput(j, nodes_[new_conn_node].get(), out_pt);
+                }
+            }
+            for(size_t j = 0; j < desc.outs.size(); ++j) {
+                auto& out = desc.outs[j];
+                size_t new_conn_node;
+                size_t in_pt;
+                std::string pt_name = MKSTR(out.name << " (" << out.type.get_name().to_string() << ")");
+                if(ImGuiExt::TreeNodeOut(pt_name.c_str(), &new_conn_node, &in_pt)) {
+                    nodes_[new_conn_node]->connectInput(in_pt, n.get(), j);
+                }
+            }
+            ImGuiExt::EndTreeNode();
+        }
+
+        for(auto& t : transitions) {
+            ImGuiExt::TreeNodeConnection(t.from, t.to, t.from_out, t.to_in);
+        }
+        /*
         for(size_t i = 0; i < nodes.size(); ++i) {
             auto& n = nodes[i];
             ImGuiExt::BeginTreeNode(n.name.c_str(), &n.pos, ImVec2(100, 0));
@@ -88,7 +147,7 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
 
         for(auto& t : transitions) {
             ImGuiExt::TreeNodeConnection(t.from, t.to, t.from_out, t.to_in);
-        }
+        }*/
     }
     ImGuiExt::EndGridView();
     ImGui::NextColumn();
