@@ -148,16 +148,33 @@ FuncNodeDesc makeFuncNodeDesc(const std::string& name, RET(*func)(Args...), cons
 #include "singleton.hpp"
 
 class FuncNodeLib : public Singleton<FuncNodeLib> {
+    std::map<
+        std::string, 
+        std::map<
+            std::string,
+            std::shared_ptr<IFuncNode>
+        >
+    > nodes;
+    std::map<
+        std::string,
+        std::map<
+            std::string,
+            FuncNodeDesc
+        >
+    > descs;
 public:
-    std::map<std::string, FuncNodeDesc> descs;
-};
+    std::shared_ptr<IFuncNode> getNode(const std::string& category, const std::string& name) {
 
-template<typename RET, typename... Args>
-void regFuncNode(const std::string& name, RET(*func)(Args...), const std::vector<std::string>& arg_names = {}) {
-    FuncNodeDesc desc = makeFuncNodeDesc(func);
-    desc.name = name;
-    FuncNodeLib::get()->descs[name] = desc;
-}
+    }
+
+    void regDesc(const std::string& category, const std::string& name, const FuncNodeDesc& desc) {
+        descs[category][name] = desc;
+    }
+    void regNode(const std::string& category, const std::string& name, const std::shared_ptr<IFuncNode>& node) {
+        nodes[category][name] = node;
+    } 
+    
+};
 
 template<typename RET, typename... Args>
 class FuncNode : public IFuncNode {
@@ -265,6 +282,15 @@ std::shared_ptr<IFuncNode> createFuncNode(RET(*func)(Args...)) {
     return std::shared_ptr<IFuncNode>(new FuncNode<RET, Args...>(func));
 }
 
+
+template<typename RET, typename... Args>
+void regFuncNode(const std::string& category, const std::string& name, RET(*func)(Args...), const std::vector<std::string>& arg_names = {}) {
+    FuncNodeDesc desc = makeFuncNodeDesc(func);
+    desc.name = name;
+    FuncNodeLib::get()->regDesc(category, name, desc);
+    FuncNodeLib::get()->regNode(category, name, createFuncNode(func));
+    
+}
 
 
 #endif

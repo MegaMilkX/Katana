@@ -56,8 +56,8 @@ int initNodes() {
 }
 
 STATIC_RUN(FUNC_NODES) {
-  regFuncNode("foo", foo, { "a", "b", "result" });
-  regFuncNode("hello", hello, { "a", "b", "result" });
+  regFuncNode("", "foo", foo, { "a", "b", "result" });
+  regFuncNode("", "hello", hello, { "a", "b", "result" });
 }
 
 void DocBlendTree::onGui(Editor* ed, float dt) {
