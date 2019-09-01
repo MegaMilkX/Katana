@@ -10,14 +10,10 @@
 
 DocBlendTree::DocBlendTree() {
     viewport.camMode(GuiViewport::CAM_ORBIT);
-}
+    viewport.enableDebugDraw(false);
 
-struct Node {
-    std::string name;
-    std::vector<std::string> ins;
-    std::vector<std::string> outs;
-    ImVec2 pos;
-};
+    result_node = funcGraph.addResultNode<BlendSeq>("Result");
+}
 
 struct Trans {
     size_t from;
@@ -29,74 +25,76 @@ struct Trans {
     }
 };
 
-#include "../common/util/func_graph/func_graph.hpp"
-
-FuncGraph funcGraph;
 static std::vector<Trans> transitions;
 
-void printer(float value) {
-    LOG("VALUE: " << value);
-}
-void foo(float a, float b, float& result) {
-    result = a * b;
-}
-void hello(float& result) {
-    static float s = .0f;
-    s += 0.01f;
-    result = 3;
-}
-
-struct Motion {
-
-};
-
-void blend3(const Motion& motion0, const Motion& motion1, const Motion& motion2, float weight, Motion& out) {
-
-}
-
-int initNodes() {
-    funcGraph.addNode("foo");
-    funcGraph.addNode("hello");
-    funcGraph.addNode("printer");
-    funcGraph.addNode("BlendTree/blend3");
-
-    funcGraph.addDataNode<float>("DATA");
-
-    return 0;
-}
-
-class TestClass {
-public:
-    void foo(float a) {
-
+void blend2(const BlendSeq& a, const BlendSeq& b, float weight, BlendSeq& blend_seq) {
+    blend_seq.seq.clear();
+    blend_seq.seq.insert(blend_seq.seq.end(), a.seq.begin(), a.seq.end());
+    for(auto item : b.seq) {
+        item.weight *= weight;
+        blend_seq.seq.emplace_back(item);
     }
-};
+}
 
+void blend3(
+    const BlendSeq& a,
+    const BlendSeq& b,
+    const BlendSeq& c,
+    float weight,
+    BlendSeq& blend_seq
+) {
+    blend_seq.seq.clear();
+    if(weight < .0f) {
+        weight = .0f;
+    }
+    if(weight > 1.0f) {
+        weight = 1.0f;
+    }
+    const BlendSeq* array[] = {
+        &a, &b, &c
+    };
+
+    weight *= 2.0f;
+
+    int left_idx = weight;
+    if(left_idx == 2) {
+        for(auto item : c.seq) {
+            item.weight;
+            blend_seq.seq.emplace_back(item);
+        }
+        return;
+    }
+    int right_idx = left_idx + 1;
+    float lr_weight = weight - (float)left_idx;
+
+    blend2(*array[left_idx], *array[right_idx], lr_weight, blend_seq);
+}
 
 
 STATIC_RUN(FUNC_NODES) {
-  regFuncNode("foo", foo, { "a", "b", "result" });
-  regFuncNode("hello", hello, { "a", "b", "result" });
-  regFuncNode("printer", printer, { "input" });
+    regFuncNode("BlendTree/blend2", blend2, { "anim0", "anim1", "weight", "out" });
+    regFuncNode("BlendTree/blend3", blend3, { "0", "1", "2", "weight", "out" });
+  //regFuncNode("foo", foo, { "a", "b", "result" });
+  //regFuncNode("hello", hello, { "a", "b", "result" });
+  //regFuncNode("printer", printer, { "input" });
 
-  regFuncNode("BlendTree/blend3", blend3, {"motion0", "motion1", "motion2", "weight", "out"});
+  //regFuncNode("BlendTree/blend3", blend3, {"motion0", "motion1", "motion2", "weight", "out"});
 
-  regFuncNode("Test/foo", &TestClass::foo);
+  //regFuncNode("Test/foo", &TestClass::foo);
 }
 
 void DocBlendTree::onGui(Editor* ed, float dt) {
-    static int dummy = initNodes();
     funcGraph.run();
 
     transitions.clear();
-    for(size_t ni = 0; ni < funcGraph.getNodes().size(); ++ni) {
-        auto& n = funcGraph.getNodes()[ni];
+    for(size_t ni = 0; ni < funcGraph.nodeCount(); ++ni) {
+        auto n = funcGraph.getNode(ni);
         for(size_t i = 0; i < n->inputCount(); ++i) {
             size_t src_pt_index;
             IBaseNode* src = n->getInputSource(i, src_pt_index);
             if(src) {
-                for(size_t j = 0; j < funcGraph.getNodes().size(); ++j) {
-                    if(funcGraph.getNodes()[j].get() == src) {
+                for(size_t j = 0; j < funcGraph.nodeCount(); ++j) {
+                    if(funcGraph.getNode(j) == src) {
                         transitions.push_back({
                             j, src_pt_index, ni, i
                         });
@@ -106,13 +104,16 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
         }
     }
 
+    static IBaseNode* selected_graph_node = 0;
     ImGui::BeginColumns("First", 2);
     if(ImGuiExt::BeginGridView("BlendTreeGrid")) {
-        for(size_t i = 0; i < funcGraph.getNodes().size(); ++i){
+        for(size_t i = 0; i < funcGraph.nodeCount(); ++i){
             auto n = funcGraph.getNode(i);
             auto& desc = n->getDesc();
             
-            ImGuiExt::BeginTreeNode(desc.name.c_str(), &funcGraph.getNodePoses()[n], ImVec2(200, 0));
+            bool clicked = false;
+            bool selected = selected_graph_node == n;
+            ImGuiExt::BeginTreeNode(desc.name.c_str(), &funcGraph.getNodePoses()[n], &clicked, selected, ImVec2(200, 0));
             for(size_t j = 0; j < desc.ins.size(); ++j) {
                 auto& in = desc.ins[j];
                 size_t new_conn_node;
@@ -142,6 +143,9 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
                 }
             }
             ImGuiExt::EndTreeNode();
+            if(clicked) {
+                selected_graph_node = n;
+            }
         }
 
         for(auto& t : transitions) {
@@ -151,14 +155,12 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
     ImGuiExt::EndGridView();
     ImGui::NextColumn();
 
-    if(cam_pivot) {
-        viewport.camSetPivot(cam_pivot->getTransform()->getWorldPosition());
-    }
-    auto anim = retrieve<Animation>("model/test/anim/rig_walk.anm");
+    
+
     static float cursor = .0f;
     std::vector<AnimSample> samples;
     std::vector<ktNode*> tgt_nodes;
-    if(anim && skel) {
+    if(skel) {
         tgt_nodes.resize(skel->boneCount());
         for(size_t i = 0; i < skel->boneCount(); ++i) {
             auto& bone = skel->getBone(i);
@@ -166,10 +168,18 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
             tgt_nodes[i] = node;
         }
         samples.resize(skel->boneCount());
-        std::vector<int32_t> mapping;
-        buildAnimSkeletonMapping(anim.get(), skel.get(), mapping);
 
-        anim->sample_remapped(samples, cursor, mapping);
+        BlendSeq& seq = result_node->get();
+        for(size_t i = 0; i < seq.seq.size(); ++i) {
+            Animation* anim = seq.seq[i].anim;
+            float weight = seq.seq[i].weight;
+            if(anim == 0) {
+                continue;
+            }
+
+            anim->blend_remapped(samples, cursor * anim->length, weight, seq.seq[i].mapping);            
+        }
+        
         for(size_t i = 0; i < samples.size(); ++i) {
             auto n = tgt_nodes[i];
             if(n) {
@@ -178,12 +188,15 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
                 n->getTransform()->setScale(samples[i].s);
             }
         }
-        cursor += dt * anim->fps;
-        if(cursor > anim->length) {
-            cursor -= anim->length;
+        cursor += dt;
+        if(cursor > 1.0f) {
+            cursor -= 1.0f;
         }
     }
 
+    if(cam_pivot) {
+        viewport.camSetPivot(cam_pivot->getTransform()->getWorldPosition());
+    }
     viewport.draw(&scn);
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_DND_RESOURCE)) {
@@ -213,10 +226,18 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
     ImGui::EndColumns();
 }
 void DocBlendTree::onGuiToolbox(Editor* ed) {
-    if(ImGui::Button(ICON_MDI_PLUS " Blend node")) {
-
+    if(ImGui::Button(ICON_MDI_PLUS " Float node")) {
+        weight_nodes.emplace_back(funcGraph.addDataNode<float>("test"));
+    }
+    if(ImGui::Button(ICON_MDI_PLUS " Blend2 node")) {
+        funcGraph.addNode("BlendTree/blend2");
+    }
+    if(ImGui::Button(ICON_MDI_PLUS " Blend3 node")) {
+        funcGraph.addNode("BlendTree/blend3");
     }
     if(ImGui::Button(ICON_MDI_PLUS " Anim clip")) {
+        clip_nodes.emplace_back(funcGraph.addDataNode<BlendSeq>("AnimClip"));
+        clip_nodes.back()->set(BlendSeq{{{ 0, 1.0f }}});
         clips.emplace_back(std::shared_ptr<Animation>());
     }
     if(ImGui::Button(ICON_MDI_PLUS " Parameter")) {
@@ -226,16 +247,36 @@ void DocBlendTree::onGuiToolbox(Editor* ed) {
     for(size_t i = 0; i < clips.size(); ++i) {
         auto& c = clips[i];
         std::string label = MKSTR("###" << i);
-        imguiResourceTreeCombo(label.c_str(), c, "anm", [](){});
+        imguiResourceTreeCombo(label.c_str(), c, "anm", [this, &i](){
+            if(clips[i]) {
+                std::vector<int32_t> mapping;
+                if(skel) {
+                    buildAnimSkeletonMapping(clips[i].get(), skel.get(), mapping);
+                }
+                clip_nodes[i]->getDesc().name = clips[i]->Name();
+                clip_nodes[i]->set(BlendSeq{{{ clips[i].get(), 1.0f, mapping }}});
+            } else {
+                clip_nodes[i]->getDesc().name = "Empty";
+                clip_nodes[i]->set(BlendSeq{{{ 0, 1.0f }}});
+            }
+        });
     }
 
     imguiResourceTreeCombo("reference", ref_scn, "so", [](){
 
     });
-    imguiResourceTreeCombo("skeleton", skel, "skl", [](){
-
+    imguiResourceTreeCombo("skeleton", skel, "skl", [this](){
+        if(!skel) { return; }
+        for(size_t i = 0; i < clip_nodes.size(); ++i) {
+            auto& mapping = clip_nodes[i]->get().seq.back().mapping;
+            buildAnimSkeletonMapping(clips[i].get(), skel.get(), mapping);
+        }
     });
     imguiObjectCombo("camera pivot", cam_pivot, &scn, [](){
 
     });
+
+    for(auto n : weight_nodes) {
+        ImGui::DragFloat(MKSTR(n->getDesc().name << "###" << n).c_str(), &n->get(), 0.001f, 0.0f, 1.0f);
+    }
 }

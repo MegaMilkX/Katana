@@ -7,7 +7,7 @@
 
 namespace ImGuiExt {
 
-void BeginTreeNode(const char* name, ImVec2* pos, const ImVec2& size);
+void BeginTreeNode(const char* name, ImVec2* pos, bool* clicked, bool selected, const ImVec2& size);
 void EndTreeNode();
 bool TreeNodeIn(const char* name, size_t* new_conn_node = 0, size_t* new_conn_node_out = 0);
 bool TreeNodeOut(const char* name, size_t* new_conn_node = 0, size_t* new_conn_node_in = 0);

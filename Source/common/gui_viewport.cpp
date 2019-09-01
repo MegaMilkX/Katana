@@ -103,6 +103,7 @@ void GuiViewport::camZoom(float v) {
 }
 void GuiViewport::camSetPivot(const gfxm::vec3& pivot) {
     cam_pivot = pivot;
+    cam_pos = pivot;
 }
 
 void GuiViewport::draw(GameScene* scn, ktNode* selected_object, gfxm::ivec2 sz) {        

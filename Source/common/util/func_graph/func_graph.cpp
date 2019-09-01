@@ -6,8 +6,8 @@
 
 void FuncGraph::sortInvokeOrder() {
     std::map<IBaseNode*, int> node_weights;
-    for(size_t i = 0; i < nodes.size(); ++i) {
-        auto& n = nodes[i];
+    for(size_t i = 0; i < invokable_nodes.size(); ++i) {
+        auto& n = invokable_nodes[i];
 
         std::stack<IBaseNode*> stack;
         IBaseNode* cur = n.get();
@@ -31,37 +31,29 @@ void FuncGraph::sortInvokeOrder() {
         }
     }
 
-    std::sort(nodes.begin(), nodes.end(), [&node_weights](const std::shared_ptr<IFuncNode>& a, const std::shared_ptr<IFuncNode>& b)->bool{
+    std::sort(invokable_nodes.begin(), invokable_nodes.end(), [&node_weights](const std::shared_ptr<IFuncNode>& a, const std::shared_ptr<IFuncNode>& b)->bool{
         return node_weights[a.get()] > node_weights[b.get()];
     });
 }
 
-size_t FuncGraph::dataNodeCount() const {
-    return data_nodes.size();
-}
-IBaseNode* FuncGraph::getDataNode(size_t i) {
-    return data_nodes[i].get();
-}
 size_t FuncGraph::nodeCount() const {
     return nodes.size();
 }
-IFuncNode* FuncGraph::getNode(size_t i) {
+IBaseNode* FuncGraph::getNode(size_t i) {
     return nodes[i].get();
 }
 
-std::vector<std::shared_ptr<IFuncNode>>& FuncGraph::getNodes() {
-    return nodes;
-}
-std::map<IFuncNode*, ImVec2>& FuncGraph::getNodePoses() {
+std::map<IBaseNode*, ImVec2>& FuncGraph::getNodePoses() {
     return node_poses;
 }
 
 std::shared_ptr<IFuncNode> FuncGraph::addNode(const std::string& name) {
-    nodes.emplace_back(FuncNodeLib::get()->createNode(name));
-    return nodes.back();
+    invokable_nodes.emplace_back(FuncNodeLib::get()->createNode(name));
+    nodes.emplace_back(invokable_nodes.back());
+    return invokable_nodes.back();
 }
 
-void FuncGraph::connect(IFuncNode* a, IFuncNode* b, size_t out_idx, size_t in_idx) {
+void FuncGraph::connect(IBaseNode* a, IBaseNode* b, size_t out_idx, size_t in_idx) {
     bool found_a = false;
     bool found_b = false;
     for(size_t i = 0; i < nodes.size(); ++i) {
@@ -86,7 +78,7 @@ void FuncGraph::connect(IFuncNode* a, IFuncNode* b, size_t out_idx, size_t in_id
 }
 
 void FuncGraph::run() {
-    for(auto& n : nodes) {
+    for(auto& n : invokable_nodes) {
         n->invoke();
     }
 }

@@ -27,6 +27,8 @@ static ImVec2 s_node_next_in_pos;
 static ImVec2 s_node_next_out_pos;
 static ImVec2 s_node_current_pos;
 static const char* s_node_drag_id = 0;
+static bool s_node_selected = false;
+static bool* s_node_clicked_ptr = 0;
 
 static std::map<std::string, ImVec4> s_connection_map;
 static std::vector<NodeInOutCollection> s_node_cache;
@@ -53,7 +55,7 @@ static ImVec2 GridScreenToPos(const ImVec2& pos) {
     return r;
 }
 
-void BeginTreeNode(const char* name, ImVec2* pos, const ImVec2& size) {
+void BeginTreeNode(const char* name, ImVec2* pos, bool* clicked, bool selected, const ImVec2& size) {
     s_node_pos_out = pos;
     s_node_name = name;
     /*
@@ -69,6 +71,8 @@ void BeginTreeNode(const char* name, ImVec2* pos, const ImVec2& size) {
     s_node_next_in_pos = s_node_bb.Min + ImVec2(0, ImGui::GetTextLineHeight() * 3.0f);
     s_node_next_out_pos = ImVec2(s_node_bb.Max.x, s_node_bb.Min.y) + ImVec2(0, ImGui::GetTextLineHeight() * 3.0f);
     
+    s_node_selected = selected;
+    s_node_clicked_ptr = clicked;
 
 /*
     if(highlight) {
@@ -112,6 +116,9 @@ void EndTreeNode() {
         if(ImGui::IsMouseClicked(0)) {
             s_node_drag_id = s_node_name;
             clicked = true;
+            if(s_node_clicked_ptr) {
+                *s_node_clicked_ptr = true;
+            }
         }
         if(ImGui::IsMouseDoubleClicked(0)) {
             /*
@@ -128,24 +135,19 @@ void EndTreeNode() {
         node_col, true, 10.0f * s_graph_edit_zoom //ImGui::GetStyle().FrameRounding
     );
     if(
-        (s_node_drag_id == s_node_name || ImGui::IsMouseHoveringRect(s_node_bb.Min, s_node_bb.Max, true))
+        (s_node_selected || s_node_drag_id == s_node_name || ImGui::IsMouseHoveringRect(s_node_bb.Min, s_node_bb.Max, true))
     ) {
         ImGui::GetWindowDrawList()->AddRect(
             s_node_bb.Min, s_node_bb.Max, ImGui::GetColorU32(ImGuiCol_Text, 1.0f),
             10.0f * s_graph_edit_zoom, 15, 2.0f
         );
-        /*
-        ImGui::GetWindowDrawList()->AddQuad(
-            s_node_bb.Min,
-            ImVec2(s_node_bb.Max.x, s_node_bb.Min.y), 
-            s_node_bb.Max,
-            ImVec2(s_node_bb.Min.x, s_node_bb.Max.y),
-            ImGui::GetColorU32(ImGuiCol_Text, 1.0f), 2.0f
-        ); */
     }
     ImGui::RenderText(ImGui::GetStyle().WindowPadding * s_graph_edit_zoom + s_node_bb.Min, s_node_name);
 
     ImGui::GetWindowDrawList()->ChannelsMerge();
+
+    s_node_selected = false;
+    s_node_clicked_ptr = 0;
 }
 
 bool TreeNodeIn(const char* name, size_t* new_conn_node, size_t* new_conn_node_out) {
@@ -185,12 +187,13 @@ bool TreeNodeIn(const char* name, size_t* new_conn_node, size_t* new_conn_node_o
     if(new_node_height < s_node_next_in_pos.y) {
         new_node_height = s_node_next_in_pos.y + ImGui::GetTextLineHeight() * 2.0f;
     }
-    s_node_bb.Max.y = new_node_height + ImGui::GetTextLineHeight() * 2.0f;
 
     s_node_current_pos = s_node_next_in_pos;
 
     s_node_next_in_pos += ImVec2(0, ImGui::GetTextLineHeight()) * 2;
     s_node_next_out_pos += ImVec2(0, ImGui::GetTextLineHeight()) * 2;
+
+    s_node_bb.Max.y = s_node_next_in_pos.y;
 
     s_node_cache.back().ins.emplace_back(s_node_current_pos);
     
@@ -234,12 +237,13 @@ bool TreeNodeOut(const char* name, size_t* new_conn_node, size_t* new_conn_node_
     if(new_node_height < s_node_next_in_pos.y) {
         new_node_height = s_node_next_in_pos.y + ImGui::GetTextLineHeight() * 2.0f;
     }
-    s_node_bb.Max.y = new_node_height + ImGui::GetTextLineHeight() * 2.0f;
 
     s_node_current_pos = s_node_next_out_pos;
 
     s_node_next_in_pos += ImVec2(0, ImGui::GetTextLineHeight()) * 2;
     s_node_next_out_pos += ImVec2(0, ImGui::GetTextLineHeight()) * 2;
+
+    s_node_bb.Max.y = s_node_next_out_pos.y;
 
     s_node_cache.back().outs.emplace_back(s_node_current_pos);
 

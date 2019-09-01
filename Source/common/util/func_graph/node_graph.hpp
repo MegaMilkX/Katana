@@ -84,15 +84,120 @@ FuncNodeDesc makeFuncNodeDesc(RET(*func)(Args...)) {
 #include "func_node_lib.hpp"
 
 template<typename T>
-class DataNode : public IDataNode {
-    T value;
+class ResultNode : public IBaseNode {
+    FuncNodeDesc desc;
+    struct InConnection {
+        IBaseNode* src_node = 0;
+        size_t src_out_index;
+    };
+    InConnection in;
+
 public:
+    ResultNode() {
+        FuncNodeDesc::In in = {
+            "result",
+            rttr::type::get<T>()
+        };
+        desc.ins.emplace_back(in);
+    }
+
+    T get() {
+        T* ptr = 0;
+        auto& conn = in;
+        if(conn.src_node) {
+            ptr = (T*)conn.src_node->getOutputPtr(conn.src_out_index);
+        }
+        if(!ptr) {
+            return T();
+        }
+        return *ptr;
+    }
+
+    FuncNodeDesc& getDesc() override {
+        return desc;
+    }
+    size_t inputCount() const override {
+        return 1;
+    }
+    IBaseNode* getInputSource(size_t input_idx, size_t& out_idx) override {
+        if(input_idx != 0) {
+            return 0;
+        }
+        out_idx = in.src_out_index;
+        return in.src_node;
+    }
+    size_t outputCount() const override {
+        return 0;
+    }
+    void* getOutputPtr(size_t i) override {
+        return 0;
+    }
+    bool connectInput(size_t in_index, IBaseNode* node, size_t out_idx) override {
+        if(in_index >= desc.ins.size()) {
+            return false;
+        }
+
+        auto& ins = desc.ins;        
+        auto& other_outs = node->getDesc().outs;
+        if(out_idx >= other_outs.size()) {
+            return false;
+        }
+        auto& out = other_outs[out_idx];
+        if(out.type != ins[in_index].type) {
+            return false;
+        }
+
+        in.src_node = node;
+        in.src_out_index = out_idx;
+
+        return true;
+    }
+};
+
+template<typename T>
+class DataNode : public IBaseNode {
+    T value;
+    FuncNodeDesc desc;
+public:
+    DataNode() {
+        FuncNodeDesc::Out out = {
+            "out",
+            rttr::type::get<T>(),
+            0,
+            sizeof(T)
+        };
+        desc.outs.emplace_back(out);
+        
+    }
+
+    void set(const T& value) {
+        this->value = value;
+    }
+    T& get() {
+        return value;
+    }
+
+    FuncNodeDesc& getDesc() override {
+        return desc;
+    }
+    size_t inputCount() const override {
+        return 0;
+    }
+    IBaseNode* getInputSource(size_t input_idx, size_t& out_idx) override {
+        return 0;
+    }
     size_t outputCount() const override {
         return 1;
     }
     void* getOutputPtr(size_t i) override {
         return (void*)&value;
     }
+
+    bool connectInput(size_t in_index, IBaseNode* node, size_t out_idx) override {
+        return false;
+    }
+
+
 };
 
 template<typename RET, typename... Args>
@@ -151,7 +256,7 @@ public:
         return new FuncNode(desc, func);
     }
 
-    const FuncNodeDesc& getDesc() const override {
+    FuncNodeDesc& getDesc() override {
         return desc;
     } 
 
@@ -176,7 +281,7 @@ public:
         return in_connections[input_index].src_node;
     }
 
-    bool connectInput(size_t in_index, IFuncNode* node, size_t out_index) override {
+    bool connectInput(size_t in_index, IBaseNode* node, size_t out_index) override {
         if(in_index >= desc.ins.size()) {
             return false;
         }
