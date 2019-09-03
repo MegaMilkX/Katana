@@ -93,6 +93,7 @@ target_link_libraries($PROJECT_NAME
 	glfw
 	assimp
 	zlibstatic
+	freetype
 )
 
 target_include_directories(${PROJECT_NAME}_editor PRIVATE 
@@ -116,6 +117,7 @@ target_link_libraries(${PROJECT_NAME}_editor
 	glfw
 	assimp
 	zlibstatic
+	freetype
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE 
@@ -167,5 +169,11 @@ option(USE_MSVC_RUNTIME_LIBRARY_DLL OFF)
 add_subdirectory(
 	$ENGINE_SRC_DIR/lib/bullet3-2.88
 	$ENGINE_SRC_DIR/lib/bullet3-2.88/build
+)
+
+
+add_subdirectory(
+	$ENGINE_SRC_DIR/lib/freetype-2.10.0
+	$ENGINE_SRC_DIR/lib/freetype-2.10.0/build
 )
 
