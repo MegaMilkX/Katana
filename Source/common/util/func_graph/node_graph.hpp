@@ -43,7 +43,7 @@ struct bar<const T*> {
 
 template<typename... Args, int... S>
 void iterate_args(FuncNodeDesc& desc, seq<S...>) {
-    std::tuple<typename std::remove_reference<typename std::remove_const<Args>::type>::type...> pack;
+    //std::tuple<typename std::remove_reference<typename std::remove_const<Args>::type>::type...> pack;
     ArgInfo array[] = { bar<Args>::get()... };
 
     size_t buf_offset = 0;
@@ -211,6 +211,7 @@ class FuncNode : public IFuncNode {
             T* ptr = 0;
             if(info.arg_type == ARG_OUT) {
                 ptr = (T*)(node->out_buf.data() + desc.outs[info.in_out_index].buf_offset);
+                //ptr = &value;
             } else if(info.arg_type == ARG_IN) {
                 auto& conn = node->in_connections[info.in_out_index];
                 if(!conn.src_node) {
@@ -333,6 +334,19 @@ void regFuncNode(const std::string& name, RET(*func)(Args...), const std::vector
     FuncNodeLib::get()->regNode(name, createFuncNode(desc, func));
     
 }
+
+
+template<typename CLASS, typename RET, typename... Args>
+class MemberFuncNode {
+    typedef RET(CLASS::*func_t)(Args...);
+public:
+    MemberFuncNode(func_t func);
+};
+
+class Blend3 : public MemberFuncNode<Blend3, void, float> {
+public:
+};
+
 
 template<typename CLASS, typename RET, typename... Args>
 void regFuncNode(const std::string& path, RET(CLASS::*func)(Args...)) {

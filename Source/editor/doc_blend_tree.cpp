@@ -170,14 +170,13 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
         samples.resize(skel->boneCount());
 
         BlendSeq& seq = result_node->get();
-        for(size_t i = 0; i < seq.seq.size(); ++i) {
-            Animation* anim = seq.seq[i].anim;
-            float weight = seq.seq[i].weight;
-            if(anim == 0) {
-                continue;
-            }
-
-            anim->blend_remapped(samples, cursor * anim->length, weight, seq.seq[i].mapping);            
+        for (auto& item : seq.seq) {
+          Animation* anim = item.anim;
+          float weight = item.weight;
+          if (anim == 0) {
+            continue;
+          }
+          anim->blend_remapped(samples, cursor * anim->length, weight, item.mapping);
         }
         
         for(size_t i = 0; i < samples.size(); ++i) {
