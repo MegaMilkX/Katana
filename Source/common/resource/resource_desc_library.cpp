@@ -15,14 +15,22 @@ void ResourceDescLibrary::init() {
         "so", 
         FLAG_VIEWABLE | FLAG_WRITABLE, 
         [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
+#ifdef KT_EDITOR
             return new EditorDocScene(node);
+#else
+            return 0;
+#endif
         }
     )
     .add<Texture2D>(
         {"png", "jpg", "jpeg", "jfif", "tga"}, 
         FLAG_VIEWABLE, 
         [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
+#ifdef KT_EDITOR
             return new EditorDocTexture2d(node);
+#else
+            return 0;
+#endif
         },
         [](const std::string& res_name)->std::shared_ptr<Texture2D>{
             std::shared_ptr<Texture2D> tex = retrieve<Texture2D>(res_name);
@@ -41,28 +49,44 @@ void ResourceDescLibrary::init() {
         "ogg", 
         FLAG_VIEWABLE, 
         [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
+#ifdef KT_EDITOR
             return new EditorDocAudioClip(node);
+#else
+            return 0;
+#endif
         }
     )
     .add<ModelSource>(
         {"fbx", "obj", "dae"}, 
         FLAG_VIEWABLE, 
         [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
+#ifdef KT_EDITOR
             return new EditorDocModelSource(node);
+#else
+            return 0;
+#endif
         }
     )
     .add<ActionGraph>(
         "action_graph", 
         FLAG_VIEWABLE | FLAG_WRITABLE, 
         [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
+#ifdef KT_EDITOR
             return new DocActionGraph(node);
+#else
+            return 0;
+#endif
         }
     )
     .add<Material>(
         "mat", 
         FLAG_VIEWABLE | FLAG_WRITABLE, 
         [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
+#ifdef KT_EDITOR
             return new DocMaterial(node);
+#else
+            return 0;
+#endif
         }
     );
 }

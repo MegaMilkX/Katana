@@ -129,6 +129,7 @@ target_compile_definitions(${PROJECT_NAME}_editor PRIVATE
 	_CRT_SECURE_NO_WARNINGS
 	NOMINMAX
 	_GLFW_WIN32
+	KT_EDITOR
 )
 
 
