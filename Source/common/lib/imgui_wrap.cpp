@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "../gen/Karla_Regular.ttf.h"
+#include "../gen/OpenSans_Regular.ttf.h"
 #include "../gen/materialdesignicons_webfont.ttf.h"
 
 #include "../common/util/materialdesign_icons.hpp"
@@ -42,7 +43,7 @@ void ImGuiInit() {
     // TODO: Create texture
     unsigned char* pixels;
     int width, height;
-    io.Fonts->AddFontFromMemoryTTF((void*)Karla_Regular_ttf, sizeof(Karla_Regular_ttf), 16);
+    io.Fonts->AddFontFromMemoryTTF((void*)OpenSans_Regular_ttf, sizeof(OpenSans_Regular_ttf), 16);
 
     static const ImWchar icons_ranges[] = { ICON_MIN_MDI, ICON_MAX_MDI, 0 };
     ImFontConfig icons_config;

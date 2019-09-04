@@ -85,13 +85,6 @@ FuncNodeDesc makeFuncNodeDesc(RET(*func)(Args...)) {
 
 template<typename T>
 class ResultNode : public IBaseNode {
-    FuncNodeDesc desc;
-    struct InConnection {
-        IBaseNode* src_node = 0;
-        size_t src_out_index;
-    };
-    InConnection in;
-
 public:
     ResultNode() {
         FuncNodeDesc::In in = {
@@ -99,13 +92,14 @@ public:
             rttr::type::get<T>()
         };
         desc.ins.emplace_back(in);
+        in_connections.resize(1);
     }
 
     T get() {
         T* ptr = 0;
-        auto& conn = in;
-        if(conn.src_node) {
-            ptr = (T*)conn.src_node->getOutputPtr(conn.src_out_index);
+        auto conn = getInput(0);
+        if(conn->src_node) {
+            ptr = (T*)conn->src_node->getOutputPtr(conn->src_out_index);
         }
         if(!ptr) {
             return T();
@@ -113,51 +107,14 @@ public:
         return *ptr;
     }
 
-    FuncNodeDesc& getDesc() override {
-        return desc;
-    }
-    size_t inputCount() const override {
-        return 1;
-    }
-    IBaseNode* getInputSource(size_t input_idx, size_t& out_idx) override {
-        if(input_idx != 0) {
-            return 0;
-        }
-        out_idx = in.src_out_index;
-        return in.src_node;
-    }
-    size_t outputCount() const override {
-        return 0;
-    }
     void* getOutputPtr(size_t i) override {
         return 0;
-    }
-    bool connectInput(size_t in_index, IBaseNode* node, size_t out_idx) override {
-        if(in_index >= desc.ins.size()) {
-            return false;
-        }
-
-        auto& ins = desc.ins;        
-        auto& other_outs = node->getDesc().outs;
-        if(out_idx >= other_outs.size()) {
-            return false;
-        }
-        auto& out = other_outs[out_idx];
-        if(out.type != ins[in_index].type) {
-            return false;
-        }
-
-        in.src_node = node;
-        in.src_out_index = out_idx;
-
-        return true;
     }
 };
 
 template<typename T>
 class DataNode : public IBaseNode {
     T value;
-    FuncNodeDesc desc;
 public:
     DataNode() {
         FuncNodeDesc::Out out = {
@@ -177,65 +134,41 @@ public:
         return value;
     }
 
-    FuncNodeDesc& getDesc() override {
-        return desc;
-    }
-    size_t inputCount() const override {
-        return 0;
-    }
-    IBaseNode* getInputSource(size_t input_idx, size_t& out_idx) override {
-        return 0;
-    }
-    size_t outputCount() const override {
-        return 1;
-    }
     void* getOutputPtr(size_t i) override {
         return (void*)&value;
     }
-
-    bool connectInput(size_t in_index, IBaseNode* node, size_t out_idx) override {
-        return false;
-    }
-
-
 };
 
-template<typename RET, typename... Args>
-class FuncNode : public IFuncNode {
-    template<typename T>
-    struct ArgPack {
-        T value;
-        T& get(FuncNode* node, int index) {
-            auto& desc = node->getDesc();
-            auto& info = desc.arg_infos[index];
-            T* ptr = 0;
-            if(info.arg_type == ARG_OUT) {
-                ptr = (T*)(node->out_buf.data() + desc.outs[info.in_out_index].buf_offset);
-                //ptr = &value;
-            } else if(info.arg_type == ARG_IN) {
-                auto& conn = node->in_connections[info.in_out_index];
-                if(!conn.src_node) {
+
+template<typename T>
+struct ArgPack {
+    T value;
+    T& get(IFuncNode* node, int index) {
+        auto& desc = node->getDesc();
+        auto& info = desc.arg_infos[index];
+        T* ptr = 0;
+        if(info.arg_type == ARG_OUT) {
+            ptr = (T*)node->getOutputPtr(info.in_out_index);
+            //ptr = &value;
+        } else if(info.arg_type == ARG_IN) {
+            auto conn = node->getInput(info.in_out_index);
+            if(!conn->src_node) {
+                ptr = &value;
+            } else {
+                ptr = (T*)conn->src_node->getOutputPtr(conn->src_out_index);
+                if(!ptr) {
                     ptr = &value;
-                } else {
-                    ptr = (T*)conn.src_node->getOutputPtr(conn.src_out_index);
-                    if(!ptr) {
-                        ptr = &value;
-                    }
                 }
             }
-            return *ptr;
         }
-    };
-    friend ArgPack;
+        return *ptr;
+    }
+};
 
-    struct InConnection {
-        IBaseNode* src_node = 0;
-        size_t src_out_index;
-    };
-    
+
+template<typename RET, typename... Args>
+class FuncNode : public IFuncNode {    
     RET(*func)(Args...);
-    FuncNodeDesc desc;
-    std::vector<InConnection> in_connections;
     
     std::vector<char> out_buf;
     std::tuple<ArgPack<typename std::remove_reference<typename std::remove_const<Args>::type>::type>...> pack;
@@ -256,14 +189,7 @@ public:
     IFuncNode* clone() const override {
         return new FuncNode(desc, func);
     }
-
-    FuncNodeDesc& getDesc() override {
-        return desc;
-    } 
-
-    size_t outputCount() const override {
-        return desc.outs.size();
-    }
+    
     void* getOutputPtr(size_t i) override {
         if(i >= desc.outs.size()) {
             return 0;
@@ -272,35 +198,6 @@ public:
     }
     void* getOutBuf() {
         return (void*)out_buf.data();
-    }
-
-    size_t inputCount() const override {
-        return in_connections.size();
-    }
-    IBaseNode* getInputSource(size_t input_index, size_t& source_output_index) override {
-        source_output_index = in_connections[input_index].src_out_index;
-        return in_connections[input_index].src_node;
-    }
-
-    bool connectInput(size_t in_index, IBaseNode* node, size_t out_index) override {
-        if(in_index >= desc.ins.size()) {
-            return false;
-        }
-
-        auto& ins = desc.ins;        
-        auto& other_outs = node->getDesc().outs;
-        if(out_index >= other_outs.size()) {
-            return false;
-        }
-        auto& out = other_outs[out_index];
-        if(out.type != ins[in_index].type) {
-            return false;
-        }
-
-        in_connections[in_index].src_node = node;
-        in_connections[in_index].src_out_index = out_index;
-
-        return true;
     }
 
     void invoke() override {
@@ -336,6 +233,56 @@ void regFuncNode(const std::string& name, RET(*func)(Args...), const std::vector
 }
 
 
+template<typename T>
+FuncNodeDesc::In getInputDesc() {
+    FuncNodeDesc::In in;
+    in.type = rttr::type::get<T>();
+}
+
+
+template<typename RET, typename... Args>
+class FuncNode_ : public IFuncNode {
+    typedef RET(*func_t)(Args...);
+    
+
+    func_t func;
+    RET ret_value;
+    std::tuple<ArgPack<typename std::remove_reference<typename std::remove_const<Args>::type>::type>...> pack;
+
+    template<int... S>
+    void iterate_args(seq<S...>) {
+        int arg_count = sizeof...(Args);
+        desc.ins = { getInputDesc<Args>()... };
+
+        desc.out_buf_sz = sizeof(RET);
+        desc.outs.emplace_back(
+            FuncNodeDesc::Out{
+                "",
+                rttr::type::get<RET>(),
+                0,
+                sizeof(RET)
+            }
+        );
+        in_connections.resize(arg_count);
+    }
+
+    template<int... S>
+    void invoke_impl(seq<S...>) {
+        ret_value = func(std::get<S>(pack).get(this, S)...);
+    }
+
+public:
+    FuncNode_(func_t f)
+    : func(f) {
+        iterate_args<Args...>(typename genseq<sizeof...(Args)>::type());
+    }
+
+    void invoke() override {
+        invoke_impl(typename genseq<sizeof...(Args)>::type());
+    }
+};
+
+
 template<typename CLASS, typename RET, typename... Args>
 class MemberFuncNode {
     typedef RET(CLASS::*func_t)(Args...);
@@ -343,15 +290,129 @@ public:
     MemberFuncNode(func_t func);
 };
 
-class Blend3 : public MemberFuncNode<Blend3, void, float> {
-public:
+
+struct JobOutputDesc {
+    std::string name;
+    rttr::type type;
+};
+struct JobInputDesc {
+    std::string name;
+    rttr::type type;
 };
 
 
-template<typename CLASS, typename RET, typename... Args>
-void regFuncNode(const std::string& path, RET(CLASS::*func)(Args...)) {
+class JobDescMaker {
+    std::string _name;
+    std::vector<JobInputDesc> inputs;
+    std::vector<JobOutputDesc> outputs;  
+public:
+    JobDescMaker& name(const std::string& name) {
+        this->_name = name;
+        return *this;
+    }
+    template<typename T>
+    JobDescMaker& in(const std::string& name, unsigned int count = 1) {
+        for(unsigned int i = 0; i < count; ++i) {
+            JobInputDesc in{ name, rttr::type::get<T>() };
+            inputs.emplace_back(in);
+        }
+        return *this;
+    }
+    template<typename T>
+    JobDescMaker& out(const std::string& name, int count = 1) {
+        for(unsigned int i = 0; i < count; ++i) {
+            JobOutputDesc out{ name, rttr::type::get<T>() };
+            outputs.emplace_back(out);
+        }
+        return *this;
+    }
 
-}
+    FuncNodeDesc compile() {
+        FuncNodeDesc desc;
+        desc.name = _name;
+        for(auto& i : inputs) {
+            desc.ins.emplace_back(FuncNodeDesc::In{ i.name, i.type });
+        }
+        for(auto& o : outputs) {
+            desc.outs.emplace_back(FuncNodeDesc::Out{ o.name, o.type });
+        }
+        return desc;
+    }
+};
+
+
+struct JobOutput;
+struct JobInput {
+    JobOutput* source = 0;
+};
+struct JobOutput {
+    std::vector<char> buf;
+};
+
+
+class JobNode {
+protected:
+    FuncNodeDesc desc;
+    std::vector<char> out_buf;
+    std::vector<JobInput> inputs;
+    std::vector<JobOutput> outputs;
+
+    template<typename T>
+    T get(size_t i) {
+        return T();
+    }
+    template<typename T>
+    void emit(const T& value) {
+
+    }
+    template<typename T>
+    void emit(size_t i, const T& value) {
+
+    }
+
+public:
+    void init() {
+        JobDescMaker maker;
+        onMakeDesc(maker);
+        desc = maker.compile();
+    }
+
+    FuncNodeDesc& getDesc() { return desc; }
+    size_t inputCount() const { return inputs.size(); }
+    size_t outputCount() const { return outputs.size(); }
+    JobInput* getInput(size_t i) { return &inputs[i]; }
+    JobOutput* getOutput(size_t i) { return &outputs[i]; }
+
+    bool connect(size_t input, JobOutput* source);
+
+    void invoke() {
+        onInvoke();
+    }
+
+    virtual void onMakeDesc(JobDescMaker& descMaker) = 0;
+    virtual void onInvoke() = 0;
+
+    
+};
+
+class MultiplyJob : public JobNode {
+public:
+    void onMakeDesc(JobDescMaker& descMaker) override {
+        descMaker
+            .name("Multiply")
+            .in<float>("float", 2)
+            .out<int>("result");
+    }
+
+    void onInvoke() override {
+        auto a = get<float>(0);
+        auto b = get<float>(1);
+
+        // TODO: Do stuff
+
+        emit<float>(0, 10.0f);
+    }
+};
 
 
 #endif

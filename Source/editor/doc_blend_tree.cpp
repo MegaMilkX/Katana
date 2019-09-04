@@ -83,6 +83,7 @@ STATIC_RUN(FUNC_NODES) {
   //regFuncNode("Test/foo", &TestClass::foo);
 }
 
+
 void DocBlendTree::onGui(Editor* ed, float dt) {
     funcGraph.run();
 
@@ -104,9 +105,30 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
         }
     }
 
+    MultiplyJob multJob;
+    multJob.init();
+
     static IBaseNode* selected_graph_node = 0;
     ImGui::BeginColumns("First", 2);
     if(ImGuiExt::BeginGridView("BlendTreeGrid")) {
+        JobNode& node = multJob;
+        ImVec2 pos(0,0);
+        bool clicked = false;
+        bool selected = false;
+        ImGuiExt::BeginTreeNode(node.getDesc().name.c_str(), &pos, &clicked, selected, ImVec2(200, 0));
+
+        for(size_t j = 0; j < node.getDesc().ins.size(); ++j) {
+            if(ImGuiExt::TreeNodeIn(node.getDesc().ins[j].name.c_str())) {
+            }
+        }
+        for(size_t j = 0; j < node.getDesc().outs.size(); ++j) {
+            if(ImGuiExt::TreeNodeOut(node.getDesc().outs[j].name.c_str())) {
+            }
+        }
+
+        ImGuiExt::EndTreeNode();
+
+        /*
         for(size_t i = 0; i < funcGraph.nodeCount(); ++i){
             auto n = funcGraph.getNode(i);
             auto& desc = n->getDesc();
@@ -150,7 +172,7 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
 
         for(auto& t : transitions) {
             ImGuiExt::TreeNodeConnection(t.from, t.to, t.from_out, t.to_in);
-        }
+        }*/
     }
     ImGuiExt::EndGridView();
     ImGui::NextColumn();
