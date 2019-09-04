@@ -49,7 +49,7 @@ void ImGuiInit() {
     ImFontConfig icons_config;
     icons_config.MergeMode = true;
     icons_config.PixelSnapH = true;
-    io.Fonts->AddFontFromMemoryTTF((void*)materialdesignicons_webfont_ttf, sizeof(materialdesignicons_webfont_ttf), 18, &icons_config, icons_ranges);
+    io.Fonts->AddFontFromMemoryTTF((void*)materialdesignicons_webfont_ttf, sizeof(materialdesignicons_webfont_ttf), 16, &icons_config, icons_ranges);
 
     ImGuiFreeType::BuildFontAtlas(io.Fonts);
 
