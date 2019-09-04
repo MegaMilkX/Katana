@@ -415,4 +415,19 @@ public:
 };
 
 
+class JobGraph {
+    std::set<JobNode*> nodes;
+    std::vector<JobNode*> invoke_list;
+public:
+    // Ownership is transferred to the JobGraph
+    void addNode(JobNode* job) {
+        
+    }
+
+    void run() {
+
+    }
+};
+
+
 #endif
