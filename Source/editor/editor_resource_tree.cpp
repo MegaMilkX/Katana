@@ -223,6 +223,7 @@ void EditorResourceTree::update(Editor* editor) {
                         ImGui::TreePop();
                     }
                 } else {
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetTreeNodeToLabelSpacing());
                     if(ImGui::Selectable(node_label.c_str(), selected_branch_node == node.get())) {
                         selected_branch_node = node.get();
                     }
@@ -250,6 +251,7 @@ void EditorResourceTree::update(Editor* editor) {
                     std::string ext = node_name.substr(node_name.find_last_of("."));
                     std::string icon = getExtIconCode(ext.c_str());
 
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetTreeNodeToLabelSpacing());
                     if(ImGui::Selectable(MKSTR(icon << " " << node_label).c_str(), &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
                         renaming_node = 0;
                         if(ImGui::IsMouseDoubleClicked(0)) {

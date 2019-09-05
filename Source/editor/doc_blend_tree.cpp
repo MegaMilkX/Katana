@@ -83,9 +83,51 @@ STATIC_RUN(FUNC_NODES) {
   //regFuncNode("Test/foo", &TestClass::foo);
 }
 
+JobGraph jobGraph;
+
+MultiplyJob multJob;
+TestJob testJob;
+PrintJob printJob;
+int initNodes() {
+    testJob.init();
+    multJob.init();
+    printJob.init();
+
+    jobGraph.addNode(&multJob);
+    jobGraph.addNode(&testJob);
+    jobGraph.addNode(&printJob);
+
+    jobGraph.prepare();
+
+    return 0;
+}
+
+void guiDrawNode(JobNode* node, ImVec2& pos) {
+    bool clicked = false;
+    bool selected = false;
+    ImGuiExt::BeginTreeNode(node->getDesc().name.c_str(), &pos, &clicked, selected, ImVec2(200, 0));
+
+    void* new_conn_tgt = 0;
+    for(size_t j = 0; j < node->getDesc().ins.size(); ++j) {
+        if(new_conn_tgt = ImGuiExt::TreeNodeIn(node->getDesc().ins[j].name.c_str(), (void*)node->getInput(j), (void*)node->getInput(j)->source)) {
+            node->connect(j, (JobOutput*)new_conn_tgt);
+            jobGraph.prepare();
+        }
+    }
+    for(size_t j = 0; j < node->getDesc().outs.size(); ++j) {
+        if(new_conn_tgt = ImGuiExt::TreeNodeOut(node->getDesc().outs[j].name.c_str(), (void*)node->getOutput(j), 0)) {
+            node->connect(j, (JobInput*)new_conn_tgt);
+            jobGraph.prepare();
+        }
+    }
+
+    ImGuiExt::EndTreeNode();
+}
 
 void DocBlendTree::onGui(Editor* ed, float dt) {
-    funcGraph.run();
+    //funcGraph.run();
+
+    jobGraph.run();
 
     transitions.clear();
     for(size_t ni = 0; ni < funcGraph.nodeCount(); ++ni) {
@@ -105,28 +147,19 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
         }
     }
 
-    MultiplyJob multJob;
-    multJob.init();
+    static int dummy = initNodes();
 
     static IBaseNode* selected_graph_node = 0;
     ImGui::BeginColumns("First", 2);
     if(ImGuiExt::BeginGridView("BlendTreeGrid")) {
         JobNode& node = multJob;
         ImVec2 pos(0,0);
-        bool clicked = false;
-        bool selected = false;
-        ImGuiExt::BeginTreeNode(node.getDesc().name.c_str(), &pos, &clicked, selected, ImVec2(200, 0));
-
-        for(size_t j = 0; j < node.getDesc().ins.size(); ++j) {
-            if(ImGuiExt::TreeNodeIn(node.getDesc().ins[j].name.c_str())) {
-            }
-        }
-        for(size_t j = 0; j < node.getDesc().outs.size(); ++j) {
-            if(ImGuiExt::TreeNodeOut(node.getDesc().outs[j].name.c_str())) {
-            }
-        }
-
-        ImGuiExt::EndTreeNode();
+        ImVec2 pos2(-300,0);
+        ImVec2 pos3(300,0);
+        
+        guiDrawNode(&multJob, pos);
+        guiDrawNode(&testJob, pos2);
+        guiDrawNode(&printJob, pos3);
 
         /*
         for(size_t i = 0; i < funcGraph.nodeCount(); ++i){

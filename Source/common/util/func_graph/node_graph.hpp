@@ -3,8 +3,11 @@
 
 #include <tuple>
 #include <type_traits>
+#include <stack>
 
 #include "i_func_node.hpp"
+
+#include "../log.hpp"
 
 
 template<typename T>
@@ -341,12 +344,17 @@ public:
 };
 
 
+class JobNode;
 struct JobOutput;
 struct JobInput {
     JobOutput* source = 0;
+    rttr::type type;
+    JobNode* owner = 0;
 };
 struct JobOutput {
-    std::vector<char> buf;
+    void* value_ptr = 0;
+    rttr::type type;
+    JobNode* owner = 0;
 };
 
 
@@ -358,16 +366,22 @@ protected:
     std::vector<JobOutput> outputs;
 
     template<typename T>
-    T get(size_t i) {
-        return T();
+    T* get(size_t i) {
+        JobInput& in = inputs[i];
+        if(in.source) {
+            return (T*)in.source->value_ptr;
+        } else {
+            return 0;
+        }
     }
     template<typename T>
-    void emit(const T& value) {
-
+    void emit(T* value_ptr) {
+        emit(0, value);
     }
     template<typename T>
-    void emit(size_t i, const T& value) {
-
+    void emit(size_t i, T* value_ptr) {
+        JobOutput& out = outputs[i];
+        out.value_ptr = value_ptr;
     }
 
 public:
@@ -375,6 +389,13 @@ public:
         JobDescMaker maker;
         onMakeDesc(maker);
         desc = maker.compile();
+
+        for(auto& in : desc.ins) {
+            inputs.emplace_back(JobInput{ 0, in.type, this });
+        }
+        for(auto& out : desc.outs) {
+            outputs.emplace_back(JobOutput{ 0, out.type, this });
+        }
     }
 
     FuncNodeDesc& getDesc() { return desc; }
@@ -383,7 +404,26 @@ public:
     JobInput* getInput(size_t i) { return &inputs[i]; }
     JobOutput* getOutput(size_t i) { return &outputs[i]; }
 
-    bool connect(size_t input, JobOutput* source);
+    bool connect(size_t input, JobOutput* source) {
+        if(input >= inputs.size()) {
+            return false;
+        }
+        if(inputs[input].type != source->type) {
+            return false;
+        }
+        inputs[input].source = source;
+        return true;
+    }
+    bool connect(size_t output, JobInput* target) {
+        if(output >= outputs.size()) {
+            return false;
+        }
+        if(outputs[output].type != target->type) {
+            return false;
+        }
+        target->source = &outputs[output];
+        return true;
+    }
 
     void invoke() {
         onInvoke();
@@ -396,36 +436,127 @@ public:
 };
 
 class MultiplyJob : public JobNode {
+    float result = .0f;
 public:
     void onMakeDesc(JobDescMaker& descMaker) override {
         descMaker
             .name("Multiply")
             .in<float>("float", 2)
-            .out<int>("result");
+            .out<float>("result");
     }
 
     void onInvoke() override {
         auto a = get<float>(0);
         auto b = get<float>(1);
+        if(!a || !b) {
+            return;
+        }
 
         // TODO: Do stuff
+        result = *a * *b;
+        emit<float>(0, &result);
+    }
+};
 
-        emit<float>(0, 10.0f);
+class TestJob : public JobNode {
+    float val = 100.0f;
+public:
+    void onMakeDesc(JobDescMaker& descMaker) override {
+        descMaker
+            .name("Test")
+            .out<float>("fuck");
+    }
+
+    void onInvoke() override {
+        val += 1.0f/60.0f;
+        emit<float>(0, &val);
+    }
+};
+
+class PrintJob : public JobNode {
+public:
+    void onMakeDesc(JobDescMaker& descMaker) override {
+        descMaker
+            .name("Printer")
+            .in<float>("in");
+    }
+
+    void onInvoke() override {
+        auto a = get<float>(0);
+        if(!a) {
+            return;
+        }
+        LOG(*a);
     }
 };
 
 
 class JobGraph {
     std::set<JobNode*> nodes;
-    std::vector<JobNode*> invoke_list;
+    std::vector<JobNode*> invokable_nodes;
 public:
     // Ownership is transferred to the JobGraph
     void addNode(JobNode* job) {
-        
+        nodes.insert(job);
+    }
+
+    void prepare() {
+        invokable_nodes.clear();
+        std::set<JobNode*> valid_nodes;
+
+        // Ignore jobs that lack inputs
+        for(auto job : nodes) {
+            bool valid_job = true;
+            for(size_t i = 0; i < job->inputCount(); ++i) {
+                if(!job->getInput(i)->source) {
+                    valid_job = false;
+                    break;
+                }
+            }
+            if(valid_job) {
+                valid_nodes.insert(job);
+                invokable_nodes.emplace_back(job);
+            }
+        }
+
+        // Sort execution order
+        std::map<JobNode*, int> node_weights;
+        for(auto n : valid_nodes) {
+            std::stack<JobNode*> stack;
+            JobNode* cur = n;
+            while(cur || !stack.empty()) {
+                if(!cur) {
+                    cur = stack.top();
+                    stack.pop();
+                }
+
+                node_weights[cur]++;
+
+                for(size_t j = 0; j < cur->inputCount(); ++j) {
+                    auto in_src = cur->getInput(j)->source->owner;
+                    if(valid_nodes.count(in_src) == 0) {
+                        continue;
+                    }
+                    if(!in_src) {
+                        continue;
+                    }
+
+                    stack.push(in_src);
+                }
+
+                cur = 0;
+            }
+        }
+
+        std::sort(invokable_nodes.begin(), invokable_nodes.end(), [&node_weights](JobNode* a, JobNode* b)->bool{
+            return node_weights[a] > node_weights[b];
+        });
     }
 
     void run() {
-
+        for(auto job : invokable_nodes) {
+            job->invoke();
+        }
     }
 };
 

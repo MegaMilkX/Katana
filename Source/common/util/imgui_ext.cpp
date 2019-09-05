@@ -2,6 +2,7 @@
 
 #include <string>
 #include <map>
+#include <set>
 
 #include "log.hpp"
 
@@ -30,7 +31,7 @@ static const char* s_node_drag_id = 0;
 static bool s_node_selected = false;
 static bool* s_node_clicked_ptr = 0;
 
-static std::map<std::string, ImVec4> s_connection_map;
+static std::set<std::pair<void*, void*>> s_connections;
 static std::vector<NodeInOutCollection> s_node_cache;
 enum NEW_CONN_TYPE {
     NEW_CONN_NONE,
@@ -39,9 +40,10 @@ enum NEW_CONN_TYPE {
 };
 static ImGuiID s_new_conn_grid_owner = 0;
 static NEW_CONN_TYPE s_new_conn_type = NEW_CONN_NONE;
-static size_t s_new_connection_origin_node = 0;
-static size_t s_new_connection_origin_node_point = 0;
+static void* s_potential_connection_origin_id = 0;
 static ImVec2 s_new_connection_origin;
+
+static std::map<void*, ImVec2> s_node_point_coords;
 
 static ImVec2 GridPosToScreen(const ImVec2& pos) {
     return s_graph_edit_bb.Min + (pos + s_graph_edit_grid_offset_plus_drag_delta) * s_graph_edit_zoom;
@@ -150,7 +152,7 @@ void EndTreeNode() {
     s_node_clicked_ptr = 0;
 }
 
-bool TreeNodeIn(const char* name, size_t* new_conn_node, size_t* new_conn_node_out) {
+void* TreeNodeIn(const char* name, void* user_id, void* other_user_id) {
     bool new_connection_occured = false;
     ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
 
@@ -160,17 +162,11 @@ bool TreeNodeIn(const char* name, size_t* new_conn_node, size_t* new_conn_node_o
                 s_new_conn_grid_owner = s_grid_id;
                 s_new_conn_type = NEW_CONN_IN;
                 s_new_connection_origin = GridScreenToPos(s_node_next_in_pos);
-                s_new_connection_origin_node = s_node_cache.size() - 1;
-                s_new_connection_origin_node_point = s_node_cache.back().ins.size();
+                s_potential_connection_origin_id = user_id;
             } else if (s_new_conn_type == NEW_CONN_OUT && s_new_conn_grid_owner == s_grid_id) {
                 s_new_conn_type = NEW_CONN_NONE;
                 new_connection_occured = true;
-                if(new_conn_node) {
-                    *new_conn_node = s_new_connection_origin_node;
-                }
-                if(new_conn_node_out) {
-                    *new_conn_node_out = s_new_connection_origin_node_point;
-                }
+                other_user_id = s_potential_connection_origin_id;
             }
         }
         ImGui::GetWindowDrawList()->AddCircleFilled(
@@ -195,12 +191,23 @@ bool TreeNodeIn(const char* name, size_t* new_conn_node, size_t* new_conn_node_o
 
     s_node_bb.Max.y = s_node_next_in_pos.y;
 
+    if(user_id) {
+        s_node_point_coords[user_id] = s_node_current_pos;
+    }
     s_node_cache.back().ins.emplace_back(s_node_current_pos);
+
+    if(user_id && other_user_id) {
+        s_connections.insert(std::make_pair(other_user_id, user_id));
+    }
     
-    return new_connection_occured;
+    if(new_connection_occured) {
+        return other_user_id;
+    } else {
+        return 0;
+    }
 }
 
-bool TreeNodeOut(const char* name, size_t* new_conn_node, size_t* new_conn_node_in) {
+void* TreeNodeOut(const char* name, void* user_id, void* other_user_id) {
     bool new_connection_occured = false;
     ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
     
@@ -210,17 +217,11 @@ bool TreeNodeOut(const char* name, size_t* new_conn_node, size_t* new_conn_node_
                 s_new_conn_grid_owner = s_grid_id;
                 s_new_conn_type = NEW_CONN_OUT;
                 s_new_connection_origin = GridScreenToPos(s_node_next_out_pos);
-                s_new_connection_origin_node = s_node_cache.size() - 1;
-                s_new_connection_origin_node_point = s_node_cache.back().outs.size();
+                s_potential_connection_origin_id = user_id;
             } else if(s_new_conn_type == NEW_CONN_IN && s_new_conn_grid_owner == s_grid_id) {
                 s_new_conn_type = NEW_CONN_NONE;
                 new_connection_occured = true;
-                if(new_conn_node) {
-                    *new_conn_node = s_new_connection_origin_node;
-                }
-                if(new_conn_node_in) {
-                    *new_conn_node_in = s_new_connection_origin_node_point;
-                }
+                other_user_id = s_potential_connection_origin_id;
             }
         }
         ImGui::GetWindowDrawList()->AddCircleFilled(
@@ -245,25 +246,27 @@ bool TreeNodeOut(const char* name, size_t* new_conn_node, size_t* new_conn_node_
 
     s_node_bb.Max.y = s_node_next_out_pos.y;
 
+    if(user_id) {
+        s_node_point_coords[user_id] = s_node_current_pos;
+    }
     s_node_cache.back().outs.emplace_back(s_node_current_pos);
 
-    return new_connection_occured;
-}
+    if(user_id && other_user_id) {
+        s_connections.insert(std::make_pair(user_id, other_user_id));
+    }
 
-void TreeNodeConnectionOut(const char* name) {
-    s_connection_map[name].x = s_node_current_pos.x;
-    s_connection_map[name].y = s_node_current_pos.y;
-}
-void TreeNodeConnectionIn(const char* out_name) {
-    s_connection_map[out_name].z = s_node_current_pos.x;
-    s_connection_map[out_name].w = s_node_current_pos.y;
+    if(new_connection_occured) {
+        return other_user_id;
+    } else {
+        return 0;
+    }
 }
 
 void CommitTreeNodeConnections() {
-    for(auto& kv : s_connection_map) {
-        ImVec2 a(kv.second.x, kv.second.y);
-        ImVec2 b(kv.second.z, kv.second.w);
-        
+    for(auto& it : s_connections) {
+        ImVec2 a = s_node_point_coords[(it).first];
+        ImVec2 b = s_node_point_coords[(it).second];
+
         ImGui::GetWindowDrawList()->AddBezierCurve(
             a,
             a + ImVec2(100, 0) * s_graph_edit_zoom, b + ImVec2(-100, 0) * s_graph_edit_zoom,
@@ -412,6 +415,8 @@ bool BeginGridView(const char* id) {
 }
 
 void EndGridView() {
+    CommitTreeNodeConnections();
+
     if(s_new_conn_type != NEW_CONN_NONE && s_new_conn_grid_owner == s_grid_id) {
         ImVec2 a;
         ImVec2 b;
@@ -432,6 +437,8 @@ void EndGridView() {
 
     ImGui::EndChild();
     s_node_cache.clear();
+    s_connections.clear();
+    s_node_point_coords.clear();
 
     ImGui::RenderText(s_graph_edit_bb.Min, MKSTR("Zoom: " << s_graph_edit_zoom).c_str());
     ImGui::RenderText(s_graph_edit_bb.Min + ImVec2(0, ImGui::GetTextLineHeight() * 1), MKSTR("x: " << s_graph_edit_grid_offset_plus_drag_delta.x).c_str());
