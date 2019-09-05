@@ -83,9 +83,6 @@ FuncNodeDesc makeFuncNodeDesc(RET(*func)(Args...)) {
     return desc;
 }
 
-
-#include "func_node_lib.hpp"
-
 template<typename T>
 class ResultNode : public IBaseNode {
 public:
@@ -294,111 +291,33 @@ public:
 };
 
 
-struct JobOutputDesc {
-    std::string name;
-    rttr::type type;
-};
-struct JobInputDesc {
-    std::string name;
-    rttr::type type;
-};
+#include "job_node_desc_lib.hpp"
 
 
-class JobDescMaker {
-    std::string _name;
-    std::vector<JobInputDesc> inputs;
-    std::vector<JobOutputDesc> outputs;  
-public:
-    JobDescMaker& name(const std::string& name) {
-        this->_name = name;
-        return *this;
-    }
-    template<typename T>
-    JobDescMaker& in(const std::string& name, unsigned int count = 1) {
-        for(unsigned int i = 0; i < count; ++i) {
-            JobInputDesc in{ name, rttr::type::get<T>() };
-            inputs.emplace_back(in);
-        }
-        return *this;
-    }
-    template<typename T>
-    JobDescMaker& out(const std::string& name, int count = 1) {
-        for(unsigned int i = 0; i < count; ++i) {
-            JobOutputDesc out{ name, rttr::type::get<T>() };
-            outputs.emplace_back(out);
-        }
-        return *this;
-    }
-
-    FuncNodeDesc compile() {
-        FuncNodeDesc desc;
-        desc.name = _name;
-        for(auto& i : inputs) {
-            desc.ins.emplace_back(FuncNodeDesc::In{ i.name, i.type });
-        }
-        for(auto& o : outputs) {
-            desc.outs.emplace_back(FuncNodeDesc::Out{ o.name, o.type });
-        }
-        return desc;
-    }
-};
-
-
-class JobNode;
+class JobGraphNode;
 struct JobOutput;
 struct JobInput {
     JobOutput* source = 0;
     rttr::type type;
-    JobNode* owner = 0;
+    JobGraphNode* owner = 0;
 };
 struct JobOutput {
     void* value_ptr = 0;
     rttr::type type;
-    JobNode* owner = 0;
+    JobGraphNode* owner = 0;
 };
 
 
-class JobNode {
+class JobGraphNode {
 protected:
-    FuncNodeDesc desc;
-    std::vector<char> out_buf;
+    FuncNodeDesc* desc = 0;
     std::vector<JobInput> inputs;
     std::vector<JobOutput> outputs;
 
-    template<typename T>
-    T* get(size_t i) {
-        JobInput& in = inputs[i];
-        if(in.source) {
-            return (T*)in.source->value_ptr;
-        } else {
-            return 0;
-        }
-    }
-    template<typename T>
-    void emit(T* value_ptr) {
-        emit(0, value);
-    }
-    template<typename T>
-    void emit(size_t i, T* value_ptr) {
-        JobOutput& out = outputs[i];
-        out.value_ptr = value_ptr;
-    }
+    virtual void onInit() = 0;
 
 public:
-    void init() {
-        JobDescMaker maker;
-        onMakeDesc(maker);
-        desc = maker.compile();
-
-        for(auto& in : desc.ins) {
-            inputs.emplace_back(JobInput{ 0, in.type, this });
-        }
-        for(auto& out : desc.outs) {
-            outputs.emplace_back(JobOutput{ 0, out.type, this });
-        }
-    }
-
-    FuncNodeDesc& getDesc() { return desc; }
+    FuncNodeDesc& getDesc() { return *desc; }
     size_t inputCount() const { return inputs.size(); }
     size_t outputCount() const { return outputs.size(); }
     JobInput* getInput(size_t i) { return &inputs[i]; }
@@ -425,87 +344,114 @@ public:
         return true;
     }
 
-    void invoke() {
-        onInvoke();
+    virtual bool isInvokable() { return false; }
+
+    void init() {
+        onInit();
     }
-
-    virtual void onMakeDesc(JobDescMaker& descMaker) = 0;
-    virtual void onInvoke() = 0;
-
-    
+    virtual void invoke() {}
 };
 
-class MultiplyJob : public JobNode {
+
+template<typename NODE_T>
+class JobNode : public JobGraphNode {
+protected:
+    template<typename T>
+    T& get(size_t i) {
+        JobInput& in = inputs[i];
+        return *(T*)in.source->value_ptr;
+    }
+    template<typename T>
+    void bind(T* value_ptr) {
+        emit(0, value);
+    }
+    template<typename T>
+    void bind(size_t i, T* value_ptr) {
+        JobOutput& out = outputs[i];
+        out.value_ptr = value_ptr;
+    }
+
+    virtual void onInvoke() = 0;
+
+public:
+    JobNode() {
+        desc = JobNodeDescLib::get()->getDesc(rttr::type::get<NODE_T>().get_name().to_string());
+        for(auto& in : desc->ins) {
+            inputs.emplace_back(JobInput{ 0, in.type, this });
+        }
+        for(auto& out : desc->outs) {
+            outputs.emplace_back(JobOutput{ 0, out.type, this });
+        }
+    }
+
+    bool isInvokable() override { return true; }
+
+    void invoke() override {
+        onInvoke();
+    }    
+};
+
+class MultiplyJob : public JobNode<MultiplyJob> {
     float result = .0f;
 public:
-    void onMakeDesc(JobDescMaker& descMaker) override {
-        descMaker
-            .name("Multiply")
-            .in<float>("float", 2)
-            .out<float>("result");
+    void onInit() override {
+        bind<float>(0, &result);
     }
 
     void onInvoke() override {
         auto a = get<float>(0);
         auto b = get<float>(1);
-        if(!a || !b) {
-            return;
-        }
 
-        // TODO: Do stuff
-        result = *a * *b;
-        emit<float>(0, &result);
+        result = a * b;
     }
 };
 
-class TestJob : public JobNode {
+class TestJob : public JobNode<TestJob> {
     float val = 100.0f;
 public:
-    void onMakeDesc(JobDescMaker& descMaker) override {
-        descMaker
-            .name("Test")
-            .out<float>("fuck");
+    void onInit() override {
+        bind<float>(0, &val);
     }
 
     void onInvoke() override {
         val += 1.0f/60.0f;
-        emit<float>(0, &val);
     }
 };
 
-class PrintJob : public JobNode {
+class PrintJob : public JobNode<PrintJob> {
 public:
-    void onMakeDesc(JobDescMaker& descMaker) override {
-        descMaker
-            .name("Printer")
-            .in<float>("in");
-    }
+    void onInit() override {}
 
     void onInvoke() override {
         auto a = get<float>(0);
-        if(!a) {
-            return;
-        }
-        LOG(*a);
+        LOG(a);
     }
 };
 
 
 class JobGraph {
-    std::set<JobNode*> nodes;
-    std::vector<JobNode*> invokable_nodes;
+    std::set<JobGraphNode*> nodes;
+    std::vector<JobGraphNode*> invokable_nodes;
 public:
+    std::set<JobGraphNode*>& getNodes() {
+        return nodes;
+    }
+
     // Ownership is transferred to the JobGraph
-    void addNode(JobNode* job) {
+    void addNode(JobGraphNode* job) {
         nodes.insert(job);
+        job->init();
     }
 
     void prepare() {
         invokable_nodes.clear();
-        std::set<JobNode*> valid_nodes;
+        std::set<JobGraphNode*> valid_nodes;
 
         // Ignore jobs that lack inputs
         for(auto job : nodes) {
+            if(!job->isInvokable()) {
+                continue;
+            }
             bool valid_job = true;
             for(size_t i = 0; i < job->inputCount(); ++i) {
                 if(!job->getInput(i)->source) {
@@ -520,10 +466,10 @@ public:
         }
 
         // Sort execution order
-        std::map<JobNode*, int> node_weights;
+        std::map<JobGraphNode*, int> node_weights;
         for(auto n : valid_nodes) {
-            std::stack<JobNode*> stack;
-            JobNode* cur = n;
+            std::stack<JobGraphNode*> stack;
+            JobGraphNode* cur = n;
             while(cur || !stack.empty()) {
                 if(!cur) {
                     cur = stack.top();
@@ -548,7 +494,7 @@ public:
             }
         }
 
-        std::sort(invokable_nodes.begin(), invokable_nodes.end(), [&node_weights](JobNode* a, JobNode* b)->bool{
+        std::sort(invokable_nodes.begin(), invokable_nodes.end(), [&node_weights](JobGraphNode* a, JobGraphNode* b)->bool{
             return node_weights[a] > node_weights[b];
         });
     }

@@ -11,21 +11,7 @@
 DocBlendTree::DocBlendTree() {
     viewport.camMode(GuiViewport::CAM_ORBIT);
     viewport.enableDebugDraw(false);
-
-    result_node = funcGraph.addResultNode<BlendSeq>("Result");
 }
-
-struct Trans {
-    size_t from;
-    size_t from_out;
-    size_t to;
-    size_t to_in;
-    bool operator<(const Trans& other) const {
-        return from < other.from || (!(other.from < from) && to < other.to);
-    }
-};
-
-static std::vector<Trans> transitions;
 
 void blend2(const BlendSeq& a, const BlendSeq& b, float weight, BlendSeq& blend_seq) {
     blend_seq.seq.clear();
@@ -72,40 +58,20 @@ void blend3(
 
 
 STATIC_RUN(FUNC_NODES) {
-    regFuncNode("BlendTree/blend2", blend2, { "anim0", "anim1", "weight", "out" });
-    regFuncNode("BlendTree/blend3", blend3, { "0", "1", "2", "weight", "out" });
-  //regFuncNode("foo", foo, { "a", "b", "result" });
-  //regFuncNode("hello", hello, { "a", "b", "result" });
-  //regFuncNode("printer", printer, { "input" });
-
-  //regFuncNode("BlendTree/blend3", blend3, {"motion0", "motion1", "motion2", "weight", "out"});
-
-  //regFuncNode("Test/foo", &TestClass::foo);
+    regJobNode<TestJob>("Test")
+        .out<float>("value");
+    regJobNode<MultiplyJob>("Multiply")
+        .in<float>("a")
+        .in<float>("b")
+        .out<float>("result");
+    regJobNode<PrintJob>("Print")
+        .in<float>("result");
 }
 
-JobGraph jobGraph;
-
-MultiplyJob multJob;
-TestJob testJob;
-PrintJob printJob;
-int initNodes() {
-    testJob.init();
-    multJob.init();
-    printJob.init();
-
-    jobGraph.addNode(&multJob);
-    jobGraph.addNode(&testJob);
-    jobGraph.addNode(&printJob);
-
-    jobGraph.prepare();
-
-    return 0;
-}
-
-void guiDrawNode(JobNode* node, ImVec2& pos) {
+void guiDrawNode(JobGraph& jobGraph, JobGraphNode* node, ImVec2* pos) {
     bool clicked = false;
     bool selected = false;
-    ImGuiExt::BeginTreeNode(node->getDesc().name.c_str(), &pos, &clicked, selected, ImVec2(200, 0));
+    ImGuiExt::BeginTreeNode(node->getDesc().name.c_str(), pos, &clicked, selected, ImVec2(200, 0));
 
     void* new_conn_tgt = 0;
     for(size_t j = 0; j < node->getDesc().ins.size(); ++j) {
@@ -123,95 +89,22 @@ void guiDrawNode(JobNode* node, ImVec2& pos) {
 
     ImGuiExt::EndTreeNode();
 }
-
+std::map<JobGraphNode*, ImVec2> node_poses;
 void DocBlendTree::onGui(Editor* ed, float dt) {
-    //funcGraph.run();
-
     jobGraph.run();
-
-    transitions.clear();
-    for(size_t ni = 0; ni < funcGraph.nodeCount(); ++ni) {
-        auto n = funcGraph.getNode(ni);
-        for(size_t i = 0; i < n->inputCount(); ++i) {
-            size_t src_pt_index;
-            IBaseNode* src = n->getInputSource(i, src_pt_index);
-            if(src) {
-                for(size_t j = 0; j < funcGraph.nodeCount(); ++j) {
-                    if(funcGraph.getNode(j) == src) {
-                        transitions.push_back({
-                            j, src_pt_index, ni, i
-                        });
-                    }
-                }
-            }
-        }
-    }
-
-    static int dummy = initNodes();
 
     static IBaseNode* selected_graph_node = 0;
     ImGui::BeginColumns("First", 2);
     if(ImGuiExt::BeginGridView("BlendTreeGrid")) {
-        JobNode& node = multJob;
-        ImVec2 pos(0,0);
-        ImVec2 pos2(-300,0);
-        ImVec2 pos3(300,0);
-        
-        guiDrawNode(&multJob, pos);
-        guiDrawNode(&testJob, pos2);
-        guiDrawNode(&printJob, pos3);
-
-        /*
-        for(size_t i = 0; i < funcGraph.nodeCount(); ++i){
-            auto n = funcGraph.getNode(i);
-            auto& desc = n->getDesc();
-            
-            bool clicked = false;
-            bool selected = selected_graph_node == n;
-            ImGuiExt::BeginTreeNode(desc.name.c_str(), &funcGraph.getNodePoses()[n], &clicked, selected, ImVec2(200, 0));
-            for(size_t j = 0; j < desc.ins.size(); ++j) {
-                auto& in = desc.ins[j];
-                size_t new_conn_node;
-                size_t out_pt;
-                std::string pt_name = MKSTR(in.name << " (" << in.type.get_name().to_string() << ")");
-                if(ImGuiExt::TreeNodeIn(pt_name.c_str(), &new_conn_node, &out_pt)) {
-                    funcGraph.connect(
-                        funcGraph.getNode(new_conn_node),
-                        n,
-                        out_pt,
-                        j
-                    );
-                }
-            }
-            for(size_t j = 0; j < desc.outs.size(); ++j) {
-                auto& out = desc.outs[j];
-                size_t new_conn_node;
-                size_t in_pt;
-                std::string pt_name = MKSTR(out.name << " (" << out.type.get_name().to_string() << ")");
-                if(ImGuiExt::TreeNodeOut(pt_name.c_str(), &new_conn_node, &in_pt)) {
-                    funcGraph.connect(
-                        n,
-                        funcGraph.getNode(new_conn_node),
-                        j,
-                        in_pt
-                    );
-                }
-            }
-            ImGuiExt::EndTreeNode();
-            if(clicked) {
-                selected_graph_node = n;
-            }
+        for(auto n : jobGraph.getNodes()) {
+            guiDrawNode(jobGraph, n, &node_poses[n]);
         }
-
-        for(auto& t : transitions) {
-            ImGuiExt::TreeNodeConnection(t.from, t.to, t.from_out, t.to_in);
-        }*/
     }
     ImGuiExt::EndGridView();
     ImGui::NextColumn();
 
     
-
+/*
     static float cursor = .0f;
     std::vector<AnimSample> samples;
     std::vector<ktNode*> tgt_nodes;
@@ -246,7 +139,7 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
         if(cursor > 1.0f) {
             cursor -= 1.0f;
         }
-    }
+    }*/
 
     if(cam_pivot) {
         viewport.camSetPivot(cam_pivot->getTransform()->getWorldPosition());
@@ -280,24 +173,29 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
     ImGui::EndColumns();
 }
 void DocBlendTree::onGuiToolbox(Editor* ed) {
-    if(ImGui::Button(ICON_MDI_PLUS " Float node")) {
-        weight_nodes.emplace_back(funcGraph.addDataNode<float>("test"));
+    ImGui::BeginGroup();
+    
+    ImGui::EndGroup();
+    
+    if(ImGui::Button(ICON_MDI_PLUS " Add node")) {
+        ImGui::OpenPopup("test");
     }
-    if(ImGui::Button(ICON_MDI_PLUS " Blend2 node")) {
-        funcGraph.addNode("BlendTree/blend2");
+    if(ImGui::BeginPopup("test")) {
+        if(ImGui::MenuItem("Multiply")) {
+            jobGraph.addNode(new MultiplyJob);
+            jobGraph.prepare();
+        }
+        if(ImGui::MenuItem("Printer")) {
+            jobGraph.addNode(new PrintJob);
+            jobGraph.prepare();
+        }
+        if(ImGui::MenuItem("Test")) {
+            jobGraph.addNode(new TestJob);
+            jobGraph.prepare();
+        }
+        ImGui::EndPopup();
     }
-    if(ImGui::Button(ICON_MDI_PLUS " Blend3 node")) {
-        funcGraph.addNode("BlendTree/blend3");
-    }
-    if(ImGui::Button(ICON_MDI_PLUS " Anim clip")) {
-        clip_nodes.emplace_back(funcGraph.addDataNode<BlendSeq>("AnimClip"));
-        clip_nodes.back()->set(BlendSeq{{{ 0, 1.0f }}});
-        clips.emplace_back(std::shared_ptr<Animation>());
-    }
-    if(ImGui::Button(ICON_MDI_PLUS " Parameter")) {
-        
-    }
-
+/*
     for(size_t i = 0; i < clips.size(); ++i) {
         auto& c = clips[i];
         std::string label = MKSTR("###" << i);
@@ -332,5 +230,5 @@ void DocBlendTree::onGuiToolbox(Editor* ed) {
 
     for(auto n : weight_nodes) {
         ImGui::DragFloat(MKSTR(n->getDesc().name << "###" << n).c_str(), &n->get(), 0.001f, 0.0f, 1.0f);
-    }
+    }*/
 }

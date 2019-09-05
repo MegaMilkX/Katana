@@ -11,7 +11,7 @@
 #include "../common/resource/skeleton.hpp"
 #include "../common/resource/animation.hpp"
 
-#include "../common/util/func_graph/func_graph.hpp"
+#include "../common/util/func_graph/node_graph.hpp"
 
 struct BlendSeq {
 public:
@@ -30,12 +30,9 @@ class DocBlendTree : public EditorDocumentTyped<BlendTree> {
     std::shared_ptr<Skeleton> skel;
     ktNode* cam_pivot = 0;
 
-    FuncGraph funcGraph;
-
-    std::vector<DataNode<BlendSeq>*> clip_nodes;
-    std::vector<DataNode<float>*> weight_nodes;
     std::vector<std::shared_ptr<Animation>> clips;
-    ResultNode<BlendSeq>* result_node;
+
+    JobGraph jobGraph;
 
 public:
     DocBlendTree();
