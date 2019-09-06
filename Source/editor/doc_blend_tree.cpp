@@ -71,7 +71,8 @@ STATIC_RUN(FUNC_NODES) {
 void guiDrawNode(JobGraph& jobGraph, JobGraphNode* node, ImVec2* pos) {
     bool clicked = false;
     bool selected = false;
-    ImGuiExt::BeginTreeNode(MKSTR(node->getDesc().name).c_str(), pos, &clicked, selected, ImVec2(200, 0));
+    std::string node_name = MKSTR(node->getDesc().name << "###" << node);
+    ImGuiExt::BeginTreeNode(node_name.c_str(), pos, &clicked, selected, ImVec2(200, 0));
 
     void* new_conn_tgt = 0;
     for(size_t j = 0; j < node->getDesc().ins.size(); ++j) {

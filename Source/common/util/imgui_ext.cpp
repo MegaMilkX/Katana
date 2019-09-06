@@ -21,13 +21,13 @@ static ImVec2 s_graph_edit_tmp_offset;
 static ImVec2 s_graph_edit_grid_offset_plus_drag_delta;
 static float s_graph_edit_zoom = 1.0f;
 
-static const char* s_node_name = 0;
+static std::string s_node_name;
 static ImVec2* s_node_pos_out = 0;
 static ImRect s_node_bb;
 static ImVec2 s_node_next_in_pos;
 static ImVec2 s_node_next_out_pos;
 static ImVec2 s_node_current_pos;
-static const char* s_node_drag_id = 0;
+static ImGuiID s_node_drag_id = 0;
 static bool s_node_selected = false;
 static bool* s_node_clicked_ptr = 0;
 
@@ -98,7 +98,7 @@ void EndTreeNode() {
 
     ImU32 node_col = ImGui::GetColorU32(ImGuiCol_WindowBg, 1);
 
-    if((s_node_drag_id == s_node_name) && ImGui::IsMouseDragging(0)) {
+    if((s_node_drag_id == ImGui::GetID(s_node_name.c_str())) && ImGui::IsMouseDragging(0)) {
         *s_node_pos_out += ImGui::GetMouseDragDelta(0) / s_graph_edit_zoom;
         ImGui::ResetMouseDragDelta(0);
     }
@@ -109,14 +109,14 @@ void EndTreeNode() {
 
     bool hovered = false;
     bool held = false;
-    bool pressed = ImGui::ButtonBehavior(ImRect(s_node_bb.Min, s_node_bb.Max), ImGui::GetID(s_node_name), &hovered, &held);
+    bool pressed = ImGui::ButtonBehavior(ImRect(s_node_bb.Min, s_node_bb.Max), ImGui::GetID(s_node_name.c_str()), &hovered, &held);
 
     if(ImGui::IsMouseHoveringRect(s_node_bb.Min, s_node_bb.Max, true)) {
         if(ImGui::IsMouseDragging(0)) {
             s_new_conn_type = NEW_CONN_NONE;
         }
         if(ImGui::IsMouseClicked(0)) {
-            s_node_drag_id = s_node_name;
+            s_node_drag_id = ImGui::GetID(s_node_name.c_str());
             clicked = true;
             if(s_node_clicked_ptr) {
                 *s_node_clicked_ptr = true;
@@ -137,14 +137,14 @@ void EndTreeNode() {
         node_col, true, 10.0f * s_graph_edit_zoom //ImGui::GetStyle().FrameRounding
     );
     if(
-        (s_node_selected || s_node_drag_id == s_node_name || ImGui::IsMouseHoveringRect(s_node_bb.Min, s_node_bb.Max, true))
+        (s_node_selected || s_node_drag_id == ImGui::GetID(s_node_name.c_str()) || ImGui::IsMouseHoveringRect(s_node_bb.Min, s_node_bb.Max, true))
     ) {
         ImGui::GetWindowDrawList()->AddRect(
             s_node_bb.Min, s_node_bb.Max, ImGui::GetColorU32(ImGuiCol_Text, 1.0f),
             10.0f * s_graph_edit_zoom, 15, 2.0f
         );
     }
-    ImGui::RenderText(ImGui::GetStyle().WindowPadding * s_graph_edit_zoom + s_node_bb.Min, s_node_name);
+    ImGui::RenderText(ImGui::GetStyle().WindowPadding * s_graph_edit_zoom + s_node_bb.Min, s_node_name.c_str());
 
     ImGui::GetWindowDrawList()->ChannelsMerge();
 
