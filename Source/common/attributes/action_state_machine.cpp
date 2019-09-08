@@ -4,16 +4,7 @@
 
 #include <algorithm>
 
-void ActionStateMachine::buildAnimSkeletonMappings() {
-    if(!skeleton) {
-        return;
-    }
-    if(!graph_ref) {
-        return;
-    }
 
-    graph_ref->makeMappings(skeleton.get(), mappings);
-}
 void ActionStateMachine::resizeSampleBuffer() {
     if(!skeleton) {
         sample_buffer.clear();
@@ -31,8 +22,8 @@ void ActionStateMachine::makeGraphLocalCopy() {
         graph_ref->serialize(strm);
         strm.jump(0);
         graph.deserialize(strm, strm.bytes_available());
+        graph.setSkeleton(skeleton);
     }
-    buildAnimSkeletonMappings();
 }
 
 void ActionStateMachine::update(float dt) {
@@ -51,7 +42,7 @@ void ActionStateMachine::update(float dt) {
         return;
     }
     
-    graph.update(dt, sample_buffer, mappings);
+    graph.update(dt, sample_buffer);
 
     assert(skeleton_nodes.size() == sample_buffer.size());
     for(size_t i = 0; i < skeleton_nodes.size(); ++i) {
@@ -61,18 +52,13 @@ void ActionStateMachine::update(float dt) {
         n->getTransform()->setRotation(sample_buffer[i].r);
         n->getTransform()->setScale(sample_buffer[i].s);
     }
-/*
-    for(auto n : skeleton_nodes) {
-        if(!n) continue;
-        n->getTransform()->rotate(1.0f/60.0f, gfxm::vec3(1,0,0));
-    }*/
 }
 
 void ActionStateMachine::onGui() {
     imguiResourceTreeCombo("skeleton", skeleton, "skl", [this](){
         skeleton_nodes_dirty = true;
-        buildAnimSkeletonMappings();
         resizeSampleBuffer();
+        graph.setSkeleton(skeleton);
     });
     imguiResourceTreeCombo("graph", graph_ref, "action_graph", [this](){
         makeGraphLocalCopy();

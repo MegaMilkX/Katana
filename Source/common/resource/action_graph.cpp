@@ -41,33 +41,21 @@ std::string pickUnusedName(const std::vector<ActionGraphNode*>& actions, const s
     return pickUnusedName(names, name);
 }
 
-void ActionGraphNode::update(
-    float dt, 
-    std::vector<AnimSample>& samples, 
-    const std::map<Animation*, std::vector<int32_t>>& mappings,
-    float weight
-) {
-    if(!anim) {
-        return;
-    }
-    auto& it = mappings.find(anim.get());
-    if(it == mappings.end()) {
-        return;
-    }
-
-    anim->blend_remapped(samples, cursor, weight, it->second);
-
-    cursor += dt * anim->fps;
-    if(cursor > anim->length) {
-        cursor -= anim->length;
-    }
+ActionGraphNode::ActionGraphNode() {
+    motion.reset(new ClipMotion());
 }
 
-void ActionGraphNode::makeMappings(Skeleton* skel, std::map<Animation*, std::vector<int32_t>>& mappings) {
-    if(!anim) {
-        return;
+void ActionGraphNode::update(
+    float dt, 
+    std::vector<AnimSample>& samples,
+    float weight
+) {
+    auto& pose = motion->getPose();
+    motion->advance(dt);
+
+    for(size_t i = 0; i < pose.size() && i < samples.size(); ++i) {
+        samples[i] = pose[i];
     }
-    buildAnimSkeletonMapping(anim.get(), skel, mappings[anim.get()]);
 }
 
 void ActionGraph::pickEntryAction() {
@@ -194,8 +182,7 @@ ActionGraphParams& ActionGraph::getParams() {
 
 void ActionGraph::update(
     float dt, 
-    std::vector<AnimSample>& samples, 
-    const std::map<Animation*, std::vector<int32_t>>& mappings
+    std::vector<AnimSample>& samples
 ) {
     if(current_action > actions.size()) {
         return;
@@ -241,13 +228,7 @@ void ActionGraph::update(
             trans_weight = 1.0f;
         }
     }
-    act->update(dt, samples, mappings, trans_weight);
-}
-
-void ActionGraph::makeMappings(Skeleton* skel, std::map<Animation*, std::vector<int32_t>>& mappings) {
-    for(auto& a : actions) {
-        a->makeMappings(skel, mappings);
-    }
+    act->update(dt, samples, trans_weight);
 }
 
 void ActionGraph::serialize(out_stream& out) {
@@ -270,11 +251,8 @@ void ActionGraph::serialize(out_stream& out) {
         auto& a = actions[i];
         w.write(a->getName());
         w.write(a->getEditorPos());
-        if(a->anim) {
-            w.write(a->anim->Name());
-        } else {
-            w.write(std::string());
-        }
+        w.write<uint8_t>((uint8_t)a->motion->getType());
+        a->motion->write(out);
     }
     for(size_t i = 0; i < transitions.size(); ++i) {
         auto& t = transitions[i];
@@ -315,8 +293,15 @@ bool ActionGraph::deserialize(in_stream& in, size_t sz) {
         auto& a = actions[i];
         a->setName(r.readStr());
         a->setEditorPos(r.read<gfxm::vec2>());
-        std::string anim_name = r.readStr();
-        a->anim = retrieve<Animation>(anim_name);
+        MOTION_TYPE motion_type = (MOTION_TYPE)r.read<uint8_t>();
+        if(motion_type == MOTION_CLIP) {
+            a->motion.reset(new ClipMotion());
+        } else if(motion_type == MOTION_BLEND_TREE) {
+            a->motion.reset(new BlendTreeMotion());
+        }
+        if(a->motion) {
+            a->motion->read(in);
+        }
     }
     for(size_t i = 0; i < transitions.size(); ++i) {
         auto& t = transitions[i];

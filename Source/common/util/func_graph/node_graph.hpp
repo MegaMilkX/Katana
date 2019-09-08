@@ -5,11 +5,9 @@
 #include <type_traits>
 #include <stack>
 
-#include "i_func_node.hpp"
-
 #include "../log.hpp"
 
-
+/*
 template<typename T>
 struct bar {
     static ArgInfo get() {
@@ -289,68 +287,9 @@ class MemberFuncNode {
 public:
     MemberFuncNode(func_t func);
 };
-
+*/
 
 #include "job_node_desc_lib.hpp"
-
-
-class JobGraphNode;
-struct JobOutput;
-struct JobInput {
-    JobOutput* source = 0;
-    rttr::type type;
-    JobGraphNode* owner = 0;
-};
-struct JobOutput {
-    void* value_ptr = 0;
-    rttr::type type;
-    JobGraphNode* owner = 0;
-};
-
-
-class JobGraphNode {
-protected:
-    FuncNodeDesc* desc = 0;
-    std::vector<JobInput> inputs;
-    std::vector<JobOutput> outputs;
-
-    virtual void onInit() = 0;
-
-public:
-    FuncNodeDesc& getDesc() { return *desc; }
-    size_t inputCount() const { return inputs.size(); }
-    size_t outputCount() const { return outputs.size(); }
-    JobInput* getInput(size_t i) { return &inputs[i]; }
-    JobOutput* getOutput(size_t i) { return &outputs[i]; }
-
-    bool connect(size_t input, JobOutput* source) {
-        if(input >= inputs.size()) {
-            return false;
-        }
-        if(inputs[input].type != source->type) {
-            return false;
-        }
-        inputs[input].source = source;
-        return true;
-    }
-    bool connect(size_t output, JobInput* target) {
-        if(output >= outputs.size()) {
-            return false;
-        }
-        if(outputs[output].type != target->type) {
-            return false;
-        }
-        target->source = &outputs[output];
-        return true;
-    }
-
-    virtual bool isInvokable() { return false; }
-
-    void init() {
-        onInit();
-    }
-    virtual void invoke() {}
-};
 
 
 template<typename NODE_T>
@@ -363,7 +302,7 @@ protected:
     }
     template<typename T>
     void bind(T* value_ptr) {
-        emit(0, value);
+        bind(0, value_ptr);
     }
     template<typename T>
     void bind(size_t i, T* value_ptr) {
@@ -375,7 +314,7 @@ protected:
 
 public:
     JobNode() {
-        desc = JobNodeDescLib::get()->getDesc(rttr::type::get<NODE_T>().get_name().to_string());
+        desc = JobNodeDescLib::get()->getDesc(rttr::type::get<NODE_T>());
         for(auto& in : desc->ins) {
             inputs.emplace_back(JobInput{ 0, in.type, this });
         }
@@ -428,38 +367,55 @@ public:
     }
 };
 
+#include "../data_stream.hpp"
+#include "../data_writer.hpp"
+#include "../data_reader.hpp"
 
 class JobGraph {
     std::set<JobGraphNode*> nodes;
+    std::map<uint32_t, JobGraphNode*> nodes_by_uid;
+    uint32_t next_uid = 0;
     std::vector<JobGraphNode*> invokable_nodes;
 public:
+    void clear() {
+        for(auto j : nodes) {
+            delete j;
+        }
+        nodes.clear();
+    }
+
     std::set<JobGraphNode*>& getNodes() {
         return nodes;
     }
 
     // Ownership is transferred to the JobGraph
     void addNode(JobGraphNode* job) {
+        //assert(job);
+
+        job->setUid(next_uid++);
         nodes.insert(job);
+        nodes_by_uid[job->getUid()] = job;
         job->init();
+    }
+
+    JobGraphNode* getNode(uint32_t uid) {
+        auto it = nodes_by_uid.find(uid);
+        if(it == nodes_by_uid.end()) {
+            return 0;
+        }
+        return it->second;
     }
 
     void prepare() {
         invokable_nodes.clear();
         std::set<JobGraphNode*> valid_nodes;
 
-        // Ignore jobs that lack inputs
+        
         for(auto job : nodes) {
             if(!job->isInvokable()) {
                 continue;
             }
-            bool valid_job = true;
-            for(size_t i = 0; i < job->inputCount(); ++i) {
-                if(!job->getInput(i)->source) {
-                    valid_job = false;
-                    break;
-                }
-            }
-            if(valid_job) {
+            if(job->isValid()) { // Ignore jobs that lack inputs
                 valid_nodes.insert(job);
                 invokable_nodes.emplace_back(job);
             }
@@ -503,6 +459,83 @@ public:
         for(auto job : invokable_nodes) {
             job->invoke();
         }
+    }
+
+    void write(out_stream& out) {
+        DataWriter w(&out);
+        
+        std::map<JobGraphNode*, uint32_t> node_id_map;
+        std::map<JobOutput*, uint32_t> out_id_map;
+        std::vector<JobInput*> inputs;
+        for(auto j : nodes) {
+            uint32_t id = node_id_map.size();
+            node_id_map[j] = id;
+            for(size_t i = 0; i < j->inputCount(); ++i) {
+                inputs.emplace_back(j->getInput(i));
+            }
+            for(size_t i = 0; i < j->outputCount(); ++i) {
+                uint32_t out_id = out_id_map.size();
+                out_id_map[j->getOutput(i)] = out_id;
+            }
+        }
+
+        w.write(next_uid);
+        w.write<uint32_t>(nodes.size());
+        for(auto j : nodes) {
+            w.write(j->getDesc().name);
+            w.write(j->getUid());
+        }
+
+        w.write<uint32_t>(inputs.size());
+        for(size_t i = 0; i < inputs.size(); ++i) {
+            JobInput* in = inputs[i];
+            if(in->source) {
+                w.write<uint32_t>(out_id_map[in->source]);
+            } else {
+                w.write<uint32_t>(-1);
+            }
+        }
+    }
+    void read(in_stream& in) {
+        DataReader r(&in);
+
+        std::vector<JobGraphNode*> nodes_tmp;
+        std::vector<JobInput*> ins_tmp;
+        std::vector<JobOutput*> outs_tmp;
+
+        next_uid = r.read<uint32_t>();
+        uint32_t node_count = r.read<uint32_t>();
+        for(uint32_t i = 0; i < node_count; ++i) {
+            std::string node_name = r.readStr();
+            auto node = createJobNode(node_name);
+            node->setUid(r.read<uint32_t>());
+            nodes_tmp.emplace_back(
+                node
+            );
+            for(size_t j = 0; j < node->inputCount(); ++j) {
+                ins_tmp.emplace_back(node->getInput(j));
+            }
+            for(size_t j = 0; j < node->outputCount(); ++j) {
+                outs_tmp.emplace_back(node->getOutput(j));
+            }
+        }
+
+        uint32_t input_count = r.read<uint32_t>();
+        for(uint32_t i = 0; i < input_count; ++i) {
+            uint32_t out_id = r.read<uint32_t>();
+            if(out_id != (uint32_t)-1) {
+                ins_tmp[i]->source = outs_tmp[out_id];
+            }
+        }
+
+
+        for(auto j : nodes_tmp) {
+            nodes.insert(j);
+            nodes_by_uid[j->getUid()] = j;
+            j->init();
+        }
+
+        prepare();
     }
 };
 

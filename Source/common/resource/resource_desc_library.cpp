@@ -6,6 +6,7 @@
 #include "../../editor/editor_doc_audio_clip.hpp"
 #include "../../editor/editor_doc_model_source.hpp"
 #include "../../editor/doc_action_graph.hpp"
+#include "../../editor/doc_blend_tree.hpp"
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "../lib/stb_image_resize.h"
@@ -73,6 +74,17 @@ void ResourceDescLibrary::init() {
         [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
 #ifdef KT_EDITOR
             return new DocActionGraph(node);
+#else
+            return 0;
+#endif
+        }
+    )
+    .add<BlendTree>(
+        "blend_tree", 
+        FLAG_VIEWABLE | FLAG_WRITABLE, 
+        [](std::shared_ptr<ResourceNode>& node)->EditorDocument*{
+#ifdef KT_EDITOR
+            return new DocBlendTree(node);
 #else
             return 0;
 #endif

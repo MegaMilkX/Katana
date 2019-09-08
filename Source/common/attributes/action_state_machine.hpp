@@ -12,7 +12,6 @@ class ActionStateMachine : public Attribute {
 
     std::shared_ptr<Skeleton> skeleton;
     std::shared_ptr<ActionGraph> graph_ref;
-    std::map<Animation*, std::vector<int32_t>> mappings;
 
     bool skeleton_nodes_dirty = true;
     std::vector<ktNode*> skeleton_nodes;
@@ -21,7 +20,6 @@ class ActionStateMachine : public Attribute {
     ActionGraph graph;
     int32_t current_action_id = -1;
 
-    void buildAnimSkeletonMappings();
     void resizeSampleBuffer();
     void makeGraphLocalCopy();
 

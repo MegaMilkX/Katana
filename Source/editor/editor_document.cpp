@@ -31,6 +31,8 @@ void EditorDocument::saveAs() {
 }
 
 bool EditorDocument::saveResource(std::shared_ptr<Resource>& r, const std::string& path) {
+    onPreSave();
+    
     if(r->write_to_file(path)) {
         gResourceTree.scanFilesystem(get_module_dir() + "/" + platformGetConfig().data_dir);
         return true;

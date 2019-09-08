@@ -1,9 +1,16 @@
 #ifndef FUNC_NODE_DESC_HPP
 #define FUNC_NODE_DESC_HPP
 
+#include <functional>
+
 #include "arg_info.hpp"
 
+#include "job_graph_node.hpp"
+
+#include "../common/gfxm.hpp"
+
 struct FuncNodeDesc {
+    std::function<JobGraphNode*(void)> node_constructor;
     struct In {
         std::string name;
         rttr::type type;
@@ -17,8 +24,7 @@ struct FuncNodeDesc {
     std::string name;
     std::vector<In> ins;
     std::vector<Out> outs;
-    std::vector<ArgInfo> arg_infos;
-    size_t out_buf_sz;
+    gfxm::vec3 color;
 };
 
 #endif

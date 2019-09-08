@@ -313,9 +313,19 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
         if(ImGui::InputText("name", buf, sizeof(buf))) {
             action_graph->renameAction(selected_action, buf);
         }
-        imguiResourceTreeCombo("anim", selected_action->anim, "anm", [](){
+        if(ImGui::BeginCombo("motion type", motionTypeToCStr(selected_action->motion->getType()))) {
+            if(ImGui::Selectable(motionTypeToCStr(MOTION_CLIP))) {
+                selected_action->motion.reset(new ClipMotion());
+            }
+            if(ImGui::Selectable(motionTypeToCStr(MOTION_BLEND_TREE))) {
+                selected_action->motion.reset(new BlendTreeMotion());
+            }
+            ImGui::EndCombo();
+        }
+        if(selected_action->motion) {
+            selected_action->motion->onGui();
+        }
 
-        });
         if(ImGui::Button("Delete action")) {
             action_graph->deleteAction(selected_action);
             selected_action = 0;

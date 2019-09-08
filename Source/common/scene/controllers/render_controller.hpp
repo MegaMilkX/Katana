@@ -47,7 +47,7 @@ public:
         for(auto l : dir_lights) {
             dl.dir_lights.emplace_back(
                 DrawList::DirLight{
-                    l->getOwner()->getTransform()->forward(),
+                    l->getOwner()->getTransform()->back(),
                     l->color,
                     l->intensity
                 }

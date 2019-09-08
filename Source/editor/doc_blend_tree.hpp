@@ -13,15 +13,11 @@
 
 #include "../common/util/func_graph/node_graph.hpp"
 
-struct BlendSeq {
-public:
-    struct Item {
-        Animation* anim = 0;
-        float weight = 1.0f;
-        std::vector<int32_t> mapping;
-    };
-    std::vector<Item> seq;
-};
+#include "../common/util/imgui_helpers.hpp"
+
+#include "../common/attributes/light_source.hpp"
+
+#include "../common/resource/blend_tree_motion.hpp"
 
 class DocBlendTree : public EditorDocumentTyped<BlendTree> {
     GuiViewport viewport;
@@ -29,13 +25,22 @@ class DocBlendTree : public EditorDocumentTyped<BlendTree> {
     std::shared_ptr<GameScene> ref_scn;
     std::shared_ptr<Skeleton> skel;
     ktNode* cam_pivot = 0;
+    DirLight* cam_light = 0;
 
-    std::vector<std::shared_ptr<Animation>> clips;
+    BlendTreeMotion motion;
 
-    JobGraph jobGraph;
+    JobGraphNode* selected_node = 0;
+
+    void guiDrawNode(JobGraph& jobGraph, JobGraphNode* node, ImVec2* pos);
 
 public:
     DocBlendTree();
+    DocBlendTree(std::shared_ptr<ResourceNode>& node);
+
+    Skeleton* getSkeleton() { return skel.get(); }
+    
+    void onResourceSet() override;
+    void onPreSave() override;
 
     void onGui(Editor* ed, float dt) override;
     void onGuiToolbox(Editor* ed) override;

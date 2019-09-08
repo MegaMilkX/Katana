@@ -30,6 +30,7 @@ static ImVec2 s_node_current_pos;
 static ImGuiID s_node_drag_id = 0;
 static bool s_node_selected = false;
 static bool* s_node_clicked_ptr = 0;
+static ImU32 s_node_col;
 
 static std::set<std::pair<void*, void*>> s_connections;
 static std::vector<NodeInOutCollection> s_node_cache;
@@ -57,7 +58,7 @@ static ImVec2 GridScreenToPos(const ImVec2& pos) {
     return r;
 }
 
-void BeginTreeNode(const char* name, ImVec2* pos, bool* clicked, bool selected, const ImVec2& size) {
+void BeginTreeNode(const char* name, ImVec2* pos, bool* clicked, bool selected, const ImVec2& size, ImU32 col) {
     s_node_pos_out = pos;
     s_node_name = name;
     /*
@@ -75,6 +76,8 @@ void BeginTreeNode(const char* name, ImVec2* pos, bool* clicked, bool selected, 
     
     s_node_selected = selected;
     s_node_clicked_ptr = clicked;
+
+    s_node_col = col;
 
 /*
     if(highlight) {
@@ -96,7 +99,7 @@ void BeginTreeNode(const char* name, ImVec2* pos, bool* clicked, bool selected, 
 void EndTreeNode() {
     bool clicked = false;
 
-    ImU32 node_col = ImGui::GetColorU32(ImGuiCol_WindowBg, 1);
+    ImU32 node_col = s_node_col;//ImGui::GetColorU32(ImGuiCol_WindowBg, 1);
 
     if((s_node_drag_id == ImGui::GetID(s_node_name.c_str())) && ImGui::IsMouseDragging(0)) {
         *s_node_pos_out += ImGui::GetMouseDragDelta(0) / s_graph_edit_zoom;
@@ -134,6 +137,10 @@ void EndTreeNode() {
 
     ImGui::RenderFrame(
         s_node_bb.Min, s_node_bb.Max, 
+        ImGui::GetColorU32(ImGuiCol_WindowBg, 1), true, 10.0f * s_graph_edit_zoom //ImGui::GetStyle().FrameRounding
+    );
+    ImGui::RenderFrame(
+        s_node_bb.Min, ImVec2(s_node_bb.Max.x, s_node_bb.Min.y + ImGui::GetTextLineHeight() * 2), 
         node_col, true, 10.0f * s_graph_edit_zoom //ImGui::GetStyle().FrameRounding
     );
     if(

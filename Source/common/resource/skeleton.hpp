@@ -10,6 +10,12 @@
 #include "../util/log.hpp"
 #include "../util/serialization.hpp"
 
+struct AnimSample {
+    gfxm::vec3 t;
+    gfxm::quat r;
+    gfxm::vec3 s;
+};
+
 class Skeleton : public Resource {
     RTTR_ENABLE(Resource)
 public:
@@ -88,6 +94,12 @@ public:
             return 0;
         }
         return &bones[it->second];
+    }
+
+    std::vector<AnimSample> makePoseArray() {
+        std::vector<AnimSample> pose;
+        pose.resize(bones.size());
+        return pose;
     }
 
     virtual void serialize(out_stream& out) {

@@ -109,6 +109,18 @@ void Animation::fireEvents(float from, float to, std::function<void(const std::s
     }
 }
 
+
+std::vector<int32_t>& Animation::getMapping(Skeleton* skel) {
+    auto it = mappings.find(skel);
+    if(it != mappings.end()) {
+        return it->second;
+    }
+    auto& vec = mappings[skel];
+    buildAnimSkeletonMapping(this, skel, vec);
+    return vec;
+}
+
+
 void Animation::sample_remapped(
     std::vector<AnimSample>& out,
     float cursor,

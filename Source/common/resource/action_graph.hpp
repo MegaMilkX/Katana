@@ -9,6 +9,9 @@
 
 #include "../util/make_unique_string.hpp"
 
+#include "clip_motion.hpp"
+#include "blend_tree_motion.hpp"
+
 class ActionGraph;
 
 class ActionGraphParams {
@@ -81,8 +84,13 @@ class ActionGraphNode {
     gfxm::vec2 editor_pos;
     std::set<ActionGraphTransition*> out_transitions;
 public:
-    std::shared_ptr<Animation> anim;
-    float cursor = .0f;
+    std::shared_ptr<Motion> motion;
+
+    ActionGraphNode();
+
+    void setSkeleton(std::shared_ptr<Skeleton> skel) {
+        motion->setSkeleton(skel);
+    }
 
     const std::string& getName() const { return name; }
     void               setName(const std::string& value) { name = value; }
@@ -95,12 +103,9 @@ public:
 
     void               update(
         float dt, 
-        std::vector<AnimSample>& samples, 
-        const std::map<Animation*, std::vector<int32_t>>& mappings,
+        std::vector<AnimSample>& samples,
         float weight
     );
-
-    void               makeMappings(Skeleton* skel, std::map<Animation*, std::vector<int32_t>>& mappings);
 
     void               write(out_stream& out);
     void               read(in_stream& in);
@@ -129,6 +134,12 @@ class ActionGraph : public Resource {
 public:
     const char* getWriteExtension() const override { return "action_graph"; }
 
+    void setSkeleton(std::shared_ptr<Skeleton> skeleton) {
+        for(auto a : actions) {
+            a->setSkeleton(skeleton);
+        }
+    }
+
     ActionGraphNode* createAction(const std::string& name = "Action");
     void             renameAction(ActionGraphNode* action, const std::string& name);
     ActionGraphTransition* createTransition(const std::string& from, const std::string& to);
@@ -152,11 +163,8 @@ public:
 
     void                                       update(
         float dt, 
-        std::vector<AnimSample>& samples, 
-        const std::map<Animation*, std::vector<int32_t>>& mappings
+        std::vector<AnimSample>& samples
     );
-
-    void               makeMappings(Skeleton* skel, std::map<Animation*, std::vector<int32_t>>& mappings);
 
     void serialize(out_stream& out) override;
     bool deserialize(in_stream& in, size_t sz) override;

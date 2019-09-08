@@ -56,6 +56,10 @@ public:
     
     void update(Editor* ed, float dt);
 
+    virtual void onPreSave() {
+
+    }
+
     virtual void onGui(Editor* ed, float dt) = 0;
     virtual void onGuiToolbox(Editor* ed) {}
 protected:
@@ -139,6 +143,12 @@ public:
         _name = node->getFullName();
         _node = node;
         _resource = node->getResource<T>();
+
+        onResourceSet();
+    }
+
+    virtual void onResourceSet() {
+        
     }
 };
 

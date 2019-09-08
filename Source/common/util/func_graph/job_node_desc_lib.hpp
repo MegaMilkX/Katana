@@ -17,28 +17,57 @@ class JobNodeDescLib : public Singleton<JobNodeDescLib> {
         std::string,
         std::unique_ptr<FuncNodeDesc>
     > descs;
+    std::map<
+        rttr::type,
+        FuncNodeDesc*
+    > descs_by_type;
 public:
     FuncNodeDesc* getDesc(const std::string& name) {
-        FuncNodeDesc* ptr = 0;
         auto it = descs.find(name);
         if(it == descs.end()) {
-            ptr = new FuncNodeDesc();
-            descs.insert(std::make_pair(name, std::unique_ptr<FuncNodeDesc>(ptr)));
+            return 0;
         } else {
-            ptr = it->second.get();
+            return it->second.get();
         }
+    }
+    FuncNodeDesc* getDesc(rttr::type t) {
+        auto it = descs_by_type.find(t);
+        if(it == descs_by_type.end()) {
+            return 0;
+        } else {
+            return it->second;
+        }
+    }
 
+    FuncNodeDesc* createDesc(rttr::type t, const std::string& name) {
+        FuncNodeDesc* ptr = 0;
+        auto it = descs.find(name);
+        if(it != descs.end()) {
+            return 0;
+        }
+        
+        ptr = new FuncNodeDesc;
+        ptr->name = name;
+        descs[name].reset(ptr);
+        descs_by_type[t] = ptr;
         return ptr;
-    }    
+    }
 };
+
+inline JobGraphNode* createJobNode(const std::string& name) {
+    auto desc = JobNodeDescLib::get()->getDesc(name);
+    return desc->node_constructor();
+}
 
 template<typename T>
 class regJobNode {
     FuncNodeDesc* desc = 0;
 public:
     regJobNode(const std::string& name) {
-        desc = JobNodeDescLib::get()->getDesc(rttr::type::get<T>().get_name().to_string());
-        desc->name = name;
+        desc = JobNodeDescLib::get()->createDesc(rttr::type::get<T>(), name);
+        desc->node_constructor = []()->JobGraphNode*{
+            return new T();
+        };
     }
     ~regJobNode() {
 
@@ -56,6 +85,10 @@ public:
         for(unsigned int i = 0; i < count; ++i) {
             desc->outs.emplace_back(FuncNodeDesc::Out{ name, rttr::type::get<T>() });
         }
+        return *this;
+    }
+    regJobNode& color(float r, float g, float b) {
+        desc->color = gfxm::vec3(r, g, b);
         return *this;
     }
 };
