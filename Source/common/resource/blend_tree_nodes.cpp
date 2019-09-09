@@ -26,3 +26,34 @@ STATIC_RUN(BLEND_TREE_NODES) {
         .out<float>("float")
         .color(0.4, 0.0, 0.0);
 }
+
+
+SingleAnimJob::SingleAnimJob() {
+}
+
+void SingleAnimJob::setBlendTree(BlendTree* bt) {
+    blendTree = bt;
+}
+
+void SingleAnimJob::setSkeleton(std::shared_ptr<Skeleton> skel) {
+    this->skel = skel;
+    if(!skel) return;
+    pose.samples = skel->makePoseArray();
+}
+
+void SingleAnimJob::onInit() {
+    bind<Pose>(&pose);
+}
+void SingleAnimJob::onInvoke() {
+    if(!skel || !anim || !blendTree) return;
+
+    std::vector<int32_t>& mapping = anim->getMapping(skel.get());
+    anim->sample_remapped(pose.samples, blendTree->getCursor() * anim->length, mapping);
+    pose.speed = anim->fps / anim->length;
+}
+
+void SingleAnimJob::onGui() {
+    imguiResourceTreeCombo("anim clip", anim, "anm", [](){
+
+    });
+}

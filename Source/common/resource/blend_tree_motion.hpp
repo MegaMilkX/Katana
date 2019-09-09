@@ -29,8 +29,11 @@ public:
     void advance(float dt) override {
         if(!tree) return;
 
+
         Pose& pose = local_tree.getPoseData(.0f);
-        std::vector<ktNode*> tgt_nodes;
+        cursor += dt * pose.speed;
+        local_tree.setCursor(cursor);
+        
         if(skeleton) {
             samples = pose.samples;
         }

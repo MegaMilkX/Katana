@@ -37,6 +37,7 @@ bool BlendTree::deserialize(in_stream& in, size_t sz) {
     for(uint32_t i = 0; i < anim_node_uid_count; ++i) {
         auto node = (SingleAnimJob*)jobGraph.getNode(in.read<uint32_t>());
         anim_nodes.insert(node);
+        node->setBlendTree(this);
     }
     jobGraph.prepare();
     return true;

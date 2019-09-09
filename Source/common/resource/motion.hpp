@@ -37,6 +37,8 @@ public:
             return;
         }
         samples = skeleton->makePoseArray();
+
+        onSkeletonChanged();
     }
     virtual void advance(float dt) = 0;
     virtual std::vector<AnimSample>& getPose() {
