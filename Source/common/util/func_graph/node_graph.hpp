@@ -484,6 +484,7 @@ public:
         for(auto j : nodes) {
             w.write(j->getDesc().name);
             w.write(j->getUid());
+            w.write(j->getPos());
         }
 
         w.write<uint32_t>(inputs.size());
@@ -509,6 +510,7 @@ public:
             std::string node_name = r.readStr();
             auto node = createJobNode(node_name);
             node->setUid(r.read<uint32_t>());
+            node->setPos(r.read<gfxm::vec2>());
             nodes_tmp.emplace_back(
                 node
             );

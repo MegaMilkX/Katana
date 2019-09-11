@@ -19,7 +19,11 @@ public:
         }
         this->tree = tree;
         local_tree.copy(tree.get());
-        local_tree.setSkeleton(skeleton);
+        if(skeleton) {
+            local_tree.setSkeleton(skeleton);
+        } else {
+            local_tree.setSkeleton(tree->ref_skel);
+        }
     }
 
     BlendTree& getTree() {

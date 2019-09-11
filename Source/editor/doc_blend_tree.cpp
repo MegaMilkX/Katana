@@ -6,6 +6,8 @@
 
 #include "../common/util/log.hpp"
 
+#include "../common/attributes/skeleton_ref.hpp"
+
 DocBlendTree::DocBlendTree() {
     viewport.camMode(GuiViewport::CAM_ORBIT);
     viewport.enableDebugDraw(false);
@@ -19,11 +21,39 @@ DocBlendTree::DocBlendTree(std::shared_ptr<ResourceNode>& node) {
 
 void DocBlendTree::onResourceSet() {
     motion.setBlendTree(std::dynamic_pointer_cast<BlendTree>(_resource));
+
+    if(motion.getTree().ref_object) {
+        setReferenceObject(motion.getTree().ref_object.get());
+    }
 }
 void DocBlendTree::onPreSave() {
     auto res = std::dynamic_pointer_cast<BlendTree>(_resource);
     res->copy(&motion.getTree());
 }
+
+
+void DocBlendTree::setReferenceObject(ktNode* node) {
+    scn.clear();
+                    
+    scn.copy(node);
+    scn.getTransform()->setScale(
+        node->getTransform()->getScale()
+    );
+    gfxm::aabb box;
+    scn.makeAabb(box);
+
+    cam_light = scn.createChild()->get<DirLight>().get();
+    cam_light->intensity = 20.0f;
+
+    viewport.resetCamera((box.from + box.to) * 0.5f, gfxm::length(box.to - box.from));
+
+    auto skel_ref = scn.find<SkeletonRef>();
+    if(skel_ref && skel_ref->skeleton) {
+        motion.getTree().ref_skel = skel_ref->skeleton;
+        motion.setSkeleton(skel_ref->skeleton);
+    }
+}
+
 
 void DocBlendTree::guiDrawNode(JobGraph& jobGraph, JobGraphNode* node, ImVec2* pos) {
     bool clicked = false;
@@ -51,7 +81,7 @@ void DocBlendTree::guiDrawNode(JobGraph& jobGraph, JobGraphNode* node, ImVec2* p
         selected_node = node;
     }
 }
-std::map<JobGraphNode*, ImVec2> node_poses;
+
 void DocBlendTree::onGui(Editor* ed, float dt) {
     auto& blendTree = motion.getTree();
     
@@ -61,14 +91,19 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
     ImGui::BeginColumns("First", 2);
     if(ImGuiExt::BeginGridView("BlendTreeGrid")) {
         for(auto n : blendTree.getGraph().getNodes()) {
-            guiDrawNode(blendTree.getGraph(), n, &node_poses[n]);
+            const gfxm::vec2& p = n->getPos();
+            ImVec2 pos(p.x, p.y);
+            guiDrawNode(blendTree.getGraph(), n, &pos);
+            n->setPos(gfxm::vec2(pos.x, pos.y));
         }
     }
     ImGuiExt::EndGridView();    
     ImGui::NextColumn();
 
     std::vector<ktNode*> tgt_nodes;
-    if(skel) {
+    if(motion.getTree().ref_skel) {
+        auto& skel = motion.getTree().ref_skel;
+
         tgt_nodes.resize(skel->boneCount());
         for(size_t i = 0; i < skel->boneCount(); ++i) {
             auto& bone = skel->getBone(i);
@@ -102,21 +137,9 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
                 
                 auto ref = node->getResource<GameScene>();
                 if(ref) {
-                    ref_scn = ref;
+                    motion.getTree().ref_object = ref;
 
-                    scn.clear();
-                    
-                    scn.copy(node->getResource<GameScene>().get());
-                    scn.getTransform()->setScale(
-                        node->getResource<GameScene>()->getTransform()->getScale()
-                    );
-                    gfxm::aabb box;
-                    scn.makeAabb(box);
-
-                    cam_light = scn.createChild()->get<DirLight>().get();
-                    cam_light->intensity = 20.0f;
-
-                    viewport.resetCamera((box.from + box.to) * 0.5f, gfxm::length(box.to - box.from));
+                    setReferenceObject(ref.get());
                 }
             }
         }
@@ -150,7 +173,7 @@ void DocBlendTree::onGuiToolbox(Editor* ed) {
         }
         if(ImGui::MenuItem("SingleAnim")) {
             auto node = blendTree.createNode<SingleAnimJob>();
-            node->setSkeleton(skel);
+            node->setSkeleton(motion.getSkeleton());
             blendTree.getGraph().prepare();
         }
         if(ImGui::MenuItem("Blend3")) {
@@ -167,11 +190,13 @@ void DocBlendTree::onGuiToolbox(Editor* ed) {
         ImGui::EndGroup();
     }
 
-    imguiResourceTreeCombo("reference", ref_scn, "so", [](){
-
+    imguiResourceTreeCombo("reference", motion.getTree().ref_object, "so", [this](){
+        if(motion.getTree().ref_object) {
+            setReferenceObject(motion.getTree().ref_object.get());
+        }
     });
-    imguiResourceTreeCombo("skeleton", skel, "skl", [this](){
-        motion.setSkeleton(skel);
+    imguiResourceTreeCombo("skeleton", motion.getTree().ref_skel, "skl", [this](){
+        motion.setSkeleton(motion.getTree().ref_skel);
     });
     imguiObjectCombo("camera pivot", cam_pivot, &scn, [](){
 

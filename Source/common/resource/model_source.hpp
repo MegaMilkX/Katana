@@ -13,6 +13,7 @@
 
 #include "../attributes/animation_stack.hpp"
 #include "../attributes/model.hpp"
+#include "../attributes/skeleton_ref.hpp"
 
 class aiScene;
 class aiNode;

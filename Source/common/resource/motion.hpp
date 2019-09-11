@@ -40,6 +40,9 @@ public:
 
         onSkeletonChanged();
     }
+    std::shared_ptr<Skeleton> getSkeleton() {
+        return skeleton;
+    }
     virtual void advance(float dt) = 0;
     virtual std::vector<AnimSample>& getPose() {
         return samples;

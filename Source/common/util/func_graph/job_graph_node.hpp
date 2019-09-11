@@ -5,6 +5,8 @@
 #include <rttr/registration>
 #include <vector>
 
+#include "../../gfxm.hpp"
+
 class JobGraphNode;
 struct JobOutput;
 struct JobInput {
@@ -28,6 +30,8 @@ protected:
     std::vector<JobInput> inputs;
     std::vector<JobOutput> outputs;
 
+    gfxm::vec2 visual_pos;
+
     virtual void onInit() = 0;
 
 public:
@@ -38,6 +42,8 @@ public:
     size_t outputCount() const { return outputs.size(); }
     JobInput* getInput(size_t i) { return &inputs[i]; }
     JobOutput* getOutput(size_t i) { return &outputs[i]; }
+    const gfxm::vec2& getPos() const { return visual_pos; }
+    void setPos(const gfxm::vec2& pos) { visual_pos = pos; } 
 
     bool connect(size_t input, JobOutput* source) {
         if(input >= inputs.size()) {

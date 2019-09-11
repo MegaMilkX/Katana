@@ -22,8 +22,7 @@
 class DocBlendTree : public EditorDocumentTyped<BlendTree> {
     GuiViewport viewport;
     GameScene scn;
-    std::shared_ptr<GameScene> ref_scn;
-    std::shared_ptr<Skeleton> skel;
+
     ktNode* cam_pivot = 0;
     DirLight* cam_light = 0;
 
@@ -31,13 +30,13 @@ class DocBlendTree : public EditorDocumentTyped<BlendTree> {
 
     JobGraphNode* selected_node = 0;
 
+    void setReferenceObject(ktNode* node);
+
     void guiDrawNode(JobGraph& jobGraph, JobGraphNode* node, ImVec2* pos);
 
 public:
     DocBlendTree();
     DocBlendTree(std::shared_ptr<ResourceNode>& node);
-
-    Skeleton* getSkeleton() { return skel.get(); }
     
     void onResourceSet() override;
     void onPreSave() override;

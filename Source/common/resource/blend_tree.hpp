@@ -5,6 +5,9 @@
 
 #include "blend_tree_nodes.hpp"
 
+#include "../scene/game_scene.hpp"
+#include "skeleton.hpp"
+
 
 class BlendTree : public Resource {
     RTTR_ENABLE(Resource)
@@ -14,7 +17,12 @@ class BlendTree : public Resource {
     PoseResultJob* poseResult = 0;
     Pose pose;
     float cursor = .0f;
+
 public:
+    // For editor purposes
+    std::shared_ptr<GameScene> ref_object;
+    std::shared_ptr<Skeleton> ref_skel;
+
     BlendTree() {
         poseResult = new PoseResultJob();
         jobGraph.addNode(poseResult);
