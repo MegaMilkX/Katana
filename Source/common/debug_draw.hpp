@@ -13,6 +13,11 @@ public:
         gfxm::vec3 color;
     };
 
+    enum DEPTH {
+        DEPTH_DISABLE,
+        DEPTH_ENABLE
+    };
+
     static DebugDraw* getInstance() {
         static DebugDraw* instance = new DebugDraw();
         return instance;
@@ -21,7 +26,7 @@ public:
     void init();
     void cleanup();
 
-    void line(const gfxm::vec3& from, const gfxm::vec3& to, const gfxm::vec3& color);
+    void line(const gfxm::vec3& from, const gfxm::vec3& to, const gfxm::vec3& color, DEPTH depth_mode = DEPTH_ENABLE);
 
     void gridxy(const gfxm::vec3& from, const gfxm::vec3& to, float step, const gfxm::vec3& color);
     void gridxz(const gfxm::vec3& from, const gfxm::vec3& to, float step, const gfxm::vec3& color);
@@ -39,11 +44,14 @@ public:
     void clear();
 
 private:
-
     std::vector<Vertex> line_buf;
+    std::vector<Vertex> line_buf_no_depth;
     GLuint vao_handle = 0;
     GLuint vbuf = 0;
     gl::ShaderProgram* line_prog = 0;
+
+    void draw(const gfxm::mat4& proj, const gfxm::mat4& view, const std::vector<Vertex> lines);
+
 };
 
 #endif

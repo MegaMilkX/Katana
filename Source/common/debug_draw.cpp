@@ -23,12 +23,17 @@ void DebugDraw::cleanup() {
     glDeleteVertexArrays(1, &vao_handle);
 }
 
-void DebugDraw::line(const gfxm::vec3& from, const gfxm::vec3& to, const gfxm::vec3& color) {
+void DebugDraw::line(const gfxm::vec3& from, const gfxm::vec3& to, const gfxm::vec3& color, DEPTH depth_mode) {
     Vertex a{from, color};
     Vertex b{to, color};
 
-    line_buf.emplace_back(a);
-    line_buf.emplace_back(b);
+    if(depth_mode == DEPTH_ENABLE) {
+        line_buf.emplace_back(a);
+        line_buf.emplace_back(b);
+    } else {
+        line_buf_no_depth.emplace_back(a);
+        line_buf_no_depth.emplace_back(b);
+    }
 }
 
 void DebugDraw::gridxy(const gfxm::vec3& from, const gfxm::vec3& to, float step, const gfxm::vec3& color) {
@@ -138,14 +143,27 @@ void DebugDraw::circle(const gfxm::vec3& center, float radius, const gfxm::vec3&
 }
 
 void DebugDraw::draw(const gfxm::mat4& proj, const gfxm::mat4& view) {
-    if(line_buf.empty()) return;
+    if(line_buf.empty() && line_buf_no_depth.empty()) return;
 
-    //glDisable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     
+    glEnable(GL_DEPTH_TEST);
+    draw(proj, view, line_buf);
+
+    glDisable(GL_DEPTH_TEST);
+    draw(proj, view, line_buf_no_depth);
+}
+
+void DebugDraw::clear() {
+    line_buf.clear();
+    line_buf_no_depth.clear();
+}
+
+
+void DebugDraw::draw(const gfxm::mat4& proj, const gfxm::mat4& view, const std::vector<Vertex> lines) {
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, vbuf);
-    glBufferData(GL_ARRAY_BUFFER, line_buf.size() * sizeof(Vertex), line_buf.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, lines.size() * sizeof(Vertex), lines.data(), GL_DYNAMIC_DRAW);
 
     glBindVertexArray(vao_handle);
 
@@ -153,9 +171,5 @@ void DebugDraw::draw(const gfxm::mat4& proj, const gfxm::mat4& view) {
     glUniformMatrix4fv(line_prog->getUniform("mat_projection"), 1, GL_FALSE, (float*)&proj);
     glUniformMatrix4fv(line_prog->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
 
-    glDrawArrays(GL_LINES, 0, line_buf.size());
-}
-
-void DebugDraw::clear() {
-    line_buf.clear();
+    glDrawArrays(GL_LINES, 0, lines.size());
 }

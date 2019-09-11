@@ -10,13 +10,13 @@
 
 DocBlendTree::DocBlendTree() {
     viewport.camMode(GuiViewport::CAM_ORBIT);
-    viewport.enableDebugDraw(false);
+    viewport.enableDebugDraw(true);
 }
 DocBlendTree::DocBlendTree(std::shared_ptr<ResourceNode>& node) {
     setResourceNode(node);
 
     viewport.camMode(GuiViewport::CAM_ORBIT);
-    viewport.enableDebugDraw(false);
+    viewport.enableDebugDraw(true);
 }
 
 void DocBlendTree::onResourceSet() {
@@ -126,6 +126,10 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
     }
     if(cam_light) {
         cam_light->getOwner()->getTransform()->setTransform(gfxm::inverse(viewport.getView()));
+    }
+    auto skel_ref = scn.find<SkeletonRef>();
+    if(skel_ref) {
+        skel_ref->debugDraw(&viewport.getDebugDraw());
     }
     viewport.draw(&scn);
     if (ImGui::BeginDragDropTarget()) {
