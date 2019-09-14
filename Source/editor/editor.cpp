@@ -174,16 +174,16 @@ void Editor::onGui(float dt) {
         if(ImGui::BeginMenu("File")) {
             if(ImGui::BeginMenu("New Resource")) {
                 if(ImGui::MenuItem("Scene")) {
-                    addNewDocument(new EditorDocScene());
+                    addDocument(new EditorDocScene());
                 }
                 if(ImGui::MenuItem("ActionGraph")) {
-                    addNewDocument(new DocActionGraph());
+                    addDocument(new DocActionGraph());
                 }
                 if(ImGui::MenuItem("BlendTree")) {
-                    addNewDocument(new DocBlendTree());
+                    addDocument(new DocBlendTree());
                 }
                 if(ImGui::MenuItem("Material")) {
-                    addNewDocument(new DocMaterial());
+                    addDocument(new DocMaterial());
                 }
                 if(ImGui::MenuItem("Texture2D", 0, false, false)) {}
                 if(ImGui::MenuItem("Mesh", 0, false, false)) {}
@@ -290,15 +290,6 @@ void Editor::addDocument(EditorDocument* doc) {
     ImGui::SetWindowFocus(doc->getWindowName().c_str());
     ImGui::DockBuilderDockWindow(doc->getWindowName().c_str(), current_dockspace);
     setFocusedDocument(doc);
-}
-void Editor::addNewDocument(EditorDocument* doc) {
-    open_documents.insert(doc);
-    ImGui::SetWindowFocus(doc->getWindowName().c_str());
-    ImGui::DockBuilderDockWindow(doc->getWindowName().c_str(), current_dockspace);
-    setFocusedDocument(doc);
-}
-void Editor::tryOpenDocument(const std::shared_ptr<ResourceNode>& node) {
-    tryOpenDocument(node->getFullName());
 }
 void Editor::tryOpenDocument(const std::string& res_path) {
     EditorDocument* doc = 0;

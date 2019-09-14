@@ -96,7 +96,7 @@ static void imguiDragDropTarget(const std::string& name) {
 void EditorResourceTree::imguiContextMenu(Editor* ed, const std::shared_ptr<ResourceNode>& node) {
     if (ImGui::BeginPopupContextItem()) {
         if(ImGui::MenuItem("Open")) {
-            ed->tryOpenDocument(node);
+            ed->tryOpenDocument(node->getFullName());
             setSelected(node.get(), false);
         }
         if(ImGui::MenuItem("Open in default program")) {
@@ -255,7 +255,7 @@ void EditorResourceTree::update(Editor* editor) {
                     if(ImGui::Selectable(MKSTR(icon << " " << node_label).c_str(), &selected, ImGuiSelectableFlags_AllowDoubleClick)) {
                         renaming_node = 0;
                         if(ImGui::IsMouseDoubleClicked(0)) {
-                            editor->tryOpenDocument(node);                            
+                            editor->tryOpenDocument(node->getFullName());                            
                         } else {
                         }
                         
@@ -352,7 +352,7 @@ void EditorResourceTree::update(Editor* editor) {
             }
             if(hovered) {
                 if(ImGui::IsMouseDoubleClicked(0)) {
-                    editor->tryOpenDocument(node);
+                    editor->tryOpenDocument(node->getFullName());
                 }
             }
 

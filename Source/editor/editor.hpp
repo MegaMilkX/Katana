@@ -56,8 +56,6 @@ public:
     void setFocusedDocument(EditorDocument* doc);
 
     void addDocument(EditorDocument* doc);
-    void addNewDocument(EditorDocument* doc);
-    void tryOpenDocument(const std::shared_ptr<ResourceNode>& node);
     void tryOpenDocument(const std::string& res_path);
 
     EditorState& getState();
