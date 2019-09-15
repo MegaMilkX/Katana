@@ -5,9 +5,6 @@
 DocMaterial::DocMaterial() {
 
 }
-DocMaterial::DocMaterial(std::shared_ptr<ResourceNode>& node) {
-    setResourceNode(node);
-}
 
 void DocMaterial::onGui(Editor* ed, float dt) {
     auto& mat = _resource;

@@ -14,6 +14,18 @@
 #include <iterator>
 #include <cctype>
 
+inline std::string get_extension(const std::string& path) {
+    size_t dot_pos = path.find_last_of(".");
+    if(dot_pos == std::string::npos) {
+        return "";
+    }
+    if(dot_pos == path.size() - 1) {
+        return "";
+    }
+    std::string ext = path.substr(dot_pos + 1);
+    return ext;
+}
+
 inline std::string replace_reserved_chars(const std::string& path, char r) {
     std::string result = path;
     for(size_t i = 0; i < path.size(); ++i) {

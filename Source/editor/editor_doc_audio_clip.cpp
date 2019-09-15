@@ -4,14 +4,12 @@
 
 #include "../common/audio.hpp"
 
-EditorDocAudioClip::EditorDocAudioClip(std::shared_ptr<ResourceNode>& node)
-{
+EditorDocAudioClip::EditorDocAudioClip() {
     chan = audio().createChannel();
-    setResourceNode(node);
+    audio().setLooping(chan, true);
 }
 
-void EditorDocAudioClip::setResourceNode(std::shared_ptr<ResourceNode>& node) {
-    EditorDocumentTyped<AudioClip>::setResourceNode(node);
+void EditorDocAudioClip::onResourceSet() {
     auto& clip = _resource;
     audio().setBuffer(chan, clip->getBuffer());
 }
@@ -34,9 +32,19 @@ void EditorDocAudioClip::onGui(Editor* ed, float dt) {
         );
     }
     
-    if(ImGui::Button("Play")) {
+    if(!audio().isPlaying(chan)) {
+        if(ImGui::Button(ICON_MDI_PLAY)) {
+            audio().stop(chan);
+            audio().play(chan);
+        }
+    } else {
+        if(ImGui::Button(ICON_MDI_PAUSE)) {
+            audio().stop(chan);
+        }
+    }
+    ImGui::SameLine();
+    if(ImGui::Button(ICON_MDI_STOP)) {
         audio().stop(chan);
         audio().resetCursor(chan);
-        audio().play(chan);
-    }
+    } 
 }

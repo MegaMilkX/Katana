@@ -18,6 +18,8 @@
 
 #include "dialog_save.hpp"
 
+#include "../common/lib/rttr_wrap.hpp"
+
 class Resource;
 class ResourceNode;
 class Editor;
@@ -27,13 +29,16 @@ protected:
     std::string _window_name;
     std::weak_ptr<ResourceNode> _node;
     ImGuiWindowFlags imgui_win_flags = 0;
+
+    virtual void setResourceNode(std::shared_ptr<ResourceNode>& node) = 0;
+
 public:
     EditorDocument();
     virtual ~EditorDocument() {}
 
     virtual void onFocus() {}
 
-    virtual void setResourceNode(std::shared_ptr<ResourceNode>& node) = 0;
+    void setResource(const std::string& path);
 
     ResourceNode* getNode();
 
@@ -82,6 +87,18 @@ template<typename T>
 class EditorDocumentTyped : public EditorDocument {
 protected:
     std::shared_ptr<T> _resource;
+
+    void setResourceNode(std::shared_ptr<ResourceNode>& node) override {
+        if(!node) return;
+
+        _window_name = MKSTR(node->getFullName() << "###" << this);
+        _name = node->getFullName();
+        _node = node;
+        _resource = node->getResource<T>();
+
+        onResourceSet();
+    }
+
 public:
     EditorDocumentTyped() {
         _resource.reset(new T());
@@ -136,20 +153,27 @@ public:
         LOG("Done");
     }
 
-    virtual void setResourceNode(std::shared_ptr<ResourceNode>& node) {
-        if(!node) return;
-
-        _window_name = MKSTR(node->getFullName() << "###" << this);
-        _name = node->getFullName();
-        _node = node;
-        _resource = node->getResource<T>();
-
-        onResourceSet();
-    }
-
     virtual void onResourceSet() {
         
     }
 };
+
+void regEditorDocument(rttr::type doc_type, const std::vector<std::string>& file_extensions);
+
+template<typename DOC_T>
+void regEditorDocument(const std::vector<std::string>& file_extensions) {
+    rttr::registration::class_<DOC_T>(rttr::type::get<DOC_T>().get_name().to_string())
+        .constructor<>()(
+            rttr::policy::ctor::as_raw_ptr
+        );
+    regEditorDocument(rttr::type::get<DOC_T>(), file_extensions);
+}
+template<typename DOC_T>
+void regEditorDocument(const char* file_extension) {
+    regEditorDocument<DOC_T>({ std::string(file_extension) });
+}
+
+EditorDocument* createEditorDocument(const std::string& resource_path);
+
 
 #endif

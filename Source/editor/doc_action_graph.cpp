@@ -6,10 +6,6 @@ DocActionGraph::DocActionGraph() {
 
 }
 
-DocActionGraph::DocActionGraph(std::shared_ptr<ResourceNode>& node) {
-    setResourceNode(node);
-}
-
 static ImRect s_graph_edit_bb;
 static ImVec2 s_graph_edit_offset;
 static ImVec2 s_graph_edit_tmp_offset;

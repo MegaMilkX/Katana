@@ -2,10 +2,6 @@
 
 #include "../common/scene/game_scene.hpp"
 
-EditorDocModelSource::EditorDocModelSource(std::shared_ptr<ResourceNode>& node)
-{
-    setResourceNode(node);
-}
 
 void EditorDocModelSource::onGui(Editor* ed, float dt) {
     auto& mdl_src = _resource;

@@ -8,9 +8,11 @@
 class DocMaterial : public EditorDocumentTyped<Material> {
 public:
     DocMaterial();
-    DocMaterial(std::shared_ptr<ResourceNode>& node);
 
     void onGui(Editor* ed, float dt);
 };
+STATIC_RUN(DocMaterial) {
+    regEditorDocument<DocMaterial>("mat");
+}
 
 #endif

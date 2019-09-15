@@ -8,11 +8,13 @@
 class EditorDocAudioClip : public EditorDocumentTyped<AudioClip> {
     size_t chan = 0;
 public:
-    EditorDocAudioClip(std::shared_ptr<ResourceNode>& node);
-
-    virtual void setResourceNode(std::shared_ptr<ResourceNode>& node);
+    EditorDocAudioClip();
+    void onResourceSet() override;
 
     virtual void onGui(Editor* ed, float dt);
 };
+STATIC_RUN(EditorDocAudioClip) {
+    regEditorDocument<EditorDocAudioClip>("ogg");
+}
 
 #endif

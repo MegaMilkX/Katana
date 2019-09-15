@@ -12,12 +12,6 @@ DocBlendTree::DocBlendTree() {
     viewport.camMode(GuiViewport::CAM_ORBIT);
     viewport.enableDebugDraw(true);
 }
-DocBlendTree::DocBlendTree(std::shared_ptr<ResourceNode>& node) {
-    setResourceNode(node);
-
-    viewport.camMode(GuiViewport::CAM_ORBIT);
-    viewport.enableDebugDraw(true);
-}
 
 void DocBlendTree::onResourceSet() {
     motion.setBlendTree(std::dynamic_pointer_cast<BlendTree>(_resource));

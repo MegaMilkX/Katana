@@ -36,7 +36,6 @@ class DocBlendTree : public EditorDocumentTyped<BlendTree> {
 
 public:
     DocBlendTree();
-    DocBlendTree(std::shared_ptr<ResourceNode>& node);
     
     void onResourceSet() override;
     void onPreSave() override;
@@ -44,5 +43,8 @@ public:
     void onGui(Editor* ed, float dt) override;
     void onGuiToolbox(Editor* ed) override;
 };
+STATIC_RUN(DocBlendTree) {
+    regEditorDocument<DocBlendTree>({ "blend_tree" });
+}
 
 #endif

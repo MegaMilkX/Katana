@@ -308,7 +308,7 @@ void Editor::tryOpenDocument(const std::string& res_path) {
         return;
     }
 
-    doc = ResourceDescLibrary::get()->createEditorDocument(res_path);
+    doc = createEditorDocument(res_path);
     if(!doc) {
         ImGui::PushID(ImGui::GetID("PopupHint1"));
         ImGui::OpenPopup("Hint1");

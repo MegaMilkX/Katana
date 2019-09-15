@@ -11,10 +11,12 @@ class DocActionGraph : public EditorDocumentTyped<ActionGraph> {
     ActionGraphTransition* selected_transition = 0;
 public:
     DocActionGraph();
-    DocActionGraph(std::shared_ptr<ResourceNode>& node);
 
     virtual void onGui(Editor* ed, float dt);
     void onGuiToolbox(Editor* ed) override;
 };
+STATIC_RUN(DocActionGraph) {
+    regEditorDocument<DocActionGraph>({ "action_graph" });
+}
 
 #endif

@@ -11,10 +11,11 @@ class EditorDocModelSource : public EditorDocumentTyped<ModelSource> {
     bool first_use = true;
     GuiViewport gvp;
 public:
-    EditorDocModelSource(std::shared_ptr<ResourceNode>& node);
-
     virtual void onGui(Editor* ed, float dt);
     void onGuiToolbox(Editor* ed) override;
 };
+STATIC_RUN(EditorDocModelSource) {
+    regEditorDocument<EditorDocModelSource>({ "fbx", "obj", "dae" });
+}
 
 #endif

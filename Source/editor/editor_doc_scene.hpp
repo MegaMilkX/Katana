@@ -29,12 +29,14 @@ class EditorDocScene : public EditorDocumentTyped<GameScene>, public InputListen
     rttr::type selected_game_mode = rttr::type::get<ktGameMode>();
 public:
     EditorDocScene();
-    EditorDocScene(std::shared_ptr<ResourceNode>& node);
 
     void onFocus() override;
 
     virtual void onGui (Editor* ed, float dt);
     void onGuiToolbox(Editor* ed) override;
 };
+STATIC_RUN(EditorDocScene) {
+    regEditorDocument<EditorDocScene>("so");
+}
 
 #endif

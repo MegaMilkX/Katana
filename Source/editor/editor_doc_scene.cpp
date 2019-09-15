@@ -16,6 +16,8 @@ extern std::unique_ptr<KatanaImpl> kt_play_mode;
 EditorDocScene::EditorDocScene() {
     imgui_win_flags = ImGuiWindowFlags_MenuBar;
 
+    gvp.enableDebugDraw(false);
+
     bindActionPress("ALT", [this](){ 
         gvp.camMode(GuiViewport::CAM_ORBIT); 
     });
@@ -40,11 +42,7 @@ EditorDocScene::EditorDocScene() {
         );
     });
 }
-EditorDocScene::EditorDocScene(std::shared_ptr<ResourceNode>& node)
-: EditorDocScene() {
-    setResourceNode(node);
-    gvp.enableDebugDraw(false);
-}
+
 
 void EditorDocScene::onFocus() {
     if(_resource) {
