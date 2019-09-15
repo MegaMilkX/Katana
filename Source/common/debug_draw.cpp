@@ -142,6 +142,45 @@ void DebugDraw::circle(const gfxm::vec3& center, float radius, const gfxm::vec3&
     }
 }
 
+void DebugDraw::frustum(const gfxm::mat4& proj, const gfxm::mat4& view, float znear, float zfar, const gfxm::vec3& color) {
+    gfxm::vec3 points[] = {
+        { -1, 1, 1 },
+        { 1, 1, 1 },
+        { 1, -1, 1 },
+        { -1, -1, 1 },
+        { -1, 1, -1 },
+        { 1, 1, -1 },
+        { 1, -1, -1 },
+        { -1, -1, -1 }
+    };
+
+    for(size_t i = 0; i < sizeof(points) / sizeof(points[0]); ++i) {
+        gfxm::vec4 p(points[i], 1.0f);
+        p = gfxm::inverse(proj) * p;
+        p.x /= p.w;
+        p.y /= p.w;
+        p.z /= p.w;
+        p.w = 1.0f;
+        p = gfxm::inverse(view) * p;
+        points[i] = p;
+    }
+
+    line(points[0], points[1], color);
+    line(points[1], points[2], color);
+    line(points[2], points[3], color);
+    line(points[3], points[0], color);
+
+    line(points[4], points[5], color);
+    line(points[5], points[6], color);
+    line(points[6], points[7], color);
+    line(points[7], points[4], color);
+
+    line(points[0], points[4], color);
+    line(points[1], points[5], color);
+    line(points[2], points[6], color);
+    line(points[3], points[7], color);
+}
+
 void DebugDraw::draw(const gfxm::mat4& proj, const gfxm::mat4& view) {
     if(line_buf.empty() && line_buf_no_depth.empty()) return;
 

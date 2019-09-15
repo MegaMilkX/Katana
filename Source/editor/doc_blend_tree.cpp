@@ -37,7 +37,7 @@ void DocBlendTree::setReferenceObject(ktNode* node) {
     scn.makeAabb(box);
 
     cam_light = scn.createChild()->get<DirLight>().get();
-    cam_light->intensity = 20.0f;
+    cam_light->intensity = 500.0f;
 
     viewport.resetCamera((box.from + box.to) * 0.5f, gfxm::length(box.to - box.from));
 

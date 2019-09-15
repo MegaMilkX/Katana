@@ -49,6 +49,13 @@ public:
         return view;
     }
 
+    gfxm::frustum getFrustum();
+
+    void debugDraw(DebugDraw* dd);
+
+    void onGui() override;
+    void onGizmo(GuiViewport& vp) override;
+
     void write(SceneWriteCtx& out) override {
         out.write(projection);
         out.write(view);

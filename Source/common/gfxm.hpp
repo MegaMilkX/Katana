@@ -1333,6 +1333,80 @@ inline bool aabb_in_aabb(const gfxm::aabb& a, const gfxm::aabb& enclosing) {
     return a.from >= enclosing.from && a.to <= enclosing.to;
 }
 
+struct frustum {
+    gfxm::vec4 planes[6];
+};
+
+inline frustum make_frustum(const mat4& proj) {
+    frustum f;
+    f.planes[0].x = proj[0][3] - proj[0][0];
+    f.planes[0].y = proj[1][3] - proj[1][0];
+    f.planes[0].z = proj[2][3] - proj[2][0];
+    f.planes[0].w = proj[3][3] - proj[3][0];
+
+    f.planes[1].x = proj[0][3] + proj[0][0];
+    f.planes[1].y = proj[1][3] + proj[1][0];
+    f.planes[1].z = proj[2][3] + proj[2][0];
+    f.planes[1].w = proj[3][3] + proj[3][0];
+
+    f.planes[2].x = proj[0][3] + proj[0][1];
+    f.planes[2].y = proj[1][3] + proj[1][1];
+    f.planes[2].z = proj[2][3] + proj[2][1];
+    f.planes[2].w = proj[3][3] + proj[3][1];
+
+    f.planes[3].x = proj[0][3] - proj[0][1];
+    f.planes[3].y = proj[1][3] - proj[1][1];
+    f.planes[3].z = proj[2][3] - proj[2][1];
+    f.planes[3].w = proj[3][3] - proj[3][1];
+
+    f.planes[4].x = proj[0][3] - proj[0][2];
+    f.planes[4].y = proj[1][3] - proj[1][2];
+    f.planes[4].z = proj[2][3] - proj[2][2];
+    f.planes[4].w = proj[3][3] - proj[3][2];
+
+    f.planes[5].x = proj[0][3] + proj[0][2];
+    f.planes[5].y = proj[1][3] + proj[1][2];
+    f.planes[5].z = proj[2][3] + proj[2][2];
+    f.planes[5].w = proj[3][3] + proj[3][2];
+
+    for(size_t i = 0; i < 6; ++i) {
+        f.planes[i] = normalize(f.planes[i]);
+    }
+
+    return f;
+}
+
+inline frustum make_frustum(const mat4& proj, const mat4& view) {
+  return make_frustum(proj * view);
+}
+
+inline bool frustum_vs_point(const gfxm::frustum& f, const gfxm::vec3& pt) {
+    for(int i = 0; i < 6; ++i) {
+        if(dot(f.planes[i], vec4(pt, 1.0f)) < .0f) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+inline bool frustum_vs_aabb(const frustum& f, const aabb& box) {
+    for(int i = 0; i < 6; ++i) {
+        int out = 0;
+        out += dot(f.planes[i], vec4(box.from.x, box.from.y, box.from.z, 1.0f)) < .0f ? 1 : 0;
+        out += dot(f.planes[i], vec4(box.to.x, box.from.y, box.from.z, 1.0f)) < .0f ? 1 : 0;
+        out += dot(f.planes[i], vec4(box.from.x, box.to.y, box.from.z, 1.0f)) < .0f ? 1 : 0;
+        out += dot(f.planes[i], vec4(box.to.x, box.to.y, box.from.z, 1.0f)) < .0f ? 1 : 0;
+        out += dot(f.planes[i], vec4(box.from.x, box.from.y, box.to.z, 1.0f)) < .0f ? 1 : 0;
+        out += dot(f.planes[i], vec4(box.to.x, box.from.y, box.to.z, 1.0f)) < .0f ? 1 : 0;
+        out += dot(f.planes[i], vec4(box.from.x, box.to.y, box.to.z, 1.0f)) < .0f ? 1 : 0;
+        out += dot(f.planes[i], vec4(box.to.x, box.to.y, box.to.z, 1.0f)) < .0f ? 1 : 0;
+        if(out == 8) return false;
+    }
+
+    return true;
+}
+
 }
 
 #endif

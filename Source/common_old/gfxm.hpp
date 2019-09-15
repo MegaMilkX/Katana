@@ -1333,6 +1333,43 @@ inline bool aabb_in_aabb(const gfxm::aabb& a, const gfxm::aabb& enclosing) {
     return a.from >= enclosing.from && a.to <= enclosing.to;
 }
 
+struct frustum {
+    gfxm::vec3 planes[6];
+};
+
+inline frustum make_frustum(const mat4& proj, const mat4& view) {
+    frustum f;
+    f.planes[0].x = proj[3][0] - proj[0][0];
+    f.planes[0].y = proj[3][1] - proj[0][1];
+    f.planes[0].z = proj[3][2] - proj[0][2];
+
+    f.planes[1].x = proj[3][0] + proj[0][0];
+    f.planes[1].y = proj[3][1] + proj[0][1];
+    f.planes[1].z = proj[3][2] + proj[0][2];
+
+    f.planes[2].x = proj[3][0] + proj[1][0];
+    f.planes[2].y = proj[3][1] + proj[1][1];
+    f.planes[2].z = proj[3][2] + proj[1][2];
+
+    f.planes[3].x = proj[3][0] - proj[1][0];
+    f.planes[3].y = proj[3][1] - proj[1][1];
+    f.planes[3].z = proj[3][2] - proj[1][2];
+
+    f.planes[4].x = proj[3][0] - proj[2][0];
+    f.planes[4].y = proj[3][1] - proj[2][1];
+    f.planes[4].z = proj[3][2] - proj[2][2];
+
+    f.planes[5].x = proj[3][0] + proj[2][0];
+    f.planes[5].y = proj[3][1] + proj[2][1];
+    f.planes[5].z = proj[3][2] + proj[2][2];
+
+    for(size_t i = 0; i < 6; ++i) {
+        f.planes[i] = normalize(f.planes[i]);
+    }
+
+    return f;
+}
+
 }
 
 #endif

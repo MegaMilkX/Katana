@@ -55,6 +55,27 @@ public:
         }
     }
 
+    void getDrawList(DrawList& dl, const gfxm::mat4& proj, const gfxm::mat4& view) {
+        auto frustum = gfxm::make_frustum(proj, view);
+        for(auto r : renderables) {
+            if(gfxm::frustum_vs_aabb(frustum, r->getOwner()->getAabb())) {
+                r->addToDrawList(dl);
+            }
+        }
+        for(auto l : omnis) {
+            dl.omnis.emplace_back(DrawList::OmniLight{l->getOwner()->getTransform()->getWorldPosition(), l->color, l->intensity, l->radius});
+        }
+        for(auto l : dir_lights) {
+            dl.dir_lights.emplace_back(
+                DrawList::DirLight{
+                    l->getOwner()->getTransform()->back(),
+                    l->color,
+                    l->intensity
+                }
+            );
+        }
+    }
+
     Camera* getDefaultCamera() {
         return default_camera;
     }
