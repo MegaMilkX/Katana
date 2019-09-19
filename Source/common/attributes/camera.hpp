@@ -14,6 +14,8 @@ public:
         ORTHOGONAL
     };
 
+    Camera();
+
     void setType(PROJECTION t) {
         ptype = t;
     }
