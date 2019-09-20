@@ -9,6 +9,14 @@ int32_t Octree::acquireCell() {
         cid = *free_cells.begin();
         free_cells.erase(free_cells.begin());
     }
+    cells[cid].children[0] = -1;
+    cells[cid].children[1] = -1;
+    cells[cid].children[2] = -1;
+    cells[cid].children[3] = -1;
+    cells[cid].children[4] = -1;
+    cells[cid].children[5] = -1;
+    cells[cid].children[6] = -1;
+    cells[cid].children[7] = -1;
     return cid;
 }
 void Octree::freeCell(int32_t id) {
@@ -55,8 +63,8 @@ void Octree::expand(const gfxm::aabb& aabb) {
 
 Octree::Octree()
 : root_id(0) {
-    cells.resize(1);
-    cells[0].aabb = gfxm::aabb(
+    root_id = acquireCell();
+    cells[root_id].aabb = gfxm::aabb(
         gfxm::vec3(-10, -10, -10),
         gfxm::vec3(10, 10, 10)
     );
@@ -66,6 +74,8 @@ int32_t Octree::fit(const gfxm::aabb& aabb) {
     while(!gfxm::aabb_in_aabb(aabb, cells[root_id].aabb)) {
         expand(aabb);
     }
+
+
 
     return 0;
 }
