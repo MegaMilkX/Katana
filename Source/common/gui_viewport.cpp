@@ -27,6 +27,43 @@ static void drawOutline(gl::FrameBuffer* fb, GLuint texId) {
     drawQuad();
 }
 
+static void blur(gl::FrameBuffer* fb, GLuint tex_0) {
+    glDisable(GL_DEPTH_TEST);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    static gl::ShaderProgram* prog = ShaderFactory::getOrCreate(
+        "blur",
+        #include "shaders/v_quad.glsl"
+        ,
+        #include "shaders/f_blur.glsl"
+    );
+
+    fb->bind();
+    glClear(GL_COLOR_BUFFER_BIT);
+    prog->use();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex_0);
+    drawQuad();
+}
+static void cutout(gl::FrameBuffer* fb, GLuint tex_0, GLuint tex_1) {
+    glDisable(GL_DEPTH_TEST);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    static gl::ShaderProgram* prog = ShaderFactory::getOrCreate(
+        "cutout",
+        #include "shaders/v_quad.glsl"
+        ,
+        #include "shaders/f_cutout.glsl"
+    );
+
+    fb->bind();
+    glClear(GL_COLOR_BUFFER_BIT);
+    prog->use();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex_0);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, tex_1);
+    drawQuad();
+}
+
 static void overlay(gl::FrameBuffer* fb, GLuint texId) {
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -51,6 +88,7 @@ GuiViewport::GuiViewport() {
 
     fb_silhouette.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
     fb_outline.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
+    fb_blur.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
 
     memset(mouse_clicked, 0, sizeof(mouse_clicked));
 }
@@ -216,6 +254,7 @@ void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 
 
         fb_silhouette.reinitBuffers(vp_sz.x, vp_sz.y);
         fb_outline.reinitBuffers(vp_sz.x, vp_sz.y);
+        fb_blur.reinitBuffers(vp_sz.x, vp_sz.y);
 
         rvp.resize(vp_sz.x, vp_sz.y);
         _proj = gfxm::perspective(gfxm::radian(45.0f), vp_sz.x/(float)vp_sz.y, 0.1f, 1000.0f);
@@ -250,7 +289,12 @@ void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 
             }
         }
         renderer.drawSilhouettes(&fb_silhouette, dl_silhouettes);
-        drawOutline(&fb_outline, fb_silhouette.getTextureId(0));
+        blur(&fb_outline, fb_silhouette.getTextureId(0));
+        blur(&fb_blur, fb_outline.getTextureId(0));
+        blur(&fb_outline, fb_blur.getTextureId(0));
+        blur(&fb_blur, fb_outline.getTextureId(0));
+        cutout(&fb_outline, fb_blur.getTextureId(0), fb_silhouette.getTextureId(0));
+        //drawOutline(&fb_outline, fb_silhouette.getTextureId(0));
         overlay(rvp.getFinalBuffer(), fb_outline.getTextureId(0));
         
         rvp.getFinalBuffer()->bind();

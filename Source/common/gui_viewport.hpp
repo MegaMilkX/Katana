@@ -23,6 +23,7 @@ private:
     RendererPBR renderer;
     DebugDraw dd;
     gl::FrameBuffer fb_outline;
+    gl::FrameBuffer fb_blur;
     gl::FrameBuffer fb_silhouette;
 
     CAM_MODE cam_mode = CAM_PAN;
