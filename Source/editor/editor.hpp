@@ -1,7 +1,6 @@
 #ifndef EDITOR_HPP
 #define EDITOR_HPP
 
-#include "editor_viewport.hpp"
 #include "editor_scene_inspector.hpp"
 #include "editor_object_inspector.hpp"
 #include "editor_resource_tree.hpp"
@@ -19,7 +18,7 @@
 
 #include "scene_history.hpp"
 
-#include "object_set.hpp"
+#include "../common/util/object_set.hpp"
 
 #include "../common/util/singleton.hpp"
 

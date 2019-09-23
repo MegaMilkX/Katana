@@ -4,6 +4,7 @@
 #include "../common/gfxm.hpp"
 #include <set>
 
+class ktNode;
 class TransformNode {
 public:
     ~TransformNode();
@@ -53,6 +54,8 @@ public:
 
     TransformNode* getParent() const;
 
+    void setOwner(ktNode* n);
+
     void _frameClean();
     bool _isFrameDirty() const;
 
@@ -61,6 +64,7 @@ private:
     bool _dirty = true;
     bool _frame_dirty = true;
     int _sync_id = 1;
+    ktNode* owner = 0;
     gfxm::vec3 _position;
     gfxm::quat _rotation = gfxm::quat(.0f, .0f, .0f, 1.0f);
     gfxm::vec3 _scale = gfxm::vec3(1.0f, 1.0f, 1.0f);

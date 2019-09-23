@@ -17,6 +17,12 @@ void DebugDraw::init() {
         ,
         #include "shaders/f_debug_line.glsl"
     );
+    tri_prog = ShaderFactory::getOrCreate(
+        "debug_triangle",
+        #include "shaders/debug_draw/triangle.vert"
+        ,
+        #include "shaders/debug_draw/triangle.frag"
+    );
 }
 void DebugDraw::cleanup() {
     glDeleteBuffers(1, &vbuf);
@@ -181,21 +187,43 @@ void DebugDraw::frustum(const gfxm::mat4& proj, const gfxm::mat4& view, float zn
     line(points[3], points[7], color);
 }
 
+void DebugDraw::mesh(gl::IndexedMesh* mesh, const gfxm::mat4& model, const gfxm::vec4& color) {
+    meshes.insert(meshes.end(), Model{mesh, model, color});
+}
+
 void DebugDraw::draw(const gfxm::mat4& proj, const gfxm::mat4& view) {
     if(line_buf.empty() && line_buf_no_depth.empty()) return;
 
-    glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LEQUAL); // Important
     
     glEnable(GL_DEPTH_TEST);
     draw(proj, view, line_buf);
 
     glDisable(GL_DEPTH_TEST);
     draw(proj, view, line_buf_no_depth);
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE);
+    glEnable(GL_DEPTH_TEST);
+    tri_prog->use();
+    glUniformMatrix4fv(tri_prog->getUniform("mat_projection"), 1, GL_FALSE, (float*)&proj);
+    glUniformMatrix4fv(tri_prog->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
+    for(auto& m : meshes) {
+        m.mesh->bind();
+        glUniformMatrix4fv(tri_prog->getUniform("mat_model"), 1, GL_FALSE, (float*)&m.transform);
+        glUniform4f(tri_prog->getUniform("u_color"), m.color.x, m.color.y, m.color.z, m.color.w);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glDrawElements(GL_TRIANGLES, m.mesh->getIndexCount(), GL_UNSIGNED_INT, 0);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glDrawElements(GL_TRIANGLES, m.mesh->getIndexCount(), GL_UNSIGNED_INT, 0);
+    }
 }
 
 void DebugDraw::clear() {
     line_buf.clear();
     line_buf_no_depth.clear();
+    meshes.clear();
 }
 
 

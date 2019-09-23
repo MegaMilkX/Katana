@@ -41,6 +41,7 @@ public:
     virtual void copy(SceneController& other) {}
 
     virtual void init(GameScene* scn) {}
+    virtual void cleanup() {}
 
     virtual void onStart() {
 
@@ -56,6 +57,7 @@ public:
 
     virtual void attribCreated(rttr::type t, Attribute* attr) {}
     virtual void attribDeleted(rttr::type t, Attribute* attr) {}
+    virtual void attribTransformed(rttr::type t, Attribute* attr) {}
 
     virtual void debugDraw(DebugDraw& dd) {}
 
@@ -72,38 +74,57 @@ template<typename TA>
 class SceneEventFilter<TA> : public SceneController {
 public:
     virtual void attribCreated(rttr::type t, Attribute* attr) {
-        if(t == rttr::type::get<TA>()) {
+        static const rttr::type ta = rttr::type::get<TA>();
+        if(t == ta) {
             onAttribCreated((TA*)attr);
         }
     }
     virtual void attribDeleted(rttr::type t, Attribute* attr) {
-        if(t == rttr::type::get<TA>()) {
+        static const rttr::type ta = rttr::type::get<TA>();
+        if(t == ta) {
             onAttribRemoved((TA*)attr);
+        }
+    }
+    virtual void attribTransformed(rttr::type t, Attribute* attr) {
+        static const rttr::type ta = rttr::type::get<TA>();
+        if(t == ta) {
+            onAttribTransformed((TA*)attr);
         }
     }
     
     virtual void onAttribCreated(TA* attrib) {}
     virtual void onAttribRemoved(TA* attrib) = 0;
+    virtual void onAttribTransformed(TA* attrib) {}
 };
 
 template<typename TA, typename ...Ts>
 class SceneEventFilter<TA, Ts...> : public SceneEventFilter<Ts...> {
 public:
     virtual void attribCreated(rttr::type t, Attribute* attr) {
+        static const rttr::type ta = rttr::type::get<TA>();
         SceneEventFilter<Ts...>::attribCreated(t, attr);
-        if(t == rttr::type::get<TA>()) {
+        if(t == ta) {
             onAttribCreated((TA*)attr);
         }
     }
     virtual void attribDeleted(rttr::type t, Attribute* attr) {
+        static const rttr::type ta = rttr::type::get<TA>();
         SceneEventFilter<Ts...>::attribDeleted(t, attr);
-        if(t == rttr::type::get<TA>()) {
+        if(t == ta) {
             onAttribRemoved((TA*)attr);
+        }
+    }
+    virtual void attribTransformed(rttr::type t, Attribute* attr) {
+        static const rttr::type ta = rttr::type::get<TA>();
+        SceneEventFilter<Ts...>::attribTransformed(t, attr);
+        if(t == ta) {
+            onAttribTransformed((TA*)attr);
         }
     }
     
     virtual void onAttribCreated(TA* attrib) {}
     virtual void onAttribRemoved(TA* attrib) = 0;
+    virtual void onAttribTransformed(TA* attrib) {}
 };
 
 #endif

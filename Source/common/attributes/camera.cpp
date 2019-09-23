@@ -30,11 +30,16 @@ gfxm::frustum Camera::getFrustum() {
 void Camera::debugDraw(DebugDraw* dd) {
     dd->frustum(getProjection(1280, 720), getView(), znear, zfar, gfxm::vec3(1,0,0));
 
-    octree.debugDraw(*dd);
+    //octree.debugDraw(*dd);
 
-    dd->aabb(box1, gfxm::vec3(1,0,0));
-    dd->aabb(box2, gfxm::vec3(1,0,0));
-    dd->aabb(box3, gfxm::vec3(1,0,0));
+    auto list = octree.listVisibleCells(getFrustum());
+    for(auto cid : list) {
+        dd->aabb(octree.getCell(cid)->aabb, gfxm::vec3(0.5f, 0.5f, 1.0f));
+    }
+
+    //dd->aabb(box1, gfxm::vec3(1,0,0));
+    //dd->aabb(box2, gfxm::vec3(1,0,0));
+    //dd->aabb(box3, gfxm::vec3(1,0,0));
 }
 
 void Camera::onGui() {

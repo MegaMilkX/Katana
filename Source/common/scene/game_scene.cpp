@@ -25,6 +25,9 @@ void GameScene::clear() {
     }
     children.clear();
 
+    for(auto& kv : controllers) {
+        kv.second->cleanup();
+    }
     //controllers.clear();
     //updatable_controllers.clear();
 }
@@ -241,4 +244,22 @@ void GameScene::_unregisterComponent(Attribute* c) {
 void GameScene::_readdComponent(Attribute* attrib) {
     _unregisterComponent(attrib);
     _registerComponent(attrib);   
+}
+void GameScene::_signalAttribTransform(Attribute* c) {
+    for(auto& kv : controllers) {
+        kv.second->attribTransformed(c->get_type(), c);
+    }
+    auto bases = c->get_type().get_base_classes();
+    for(auto b : bases) {
+        for(auto& kv : controllers) {
+            kv.second->attribTransformed(b, c);
+        }   
+    }
+
+    for(auto l : foreign_listeners) {
+        l->attribTransformed(c->get_type(), c);
+        for(auto b : bases) {
+            l->attribTransformed(b, c);
+        }
+    }
 }

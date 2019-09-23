@@ -1,5 +1,7 @@
 #include "transform.hpp"
 
+#include "scene/node.hpp"
+
 TransformNode::~TransformNode() {
     setParent(0);
 }
@@ -7,6 +9,9 @@ TransformNode::~TransformNode() {
 void TransformNode::dirty() {
     if(!_dirty) {
         _sync_id++;
+        if (owner) {
+            owner->invokeTransformCallback();
+        }
     }
     _dirty = true;
     _frame_dirty = true;
@@ -181,6 +186,10 @@ const gfxm::mat4& TransformNode::getWorldTransform() {
 
 TransformNode* TransformNode::getParent() const {
     return _parent;
+}
+
+void TransformNode::setOwner(ktNode* n) {
+    owner = n;
 }
 
 void TransformNode::_frameClean() {

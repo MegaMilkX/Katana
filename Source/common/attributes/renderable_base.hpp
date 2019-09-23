@@ -9,6 +9,8 @@ class RenderableBase : public Attribute {
 public:
     virtual ~RenderableBase() {}
     virtual void addToDrawList(DrawList& dl) = 0;
+
+    bool requiresTransformCallback() const override { return true; }
 };
 
 #endif

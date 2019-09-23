@@ -62,11 +62,12 @@ private:
     virtual void                        _registerComponent(Attribute* attrib);
     virtual void                        _unregisterComponent(Attribute* attrib);
     virtual void                        _readdComponent(Attribute* attrib);
+    virtual void                        _signalAttribTransform(Attribute* attrib);
 
     std::set<SceneController*>                              foreign_listeners;
-    std::map<rttr::type, std::shared_ptr<SceneController>>  controllers;
+    std::unordered_map<rttr::type, std::shared_ptr<SceneController>>  controllers;
     std::vector<SceneController*>                           updatable_controllers;
-    std::map<
+    std::unordered_map<
         rttr::type, 
         std::vector<Attribute*>
     >                                                       object_components;

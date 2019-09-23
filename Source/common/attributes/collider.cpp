@@ -4,6 +4,12 @@
 
 void Collider::onCreate() {}
 
+void Collider::debugDraw(DebugDraw& dd) {
+    if(shape) {
+        shape->debugDraw(dd, getOwner()->getTransform()->getWorldTransform());
+    }
+}
+
 static void checkboxHelper(int i, const char* postfix, uint32_t& tgt, int bit) {
     ImGui::CheckboxFlags(
         MKSTR(i << postfix).c_str(),

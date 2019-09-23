@@ -6,6 +6,27 @@
 
 int dbg_renderBufferId = 0;
 
+void Renderer::drawSilhouettes(gl::FrameBuffer* fb, const DrawList& dl) {
+    glDisable(GL_DEPTH_TEST);
+    
+    fb->bind();
+    glClear(GL_COLOR_BUFFER_BIT);
+    prog_silhouette_solid->use();
+    glUniform4fv(prog_silhouette_solid->getUniform("u_color"), 1, (float*)&gfxm::vec4(1,1,1,1));
+    drawMultiple(
+        prog_silhouette_solid,
+        dl.solids.data(),
+        dl.solids.size()
+    );
+    prog_silhouette_skin->use();
+    glUniform4fv(prog_silhouette_skin->getUniform("u_color"), 1, (float*)&gfxm::vec4(1,1,1,1));
+    drawMultiple(
+        prog_silhouette_skin,
+        dl.skins.data(),
+        dl.skins.size()
+    );
+}
+
 void Renderer::drawWorld(RenderViewport* vp, ktWorld* world) {
     DrawList dl;
     world->getRenderController()->getDrawList(dl);
@@ -130,7 +151,9 @@ RendererPBR::RendererPBR() {
 }
 
 void RendererPBR::draw(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen, bool draw_skybox) {
-    
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glBlendFunc(GL_ONE, GL_ZERO);
+    glDepthMask(GL_TRUE);
     glDisable(GL_SCISSOR_TEST);
 
     beginFrame(vp, proj, view);

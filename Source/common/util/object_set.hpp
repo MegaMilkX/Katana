@@ -3,8 +3,7 @@
 
 #include <set>
 
-#include "../common/scene/node.hpp"
-
+class ktNode;
 struct ObjectSet {
     std::set<ktNode*> objects;
 public:

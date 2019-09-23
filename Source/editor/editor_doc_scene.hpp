@@ -8,7 +8,7 @@
 #include "editor_scene_inspector.hpp"
 #include "editor_object_inspector.hpp"
 
-#include "object_set.hpp"
+#include "../common/util/object_set.hpp"
 
 #include "../common/input_listener.hpp"
 

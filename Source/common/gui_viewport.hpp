@@ -7,6 +7,8 @@
 #include "../common/renderer.hpp"
 #include "../common/debug_draw.hpp"
 
+#include "../common/util/object_set.hpp"
+
 class GameScene;
 class ktNode;
 
@@ -20,6 +22,8 @@ private:
     RenderViewport rvp;
     RendererPBR renderer;
     DebugDraw dd;
+    gl::FrameBuffer fb_outline;
+    gl::FrameBuffer fb_silhouette;
 
     CAM_MODE cam_mode = CAM_PAN;
     bool debug_draw_enabled = true;
@@ -76,7 +80,7 @@ public:
     void camZoom(float v);
     void camSetPivot(const gfxm::vec3& pivot);
 
-    void draw(GameScene* scn, ktNode* selected_object = 0, gfxm::ivec2 sz = gfxm::ivec2(0,0));
+    void draw(GameScene* scn, ObjectSet* selected_objects = 0, gfxm::ivec2 sz = gfxm::ivec2(0,0));
 };
 
 #endif

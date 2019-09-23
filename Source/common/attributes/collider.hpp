@@ -4,6 +4,8 @@
 #include "attribute.hpp"
 #include "collision_shapes.hpp"
 
+#include "../debug_draw.hpp"
+
 class Collider : public Attribute {
     RTTR_ENABLE(Attribute)
 public:
@@ -57,6 +59,10 @@ public:
     const gfxm::vec3 getDebugColor() const {
         return debug_color;
     }
+
+    void debugDraw(DebugDraw& dd);
+
+    bool requiresTransformCallback() const override { return true; }
 
     virtual void copy(const Collider& other) {
 

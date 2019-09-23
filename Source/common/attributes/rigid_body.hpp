@@ -5,6 +5,8 @@
 #include "collision_shapes.hpp"
 #include <btBulletDynamicsCommon.h>
 
+#include "../debug_draw.hpp"
+
 class RigidBody : public Attribute {
     RTTR_ENABLE(Attribute)
 public:
@@ -40,6 +42,8 @@ public:
     BaseShape_* getShape() {
         return shape.get();
     }
+
+    void debugDraw(DebugDraw& dd);
 
     void copy(const RigidBody& other) {
         

@@ -8,9 +8,50 @@
 
 #include "../common/attributes/render_environment.hpp"
 
+
+static void drawOutline(gl::FrameBuffer* fb, GLuint texId) {
+    glDisable(GL_DEPTH_TEST);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    static gl::ShaderProgram* prog = ShaderFactory::getOrCreate(
+        "outline",
+        #include "shaders/v_quad.glsl"
+        ,
+        #include "shaders/f_outline.glsl"
+    );
+
+    fb->bind();
+    glClear(GL_COLOR_BUFFER_BIT);
+    prog->use();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texId);
+    drawQuad();
+}
+
+static void overlay(gl::FrameBuffer* fb, GLuint texId) {
+    glDisable(GL_DEPTH_TEST);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    static gl::ShaderProgram* prog = ShaderFactory::getOrCreate(
+        "overlay",
+        #include "shaders/v_quad.glsl"
+        ,
+        #include "shaders/f_overlay.glsl"
+    );
+
+    fb->bind();
+    prog->use();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texId);
+    drawQuad();
+}
+
+
 GuiViewport::GuiViewport() {
     rvp.init(640, 480);
     dd.init();
+
+    fb_silhouette.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
+    fb_outline.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
+
     memset(mouse_clicked, 0, sizeof(mouse_clicked));
 }
 GuiViewport::~GuiViewport() {
@@ -106,7 +147,9 @@ void GuiViewport::camSetPivot(const gfxm::vec3& pivot) {
     cam_pos = pivot;
 }
 
-void GuiViewport::draw(GameScene* scn, ktNode* selected_object, gfxm::ivec2 sz) {        
+#include "util/mesh_gen.hpp"
+
+void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 sz) {        
     if(ImGui::BeginChild(ImGui::GetID(this), ImVec2(sz.x, sz.y))) {
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-10.0, .0f, -11.0f), gfxm::vec3(1.0f, .0f, .0f));
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, 1.0f, -11.0f), gfxm::vec3(.0f, 1.0f, .0f));
@@ -117,6 +160,8 @@ void GuiViewport::draw(GameScene* scn, ktNode* selected_object, gfxm::ivec2 sz) 
             1,
             gfxm::vec3(0.2f, 0.2f, 0.2f)
         );
+
+        scn->getController<RenderController>()->debugDraw(getDebugDraw());
 
         if(scn->hasController<DynamicsCtrl>() && debug_draw_enabled) {
             scn->getController<DynamicsCtrl>()->debugDraw(getDebugDraw());
@@ -133,8 +178,13 @@ void GuiViewport::draw(GameScene* scn, ktNode* selected_object, gfxm::ivec2 sz) 
         ImRect crect = window->ContentsRegionRect;
         ImGuizmo::SetRect(crect.Min.x, crect.Min.y, crect.Max.x - crect.Min.x, crect.Max.y - crect.Min.y);
 
-        if(selected_object && scn == selected_object->getRoot()) {
-            selected_object->onGizmo(*this);
+        if(selected_objects) {
+            if(selected_objects->getAll().size() == 1) {
+                ktNode* selected = *selected_objects->getAll().begin();
+                if(selected->getRoot() == scn) {
+                    selected->onGizmo(*this);
+                }
+            }
         }
 
         auto& io = ImGui::GetIO();
@@ -164,8 +214,11 @@ void GuiViewport::draw(GameScene* scn, ktNode* selected_object, gfxm::ivec2 sz) 
         }
         // ============================
 
+        fb_silhouette.reinitBuffers(vp_sz.x, vp_sz.y);
+        fb_outline.reinitBuffers(vp_sz.x, vp_sz.y);
+
         rvp.resize(vp_sz.x, vp_sz.y);
-        _proj = gfxm::perspective(gfxm::radian(45.0f), vp_sz.x/(float)vp_sz.y, 0.01f, 1000.0f);
+        _proj = gfxm::perspective(gfxm::radian(45.0f), vp_sz.x/(float)vp_sz.y, 0.1f, 1000.0f);
         gfxm::transform tcam;
         cam_pos = gfxm::lerp(cam_pos, cam_pivot, 0.2f);
         cam_zoom_actual = gfxm::lerp(cam_zoom_actual, cam_zoom, 0.2f);
@@ -178,12 +231,27 @@ void GuiViewport::draw(GameScene* scn, ktNode* selected_object, gfxm::ivec2 sz) 
         _view = gfxm::inverse(tcam.matrix());
 
         DrawList dl;
-        scn->getController<RenderController>()->getDrawList(dl);
+        DrawList dl_silhouettes;
+        gfxm::frustum frustum = gfxm::make_frustum(_proj, _view);
+        scn->getController<RenderController>()->getDrawList(dl, frustum);
         auto env = scn->find<RenderEnvironment>();
         if(env) { 
             renderer.setSkyGradient(env->getSkyGradient());
         }
         renderer.draw(&rvp, _proj, _view, dl);
+
+        if(selected_objects) {
+            for(auto n : selected_objects->getAll()) {
+                std::list<Model*> list;
+                n->getAttribsRecursive<Model>(list);
+                for(auto m : list) {
+                    m->addToDrawList(dl_silhouettes);
+                }
+            }
+        }
+        renderer.drawSilhouettes(&fb_silhouette, dl_silhouettes);
+        drawOutline(&fb_outline, fb_silhouette.getTextureId(0));
+        overlay(rvp.getFinalBuffer(), fb_outline.getTextureId(0));
         
         rvp.getFinalBuffer()->bind();
         glViewport(0, 0, (GLsizei)vp_sz.x, (GLsizei)vp_sz.y);

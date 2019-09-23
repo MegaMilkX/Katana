@@ -28,6 +28,9 @@ public:
     }
 
     void reinitBuffers(unsigned width, unsigned height) {
+        if(width == this->width && height == this->height) {
+            return;
+        }
         this->width = width;
         this->height = height;
 

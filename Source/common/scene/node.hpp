@@ -5,6 +5,7 @@
 #include <rttr/registration>
 
 #include <set>
+#include <unordered_map>
 #include <memory>
 
 #include "../../common/util/log.hpp"
@@ -67,6 +68,8 @@ public:
     std::shared_ptr<COMPONENT_T>        find();
     size_t                              componentCount();
     std::shared_ptr<Attribute>          getById(size_t id);
+    template<typename ATTR_T>
+    void                                getAttribsRecursive(std::list<ATTR_T*>& list);
     void                                deleteComponentById(size_t id);
     void                                deleteAllComponents();
 
@@ -83,11 +86,13 @@ public:
     bool                                write(const std::string& fname);
     bool                                read(const std::string& fname);
 
+    void                                invokeTransformCallback();
     virtual void                        _readdComponent(Attribute* attrib);
 protected:
     std::shared_ptr<Attribute>          createComponent(rttr::type t);
     virtual void                        _registerComponent(Attribute* attrib);
     virtual void                        _unregisterComponent(Attribute* attrib);
+    virtual void                        _signalAttribTransform(Attribute* attrib);
 
     bool _enabled = true;
     OBJECT_FLAGS _flags = OBJECT_FLAG_NONE;
@@ -99,7 +104,7 @@ protected:
     );
     ktNode* parent = 0;
     std::set<ktNode*> children;
-    std::map<rttr::type, std::shared_ptr<Attribute>> components;
+    std::unordered_map<rttr::type, std::shared_ptr<Attribute>> components;
 };
 
 template<typename COMPONENT_T>
@@ -109,6 +114,16 @@ std::shared_ptr<COMPONENT_T> ktNode::get() {
 template<typename COMPONENT_T>
 std::shared_ptr<COMPONENT_T> ktNode::find() {
     return std::dynamic_pointer_cast<COMPONENT_T>(find(rttr::type::get<COMPONENT_T>()));
+}
+template<typename ATTR_T>
+void                         ktNode::getAttribsRecursive(std::list<ATTR_T*>& list) {
+    auto m = find<ATTR_T>();
+    if(m) {
+        list.insert(list.end(), m.get());
+    }
+    for(auto c : children) {
+        c->getAttribsRecursive<ATTR_T>(list);
+    }
 }
 
 #endif

@@ -45,6 +45,8 @@ public:
 
     virtual bool buildAabb(gfxm::aabb& out);
 
+    virtual bool requiresTransformCallback() const { return false; }
+
     virtual void onGui();
     virtual void onGizmo(GuiViewport& vp);
     virtual const char* getIconCode() const { return ""; }

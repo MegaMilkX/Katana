@@ -145,7 +145,7 @@ void EditorDocScene::onGui (Editor* ed, float dt) {
     }
 
     scene->getController<DynamicsCtrl>()->updateBodyTransforms();
-    gvp.draw(scn_ptr, 0, gfxm::ivec2(0,0));
+    gvp.draw(scn_ptr, &selected, gfxm::ivec2(0,0));
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_DND_RESOURCE)) {
             ResourceNode* node = *(ResourceNode**)payload->Data;

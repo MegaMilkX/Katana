@@ -13,7 +13,7 @@
 #include "../scene_byte_stream.hpp"
 
 ktNode::ktNode() {
-
+    transform.setOwner(this);
 }
 ktNode::~ktNode() {
     // Tell parent transform that this one doesn't exist anymore
@@ -208,6 +208,10 @@ void ktNode::deleteAllComponents() {
 }
 
 void ktNode::makeAabb(gfxm::aabb& aabb) {
+    const gfxm::vec3 center = getTransform()->getWorldPosition();
+    aabb.from = center;
+    aabb.to = center;
+
     for(size_t i = 0; i < childCount(); ++i) {
         getChild(i)->makeAabb(aabb);
     }
@@ -718,6 +722,17 @@ void ktNode::_unregisterComponent(Attribute* attrib) {
     }
     if(p) {
         p->_unregisterComponent(attrib);
+    }
+}
+void ktNode::_signalAttribTransform(Attribute* attrib) {
+    getRoot()->_signalAttribTransform(attrib);
+}
+
+void ktNode::invokeTransformCallback() {
+    for(auto& kv : components) {
+        if(kv.second->requiresTransformCallback()) {
+            _signalAttribTransform(kv.second.get());
+        }
     }
 }
 void ktNode::_readdComponent(Attribute* attrib) {

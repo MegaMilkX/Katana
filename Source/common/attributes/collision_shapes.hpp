@@ -12,6 +12,9 @@
 
 #include "../scene/node.hpp"
 
+#include "../debug_draw.hpp"
+#include "../util/mesh_gen.hpp"
+
 class BaseShape_ {
     RTTR_ENABLE()
 public:
@@ -22,6 +25,10 @@ public:
 
     virtual void serialize(out_stream& out) {}
     virtual void deserialize(in_stream& in) {}
+
+    virtual void debugDraw(DebugDraw& dd, const gfxm::mat4& t) {
+
+    }
 
     btCollisionShape* getBtShape() { return bt_shape.get(); }
 protected:
@@ -50,11 +57,16 @@ class SphereShape_ : public ConvexShape_ {
 public:
     SphereShape_() {
         bt_shape.reset(new btSphereShape(radius));
+        makeSphere(&renderable_mesh, radius, 6);
+    }
+    virtual void debugDraw(DebugDraw& dd, const gfxm::mat4& t) {
+        dd.mesh(&renderable_mesh, t);
     }
     virtual bool onGui(ktNode* o) {
         auto s = (btSphereShape*)bt_shape.get();
         if(ImGui::DragFloat(MKSTR("radius##" << this).c_str(), &radius, radius * 0.01f)) {
             *s = btSphereShape(radius);
+            makeSphere(&renderable_mesh, radius, 6);
         }
         return false;
     }
@@ -66,9 +78,11 @@ public:
         auto s = (btSphereShape*)bt_shape.get();
         radius = in.read<float>();
         *s = btSphereShape(radius);
+        makeSphere(&renderable_mesh, radius, 6);
     }
 private:
     float radius = 1.0f;
+    gl::IndexedMesh renderable_mesh;
 };
 class BoxShape_ : public ConvexShape_ {
     RTTR_ENABLE(ConvexShape_)
@@ -134,6 +148,13 @@ public:
         empty.reset(new btEmptyShape());
         bt_shape = empty;
     }
+
+    virtual void debugDraw(DebugDraw& dd, const gfxm::mat4& t) {
+        if(mesh) {
+            dd.mesh(&mesh->mesh, t);
+        }
+    }
+
     virtual bool onGui(ktNode* o) {
         bool need_rebuild = false;
         ImGui::TextWrapped("Debug display for collision meshes is disabled for performance");

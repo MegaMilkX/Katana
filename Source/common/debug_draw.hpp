@@ -4,13 +4,21 @@
 #include "gfxm.hpp"
 
 #include "gl/shader_program.h"
+#include "gl/indexed_mesh.hpp"
 #include "shader_factory.hpp"
+
+#include <list>
 
 class DebugDraw {
 public:
     struct Vertex {
         gfxm::vec3 position;
         gfxm::vec3 color;
+    };
+    struct Model {
+        gl::IndexedMesh* mesh;
+        gfxm::mat4 transform;
+        gfxm::vec4 color;
     };
 
     enum DEPTH {
@@ -41,6 +49,8 @@ public:
 
     void frustum(const gfxm::mat4& proj, const gfxm::mat4& view, float znear, float zfar, const gfxm::vec3& color);
 
+    void mesh(gl::IndexedMesh* mesh, const gfxm::mat4& model, const gfxm::vec4& color = gfxm::vec4(0.4f, 1.0f, .5f, 0.5f));
+
     void draw(const gfxm::mat4& proj, const gfxm::mat4& view);
 
     void clear();
@@ -48,9 +58,11 @@ public:
 private:
     std::vector<Vertex> line_buf;
     std::vector<Vertex> line_buf_no_depth;
+    std::list<Model>    meshes;
     GLuint vao_handle = 0;
     GLuint vbuf = 0;
     gl::ShaderProgram* line_prog = 0;
+    gl::ShaderProgram* tri_prog = 0;
 
     void draw(const gfxm::mat4& proj, const gfxm::mat4& view, const std::vector<Vertex> lines);
 

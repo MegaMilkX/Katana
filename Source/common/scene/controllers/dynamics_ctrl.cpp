@@ -347,5 +347,13 @@ void DynamicsCtrl::updateBodyTransforms() {
 
 void DynamicsCtrl::debugDraw(DebugDraw& dd) {
     debugDrawer.setDD(&dd);
-    world->debugDrawWorld();
+    
+    for(auto& kv : colliders_) {
+        kv.first->debugDraw(dd);
+    }
+    for(auto& kv : rigid_bodies) {
+        kv.first->debugDraw(dd);
+    }
+    
+    //world->debugDrawWorld();
 }

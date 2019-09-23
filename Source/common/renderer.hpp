@@ -59,6 +59,19 @@ public:
             ,
             #include "../common/shaders/f_skybox.glsl"
         );
+
+        prog_silhouette_solid = ShaderFactory::getOrCreate(
+            "silhouette_solid",
+            #include "../common/shaders/v_solid_deferred_pbr.glsl"
+            ,
+            #include "../common/shaders/debug_draw/triangle.frag"
+        );
+        prog_silhouette_skin = ShaderFactory::getOrCreate(
+            "silhouette_skin",
+            #include "../common/shaders/v_skin_deferred_pbr.glsl"
+            ,
+            #include "../common/shaders/debug_draw/triangle.frag"
+        );
     }
     virtual ~Renderer() {}
 
@@ -83,6 +96,8 @@ public:
         }
     }
 
+    void drawSilhouettes(gl::FrameBuffer* fb, const DrawList& dl);
+
     void drawWorld(RenderViewport* vp, ktWorld* world);
     void drawToScreen(GLuint textureId);
 
@@ -94,6 +109,9 @@ protected:
 
     gl::ShaderProgram* prog_quad;
     gl::ShaderProgram* prog_skybox;
+
+    gl::ShaderProgram* prog_silhouette_solid;
+    gl::ShaderProgram* prog_silhouette_skin;
 
     std::shared_ptr<Texture2D> tex_ibl_brdf_lut;
     std::shared_ptr<CubeMap> env_map;
