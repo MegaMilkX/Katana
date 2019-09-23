@@ -27,7 +27,7 @@ static void drawOutline(gl::FrameBuffer* fb, GLuint texId) {
     drawQuad();
 }
 
-static void blur(gl::FrameBuffer* fb, GLuint tex_0) {
+static void blur(gl::FrameBuffer* fb, GLuint tex_0, const gfxm::vec2& dir) {
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     static gl::ShaderProgram* prog = ShaderFactory::getOrCreate(
@@ -40,6 +40,7 @@ static void blur(gl::FrameBuffer* fb, GLuint tex_0) {
     fb->bind();
     glClear(GL_COLOR_BUFFER_BIT);
     prog->use();
+    glUniform2fv(prog->getUniform("u_dir"), 1, (float*)&dir);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex_0);
     drawQuad();
@@ -89,6 +90,7 @@ GuiViewport::GuiViewport() {
     fb_silhouette.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
     fb_outline.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
     fb_blur.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
+    fb_pick.pushBuffer(GL_RGB, GL_UNSIGNED_INT);
 
     memset(mouse_clicked, 0, sizeof(mouse_clicked));
 }
@@ -255,6 +257,7 @@ void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 
         fb_silhouette.reinitBuffers(vp_sz.x, vp_sz.y);
         fb_outline.reinitBuffers(vp_sz.x, vp_sz.y);
         fb_blur.reinitBuffers(vp_sz.x, vp_sz.y);
+        fb_pick.reinitBuffers(vp_sz.x, vp_sz.y);
 
         rvp.resize(vp_sz.x, vp_sz.y);
         _proj = gfxm::perspective(gfxm::radian(45.0f), vp_sz.x/(float)vp_sz.y, 0.1f, 1000.0f);
@@ -288,11 +291,35 @@ void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 
                 }
             }
         }
+
+        if(is_mouse_over && ImGui::IsMouseClicked(0)) {
+            if(selected_objects) {
+                renderer.drawPickPuffer(&fb_pick, dl);
+                uint32_t pix = 0;
+                glReadPixels(mouse_pos.x, mouse_pos.y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &pix);
+                if(pix < dl.solids.size()) {
+                    ktNode* s = (ktNode*)dl.solids[pix].object_ptr;
+                    while(s->getParent() != s->getRoot() && s->getParent() != 0) {
+                        s = s->getParent();
+                    }
+                    selected_objects->clearAndAdd(s);
+                    LOG("PICKED_SOLID: " << pix);
+                } else {
+                    ktNode* s = (ktNode*)dl.skins[pix - dl.solids.size()].object_ptr;
+                    while(s->getParent() != s->getRoot() && s->getParent() != 0) {
+                        s = s->getParent();
+                    }
+                    selected_objects->clearAndAdd(s);
+                    LOG("PICKED_SKIN: " << pix - dl.solids.size());
+                }
+            }
+        }
+
         renderer.drawSilhouettes(&fb_silhouette, dl_silhouettes);
-        blur(&fb_outline, fb_silhouette.getTextureId(0));
-        blur(&fb_blur, fb_outline.getTextureId(0));
-        blur(&fb_outline, fb_blur.getTextureId(0));
-        blur(&fb_blur, fb_outline.getTextureId(0));
+        blur(&fb_outline, fb_silhouette.getTextureId(0), gfxm::vec2(1, 0));
+        blur(&fb_blur, fb_outline.getTextureId(0), gfxm::vec2(0, 1));
+        blur(&fb_outline, fb_blur.getTextureId(0), gfxm::vec2(1, 0));
+        blur(&fb_blur, fb_outline.getTextureId(0), gfxm::vec2(0, 1));
         cutout(&fb_outline, fb_blur.getTextureId(0), fb_silhouette.getTextureId(0));
         //drawOutline(&fb_outline, fb_silhouette.getTextureId(0));
         overlay(rvp.getFinalBuffer(), fb_outline.getTextureId(0));

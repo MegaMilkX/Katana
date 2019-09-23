@@ -25,6 +25,7 @@ private:
     gl::FrameBuffer fb_outline;
     gl::FrameBuffer fb_blur;
     gl::FrameBuffer fb_silhouette;
+    gl::FrameBuffer fb_pick;
 
     CAM_MODE cam_mode = CAM_PAN;
     bool debug_draw_enabled = true;

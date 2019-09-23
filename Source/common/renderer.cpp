@@ -27,6 +27,26 @@ void Renderer::drawSilhouettes(gl::FrameBuffer* fb, const DrawList& dl) {
     );
 }
 
+void Renderer::drawPickPuffer(gl::FrameBuffer* fb, const DrawList& dl) {
+    glEnable(GL_DEPTH_TEST);
+    glBlendFunc(GL_ONE, GL_ZERO);
+
+    fb->bind();
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    drawMultiplePick(
+        prog_pick_solid,
+        dl.solids.data(),
+        dl.solids.size(),
+        0
+    );
+    drawMultiplePick(
+        prog_pick_skin,
+        dl.skins.data(),
+        dl.skins.size(),
+        dl.solids.size()
+    );
+}
+
 void Renderer::drawWorld(RenderViewport* vp, ktWorld* world) {
     DrawList dl;
     world->getRenderController()->getDrawList(dl);

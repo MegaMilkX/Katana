@@ -3,6 +3,7 @@ R"(#version 450
 in vec2 uv_frag;
 
 uniform sampler2D tex_0;
+uniform vec2 u_dir;
 
 out vec4 out_albedo;
 
@@ -31,8 +32,8 @@ vec4 blur13(sampler2D image, vec2 uv, vec2 resolution, vec2 direction) {
 
 void main()
 {
-    vec4 blurred = blur13(tex_0, uv_frag, vec2(256, 256), vec2(1, 0));
-    blurred += blur13(tex_0, uv_frag, vec2(256, 256), vec2(0, 1)) * 0.2;
-    blurred = clamp(blurred, vec4(0.0), vec4(1.0));
+    vec4 blurred = blur13(tex_0, uv_frag, vec2(256, 256), u_dir) * 1.2;
+    //blurred += blur13(tex_0, uv_frag, vec2(256, 256), u_dir) * 0.2;
+    //blurred = clamp(blurred, vec4(0.0), vec4(1.0));
     out_albedo = blurred;
 })"

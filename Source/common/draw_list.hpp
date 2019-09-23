@@ -19,6 +19,7 @@ public:
     Material* material = 0;
     size_t indexOffset = 0;
     size_t indexCount = 0;
+    void* object_ptr = 0;
 };
 
 class DrawCmdSolid : public DrawCmd {

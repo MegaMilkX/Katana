@@ -106,6 +106,10 @@ private:
             GL_TEXTURE_2D, 0, desc.internalFormat,
             (GLsizei)width, (GLsizei)height, 0, GL_RGB, desc.type, 0
         );
+        GLenum err = glGetError();
+        if(err) {
+            LOG_WARN("Framebuffer layer error, glTexImage2D: " << err);
+        }
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

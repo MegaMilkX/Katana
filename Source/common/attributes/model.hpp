@@ -43,6 +43,7 @@ public:
                 s.indexCount = indexCount;
                 s.indexOffset = indexOffset;
                 s.transform = transform;
+                s.object_ptr = getOwner();
                 dl.solids.emplace_back(s);
             } else {                // Skinned mesh
                 std::vector<gfxm::mat4> bone_transforms;
@@ -62,6 +63,7 @@ public:
                 s.transform = transform;
                 s.bone_transforms = bone_transforms;
                 s.bind_transforms = seg.skin_data->bind_transforms;
+                s.object_ptr = getOwner();
                 dl.skins.emplace_back(s);
             }
         }

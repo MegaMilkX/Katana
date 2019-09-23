@@ -356,6 +356,7 @@ public:
         cmd.transform = getOwner()->getTransform()->getWorldTransform();
         cmd.indexCount = mesh.getIndexCount();
         cmd.material = material.get();
+        cmd.object_ptr = getOwner();
         dl.solids.emplace_back(cmd);
     }
 

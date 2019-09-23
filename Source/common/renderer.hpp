@@ -72,6 +72,19 @@ public:
             ,
             #include "../common/shaders/debug_draw/triangle.frag"
         );
+
+        prog_pick_solid = ShaderFactory::getOrCreate(
+            "pick_solid",
+            #include "../common/shaders/v_solid_deferred_pbr.glsl"
+            ,
+            #include "../common/shaders/pick.frag"
+        );
+        prog_pick_skin = ShaderFactory::getOrCreate(
+            "pick_skin",
+            #include "../common/shaders/v_skin_deferred_pbr.glsl"
+            ,
+            #include "../common/shaders/pick.frag"
+        );
     }
     virtual ~Renderer() {}
 
@@ -95,9 +108,27 @@ public:
             glDrawElements(GL_TRIANGLES, e.indexCount, GL_UNSIGNED_INT, (GLvoid*)e.indexOffset);
         }
     }
+    template<typename T>
+    void drawMultiplePick(gl::ShaderProgram* p, const T* elements, size_t count, uint32_t base_id) {
+        getState().setProgram(p);
+        for(size_t i = 0; i < count; ++i) {
+            auto& e = elements[i];
+            e.bind(getState());
+
+            uint32_t id = base_id + i;
+            uint32_t r = (id & 0x000000FF) >> 0;
+            uint32_t g = (id & 0x0000FF00) >> 8;
+            uint32_t b = (id & 0x00FF0000) >> 16;
+
+            glUniform4f(p->getUniform("object_ptr"), r / 255.0f, g / 255.0f, b / 255.0f, .0f);
+
+            glBindVertexArray(e.vao);
+            glDrawElements(GL_TRIANGLES, e.indexCount, GL_UNSIGNED_INT, (GLvoid*)e.indexOffset);
+        }
+    }
 
     void drawSilhouettes(gl::FrameBuffer* fb, const DrawList& dl);
-
+    void drawPickPuffer(gl::FrameBuffer* fb, const DrawList& dl);
     void drawWorld(RenderViewport* vp, ktWorld* world);
     void drawToScreen(GLuint textureId);
 
@@ -112,6 +143,9 @@ protected:
 
     gl::ShaderProgram* prog_silhouette_solid;
     gl::ShaderProgram* prog_silhouette_skin;
+
+    gl::ShaderProgram* prog_pick_solid;
+    gl::ShaderProgram* prog_pick_skin;
 
     std::shared_ptr<Texture2D> tex_ibl_brdf_lut;
     std::shared_ptr<CubeMap> env_map;
