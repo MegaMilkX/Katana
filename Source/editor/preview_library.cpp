@@ -90,7 +90,7 @@ std::shared_ptr<Texture2D> makePreview<GameScene>(std::shared_ptr<GameScene> res
     std::vector<unsigned char> buf(128 * 128 * 3);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, vp.getFinalImage());
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_BYTE, buf.data());
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, buf.data());
     glBindTexture(GL_TEXTURE_2D, 0);
 
     std::shared_ptr<Texture2D> out_tex(new Texture2D());
@@ -125,15 +125,26 @@ PreviewLibrary::PreviewLibrary() {
     strm.jump(0);
     no_preview_tex->deserialize(strm, strm.bytes_available());
 
-    int rc = sqlite3_open_v2("meta.db", &_db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
+    std::string path = MKSTR(get_module_dir() << "/meta.db");
+
+    int rc = sqlite3_open_v2(path.c_str(), &_db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
+    if(rc) {
+        LOG_WARN("Failed to create meta database: " << sqlite3_errmsg(_db));
+    }
+    sqlite3_close_v2(_db);
+    _db = 0;
+
+    rc = sqlite3_open_v2(path.c_str(), &_db, SQLITE_OPEN_READONLY, 0);
     if(rc) {
         LOG_WARN("Failed to open meta database: " << sqlite3_errmsg(_db));
     }
-    sqlite3_exec(_db, "CREATE TABLE IF NOT EXISTS thumbnails (resource_id TEXT PRIMARY KEY, png BLOB)", 0, 0, 0);
+    //sqlite3_exec(_db, "CREATE TABLE IF NOT EXISTS thumbnails (resource_id TEXT PRIMARY KEY, png BLOB)", 0, 0, 0);
 }
 PreviewLibrary::~PreviewLibrary() {
     sqlite3_close_v2(_db);
 }
+
+#include "thumb_builder.hpp"
 
 std::shared_ptr<Texture2D> PreviewLibrary::getPreview(const std::string& res_path) {
     std::shared_ptr<Texture2D> preview_tex = no_preview_tex;
@@ -165,6 +176,9 @@ std::shared_ptr<Texture2D> PreviewLibrary::getPreview(const std::string& res_pat
             loaded_thumbs[res_path] = tex;
             preview_tex = tex;
         } else {
+            loaded_thumbs[res_path] = preview_tex;
+            ThumbBuilder::get()->push(res_path);
+        }/*else {
             rttr::type type = ResourceDescLibrary::get()->findType(res_path);
             std::shared_ptr<Texture2D> texture;
             if(type == rttr::type::get<Texture2D>()) {
@@ -203,7 +217,7 @@ std::shared_ptr<Texture2D> PreviewLibrary::getPreview(const std::string& res_pat
                 loaded_thumbs[res_path] = no_preview_tex;
                 preview_tex = no_preview_tex;
             }
-        }
+        }*/
         sqlite3_finalize(stmt);
     } else {
         preview_tex = it->second;
@@ -214,4 +228,9 @@ std::shared_ptr<Texture2D> PreviewLibrary::getPreview(const std::string& res_pat
 
 std::shared_ptr<Texture2D> PreviewLibrary::getPreviewPlaceholder() {
     return no_preview_tex;
+}
+
+
+void                       PreviewLibrary::markForReload(const std::string& res_path) {
+    loaded_thumbs.erase(res_path);
 }

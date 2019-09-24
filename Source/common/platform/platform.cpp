@@ -14,7 +14,7 @@
 
 static GLFWwindow* window = 0;
 
-bool initWindow();
+bool initWindow(PlatformStartupParams* params);
 void cleanupWindow();
 
 static ImFont* font1;
@@ -24,10 +24,10 @@ Config& platformGetConfig() {
     return cfg;
 }
 
-bool platformInit() {
+bool platformInit(PlatformStartupParams* params) {
     gResourceTree.scanFilesystem(get_module_dir() + "/" + platformGetConfig().data_dir);
     
-    if(!initWindow()) {
+    if(!initWindow(params)) {
         return 0;
     }
     ShaderFactory::init();
@@ -133,7 +133,7 @@ static void cbWindowResize(GLFWwindow *, int w, int h) {
 
 // ==== Window =======================================
 
-bool initWindow() {
+bool initWindow(PlatformStartupParams* params) {
     if(!glfwInit())
     {
         std::cout << "glfwInit() failed" << std::endl;
@@ -144,6 +144,12 @@ bool initWindow() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    
+    if(params) {
+        if(params->hide_window) {
+            glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+        }
+    }
     
     window = glfwCreateWindow(1280, 720, "Aurora3", NULL, NULL);
     if(!window)

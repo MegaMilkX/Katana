@@ -20,6 +20,8 @@ public:
     ~PreviewLibrary();
     std::shared_ptr<Texture2D> getPreview(const std::string& res_path);
     std::shared_ptr<Texture2D> getPreviewPlaceholder();
+
+    void                       markForReload(const std::string& res_path);
 };
 
 #endif

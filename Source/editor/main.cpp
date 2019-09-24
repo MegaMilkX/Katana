@@ -10,6 +10,8 @@
 #include "../katana/timer.hpp"
 #include "../common/katana_impl.hpp"
 
+#include "thumb_builder.hpp"
+
 std::unique_ptr<KatanaImpl> kt_play_mode;
 
 class EscInputListener : public InputListenerWrap {
@@ -28,6 +30,11 @@ int main(int argc, char* argv[]) {
     }
 
     ResourceDescLibrary::get()->init();
+
+    if(!ThumbBuilder::get()->init()) {
+        LOG_ERR("Failed to init thumb builder");
+        return 0;
+    }
 
     // TODO : 
     input().getTable().addAxisKey("MoveCamX", "MOUSE_X", 1.0);
@@ -85,11 +92,15 @@ int main(int argc, char* argv[]) {
             if(kt_play_mode) {
                 kt_play_mode->update_time(dt);
             }
+
+            ThumbBuilder::get()->poll();
         }
         app_state->onCleanup();
     //} catch(std::exception& ex) {
     //    LOG_ERR(ex.what());
     //}
+
+    ThumbBuilder::get()->cleanup();
 
     platformCleanup();
     return 0;

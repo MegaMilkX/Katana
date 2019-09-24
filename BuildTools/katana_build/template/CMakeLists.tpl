@@ -9,17 +9,6 @@ endif()
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-#foreach(flag_var
-#        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
-#        CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
-#    if(${flag_var} MATCHES "/MD")
-#        string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-#    endif(${flag_var} MATCHES "/MD")
-#	if(${flag_var} MATCHES "/MDd")
-#        string(REGEX REPLACE "/MDd" "/MTd" ${flag_var} "${${flag_var}}")
-#    endif(${flag_var} MATCHES "/MDd")
-#endforeach(flag_var)
-
 # TODO: Fix. Files with h at the end not being processed
 file(GLOB_RECURSE GENBINFILES $ENGINE_SRC_DIR/common/gen/*[!.h])
 
@@ -52,8 +41,19 @@ $ENGINE_SRC_DIR/editor/*.cxx;
 *.cpp;
 *.c;
 *.cxx)
+file(GLOB_RECURSE THUMB_BUILDER_SRCFILES 
+$ENGINE_SRC_DIR/common/*.cpp;
+$ENGINE_SRC_DIR/common/*.c;
+$ENGINE_SRC_DIR/common/*.cxx;
+$ENGINE_SRC_DIR/thumb_builder/*.cpp;
+$ENGINE_SRC_DIR/thumb_builder/*.c;
+$ENGINE_SRC_DIR/thumb_builder/*.cxx;
+*.cpp;
+*.c;
+*.cxx)
 add_executable($PROJECT_NAME ${SRCFILES} $ENGINE_SRC_DIR/resource.rc)
 add_executable(${PROJECT_NAME}_editor ${EDITOR_SRCFILES} $ENGINE_SRC_DIR/resource.rc)
+add_executable(thumb_builder ${THUMB_BUILDER_SRCFILES} $ENGINE_SRC_DIR/resource.rc)
 
 set_target_properties(
 	$PROJECT_NAME PROPERTIES
@@ -62,9 +62,15 @@ set_target_properties(
 	RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_SOURCE_DIR}/../build/release"
 	RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/../build/debug"
 )
-
 set_target_properties(
 	${PROJECT_NAME}_editor PROPERTIES
+	RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_SOURCE_DIR}/../build/release"
+	RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/../build/release"
+	RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_SOURCE_DIR}/../build/release"
+	RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/../build/debug"
+)
+set_target_properties(
+	thumb_builder PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_SOURCE_DIR}/../build/release"
 	RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/../build/release"
 	RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_SOURCE_DIR}/../build/release"
@@ -120,6 +126,30 @@ target_link_libraries(${PROJECT_NAME}_editor
 	freetype
 )
 
+target_include_directories(thumb_builder PRIVATE 
+	$ENGINE_SRC_DIR/common/
+	$ENGINE_SRC_DIR/common/lib/
+	$ENGINE_SRC_DIR/lib/glfw/include/
+	$ENGINE_SRC_DIR/lib/assimp/include/
+	$ENGINE_SRC_DIR/lib/assimp/build/include/
+	$ENGINE_SRC_DIR/lib/bullet3-2.88/src/
+	$INCLUDE_PATHS
+)
+target_link_directories(thumb_builder PRIVATE 
+	$LIB_PATHS
+)
+target_link_libraries(thumb_builder
+	shlwapi.lib
+	OpenGL32.lib
+	BulletCollision
+	BulletDynamics
+	LinearMath
+	glfw
+	assimp
+	zlibstatic
+	freetype
+)
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE 
 	_CRT_SECURE_NO_WARNINGS
 	NOMINMAX
@@ -131,6 +161,14 @@ target_compile_definitions(${PROJECT_NAME}_editor PRIVATE
 	_GLFW_WIN32
 	KT_EDITOR
 )
+target_compile_definitions(thumb_builder PRIVATE 
+	_CRT_SECURE_NO_WARNINGS
+	NOMINMAX
+	_GLFW_WIN32
+)
+
+
+add_dependencies(${PROJECT_NAME}_editor thumb_builder)
 
 
 option(BUILD_SHARED_LIBS OFF)

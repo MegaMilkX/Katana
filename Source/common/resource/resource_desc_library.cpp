@@ -1,15 +1,15 @@
 #include "resource_desc_library.hpp"
 
-#include "../../editor/editor_doc_scene.hpp"
-#include "../../editor/editor_doc_texture2d.hpp"
-#include "../../editor/doc_material.hpp"
-#include "../../editor/editor_doc_audio_clip.hpp"
-#include "../../editor/editor_doc_model_source.hpp"
-#include "../../editor/doc_action_graph.hpp"
-#include "../../editor/doc_blend_tree.hpp"
-
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "../lib/stb_image_resize.h"
+
+#include "resource/texture2d.h"
+#include "scene/game_scene.hpp"
+#include "resource/model_source.hpp"
+#include "resource/audio_clip.hpp"
+#include "resource/action_graph.hpp"
+#include "resource/blend_tree.hpp"
+#include "resource/material.hpp"
 
 void ResourceDescLibrary::init() {
     add<GameScene>(
@@ -18,19 +18,7 @@ void ResourceDescLibrary::init() {
     )
     .add<Texture2D>(
         {"png", "jpg", "jpeg", "jfif", "tga"}, 
-        FLAG_VIEWABLE,
-        [](const std::string& res_name)->std::shared_ptr<Texture2D>{
-            std::shared_ptr<Texture2D> tex = retrieve<Texture2D>(res_name);
-            std::shared_ptr<Texture2D> out_tex(new Texture2D());
-            std::vector<unsigned char> buf;
-            buf.resize(256 * 256 * tex->getBpp());
-            stbir_resize_uint8(
-                tex->getData(), tex->Width(), tex->Height(), 0,
-                buf.data(), 256, 256, 0, tex->getBpp()
-            );
-            out_tex->Data(buf.data(), 256, 256, tex->getBpp());
-            return out_tex;
-        }
+        FLAG_VIEWABLE
     )
     .add<AudioClip>(
         "ogg", 

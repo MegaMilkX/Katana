@@ -3,9 +3,13 @@
 
 #include "../config.hpp"
 
+struct PlatformStartupParams {
+    bool hide_window;
+};
+
 Config& platformGetConfig();
 
-bool platformInit();
+bool platformInit(PlatformStartupParams* params = 0);
 void platformCleanup();
 bool platformIsShuttingDown();
 void platformUpdate(float dt);
