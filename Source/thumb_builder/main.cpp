@@ -57,7 +57,11 @@ bool dbStorePreview(const std::string& res_path, std::shared_ptr<Texture2D> text
 	return true;
 }
 
+#include <windows.h>
+
 int main(int argc, char** argv) {
+	SetErrorMode(SetErrorMode(0) | SEM_NOGPFAULTERRORBOX);
+
 	if(argc < 2) {
 		return 1;
 	}
