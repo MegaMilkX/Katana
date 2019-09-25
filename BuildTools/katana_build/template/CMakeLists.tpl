@@ -21,36 +21,36 @@ foreach(gen_bin_file ${GENBINFILES})
 	)
 endforeach(gen_bin_file)
 
+file(GLOB_RECURSE COMMON_SRCFILES
+	$ENGINE_SRC_DIR/common/*.cpp;
+	$ENGINE_SRC_DIR/common/*.c;
+	$ENGINE_SRC_DIR/common/*.cxx;
+)
 file(GLOB_RECURSE SRCFILES 
-$ENGINE_SRC_DIR/common/*.cpp;
-$ENGINE_SRC_DIR/common/*.c;
-$ENGINE_SRC_DIR/common/*.cxx;
-$ENGINE_SRC_DIR/katana/*.cpp;
-$ENGINE_SRC_DIR/katana/*.c;
-$ENGINE_SRC_DIR/katana/*.cxx;
-*.cpp;
-*.c;
-*.cxx)
+	$ENGINE_SRC_DIR/katana/*.cpp;
+	$ENGINE_SRC_DIR/katana/*.c;
+	$ENGINE_SRC_DIR/katana/*.cxx;
+	*.cpp;
+	*.c;
+	*.cxx
+)
 file(GLOB_RECURSE EDITOR_SRCFILES 
-$ENGINE_SRC_DIR/common/*.cpp;
-$ENGINE_SRC_DIR/common/*.c;
-$ENGINE_SRC_DIR/common/*.cxx;
-$ENGINE_SRC_DIR/editor/*.cpp;
-$ENGINE_SRC_DIR/editor/*.c;
-$ENGINE_SRC_DIR/editor/*.cxx;
-*.cpp;
-*.c;
-*.cxx)
+	$ENGINE_SRC_DIR/editor/*.cpp;
+	$ENGINE_SRC_DIR/editor/*.c;
+	$ENGINE_SRC_DIR/editor/*.cxx;
+	*.cpp;
+	*.c;
+	*.cxx
+)
 file(GLOB_RECURSE THUMB_BUILDER_SRCFILES 
-$ENGINE_SRC_DIR/common/*.cpp;
-$ENGINE_SRC_DIR/common/*.c;
-$ENGINE_SRC_DIR/common/*.cxx;
-$ENGINE_SRC_DIR/thumb_builder/*.cpp;
-$ENGINE_SRC_DIR/thumb_builder/*.c;
-$ENGINE_SRC_DIR/thumb_builder/*.cxx;
-*.cpp;
-*.c;
-*.cxx)
+	$ENGINE_SRC_DIR/thumb_builder/*.cpp;
+	$ENGINE_SRC_DIR/thumb_builder/*.c;
+	$ENGINE_SRC_DIR/thumb_builder/*.cxx;
+	*.cpp;
+	*.c;
+	*.cxx
+)
+add_library(common STATIC ${COMMON_SRCFILES})
 add_executable($PROJECT_NAME ${SRCFILES} $ENGINE_SRC_DIR/resource.rc)
 add_executable(${PROJECT_NAME}_editor ${EDITOR_SRCFILES} $ENGINE_SRC_DIR/resource.rc)
 add_executable(thumb_builder ${THUMB_BUILDER_SRCFILES} $ENGINE_SRC_DIR/resource.rc)
@@ -77,6 +77,21 @@ set_target_properties(
 	RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/../build/debug"
 )
 
+
+target_include_directories(common PRIVATE 
+	$ENGINE_SRC_DIR/common/
+	$ENGINE_SRC_DIR/common/lib/
+	$ENGINE_SRC_DIR/lib/glfw/include/
+	$ENGINE_SRC_DIR/lib/assimp/include/
+	$ENGINE_SRC_DIR/lib/assimp/build/include/
+	$ENGINE_SRC_DIR/lib/bullet3-2.88/src/
+	$ENGINE_SRC_DIR/lib/freetype-2.10.0/include/
+	$INCLUDE_PATHS
+)
+target_link_directories(common PRIVATE 
+	$LIB_PATHS
+)
+
 target_include_directories($PROJECT_NAME PRIVATE 
 	$ENGINE_SRC_DIR/common/
 	$ENGINE_SRC_DIR/common/lib/
@@ -85,6 +100,7 @@ target_include_directories($PROJECT_NAME PRIVATE
 	$ENGINE_SRC_DIR/lib/assimp/build/include/
 	$ENGINE_SRC_DIR/lib/bullet3-2.88/src/
 	$ENGINE_SRC_DIR/katana/
+	$ENGINE_SRC_DIR/lib/freetype-2.10.0/include/
 	$INCLUDE_PATHS
 )
 target_link_directories($PROJECT_NAME PRIVATE 
@@ -100,6 +116,7 @@ target_link_libraries($PROJECT_NAME
 	assimp
 	zlibstatic
 	freetype
+	common
 )
 
 target_include_directories(${PROJECT_NAME}_editor PRIVATE 
@@ -109,6 +126,7 @@ target_include_directories(${PROJECT_NAME}_editor PRIVATE
 	$ENGINE_SRC_DIR/lib/assimp/include/
 	$ENGINE_SRC_DIR/lib/assimp/build/include/
 	$ENGINE_SRC_DIR/lib/bullet3-2.88/src/
+	$ENGINE_SRC_DIR/lib/freetype-2.10.0/include/
 	$INCLUDE_PATHS
 )
 target_link_directories(${PROJECT_NAME}_editor PRIVATE 
@@ -124,6 +142,7 @@ target_link_libraries(${PROJECT_NAME}_editor
 	assimp
 	zlibstatic
 	freetype
+	common
 )
 
 target_include_directories(thumb_builder PRIVATE 
@@ -133,6 +152,7 @@ target_include_directories(thumb_builder PRIVATE
 	$ENGINE_SRC_DIR/lib/assimp/include/
 	$ENGINE_SRC_DIR/lib/assimp/build/include/
 	$ENGINE_SRC_DIR/lib/bullet3-2.88/src/
+	$ENGINE_SRC_DIR/lib/freetype-2.10.0/include/
 	$INCLUDE_PATHS
 )
 target_link_directories(thumb_builder PRIVATE 
@@ -148,8 +168,14 @@ target_link_libraries(thumb_builder
 	assimp
 	zlibstatic
 	freetype
+	common
 )
 
+target_compile_definitions(common PRIVATE 
+	_CRT_SECURE_NO_WARNINGS
+	NOMINMAX
+	_GLFW_WIN32
+)
 target_compile_definitions(${PROJECT_NAME} PRIVATE 
 	_CRT_SECURE_NO_WARNINGS
 	NOMINMAX
