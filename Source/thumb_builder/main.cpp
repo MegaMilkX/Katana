@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	PlatformStartupParams params;
+	PlatformStartupParams params = { 0 };
 	params.hide_window = true;
 	if(!platformInit(&params)) {
         LOG_ERR("Failed to initialize platform");
