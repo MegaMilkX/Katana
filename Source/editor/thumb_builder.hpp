@@ -20,6 +20,7 @@ public:
     void cleanup();
 
     void push(const std::string& res_path);
+    void clear_queue();
 
     void _threadProc();
 };

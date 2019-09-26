@@ -1,6 +1,7 @@
 #include "preview_library.hpp"
 
 #include "../common/gen/no_preview.png.h"
+#include "../common/gen/error_preview.png.h"
 
 #include "../common/resource/resource_desc_library.hpp"
 #include "../common/resource/resource_tree.hpp"
@@ -125,6 +126,15 @@ PreviewLibrary::PreviewLibrary() {
     strm.jump(0);
     no_preview_tex->deserialize(strm, strm.bytes_available());
 
+    err_preview_tex.reset(new Texture2D());
+    {
+        std::vector<char> buf((char*)error_preview_png, (char*)error_preview_png + sizeof(error_preview_png));
+        dstream strm;
+        strm.setBuffer(buf);
+        strm.jump(0);
+        err_preview_tex->deserialize(strm, strm.bytes_available());
+    }
+
     std::string path = MKSTR(get_module_dir() << "/meta.db");
 
     int rc = sqlite3_open_v2(path.c_str(), &_db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
@@ -146,14 +156,14 @@ PreviewLibrary::~PreviewLibrary() {
 
 #include "thumb_builder.hpp"
 
-std::shared_ptr<Texture2D> PreviewLibrary::getPreview(const std::string& res_path) {
+std::shared_ptr<Texture2D> PreviewLibrary::getPreview(const std::string& res_path, int64_t current_timestamp) {
     std::shared_ptr<Texture2D> preview_tex = no_preview_tex;
     auto it = loaded_thumbs.find(res_path);
     if(it == loaded_thumbs.end()) {
         sqlite3_stmt* stmt = 0;
         int rc = sqlite3_prepare_v2(
             _db, 
-            MKSTR("SELECT DISTINCT png FROM thumbnails WHERE resource_id = ?").c_str(),
+            MKSTR("SELECT DISTINCT png, state, timestamp FROM thumbnails WHERE resource_id = ?").c_str(),
             -1, &stmt, NULL
         );
         if(rc) {
@@ -166,15 +176,30 @@ std::shared_ptr<Texture2D> PreviewLibrary::getPreview(const std::string& res_pat
         if(sqlite3_step(stmt) == SQLITE_ROW) {
             int blob_size = sqlite3_column_bytes(stmt, 0);
             const void* blob = sqlite3_column_blob(stmt, 0);
+            int state = sqlite3_column_int(stmt, 1);
+            int64_t timestamp = sqlite3_column_int64(stmt, 2);
 
-            std::shared_ptr<Texture2D> tex(new Texture2D());
-            dstream strm;
-            std::vector<char> buf((const char*)blob, (const char*)blob + blob_size);
-            strm.setBuffer(buf);
-            strm.jump(0);
-            tex->deserialize(strm, strm.bytes_available());
-            loaded_thumbs[res_path] = tex;
-            preview_tex = tex;
+            if(current_timestamp < timestamp) {
+                loaded_thumbs[res_path] = no_preview_tex;
+                preview_tex = no_preview_tex;
+            } else {
+                if(state == 0) { // OK
+                    std::shared_ptr<Texture2D> tex(new Texture2D());
+                    dstream strm;
+                    std::vector<char> buf((const char*)blob, (const char*)blob + blob_size);
+                    strm.setBuffer(buf);
+                    strm.jump(0);
+                    tex->deserialize(strm, strm.bytes_available());
+                    loaded_thumbs[res_path] = tex;
+                    preview_tex = tex;
+                } else if(state == 1) { // Invalid
+                    loaded_thumbs[res_path] = err_preview_tex;
+                    preview_tex = err_preview_tex;
+                } else if(state == 2) { // Unknown
+                    loaded_thumbs[res_path] = no_preview_tex;
+                    preview_tex = no_preview_tex;
+                }
+            }
         } else {
             loaded_thumbs[res_path] = preview_tex;
             ThumbBuilder::get()->push(res_path);

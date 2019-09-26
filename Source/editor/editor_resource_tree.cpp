@@ -24,6 +24,7 @@
 #include "../common/gen/no_preview.png.h"
 
 #include "preview_library.hpp"
+#include "thumb_builder.hpp"
 
 void EditorResourceTree::initDirWatch(const std::string& dir) {
     dwChangeHandle = FindFirstChangeNotificationA(
@@ -149,7 +150,7 @@ void EditorResourceTree::update(Editor* editor) {
         ImGui::BeginChild("ResourcePreview", ImVec2(0, 150));
         
         if(selected_node) {
-            preview_tex = PreviewLibrary::get()->getPreview(selected_node->getFullName());
+            preview_tex = PreviewLibrary::get()->getPreview(selected_node->getFullName(), time(0) /* TODO */);
         }
         float win_width = ImGui::GetWindowContentRegionWidth();
         float win_height = 128;
@@ -316,7 +317,7 @@ void EditorResourceTree::update(Editor* editor) {
             auto node = sorted_leaves[i];
             std::string res_path = node->getFullName();
             std::string node_name = node->getName();
-            auto tex = PreviewLibrary::get()->getPreview(res_path);
+            auto tex = PreviewLibrary::get()->getPreview(res_path, time(0) /* TODO */);
             float win_width = 128;
             float win_height = 128;
             float size_ratio = win_width / (float)preview_tex->Width();

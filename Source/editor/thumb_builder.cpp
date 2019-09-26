@@ -41,6 +41,13 @@ void ThumbBuilder::push(const std::string& res_path) {
     queue.push(res_path);
 }
 
+void ThumbBuilder::clear_queue() {
+    std::lock_guard<std::mutex> lock(sync);
+    while(!queue.empty()) {
+        queue.pop();
+    }
+}
+
 void ThumbBuilder::_threadProc() {
     while(working) {
         std::string path;
@@ -88,7 +95,8 @@ void ThumbBuilder::_threadProc() {
             std::lock_guard<std::mutex> lock(sync);
             finished_queue.push(path);
         } else {
-            // TODO: Handle error
+            std::lock_guard<std::mutex> lock(sync);
+            finished_queue.push(path);
         }
     }
 }
