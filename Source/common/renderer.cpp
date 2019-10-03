@@ -10,6 +10,7 @@ void Renderer::drawSilhouettes(gl::FrameBuffer* fb, const DrawList& dl) {
     glDisable(GL_DEPTH_TEST);
     
     fb->bind();
+    glClearColor(.0f, .0f, .0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     prog_silhouette_solid->use();
     glUniform4fv(prog_silhouette_solid->getUniform("u_color"), 1, (float*)&gfxm::vec4(1,1,1,1));
@@ -32,6 +33,11 @@ void Renderer::drawPickPuffer(gl::FrameBuffer* fb, const DrawList& dl) {
     glBlendFunc(GL_ONE, GL_ZERO);
 
     fb->bind();
+    uint32_t id = -1;
+    uint32_t r = (id & 0x000000FF) >> 0;
+    uint32_t g = (id & 0x0000FF00) >> 8;
+    uint32_t b = (id & 0x00FF0000) >> 16;
+    glClearColor(r / 255.0f, g / 255.0f, b / 255.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     drawMultiplePick(
         prog_pick_solid,

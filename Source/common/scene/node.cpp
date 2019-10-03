@@ -414,7 +414,8 @@ void ktNode::onGui() {
     }
 }
 
-void ktNode::onGizmo(GuiViewport& vp) {
+bool ktNode::onGizmo(GuiViewport& vp) {
+    bool input_captured = false;
     if(getParent() != 0) {
         auto vp_pos = vp.getPos();
         auto vp_size = vp.getSize();
@@ -448,6 +449,7 @@ void ktNode::onGizmo(GuiViewport& vp) {
                     gfxm::inverse(getTransform()->getParentTransform()) * dT
                 );
                 getRoot()->refreshAabb();
+                input_captured = true;
             }
         } else if(sGizmoMode == TGIZMO_R) {
             ImGuizmo::Manipulate((float*)&view, (float*)&proj, ImGuizmo::OPERATION::ROTATE, space_mode, (float*)&model, (float*)&dModel, 0);
@@ -455,6 +457,7 @@ void ktNode::onGizmo(GuiViewport& vp) {
                 gfxm::quat q = gfxm::to_quat(gfxm::to_mat3(dModel));
                 getTransform()->rotate(q);
                 getRoot()->refreshAabb();
+                input_captured = true;
             }
         } else if(sGizmoMode == TGIZMO_S) {
             ImGuizmo::Manipulate((float*)&view, (float*)&proj, ImGuizmo::OPERATION::SCALE, space_mode, (float*)&model, (float*)&dModel, 0);
@@ -469,6 +472,7 @@ void ktNode::onGizmo(GuiViewport& vp) {
 
                 getTransform()->setScale(dscl);
                 getRoot()->refreshAabb();
+                input_captured = true;
             }
         }
     }
@@ -476,6 +480,8 @@ void ktNode::onGizmo(GuiViewport& vp) {
     for(size_t i = 0; i < componentCount(); ++i) {
         getById(i)->onGizmo(vp);
     }
+
+    return input_captured;
 }
 
 // ==== Private ====================================

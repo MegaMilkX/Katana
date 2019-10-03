@@ -25,6 +25,7 @@
 #include "doc_action_graph.hpp"
 #include "doc_blend_tree.hpp"
 #include "doc_material.hpp"
+#include "doc_render_graph.hpp"
 
 int setupImguiLayout();
 
@@ -184,6 +185,9 @@ void Editor::onGui(float dt) {
                 }
                 if(ImGui::MenuItem("Material")) {
                     addDocument(new DocMaterial());
+                }
+                if(ImGui::MenuItem("RenderGraph")) {
+                    addDocument(new DocRenderGraph());
                 }
                 if(ImGui::MenuItem("Texture2D", 0, false, false)) {}
                 if(ImGui::MenuItem("Mesh", 0, false, false)) {}

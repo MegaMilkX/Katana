@@ -10,6 +10,7 @@
 #include "resource/action_graph.hpp"
 #include "resource/blend_tree.hpp"
 #include "resource/material.hpp"
+#include "resource/render_graph.hpp"
 
 void ResourceDescLibrary::init() {
     add<GameScene>(
@@ -38,6 +39,10 @@ void ResourceDescLibrary::init() {
     )
     .add<Material>(
         "mat", 
+        FLAG_VIEWABLE | FLAG_WRITABLE
+    )
+    .add<RenderGraph>(
+        "rg",
         FLAG_VIEWABLE | FLAG_WRITABLE
     );
 }

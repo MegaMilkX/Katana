@@ -218,11 +218,14 @@ void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 
         ImRect crect = window->ContentsRegionRect;
         ImGuizmo::SetRect(crect.Min.x, crect.Min.y, crect.Max.x - crect.Min.x, crect.Max.y - crect.Min.y);
 
+        bool using_gizmo = false;
         if(selected_objects) {
             if(selected_objects->getAll().size() == 1) {
                 ktNode* selected = *selected_objects->getAll().begin();
                 if(selected->getRoot() == scn) {
-                    selected->onGizmo(*this);
+                    if(selected->onGizmo(*this)) {
+                        using_gizmo = true;
+                    }
                 }
             }
         }
@@ -292,12 +295,15 @@ void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 
             }
         }
 
-        if(is_mouse_over && ImGui::IsMouseClicked(0)) {
+        if(is_mouse_over && ImGui::IsMouseClicked(0) && !using_gizmo) {
             if(selected_objects) {
                 renderer.drawPickPuffer(&fb_pick, dl);
                 uint32_t pix = 0;
+                uint32_t err_pix = 0xFFFFFF;
                 glReadPixels(mouse_pos.x, mouse_pos.y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &pix);
-                if(pix < dl.solids.size()) {
+                if(pix == err_pix) {
+                    selected_objects->clear();
+                } else if(pix < dl.solids.size()) {
                     ktNode* s = (ktNode*)dl.solids[pix].object_ptr;
                     while(s->getParent() != s->getRoot() && s->getParent() != 0) {
                         s = s->getParent();

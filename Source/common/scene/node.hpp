@@ -79,7 +79,7 @@ public:
     const gfxm::aabb&                   getAabb() const;
 
     virtual void                        onGui();
-    void                                onGizmo(GuiViewport& vp);
+    bool                                onGizmo(GuiViewport& vp);
 
     void                                write(out_stream& out);
     void                                read(in_stream& in, OBJECT_FLAGS child_flags = OBJECT_FLAG_NONE, bool read_root_transform = true);
