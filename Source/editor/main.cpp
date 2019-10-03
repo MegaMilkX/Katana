@@ -1,5 +1,4 @@
-#include "../common/platform/platform.hpp"
-#include "../common/util/log.hpp"
+#include "../common/engine.hpp"
 
 #include "editor.hpp"
 #include "game_state.hpp"
@@ -24,8 +23,8 @@ public:
 };
 
 int main(int argc, char* argv[]) {
-    if(!platformInit()) {
-        LOG_ERR("Failed to initialize platform");
+    if(!katanaInit()) {
+        LOG_ERR("Failed to initialize engine");
         return 0;
     }
 
@@ -102,6 +101,6 @@ int main(int argc, char* argv[]) {
 
     ThumbBuilder::get()->cleanup();
 
-    platformCleanup();
+    katanaCleanup();
     return 0;
 }

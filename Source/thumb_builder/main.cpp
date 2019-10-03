@@ -1,8 +1,7 @@
 
 #include "make_preview.hpp"
 
-#include "../common/platform/platform.hpp"
-#include "../common/util/log.hpp"
+#include "../common/engine.hpp"
 
 #include "../common/lib/sqlite/sqlite3.h"
 
@@ -154,7 +153,7 @@ int main(int argc, char** argv) {
 
 	PlatformStartupParams params = { 0 };
 	params.hide_window = true;
-	if(!platformInit(&params)) {
+	if(!katanaInit(&params)) {
         LOG_ERR("Failed to initialize platform");
 		dbCleanup();
         return 1;
@@ -217,11 +216,11 @@ int main(int argc, char** argv) {
 	} else {
 		LOG_ERR("Unsupported resource: " << res_path);
 		dbCleanup();
-		platformCleanup();
+		katanaCleanup();
 		return 1;
 	}
 
 	dbCleanup();
-	platformCleanup();
+	katanaCleanup();
 	return 0;
 }

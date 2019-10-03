@@ -118,6 +118,5 @@ public:
         pivot_node = r.readNode();
     }
 };
-REG_ATTRIB(actorTpsCamera, TpsCameraActor, Actors);
 
 #endif

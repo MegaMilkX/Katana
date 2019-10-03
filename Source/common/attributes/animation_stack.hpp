@@ -260,6 +260,5 @@ private:
 
     bool root_motion_enabled = true;
 };
-REG_ATTRIB(AnimationStack, AnimationStack, Animation);
 
 #endif

@@ -19,6 +19,5 @@ public:
         
     }
 };
-REG_ATTRIB(SampleAttrib, SampleAttrib, Samples);
 
 #endif

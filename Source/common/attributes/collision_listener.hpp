@@ -9,6 +9,5 @@ public:
     virtual void onEnter(ktNode* other) = 0;
     virtual void onLeave(ktNode* other) = 0;
 };
-//REG_ATTRIB(CollisionListener);
 
 #endif

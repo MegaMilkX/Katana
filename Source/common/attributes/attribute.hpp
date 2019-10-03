@@ -57,13 +57,16 @@ private:
     ktNode* owner = 0;
 };
 
-#define REG_ATTRIB(TYPE, NAME, CATEGORY) \
-STATIC_RUN(TYPE) { \
+#define REG_ATTRIB_INL(TYPE, NAME, CATEGORY) \
     rttr::registration::class_<TYPE>(#NAME) \
         .constructor<>()( \
             rttr::policy::ctor::as_raw_ptr \
         ); \
-    getAttribTypeLib().add(#CATEGORY, rttr::type::get<TYPE>()); \
+    getAttribTypeLib().add(#CATEGORY, rttr::type::get<TYPE>());
+
+#define REG_ATTRIB(TYPE, NAME, CATEGORY) \
+STATIC_RUN(TYPE) { \
+    REG_ATTRIB_INL(TYPE, NAME, CATEGORY) \
 }
 
 #endif

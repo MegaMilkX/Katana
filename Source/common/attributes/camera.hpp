@@ -87,6 +87,5 @@ private:
     float znear = 0.01f;
     float zfar = 1000.0f;
 };
-REG_ATTRIB(Camera, Camera, Rendering);
 
 #endif

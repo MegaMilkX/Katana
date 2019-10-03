@@ -43,7 +43,6 @@ public:
     void onGizmo(GuiViewport& vp);
     virtual const char* getIconCode() const { return ICON_MDI_LIGHTBULB_ON; }
 };
-REG_ATTRIB(OmniLight, OmniLight, Rendering)
 
 class DirLight : public Attribute {
     RTTR_ENABLE(Attribute)
@@ -64,6 +63,5 @@ public:
         intensity = in.read<float>();
     } 
 };
-REG_ATTRIB(DirLight, DirLight, Rendering)
 
 #endif

@@ -318,6 +318,5 @@ private:
 
     std::vector<Segment> segments;
 };
-REG_ATTRIB(Model, Model, Rendering)
 
 #endif

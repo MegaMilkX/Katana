@@ -5,5 +5,3 @@ AudioSource::~AudioSource() {
 }
 
 void AudioSource::onCreate() {}
-
-REG_ATTRIB(AudioSource, AudioSource, Audio)

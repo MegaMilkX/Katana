@@ -41,6 +41,5 @@ public:
         skeleton = in.readResource<Skeleton>();
     }
 };
-REG_ATTRIB(SkeletonRef, SkeletonRef, Character);
 
 #endif

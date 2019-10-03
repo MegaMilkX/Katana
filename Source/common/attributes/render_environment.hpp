@@ -18,6 +18,5 @@ public:
     void write(SceneWriteCtx& out) override;
     void read(SceneReadCtx& in) override;
 };
-REG_ATTRIB(RenderEnvironment, RenderEnvironment, Rendering);
 
 #endif

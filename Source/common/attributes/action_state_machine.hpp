@@ -33,6 +33,5 @@ public:
 
     const char* getIconCode() const override { return ICON_MDI_RUN_FAST; }
 };
-REG_ATTRIB(ActionStateMachine, ActionStateMachine, Animation);
 
 #endif

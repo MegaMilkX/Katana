@@ -15,6 +15,5 @@ public:
 private:
 
 };
-REG_ATTRIB(AudioListener, AudioListener, Audio);
 
 #endif

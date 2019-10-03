@@ -2,8 +2,7 @@
 
 #include "timer.hpp"
 
-#include "../common/platform/platform.hpp"
-#include "../common/util/log.hpp"
+#include "../common/engine.hpp"
 
 #include "../common/scene/controllers/render_controller.hpp"
 
@@ -11,8 +10,9 @@
 
 
 int main(int argc, char **argv) {
-    if(!platformInit()) {
+    if(!katanaInit()) {
         LOG_ERR("Failed to init platform");
+        return 0;
     }    
 
     KatanaImpl kt;
@@ -31,5 +31,5 @@ int main(int argc, char **argv) {
         kt.update_time(dt);
     }
 
-    platformCleanup();
+    katanaCleanup();
 }
