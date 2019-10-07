@@ -25,11 +25,11 @@ public:
 
 class RenderJobFrameBuffer : public JobNode<RenderJobFrameBuffer> {
     gl::FrameBuffer fb;
-    gl::FrameBuffer* fb_ptr;
+    gl::FrameBuffer* fb_ptr = &fb;
 public:
     void onInit() {
         fb.pushBuffer(GL_RGB, GL_UNSIGNED_BYTE);
-
+        fb.reinitBuffers(640, 480);
         bind<gl::FrameBuffer*>(&fb_ptr);
     }
     void onInvoke() {
@@ -42,34 +42,41 @@ public:
 };
 
 class RenderJobClear : public JobNode<RenderJobClear> {
+    gl::FrameBuffer* fb;
+    gfxm::vec4 color;
 public:
     void onInit() {
-        //bind<float>(&v);
+        bind(&fb);
     }
     void onInvoke() {
-        //get<float>(0);
+        fb = get<gl::FrameBuffer*>(0);
+        fb->bind();
+        glViewport(0, 0, 640, 480);
+        glDisable(GL_SCISSOR_TEST);
+        glClearColor(color.x, color.y, color.z, color.w);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
     void onGui() {
-        //ImGui::DragFloat("value", &v, .001f, .0f, 1.0f);
+        ImGui::ColorEdit4("color", (float*)&color);
     }
 };
 
 class RenderJobRoot : public JobNode<RenderJobRoot> {
-    GLuint texid;
+    gl::FrameBuffer* fb = 0;
 public:
     void onInit() {
 
     }
     void onInvoke() {
-        texid = get<GLuint>(0);
+        fb = get<gl::FrameBuffer*>(0);
     }
     void onGui() {
 
     }
 
-    GLuint getTextureId() {
-        return texid;
+    gl::FrameBuffer* getFrameBuffer() {
+        return get<gl::FrameBuffer*>(0);
     }
 };
 
@@ -193,7 +200,7 @@ STATIC_RUN(RenderGraph) {
 }
 STATIC_RUN(RENDER_JOBS) {
     regJobNode<RenderJobRoot>("Result")
-        .in<GLuint>("image")
+        .in<gl::FrameBuffer*>("in")
         .color(.8f, .4f, .1f);
     regJobNode<RenderJobTexture2d>("texture2d")
         .out<GLuint>("id")
@@ -202,8 +209,8 @@ STATIC_RUN(RENDER_JOBS) {
         .out<gl::FrameBuffer*>("framebuffer")
         .color(.4f, .1f, .4f);
     regJobNode<RenderJobClear>("Clear")
-        .out<GLuint>("out")
-        .in<GLuint>("frame buffer")
+        .out<gl::FrameBuffer*>("out")
+        .in<gl::FrameBuffer*>("in")
         .color(.0f, .4f, .1f);
 }
 

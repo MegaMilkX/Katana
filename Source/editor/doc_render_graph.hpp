@@ -39,6 +39,7 @@ class DocRenderGraph : public EditorDocumentTyped<RenderGraph> {
 public:
     void onGui(Editor* ed, float dt) override {
         auto& graph = _resource;
+        graph->prepare();
         graph->run();
 
         auto graph_root = graph->getRoot();
@@ -59,7 +60,8 @@ public:
 
         ImGui::BeginChild("RenderResult");
         if(graph_root->isValid()) {
-            GLuint texid = graph_root->getTextureId();
+            auto fb = graph_root->getFrameBuffer();
+            GLuint texid = fb->getTextureId(0);
 
             ImVec2 winMin = ImGui::GetWindowContentRegionMin();
             ImVec2 winMax = ImGui::GetWindowContentRegionMax();
