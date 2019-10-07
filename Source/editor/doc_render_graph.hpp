@@ -39,19 +39,69 @@ class DocRenderGraph : public EditorDocumentTyped<RenderGraph> {
 public:
     void onGui(Editor* ed, float dt) override {
         auto& graph = _resource;
+        graph->run();
 
+        auto graph_root = graph->getRoot();
+
+        ImGui::BeginColumns("First", 2);
+        
         if(ImGuiExt::BeginGridView("Grid")) {
-            for(auto n : graph->graph.getNodes()) {
+            for(auto n : graph->getNodes()) {
                 const gfxm::vec2& p = n->getPos();
                 ImVec2 pos(p.x, p.y);
-                guiDrawNode(graph->graph, n, &pos);
+                guiDrawNode(*graph, n, &pos);
                 n->setPos(gfxm::vec2(pos.x, pos.y));
             }
         }
         ImGuiExt::EndGridView();
+
+        ImGui::NextColumn();
+
+        ImGui::BeginChild("RenderResult");
+        if(graph_root->isValid()) {
+            GLuint texid = graph_root->getTextureId();
+
+            ImVec2 winMin = ImGui::GetWindowContentRegionMin();
+            ImVec2 winMax = ImGui::GetWindowContentRegionMax();
+            ImVec2 winSize = ImVec2(winMax - winMin);
+            ImGui::Image(
+                (ImTextureID)texid, 
+                winSize,
+                ImVec2(0, 1), ImVec2(1, 0)
+            );
+        }
+        ImGui::EndChild();
+
+        ImGui::EndColumns();
     }
     void onGuiToolbox(Editor* ed) override {
+        auto& blendTree = _resource;
 
+        if(ImGui::Button(ICON_MDI_PLUS " Add node")) {
+            ImGui::OpenPopup("test");
+        }
+        if(ImGui::BeginPopup("test")) {
+            if(ImGui::MenuItem("Texture2d")) {
+                blendTree->addNode(new RenderJobTexture2d);
+                blendTree->prepare();
+            }
+            if(ImGui::MenuItem("FrameBuffer")) {
+                blendTree->addNode(new RenderJobFrameBuffer);
+                blendTree->prepare();
+            }
+            if(ImGui::MenuItem("Clear")) {
+                blendTree->addNode(new RenderJobClear);
+                blendTree->prepare();
+            }
+            ImGui::EndPopup();
+        }
+
+
+        if(selected_node) {
+            ImGui::BeginGroup();
+            selected_node->onGui();
+            ImGui::EndGroup();
+        }
     }
 };
 STATIC_RUN(DocRenderGraph) {

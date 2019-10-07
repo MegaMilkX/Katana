@@ -68,7 +68,8 @@ void BeginTreeNode(const char* name, ImVec2* pos, bool* clicked, bool selected, 
     ImVec2 text_size = ImGui::CalcTextSize(name);
 
     ImVec2 node_half_size = size * 0.5f;
-    ImVec2 node_frame_min = (s_graph_edit_bb.Min + (*pos - node_half_size + s_graph_edit_grid_offset_plus_drag_delta) * s_graph_edit_zoom);
+    ImVec2 center_offset_half = (s_graph_edit_bb.Max - s_graph_edit_bb.Min) * .5f;
+    ImVec2 node_frame_min = (s_graph_edit_bb.Min + center_offset_half + (*pos - node_half_size + s_graph_edit_grid_offset_plus_drag_delta) * s_graph_edit_zoom);
     ImVec2 node_frame_max = node_frame_min + size * s_graph_edit_zoom;
     s_node_bb = ImRect(node_frame_min, node_frame_max);
     s_node_next_in_pos = s_node_bb.Min + ImVec2(0, ImGui::GetTextLineHeight() * 3.0f);
@@ -347,7 +348,7 @@ bool BeginGridView(const char* id) {
             }
             ImVec2 observed_size_after_zoom_change = size / s_graph_edit_zoom;
             ImVec2 observed_box_size_delta = observed_size_before_zoom_change - observed_size_after_zoom_change;
-            ImVec2 cursor_pos_factor = cursor_pos / size;
+            ImVec2 cursor_pos_factor = (cursor_pos - size * .5f) / size;
             ImVec2 zoom_pos_adjustment = observed_box_size_delta * cursor_pos_factor;
             s_graph_edit_offset -= zoom_pos_adjustment;
         }
@@ -374,9 +375,10 @@ bool BeginGridView(const char* id) {
         );
 
         float grid_step = 100.0f * s_graph_edit_zoom;
-        float ax = s_graph_edit_grid_offset_plus_drag_delta.x / 100.0f;
+        ImVec2 half_size = size * .5f / s_graph_edit_zoom;
+        float ax = (s_graph_edit_grid_offset_plus_drag_delta.x + half_size.x) / 100.0f;
         ax = ax - (int)ax;
-        float ay = s_graph_edit_grid_offset_plus_drag_delta.y / 100.0f;
+        float ay = (s_graph_edit_grid_offset_plus_drag_delta.y + half_size.y) / 100.0f;
         ay = ay - (int)ay;
         ax *= grid_step;
         ay *= grid_step;

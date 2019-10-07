@@ -372,12 +372,16 @@ public:
 #include "../data_reader.hpp"
 
 class JobGraph {
+protected:
     std::set<JobGraphNode*> nodes;
     std::map<uint32_t, JobGraphNode*> nodes_by_uid;
     uint32_t next_uid = 0;
     std::vector<JobGraphNode*> invokable_nodes;
 public:
-    void clear() {
+    JobGraph() {}
+    virtual ~JobGraph() {}
+
+    virtual void clear() {
         for(auto j : nodes) {
             delete j;
         }
@@ -461,7 +465,7 @@ public:
         }
     }
 
-    void write(out_stream& out) {
+    virtual void write(out_stream& out) {
         DataWriter w(&out);
         
         std::map<JobGraphNode*, uint32_t> node_id_map;
@@ -497,7 +501,7 @@ public:
             }
         }
     }
-    void read(in_stream& in) {
+    virtual void read(in_stream& in) {
         DataReader r(&in);
 
         std::vector<JobGraphNode*> nodes_tmp;
