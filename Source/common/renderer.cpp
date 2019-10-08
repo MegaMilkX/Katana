@@ -8,6 +8,7 @@ int dbg_renderBufferId = 0;
 
 void Renderer::drawSilhouettes(gl::FrameBuffer* fb, const DrawList& dl) {
     glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
     
     fb->bind();
     glClearColor(.0f, .0f, .0f, 1.0f);
@@ -30,7 +31,9 @@ void Renderer::drawSilhouettes(gl::FrameBuffer* fb, const DrawList& dl) {
 
 void Renderer::drawPickPuffer(gl::FrameBuffer* fb, const DrawList& dl) {
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
     glBlendFunc(GL_ONE, GL_ZERO);
+    glCullFace(GL_BACK);
 
     fb->bind();
     uint32_t id = -1;
