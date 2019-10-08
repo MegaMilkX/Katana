@@ -188,9 +188,12 @@ void GuiViewport::camSetPivot(const gfxm::vec3& pivot) {
 }
 
 #include "util/mesh_gen.hpp"
+#include "lib/imguizmo/ImGuizmo.h"
 
 void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 sz) {        
     if(ImGui::BeginChild(ImGui::GetID(this), ImVec2(sz.x, sz.y))) {
+        ImGuizmo::SetDrawlist();
+
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-10.0, .0f, -11.0f), gfxm::vec3(1.0f, .0f, .0f));
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, 1.0f, -11.0f), gfxm::vec3(.0f, 1.0f, .0f));
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, .0f, -10.0f), gfxm::vec3(.0f, .0f, 1.0f));
