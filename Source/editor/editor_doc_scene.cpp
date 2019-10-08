@@ -92,49 +92,7 @@ void EditorDocScene::onGui (Editor* ed, float dt) {
                 selected.clear();
             }
         }
-        /*
-        ImGui::PushItemWidth(200);
-        std::string selected_game_mode_name = "<null>";
-        if(selected_game_mode.is_valid()) {
-            selected_game_mode_name = selected_game_mode.get_name().to_string();
-        }
         
-        if(ImGui::BeginCombo("", selected_game_mode_name.c_str())) {
-            auto derived = rttr::type::get<ktGameMode>().get_derived_classes();
-            for(auto d : derived) {
-                if(ImGui::Selectable(rttr::type::get<ktGameMode>().get_name().to_string().c_str(), rttr::type::get<ktGameMode>() == selected_game_mode)) {
-                    selected_game_mode = rttr::type::get<ktGameMode>();
-                }
-                if(ImGui::Selectable(d.get_name().to_string().c_str())) {
-                    selected_game_mode = d;
-                }
-            }
-            ImGui::EndCombo();
-        }
-        ImGui::PopItemWidth();
-        ImGui::SameLine();
-        if(ImGui::Button(ICON_MDI_PLAY "Run")) {
-            rttr::variant v = selected_game_mode.create();
-            if(v.is_valid()) {
-                if(v.get_type().is_pointer()) {
-                    auto mode = v.get_value<ktGameMode*>();
-                    
-                    dstream strm;
-                    _resource->write(strm);
-                    strm.jump(0);
-                    mode->getScene().read(strm);
-                    //mode->getScene().copy(_resource.get());
-
-                    kt_play_mode.reset(new KatanaImpl());
-                    kt_play_mode->run(mode);
-                } else {
-                    LOG_WARN("Invalid constructor policy for game mode " << selected_game_mode.get_name().to_string() << ", check reflection registration");
-                }
-            } else {
-                LOG_WARN("Failed to create game mode " << selected_game_mode.get_name().to_string());
-            }
-        }
-        */
         ImGui::EndMenuBar();
     }
 

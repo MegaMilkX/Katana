@@ -85,15 +85,12 @@ public:
         if(ImGui::BeginPopup("test")) {
             if(ImGui::MenuItem("Texture2d")) {
                 blendTree->addNode(new RenderJobTexture2d);
-                blendTree->prepare();
             }
             if(ImGui::MenuItem("FrameBuffer")) {
                 blendTree->addNode(new RenderJobFrameBuffer);
-                blendTree->prepare();
             }
             if(ImGui::MenuItem("Clear")) {
                 blendTree->addNode(new RenderJobClear);
-                blendTree->prepare();
             }
             ImGui::EndPopup();
         }

@@ -51,8 +51,6 @@ public:
     void onInvoke() {
         fb = get<gl::FrameBuffer*>(0);
         fb->bind();
-        glViewport(0, 0, 640, 480);
-        glDisable(GL_SCISSOR_TEST);
         glClearColor(color.x, color.y, color.z, color.w);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
@@ -187,6 +185,12 @@ class RenderGraph : public Resource, public JobTree<RenderJobRoot> {
     RTTR_ENABLE(Resource)
 
 public:
+    void run() override {
+        glViewport(0, 0, 640, 480);
+        glDisable(GL_SCISSOR_TEST);
+        JobGraph::run();
+    }
+
     void serialize(out_stream& out) {}
     virtual bool deserialize(in_stream& in, size_t sz) {
         return true;

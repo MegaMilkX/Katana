@@ -373,6 +373,7 @@ public:
 
 class JobGraph {
 protected:
+    bool dirty = true;
     std::set<JobGraphNode*> nodes;
     std::map<uint32_t, JobGraphNode*> nodes_by_uid;
     uint32_t next_uid = 0;
@@ -400,6 +401,7 @@ public:
         nodes.insert(job);
         nodes_by_uid[job->getUid()] = job;
         job->init();
+        dirty = true;
     }
 
     JobGraphNode* getNode(uint32_t uid) {
@@ -457,9 +459,14 @@ public:
         std::sort(invokable_nodes.begin(), invokable_nodes.end(), [&node_weights](JobGraphNode* a, JobGraphNode* b)->bool{
             return node_weights[a] > node_weights[b];
         });
+
+        dirty = false;
     }
 
-    void run() {
+    virtual void run() {
+        if(dirty) {
+            prepare();
+        }
         for(auto job : invokable_nodes) {
             job->invoke();
         }
