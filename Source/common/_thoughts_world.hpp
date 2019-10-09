@@ -64,8 +64,16 @@ public:
 
 
 class Entity {
+    const uint64_t uid;
 public:
-    uint64_t id;
+    Entity(uint64_t uid)
+    : uid(uid) {}
+
+    bool operator<(const Entity& other) const {
+        return uid < other.uid;
+    }
+
+    uint64_t getUid() const { return uid; }
 
     size_t attribCount() const {
         return 0;
@@ -130,17 +138,17 @@ public:
 };
 
 
-class ktWorld3d {
-    void getDrawList();
+class ktWorld {
+    std::set<Entity> entities;
+public:
+    Entity createEntity() {
+        
+    }
 };
 
 void foo() {
-    OmniLight light;
-    std::get<0>(light.attribs);
-    std::get<1>(light.attribs);
-
-    AttribMap<Transform> amap;
-    amap.get(Transform::getAttribUid());
+    ktWorld world;
+    
 }
 
 #endif

@@ -22,6 +22,52 @@ public:
     }
 };
 
+#include "../common/ecs/ecs_world.hpp"
+
+
+class archTest : public ktEcsArchetype<double, int> {
+public:
+    double getDouble() { return std::get<0>(attribs); }
+    int getInt() { return std::get<1>(attribs); }
+    void setDouble(double d) { std::get<0>(attribs) = d; }
+};
+class archTest2 : public ktEcsArchetype<int, std::string> {
+public:
+    
+};
+
+class ecsTestSys : public ktEcsSystem<archTest, archTest2> {
+    std::set<archTest*> tests;
+    std::set<archTest2*> tests2;
+public:
+    void onFit(archTest* test) {
+        tests.insert(test);
+        LOG("archTest fit");
+    }
+    void onUnfit(archTest* ptr) {
+        tests.erase(ptr);
+        LOG("archTest unfit");
+    }
+    void onFit(archTest2* test) {
+        tests2.insert(test);
+        LOG("archTest2 fit");
+    }
+    void onUnfit(archTest2* ptr) {
+        tests2.erase(ptr);
+        LOG("archTest2 unfit");
+    }
+    void onInvoke() {
+        for(auto& t : tests) {
+            LOG("ecsTestSys: " << t->getDouble() << ", " << t->getInt());
+            double d = t->getDouble();
+            t->setDouble(d += 0.01);
+        }
+        for(auto& t : tests2) {
+            LOG("ecsTest2");
+        }
+    }
+};
+
 int main(int argc, char* argv[]) {
     if(!katanaInit()) {
         LOG_ERR("Failed to initialize engine");
@@ -48,6 +94,17 @@ int main(int argc, char* argv[]) {
     input().getTable().addActionKey("EndPlayMode", "KB_ESCAPE");
     //
 
+    ktEcsWorld world;
+    world.addSystem<ecsTestSys>();
+    ktEntity ent = world.createEntity();
+    ktEntity ent2 = world.createEntity();
+    world.createAttrib<int>(ent);
+    world.createAttrib<double>(ent);
+    world.createAttrib<std::string>(ent);
+    world.createAttrib<int>(ent2);
+    world.createAttrib<std::string>(ent2);
+    world.removeAttrib<std::string>(ent);
+
     EscInputListener esc_input_listener;
 
     std::unique_ptr<AppState> app_state;
@@ -71,6 +128,8 @@ int main(int argc, char* argv[]) {
         app_state->onInit();
         while(!platformIsShuttingDown()) {
             frameTimer.start();
+
+            world.update();
 
             platformUpdate(dt);
             unsigned w, h;
