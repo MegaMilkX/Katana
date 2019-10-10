@@ -72,7 +72,7 @@ void ktEcsWorld::addSystem() {
 
 ktEntity ktEcsWorld::createEntity() {
     static uint64_t id = 0;
-    return ktEntity(id++);
+    return ktEntity(this, id++);
 }
 template<typename T>
 void ktEcsWorld::createAttrib(ktEntity ent) {
