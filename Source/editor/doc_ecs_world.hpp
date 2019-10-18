@@ -6,6 +6,8 @@
 
 #include "../common/util/singleton.hpp"
 
+#include <assert.h>
+
 template<typename T>
 class AttribPool : public Singleton<AttribPool<T>> {
     std::vector<T> data;
@@ -112,9 +114,83 @@ static uint64_t nextEntityUid() {
     return uid++;
 }
 
+class bitset {
+    std::vector<char> bytes;
+public:
+    size_t bitCount() const {
+        const int bits_per_byte = 8;
+        return bytes.size() * bits_per_byte;
+    }
+    size_t enabledBitCount() const {
+        size_t count = 0;
+        for(size_t i = 0; i < bitCount(); ++i) {
+            if(test(i)) {
+                ++count;
+            }
+        }
+        return count;//attribs.count();
+    }
+
+    void clear() {
+        bytes.clear();
+    }
+
+    void resize(size_t sz) {
+        bytes.resize(sz);
+    }
+
+    void set(size_t bit, bool value) {
+        const int bits_per_byte = 8;
+        int byte_id = bit / bits_per_byte;
+        bit = bit - byte_id * bits_per_byte;
+        if(bytes.size() <= byte_id) {
+            resize(byte_id + 1);
+        }
+        bytes[byte_id] |= (1 << bit);
+    }
+
+    bool test(size_t bit) const {
+        const int bits_per_byte = 8;
+        int byte_id = bit / bits_per_byte;
+        bit = bit - byte_id * bits_per_byte;
+        if(bytes.size() <= byte_id) {
+            return false;
+        }
+        return bytes[byte_id] & (1 << bit);
+    }
+};
+
+class dbAttrib : public Singleton<dbAttrib> {
+    std::map<std::string, int> name_to_index;
+    std::map<int, std::string> index_to_name;
+public:
+    void reg(const char* name) {
+        size_t index = name_to_index.size();
+        name_to_index[name] = index;
+        index_to_name[index] = name;
+    }
+    int getId(const char* name) const {
+        auto it = name_to_index.find(name);
+        if(it == name_to_index.end()) {
+            return -1;
+        }
+        return it->second;
+    }
+    const std::string& getName(size_t id) const {
+        auto it = index_to_name.find(id);
+        if(it == index_to_name.end()) {
+            return "ERROR_ATTRIB_ID";
+        }
+        return it->second;
+    }
+    size_t count() const {
+        return name_to_index.size();
+    }
+};
+
 class ecsEntity {
     uint64_t uid;
-    std::map<rttr::type, ecsAttrib*> attribs;
+    bitset attrib_bits;
 public:
     ecsEntity() {
         uid = nextEntityUid();
@@ -124,14 +200,16 @@ public:
         return uid < other.uid;
     }
 
-    size_t attribCount() const {
-        return attribs.count();
+    const bitset& getAttribBits() const {
+        return attrib_bits;
     }
-    ecsAttrib* getAttrib(size_t index) {
-        auto it = attribs.begin();
-        std::advance(it, index);
-        return it->second;
+
+    void getAttrib(const char* name) {
+        int id = dbAttrib::get()->getId(name);
+        assert(id >= 0);
+        attrib_bits.set(id, true);
     }
+
 };
 
 class ecsWorld {
@@ -151,7 +229,7 @@ public:
 };
 
 void defineAttrib(const char* name) {
-
+    dbAttrib::get()->reg(name);
 }
 
 ecsArchetype& defineArchetype(const char* name) {
@@ -162,12 +240,15 @@ class DocEcsWorld : public EditorDocumentTyped<EcsWorld> {
     ecsWorld world;
 public:
     DocEcsWorld() {
-        defineAttrib("Transform");
+        defineAttrib("Name");
+        defineAttrib("Translation");
+        defineAttrib("Rotation");
+        defineAttrib("Scale");
         defineAttrib("LightIntensity");
         defineAttrib("LightColor");
 
         defineArchetype("Node3D")
-            .require("Transform");
+            .require("Translation");
         defineArchetype("OmniLight")
             .inherit("Node3D")
             .require("LightIntensity")
@@ -209,10 +290,26 @@ public:
         }
     }
     void onGuiToolbox(Editor* ed) override {
+        /*
         if(ImGui::Button("Create entity")) {
             world.createEntity();
         }
-        world.onGui();
+        world.onGui();*/
+
+        ecsEntity entt;
+        entt.getAttrib("Translation");
+        entt.getAttrib("LightColor");
+        entt.getAttrib("Name");
+        for(size_t i = 0; i < entt.getAttribBits().bitCount(); ++i) {
+            if(entt.getAttribBits().test(i)) {
+                std::cout << 1;
+                auto name = dbAttrib::get()->getName(i);
+                ImGui::Text(name.c_str());
+            } else {
+                std::cout << 0;
+            }
+        }
+        std::cout << std::endl;
     }
 };
 STATIC_RUN(DocEcsWorld) {
