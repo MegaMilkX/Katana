@@ -8,6 +8,10 @@
 
 #include <assert.h>
 
+#include "../common/ecs/bytepool.hpp"
+
+#include "../common/util/attrib_type.hpp"
+
 template<typename T>
 class AttribPool : public Singleton<AttribPool<T>> {
     std::vector<T> data;
@@ -86,24 +90,23 @@ struct ecsAttrib {
     virtual void onGui() {}
 };
 
-
-struct ecsPosition : public ecsAttrib {
+struct ecsName : public ecsAttrib {
+    std::string name;
+};
+struct ecsTranslation : public ecsAttrib {
     gfxm::vec3 position;
-    void onGui() override {
-
-    }
 };
 struct ecsRotation : public ecsAttrib {
     gfxm::quat rotation;
-    void onGui() override {
-
-    }
 };
 struct ecsScale : public ecsAttrib {
     gfxm::vec3 scale;
-    void onGui() override {
-
-    }
+};
+struct ecsLightIntensity : public ecsAttrib {
+    float intensity;
+};
+struct ecsLightColor : public ecsAttrib {
+    gfxm::vec3 color;
 };
 
 
@@ -114,79 +117,11 @@ static uint64_t nextEntityUid() {
     return uid++;
 }
 
-class bitset {
-    std::vector<char> bytes;
-public:
-    size_t bitCount() const {
-        const int bits_per_byte = 8;
-        return bytes.size() * bits_per_byte;
-    }
-    size_t enabledBitCount() const {
-        size_t count = 0;
-        for(size_t i = 0; i < bitCount(); ++i) {
-            if(test(i)) {
-                ++count;
-            }
-        }
-        return count;//attribs.count();
-    }
+#include "../common/util/bitset.hpp"
 
-    void clear() {
-        bytes.clear();
-    }
 
-    void resize(size_t sz) {
-        bytes.resize(sz);
-    }
 
-    void set(size_t bit, bool value) {
-        const int bits_per_byte = 8;
-        int byte_id = bit / bits_per_byte;
-        bit = bit - byte_id * bits_per_byte;
-        if(bytes.size() <= byte_id) {
-            resize(byte_id + 1);
-        }
-        bytes[byte_id] |= (1 << bit);
-    }
 
-    bool test(size_t bit) const {
-        const int bits_per_byte = 8;
-        int byte_id = bit / bits_per_byte;
-        bit = bit - byte_id * bits_per_byte;
-        if(bytes.size() <= byte_id) {
-            return false;
-        }
-        return bytes[byte_id] & (1 << bit);
-    }
-};
-
-class dbAttrib : public Singleton<dbAttrib> {
-    std::map<std::string, int> name_to_index;
-    std::map<int, std::string> index_to_name;
-public:
-    void reg(const char* name) {
-        size_t index = name_to_index.size();
-        name_to_index[name] = index;
-        index_to_name[index] = name;
-    }
-    int getId(const char* name) const {
-        auto it = name_to_index.find(name);
-        if(it == name_to_index.end()) {
-            return -1;
-        }
-        return it->second;
-    }
-    const std::string& getName(size_t id) const {
-        auto it = index_to_name.find(id);
-        if(it == index_to_name.end()) {
-            return "ERROR_ATTRIB_ID";
-        }
-        return it->second;
-    }
-    size_t count() const {
-        return name_to_index.size();
-    }
-};
 
 class ecsEntity {
     uint64_t uid;
@@ -204,13 +139,48 @@ public:
         return attrib_bits;
     }
 
-    void getAttrib(const char* name) {
-        int id = dbAttrib::get()->getId(name);
-        assert(id >= 0);
-        attrib_bits.set(id, true);
+    template<typename T>
+    void setAttrib(const T& attrib) {
+        attrib_bits.set(get_attrib_id<T>(), true);
     }
-
 };
+
+
+class ecsAttribArrayBase {
+    std::map<ecsEntity, size_t> ent_to_attrib;
+public:
+    virtual ~ecsAttribArrayBase() {}
+    virtual size_t getInstanceId(ecsEntity ent) {
+        auto it = ent_to_attrib.find(ent);
+        if(it == ent_to_attrib.end()) {
+            return std::numeric_limits<size_t>::max();
+        }
+        return it->second;
+    }
+};
+
+template<typename T>
+class ecsAttribArray : public ecsAttribArrayBase {
+    std::vector<T> data;
+    std::set<size_t> free_slots;
+public:
+    size_t acquire();
+    void   free(size_t uid);
+    T*     deref(size_t uid);
+};
+
+class ecsAttribData {
+    std::unordered_map<
+        attrib_id, 
+        std::shared_ptr<ecsAttribArrayBase>
+    > attrib_arrays;
+public:
+    size_t getAttribInstanceId(ecsEntity ent, attrib_id attrib) {
+        auto attrib_array = attrib_arrays[attrib];
+        return attrib_array->getInstanceId(ent);
+    }
+};
+
 
 class ecsWorld {
     std::set<ecsEntity> entities;
@@ -228,24 +198,41 @@ public:
     }
 };
 
+template<typename T>
 void defineAttrib(const char* name) {
-    dbAttrib::get()->reg(name);
+    get_attrib_type_storage().set_name(get_attrib_id<T>(), name);
 }
 
 ecsArchetype& defineArchetype(const char* name) {
     return *ArchetypeLib::get()->defineArchetype(name);
 }
 
+template<typename... Args>
+class ecsArch {
+
+};
+
+class ecsTest : public ecsArch<ecsTranslation, ecsRotation, ecsScale, ecsName, ecsLightIntensity, ecsLightColor> {
+public:
+
+};
+
+template<typename... Args>
+class ecsSystem {
+public:
+    
+};
+
 class DocEcsWorld : public EditorDocumentTyped<EcsWorld> {
     ecsWorld world;
 public:
     DocEcsWorld() {
-        defineAttrib("Name");
-        defineAttrib("Translation");
-        defineAttrib("Rotation");
-        defineAttrib("Scale");
-        defineAttrib("LightIntensity");
-        defineAttrib("LightColor");
+        defineAttrib<ecsName>("Name");
+        defineAttrib<ecsTranslation>("Translation");
+        defineAttrib<ecsRotation>("Rotation");
+        defineAttrib<ecsScale>("Scale");
+        defineAttrib<ecsLightIntensity>("LightIntensity");
+        defineAttrib<ecsLightColor>("LightColor");
 
         defineArchetype("Node3D")
             .require("Translation");
@@ -296,15 +283,17 @@ public:
         }
         world.onGui();*/
 
+        rttr::type::get<int>();
+        rttr::type::get_by_name("ijiji");
+
         ecsEntity entt;
-        entt.getAttrib("Translation");
-        entt.getAttrib("LightColor");
-        entt.getAttrib("Name");
+        entt.setAttrib(ecsName());
+        entt.setAttrib(ecsTranslation());
         for(size_t i = 0; i < entt.getAttribBits().bitCount(); ++i) {
             if(entt.getAttribBits().test(i)) {
                 std::cout << 1;
-                auto name = dbAttrib::get()->getName(i);
-                ImGui::Text(name.c_str());
+                auto name = get_attrib_type_storage().get_name(i);
+                ImGui::Text(name);
             } else {
                 std::cout << 0;
             }

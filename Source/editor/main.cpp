@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
     input().getTable().addActionKey("SlowWalk", "KB_LEFT_ALT");
     input().getTable().addActionKey("EndPlayMode", "KB_ESCAPE");
     //
-
+/*
     ktEcsWorld world;
     world.addSystem<ecsTestSys>();
     ktEntity ent = world.createEntity();
@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
     world.createAttrib<int>(ent2);
     world.createAttrib<std::string>(ent2);
     world.removeAttrib<std::string>(ent);
-
+*/
     EscInputListener esc_input_listener;
 
     std::unique_ptr<AppState> app_state;
@@ -128,8 +128,6 @@ int main(int argc, char* argv[]) {
         app_state->onInit();
         while(!platformIsShuttingDown()) {
             frameTimer.start();
-
-            world.update();
 
             platformUpdate(dt);
             unsigned w, h;
