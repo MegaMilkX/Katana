@@ -62,39 +62,6 @@ public:
 };
 
 
-class ecsArchetypeBase {
-public:
-    virtual ~ecsArchetypeBase() {}
-    virtual uint64_t get_signature() const = 0;
-};
-
-template<typename... Args>
-class ecsArchetype : public ecsArchetypeBase {
-public:
-    static uint64_t get_signature_static() {
-        static uint64_t x[] = { Args::get_id_static()... };
-        static uint64_t sig = 0;
-        for(size_t i = 0; i < sizeof...(Args); ++i) {
-            sig |= x[i];
-        }
-        return sig;
-    }
-    uint64_t get_signature() const override {
-        return get_signature_static();
-    }
-};
-
-
-class ecsTestArchetype : public ecsArchetype<ecsTranslation, ecsVelocity> {
-public:
-
-};
-
-struct ecsaMovable {
-    ecsTranslation* translation;
-    ecsVelocity* velocity;
-};
-
 typedef size_t entity_id;
 
 class ecsEntity {
@@ -118,6 +85,45 @@ public:
         attrib_bits &= ~(1 << attrib);
     }
 };
+
+
+class ecsArchetypeBase {
+public:
+    virtual ~ecsArchetypeBase() {}
+    virtual uint64_t get_signature() const = 0;
+};
+template<typename... Args>
+class ecsArchetype : public ecsArchetypeBase {
+public:
+    static uint64_t get_signature_static() {
+        static uint64_t x[] = { Args::get_id_static()... };
+        static uint64_t sig = 0;
+        for(size_t i = 0; i < sizeof...(Args); ++i) {
+            sig |= x[i];
+        }
+        return sig;
+    }
+    uint64_t get_signature() const override {
+        return get_signature_static();
+    }
+
+    template<typename T>
+    T makeStruct(ecsEntity* ent) {
+        return T { ent->getAttrib<Args>()... };
+    }
+
+};
+
+class ecsMovableArchetype : public ecsArchetype<ecsTranslation, ecsVelocity> {
+public:
+
+};
+
+struct ecsaMovable {
+    ecsTranslation* translation;
+    ecsVelocity* velocity;
+};
+
 
 class ecsSystemBase {
 public:
@@ -164,23 +170,10 @@ public:
 };
 
 
-class ecsTestSystem : public ecsSystem<ecsTestArchetype> {
+class ecsTestSystem : public ecsSystem<ecsMovableArchetype> {
 public:
     void onUpdate() override {
         LOG("lol");
-    }
-};
-
-
-template<typename STRUCT_T, typename... Args>
-class ecsArchetypeConstructor {
-    template<typename T>
-    T* foo(ecsEntity* ent) {
-        return ent->getAttrib<T>();
-    }
-public:
-    STRUCT_T make(ecsEntity* ent) {
-        return STRUCT_T { foo<Args>(ent)... };
     }
 };
 
@@ -233,8 +226,8 @@ public:
         world.setAttrib<ecsTranslation>(ent);
         world.setAttrib<ecsVelocity>(ent);
 
-        ecsArchetypeConstructor<ecsaMovable, ecsTranslation, ecsVelocity> con;
-        auto movable = con.make(world.getEntity(ent));
+        ecsMovableArchetype movable_arch;
+        auto movable = movable_arch.makeStruct<ecsaMovable>(world.getEntity(ent));
     }
 
     void onGui(Editor* ed, float dt) override {
