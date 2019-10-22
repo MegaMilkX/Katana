@@ -60,6 +60,10 @@ class ecsVelocity : public ecsAttrib<ecsVelocity> {
 public:
     gfxm::vec3 velo;
 };
+class ecsMass : public ecsAttrib<ecsMass> {
+public:
+    float mass;
+};
 
 
 typedef size_t entity_id;
@@ -99,7 +103,7 @@ public:
         static uint64_t x[] = { Args::get_id_static()... };
         static uint64_t sig = 0;
         for(size_t i = 0; i < sizeof...(Args); ++i) {
-            sig |= x[i];
+            sig |= (1 << x[i]);
         }
         return sig;
     }
@@ -128,52 +132,83 @@ struct ecsaMovable {
 class ecsSystemBase {
 public:
     virtual ~ecsSystemBase() {}
-    virtual bool tryFit(uint64_t entity_sig) = 0;
+    virtual bool tryFit(entity_id ent, uint64_t entity_sig) = 0;
 
     virtual void onUpdate() {
 
     }
 };
 
+
+template<typename T>
+class ecsArchetypeMap {
+protected:
+    std::map<entity_id, T> values;
+public:
+    void insert(entity_id ent, const T& arch) {
+        LOG("insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        values[ent] = arch;
+    }
+};
+
 template<typename... Args>
-class ecsSystem;
+class ecsSystemRecursive;
 
 template<typename Arg>
-class ecsSystem<Arg> : public ecsSystemBase {
+class ecsSystemRecursive<Arg> 
+: public ecsArchetypeMap<Arg>, public ecsSystemBase {
 public:
     virtual void onFit(Arg* arch) {}
     virtual void onUnfit(Arg* arch) {}
 
-    bool tryFit(uint64_t entity_sig) {
+    bool tryFit(entity_id ent, uint64_t entity_sig) {
         uint64_t arch_sig = Arg::get_signature_static();
         if((arch_sig & entity_sig) == arch_sig) {
-            // TODO: FIT
+            ecsArchetypeMap<Arg>::insert(ent, Arg());
             return true;
         }
     }
 };
 
 template<typename Arg, typename... Args>
-class ecsSystem<Arg, Args...> : public ecsSystem<Args...> {
+class ecsSystemRecursive<Arg, Args...> 
+: public ecsArchetypeMap<Arg>, public ecsSystemRecursive<Args...> {
 public:
     virtual void onFit(Arg* arch) {}
     virtual void onUnfit(Arg* arch) {}
 
-    bool tryFit(uint64_t entity_sig) {
+    bool tryFit(entity_id ent, uint64_t entity_sig) {
         uint64_t arch_sig = Arg::get_signature_static();
         if((arch_sig & entity_sig) == arch_sig) {
-            // TODO: FIT
+            ecsArchetypeMap<Arg>::insert(ent, Arg());
             return true;
         }
-        return ecsSystem<Args...>::tryFit(entity_sig);
+        return ecsSystemRecursive<Args...>::tryFit(ent, entity_sig);
+    }
+};
+
+template<typename... Args>
+class ecsSystem : public ecsSystemRecursive<Args...> {
+public:
+    template<typename ARCH_T>
+    std::map<entity_id, ARCH_T>& get_archetype_map() {
+        return ecsArchetypeMap<ARCH_T>::values;
     }
 };
 
 
-class ecsTestSystem : public ecsSystem<ecsMovableArchetype> {
+class ecsTestSystem : public ecsSystem<
+    ecsArchetype<ecsTranslation, ecsVelocity>,
+    ecsArchetype<ecsTranslation, ecsMass>
+> {
 public:
-    void onUpdate() override {
-        LOG("lol");
+    void onUpdate() {
+        for(auto& kv : get_archetype_map<ecsArchetype<ecsTranslation, ecsVelocity>>()) {
+            LOG(kv.first << ": Moving");
+        }
+        for(auto& kv : get_archetype_map<ecsArchetype<ecsTranslation, ecsMass>>()) {
+            LOG(kv.first << ": Falling");
+        }
     }
 };
 
@@ -202,6 +237,9 @@ public:
         auto e = entities.deref(ent);
         auto a = e->getAttrib<T>();
         e->setBit(a->get_id());
+        for(auto& sys : systems) {
+            sys->tryFit(ent, e->getAttribBits());
+        }
     }
 
     template<typename T>
@@ -228,13 +266,24 @@ public:
 
         ecsMovableArchetype movable_arch;
         auto movable = movable_arch.makeStruct<ecsaMovable>(world.getEntity(ent));
+
+
     }
 
     void onGui(Editor* ed, float dt) override {
-        //world.update();
+        world.update();
     }
     void onGuiToolbox(Editor* ed) override {
-    
+        if(ImGui::Button("Add entity TRANS+VELO")) {
+            auto ent = world.createEntity();
+            world.setAttrib<ecsTranslation>(ent);
+            world.setAttrib<ecsVelocity>(ent);
+        }
+        if(ImGui::Button("Add entity TRANS+MASS")) {
+            auto ent = world.createEntity();
+            world.setAttrib<ecsTranslation>(ent);
+            world.setAttrib<ecsMass>(ent);
+        }
     }
 };
 STATIC_RUN(DocEcsWorld) {
