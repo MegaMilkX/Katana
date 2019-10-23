@@ -190,6 +190,87 @@ void GuiViewport::camSetPivot(const gfxm::vec3& pivot) {
 #include "util/mesh_gen.hpp"
 #include "lib/imguizmo/ImGuizmo.h"
 
+void GuiViewport::draw(DrawList& dl, gfxm::ivec2 sz) {
+    if(ImGui::BeginChild(ImGui::GetID(this), ImVec2(sz.x, sz.y))) {
+        auto window = ImGui::GetCurrentWindow();
+        auto bb = window->ClipRect;
+
+        auto& io = ImGui::GetIO();
+        is_mouse_over = ImGui::IsWindowHovered();
+        window_in_focus = ImGui::IsRootWindowFocused();
+        
+        if(ImGui::IsMouseClicked(2) && is_mouse_over) {
+            mouse_captured = true;
+        }
+        if(ImGui::IsMouseDragging(2) && mouse_captured) {
+            // TODO
+            ImVec2 d = ImGui::GetMouseDragDelta(2) - drag_delta_prev;
+            camMove(gfxm::vec2(d.x, d.y)); 
+
+            //ImGui::Text(MKSTR(gfxm::vec2(d.x, d.y)).c_str());
+
+            drag_delta_prev = ImGui::GetMouseDragDelta(2);
+        }
+        if(ImGui::IsMouseReleased(2)) {
+            drag_delta_prev = ImVec2(0,0);
+            mouse_captured = false;
+        }
+        if(is_mouse_over) {
+            camZoom(io.MouseWheel);
+        }
+
+        dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-10.0, .0f, -11.0f), gfxm::vec3(1.0f, .0f, .0f));
+        dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, 1.0f, -11.0f), gfxm::vec3(.0f, 1.0f, .0f));
+        dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, .0f, -10.0f), gfxm::vec3(.0f, .0f, 1.0f));
+        dd.gridxz(
+            gfxm::vec3(-10.0f, .0f, -10.0f),
+            gfxm::vec3(10.0f, .0f, 10.0f),
+            1,
+            gfxm::vec3(0.2f, 0.2f, 0.2f)
+        );
+
+        auto vp_sz = ImVec2(bb.Max.x - bb.Min.x, bb.Max.y - bb.Min.y);
+
+        rvp.resize(vp_sz.x, vp_sz.y);
+        _proj = gfxm::perspective(gfxm::radian(45.0f), vp_sz.x/(float)vp_sz.y, 0.1f, 1000.0f);
+        gfxm::transform tcam;
+        cam_pos = gfxm::lerp(cam_pos, cam_pivot, 0.2f);
+        cam_zoom_actual = gfxm::lerp(cam_zoom_actual, cam_zoom, 0.2f);
+        tcam.position(cam_pos);
+        cam_angle_x_actual = gfxm::lerp(cam_angle_x_actual, cam_angle_x, 0.5f);
+        cam_angle_y_actual = gfxm::lerp(cam_angle_y_actual, cam_angle_y, 0.5f);
+        tcam.rotate(cam_angle_y_actual, gfxm::vec3(0.0f, 1.0f, 0.0f));
+        tcam.rotate(cam_angle_x_actual, tcam.right());
+        tcam.translate(tcam.back() * cam_zoom_actual);
+        _view = gfxm::inverse(tcam.matrix());
+
+        renderer.draw(&rvp, _proj, _view, dl, false, true);
+
+        rvp.getFinalBuffer()->bind();
+        glViewport(0, 0, (GLsizei)vp_sz.x, (GLsizei)vp_sz.y);
+        if(debug_draw_enabled) {
+            dd.draw(_proj, _view);
+        }
+        dd.clear();
+
+        GLuint buffers[] = {
+            rvp.getFinalImage(),
+            rvp.getGBuffer()->getAlbedoTexture(),
+            rvp.getGBuffer()->getNormalTexture(),
+            rvp.getGBuffer()->getRoughnessTexture(),
+            rvp.getGBuffer()->getMetallicTexture(),
+            rvp.getGBuffer()->getDepthTexture()
+        };
+        ImGui::GetWindowDrawList()->AddImage((void*)buffers[dbg_renderBufferId],
+            bb.Min,
+            bb.Max,
+            ImVec2(0, 1),
+            ImVec2(1, 0)
+        );
+    }
+    ImGui::EndChild();
+}
+
 void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 sz) {        
     if(ImGui::BeginChild(ImGui::GetID(this), ImVec2(sz.x, sz.y))) {
         ImGuizmo::SetDrawlist();

@@ -7,6 +7,7 @@
 #include "../common/util/singleton.hpp"
 
 #include <assert.h>
+#include <tuple>
 
 #include "../common/ecs/bytepool.hpp"
 
@@ -74,9 +75,16 @@ class ecsEntity {
 public:
     template<typename T>
     T* getAttrib() {
-        auto a = new T();
-        attribs[a->get_id()].reset(a);
-        return a;
+        T* ptr = 0;
+        auto id = T::get_id_static();
+        auto it = attribs.find(id); // Ok, since get_id() doesn't touch state and is not virtual
+        if(it == attribs.end()) {
+            ptr = new T();
+            attribs[id].reset(ptr);
+        } else {
+            ptr = (T*)it->second.get();
+        }
+        return ptr;
     }
 
     const uint64_t& getAttribBits() const {
@@ -96,9 +104,26 @@ public:
     virtual ~ecsArchetypeBase() {}
     virtual uint64_t get_signature() const = 0;
 };
+template<typename Arg>
+class ecsArchetypePart {
+    Arg* ptr;
+public:
+    virtual ~ecsArchetypePart() {}
+};
 template<typename... Args>
 class ecsArchetype : public ecsArchetypeBase {
+    std::tuple<Args*...> attribs;
 public:
+    ecsArchetype() {}
+    ecsArchetype(ecsEntity* ent) {
+        attribs = std::tuple<Args*...>(ent->getAttrib<Args>()...);
+    }
+
+    template<typename T>
+    T* get() {
+        return std::get<T*>(attribs);
+    }
+
     static uint64_t get_signature_static() {
         static uint64_t x[] = { Args::get_id_static()... };
         static uint64_t sig = 0;
@@ -129,10 +154,12 @@ struct ecsaMovable {
 };
 
 
+class ecsWorld;
+
 class ecsSystemBase {
 public:
     virtual ~ecsSystemBase() {}
-    virtual bool tryFit(entity_id ent, uint64_t entity_sig) = 0;
+    virtual bool tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) = 0;
 
     virtual void onUpdate() {
 
@@ -143,11 +170,13 @@ public:
 template<typename T>
 class ecsArchetypeMap {
 protected:
-    std::map<entity_id, T> values;
+    std::map<entity_id, std::shared_ptr<T>> values;
 public:
-    void insert(entity_id ent, const T& arch) {
+    T* insert(entity_id ent, const T& arch) {
         LOG("insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
-        values[ent] = arch;
+        T* arch_ptr = new T(arch);
+        values[ent].reset(arch_ptr);
+        return arch_ptr;
     }
 };
 
@@ -161,10 +190,11 @@ public:
     virtual void onFit(Arg* arch) {}
     virtual void onUnfit(Arg* arch) {}
 
-    bool tryFit(entity_id ent, uint64_t entity_sig) {
+    bool tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
         uint64_t arch_sig = Arg::get_signature_static();
         if((arch_sig & entity_sig) == arch_sig) {
-            ecsArchetypeMap<Arg>::insert(ent, Arg());
+            auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
+            onFit(ptr);
             return true;
         }
     }
@@ -177,13 +207,14 @@ public:
     virtual void onFit(Arg* arch) {}
     virtual void onUnfit(Arg* arch) {}
 
-    bool tryFit(entity_id ent, uint64_t entity_sig) {
+    bool tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
         uint64_t arch_sig = Arg::get_signature_static();
         if((arch_sig & entity_sig) == arch_sig) {
-            ecsArchetypeMap<Arg>::insert(ent, Arg());
+            auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
+            onFit(ptr);
             return true;
         }
-        return ecsSystemRecursive<Args...>::tryFit(ent, entity_sig);
+        return ecsSystemRecursive<Args...>::tryFit(world, ent, entity_sig);
     }
 };
 
@@ -191,24 +222,8 @@ template<typename... Args>
 class ecsSystem : public ecsSystemRecursive<Args...> {
 public:
     template<typename ARCH_T>
-    std::map<entity_id, ARCH_T>& get_archetype_map() {
+    std::map<entity_id, std::shared_ptr<ARCH_T>>& get_archetype_map() {
         return ecsArchetypeMap<ARCH_T>::values;
-    }
-};
-
-
-class ecsTestSystem : public ecsSystem<
-    ecsArchetype<ecsTranslation, ecsVelocity>,
-    ecsArchetype<ecsTranslation, ecsMass>
-> {
-public:
-    void onUpdate() {
-        for(auto& kv : get_archetype_map<ecsArchetype<ecsTranslation, ecsVelocity>>()) {
-            LOG(kv.first << ": Moving");
-        }
-        for(auto& kv : get_archetype_map<ecsArchetype<ecsTranslation, ecsMass>>()) {
-            LOG(kv.first << ": Falling");
-        }
     }
 };
 
@@ -238,13 +253,15 @@ public:
         auto a = e->getAttrib<T>();
         e->setBit(a->get_id());
         for(auto& sys : systems) {
-            sys->tryFit(ent, e->getAttribBits());
+            sys->tryFit(this, ent, e->getAttribBits());
         }
     }
 
     template<typename T>
-    void addSystem() {
-        systems.push_back(std::unique_ptr<ecsSystemBase>(new T()));
+    T* addSystem() {
+        T* sys = new T();
+        systems.push_back(std::unique_ptr<ecsSystemBase>(sys));
+        return sys;
     }
 
     void update() {
@@ -255,23 +272,91 @@ public:
 };
 
 
+
+class ecsTestSystem : public ecsSystem<
+    ecsArchetype<ecsTranslation, ecsVelocity>,
+    ecsArchetype<ecsTranslation, ecsMass>
+> {
+public:
+    void onFit(ecsArchetype<ecsTranslation, ecsVelocity>* ptr) {
+        ptr->get<ecsTranslation>()->translation = gfxm::vec3(rand() % 100 * .1f, rand() % 100 * .1f, rand() % 100 * .1f);
+    }
+
+    void onUpdate() {
+        for(auto& kv : get_archetype_map<ecsArchetype<ecsTranslation, ecsVelocity>>()) {
+            gfxm::vec3& pos = kv.second->get<ecsTranslation>()->translation;
+            gfxm::vec3& vel = kv.second->get<ecsVelocity>()->velo;
+
+            vel.x += .01f;
+            vel.y += .01f;
+            float u = sinf(vel.x) * 10.0f;
+            float v = cosf(vel.y) * 10.0f;
+            
+            pos = gfxm::vec3(
+                (1 + v / 2 * cosf(u / 2)) * cosf(u), 
+                (1 + v / 2 * cosf(u / 2)) * sinf(u), 
+                v / 2 * sin(u / 2)
+            );
+        }
+        for(auto& kv : get_archetype_map<ecsArchetype<ecsTranslation, ecsMass>>()) {
+            //LOG(kv.first << ": Falling");
+        }
+    }
+};
+
+class ecsRenderSystem : public ecsSystem<
+    ecsArchetype<ecsTranslation, ecsVelocity>
+> {
+    DrawList draw_list;
+    gl::IndexedMesh mesh;
+public:
+    ecsRenderSystem() {
+        makeSphere(&mesh, 0.5f, 6);
+    }
+
+    void onFit(ecsArchetype<ecsTranslation, ecsVelocity>* object) {
+    }
+
+    void fillDrawList(DrawList& dl) {
+        for(auto& kv : get_archetype_map<ecsArchetype<ecsTranslation, ecsVelocity>>()) {
+            DrawCmdSolid cmd;
+            cmd.indexOffset = 0;
+            cmd.material = 0;
+            cmd.object_ptr = 0;
+            cmd.transform = gfxm::translate(gfxm::mat4(1.0f), kv.second->get<ecsTranslation>()->translation);
+            cmd.vao = mesh.getVao();
+            cmd.indexCount = mesh.getIndexCount();
+
+            dl.solids.emplace_back(cmd);
+        }
+    }
+};
+
+#include "../common/gui_viewport.hpp"
+
 class DocEcsWorld : public EditorDocumentTyped<EcsWorld> {
     ecsWorld world;
+    ecsRenderSystem* renderSys;
+
+    GuiViewport gvp;
+
 public:
     DocEcsWorld() {
         world.addSystem<ecsTestSystem>();
+        renderSys = world.addSystem<ecsRenderSystem>();
         auto ent = world.createEntity();
         world.setAttrib<ecsTranslation>(ent);
         world.setAttrib<ecsVelocity>(ent);
 
-        ecsMovableArchetype movable_arch;
-        auto movable = movable_arch.makeStruct<ecsaMovable>(world.getEntity(ent));
-
-
+        gvp.camMode(GuiViewport::CAM_ORBIT);
     }
 
     void onGui(Editor* ed, float dt) override {
         world.update();
+
+        DrawList dl;
+        renderSys->fillDrawList(dl);
+        gvp.draw(dl);
     }
     void onGuiToolbox(Editor* ed) override {
         if(ImGui::Button("Add entity TRANS+VELO")) {

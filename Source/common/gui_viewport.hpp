@@ -82,6 +82,7 @@ public:
     void camZoom(float v);
     void camSetPivot(const gfxm::vec3& pivot);
 
+    void draw(DrawList& dl, gfxm::ivec2 sz = gfxm::ivec2(0,0));
     void draw(GameScene* scn, ObjectSet* selected_objects = 0, gfxm::ivec2 sz = gfxm::ivec2(0,0));
 };
 
