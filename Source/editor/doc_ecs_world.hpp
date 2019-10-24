@@ -42,10 +42,10 @@ public:
     std::unique_ptr<btCollisionShape> shape;
 };
 
-class ecsArchCollider : public ecsArchetype<ecsTranslation, ecsCollisionShape> {
+class ecsArchCollider : public ecsArchetype<ecsTranslation, ecsCollisionShape, ecsExclude<ecsMass>> {
 public:
     ecsArchCollider(ecsEntity* ent)
-    : ecsArchetype<ecsTranslation, ecsCollisionShape>(ent) {}
+    : ecsArchetype<ecsTranslation, ecsCollisionShape, ecsExclude<ecsMass>>(ent) {}
 
     std::shared_ptr<btCollisionObject> collision_object;
 };
@@ -132,6 +132,11 @@ public:
 
         world->addCollisionObject(collider->collision_object.get());
     }
+    void onUnfit(ecsArchCollider* collider) {
+        world->removeCollisionObject(
+            collider->collision_object.get()
+        );
+    }
     void onFit(ecsArchRigidBody* rb) {
         btVector3 local_inertia;
         rb->get<ecsCollisionShape>()->shape->calculateLocalInertia(
@@ -153,6 +158,11 @@ public:
         ));
 
         world->addRigidBody(
+            rb->rigid_body.get()
+        );
+    }
+    void onUnfit(ecsArchRigidBody* rb) {
+        world->removeRigidBody(
             rb->rigid_body.get()
         );
     }

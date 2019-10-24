@@ -10,7 +10,7 @@ class ecsWorld;
 class ecsSystemBase {
 public:
     virtual ~ecsSystemBase() {}
-    virtual bool tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) = 0;
+    virtual void tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) = 0;
 
     virtual void onUpdate() {
 
@@ -29,6 +29,19 @@ public:
         values[ent].reset(arch_ptr);
         return arch_ptr;
     }
+
+    T* get(entity_id ent) {
+        auto it = values.find(ent);
+        if(it == values.end()) {
+            return 0;
+        }
+        return it->second.get();
+    }
+
+    void erase(entity_id ent) {
+        LOG("erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        values.erase(ent);
+    }
 };
 
 template<typename... Args>
@@ -41,12 +54,23 @@ public:
     virtual void onFit(Arg* arch) {}
     virtual void onUnfit(Arg* arch) {}
 
-    bool tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
+    void tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
         uint64_t arch_sig = Arg::get_signature_static();
+        uint64_t exclusion_arch_sig = Arg::get_exclusion_signature_static();
+        bool fit = false;
         if((arch_sig & entity_sig) == arch_sig) {
-            auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
-            onFit(ptr);
-            return true;
+            if((exclusion_arch_sig & entity_sig) == 0) {
+                auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
+                onFit(ptr);
+                fit = true;
+            }
+        }
+        if(!fit) {
+            Arg* ptr = ecsArchetypeMap<Arg>::get(ent);
+            if(ptr) {
+                onUnfit(ptr);
+                ecsArchetypeMap<Arg>::erase(ent);
+            }
         }
     }
 };
@@ -58,14 +82,26 @@ public:
     virtual void onFit(Arg* arch) {}
     virtual void onUnfit(Arg* arch) {}
 
-    bool tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
+    void tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
         uint64_t arch_sig = Arg::get_signature_static();
+        uint64_t exclusion_arch_sig = Arg::get_exclusion_signature_static();
+        bool fit = false;
         if((arch_sig & entity_sig) == arch_sig) {
-            auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
-            onFit(ptr);
-            return true;
+            if((exclusion_arch_sig & entity_sig) == 0) {
+                auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
+                onFit(ptr);
+                fit = true;
+            }
         }
-        return ecsSystemRecursive<Args...>::tryFit(world, ent, entity_sig);
+        if(!fit) {
+            Arg* ptr = ecsArchetypeMap<Arg>::get(ent);
+            if(ptr) {
+                onUnfit(ptr);
+                ecsArchetypeMap<Arg>::erase(ent);
+            }
+        }
+
+        ecsSystemRecursive<Args...>::tryFit(world, ent, entity_sig);
     }
 };
 
