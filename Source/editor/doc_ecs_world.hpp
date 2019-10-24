@@ -176,7 +176,9 @@ public:
         world->stepSimulation(1.0f/60.0f);
 
         for(auto& kv : get_archetype_map<ecsArchRigidBody>()) {
-            
+            auto& t = kv.second->rigid_body->getWorldTransform();
+            btVector3 btv3 = t.getOrigin();
+            kv.second->get<ecsTranslation>()->translation = gfxm::vec3(btv3.getX(), btv3.getY(), btv3.getZ());
         }
 
         world->debugDrawWorld();
@@ -184,7 +186,7 @@ public:
 };
 
 class ecsRenderSystem : public ecsSystem<
-    ecsArchetype<ecsTranslation, ecsVelocity>
+    ecsArchetype<ecsTranslation>
 > {
     DrawList draw_list;
     gl::IndexedMesh mesh;
@@ -193,11 +195,11 @@ public:
         makeSphere(&mesh, 0.5f, 6);
     }
 
-    void onFit(ecsArchetype<ecsTranslation, ecsVelocity>* object) {
+    void onFit(ecsArchetype<ecsTranslation>* object) {
     }
 
     void fillDrawList(DrawList& dl) {
-        for(auto& kv : get_archetype_map<ecsArchetype<ecsTranslation, ecsVelocity>>()) {
+        for(auto& kv : get_archetype_map<ecsArchetype<ecsTranslation>>()) {
             DrawCmdSolid cmd;
             cmd.indexOffset = 0;
             cmd.material = 0;

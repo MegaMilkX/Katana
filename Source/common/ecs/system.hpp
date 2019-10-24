@@ -24,7 +24,7 @@ protected:
     std::map<entity_id, std::shared_ptr<T>> values;
 public:
     T* insert(entity_id ent, const T& arch) {
-        LOG("insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         T* arch_ptr = new T(arch);
         values[ent].reset(arch_ptr);
         return arch_ptr;
@@ -39,7 +39,7 @@ public:
     }
 
     void erase(entity_id ent) {
-        LOG("erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        LOG(this << ": erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         values.erase(ent);
     }
 };
@@ -60,8 +60,10 @@ public:
         bool fit = false;
         if((arch_sig & entity_sig) == arch_sig) {
             if((exclusion_arch_sig & entity_sig) == 0) {
-                auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
-                onFit(ptr);
+                if(ecsArchetypeMap<Arg>::get(ent) == 0) {
+                    auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
+                    onFit(ptr);
+                }
                 fit = true;
             }
         }
@@ -88,8 +90,10 @@ public:
         bool fit = false;
         if((arch_sig & entity_sig) == arch_sig) {
             if((exclusion_arch_sig & entity_sig) == 0) {
-                auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
-                onFit(ptr);
+                if(ecsArchetypeMap<Arg>::get(ent) == 0) {
+                    auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
+                    onFit(ptr);
+                }
                 fit = true;
             }
         }
