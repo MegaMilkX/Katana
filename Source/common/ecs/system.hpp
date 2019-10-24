@@ -1,0 +1,81 @@
+#ifndef ECS_SYSTEM_HPP
+#define ECS_SYSTEM_HPP
+
+#include "archetype.hpp"
+
+#include <map>
+
+class ecsWorld;
+
+class ecsSystemBase {
+public:
+    virtual ~ecsSystemBase() {}
+    virtual bool tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) = 0;
+
+    virtual void onUpdate() {
+
+    }
+};
+
+
+template<typename T>
+class ecsArchetypeMap {
+protected:
+    std::map<entity_id, std::shared_ptr<T>> values;
+public:
+    T* insert(entity_id ent, const T& arch) {
+        LOG("insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        T* arch_ptr = new T(arch);
+        values[ent].reset(arch_ptr);
+        return arch_ptr;
+    }
+};
+
+template<typename... Args>
+class ecsSystemRecursive;
+
+template<typename Arg>
+class ecsSystemRecursive<Arg> 
+: public ecsArchetypeMap<Arg>, public ecsSystemBase {
+public:
+    virtual void onFit(Arg* arch) {}
+    virtual void onUnfit(Arg* arch) {}
+
+    bool tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
+        uint64_t arch_sig = Arg::get_signature_static();
+        if((arch_sig & entity_sig) == arch_sig) {
+            auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
+            onFit(ptr);
+            return true;
+        }
+    }
+};
+
+template<typename Arg, typename... Args>
+class ecsSystemRecursive<Arg, Args...> 
+: public ecsArchetypeMap<Arg>, public ecsSystemRecursive<Args...> {
+public:
+    virtual void onFit(Arg* arch) {}
+    virtual void onUnfit(Arg* arch) {}
+
+    bool tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
+        uint64_t arch_sig = Arg::get_signature_static();
+        if((arch_sig & entity_sig) == arch_sig) {
+            auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
+            onFit(ptr);
+            return true;
+        }
+        return ecsSystemRecursive<Args...>::tryFit(world, ent, entity_sig);
+    }
+};
+
+template<typename... Args>
+class ecsSystem : public ecsSystemRecursive<Args...> {
+public:
+    template<typename ARCH_T>
+    std::map<entity_id, std::shared_ptr<ARCH_T>>& get_archetype_map() {
+        return ecsArchetypeMap<ARCH_T>::values;
+    }
+};
+
+#endif

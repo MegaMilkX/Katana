@@ -4,46 +4,15 @@
 #include "editor_document.hpp"
 #include "../common/resource/ecs_world.hpp"
 
-#include "../common/util/singleton.hpp"
+#include "../common/ecs/world.hpp"
 
-#include <assert.h>
-#include <tuple>
+#include "../common/renderer.hpp"
+#include "../common/gui_viewport.hpp"
+#include "../common/util/mesh_gen.hpp"
 
-#include "../common/ecs/bytepool.hpp"
+#include <btBulletCollisionCommon.h>
+#include "../common/util/bullet_debug_draw.hpp"
 
-#include "../common/util/attrib_type.hpp"
-
-#include "../common/util/bitset.hpp"
-
-#include "../common/util/object_pool.hpp"
-
-#define ATTRIB_ENABLE \
-    virtual attrib_type get_attrib_type() const { \
-        return attrib_type::get<decltype(*this)>(); \
-    }
-
-uint64_t next_attrib_id() {
-    static uint64_t id = 0;
-    return id++;
-}
-
-class ecsAttribBase {
-public:
-    virtual ~ecsAttribBase() {}
-    virtual uint64_t get_id() const = 0;
-};
-
-template<typename T>
-class ecsAttrib : public ecsAttribBase {
-public:
-    static uint64_t get_id_static() {
-        static uint64_t id = next_attrib_id();
-        return id;
-    } 
-    uint64_t get_id() const override {
-        return get_id_static();
-    }
-};
 
 class ecsTranslation : public ecsAttrib<ecsTranslation> {
 public:
@@ -63,212 +32,30 @@ public:
 };
 class ecsMass : public ecsAttrib<ecsMass> {
 public:
-    float mass;
+    float mass = 1.0f;
 };
-
-
-typedef size_t entity_id;
-
-class ecsEntity {
-    uint64_t attrib_bits;
-    std::unordered_map<uint8_t, std::shared_ptr<ecsAttribBase>> attribs;
+class ecsCollisionShape : public ecsAttrib<ecsCollisionShape> {
 public:
-    template<typename T>
-    T* getAttrib() {
-        T* ptr = 0;
-        auto id = T::get_id_static();
-        auto it = attribs.find(id); // Ok, since get_id() doesn't touch state and is not virtual
-        if(it == attribs.end()) {
-            ptr = new T();
-            attribs[id].reset(ptr);
-        } else {
-            ptr = (T*)it->second.get();
-        }
-        return ptr;
+    ecsCollisionShape() {
+        shape.reset(new btSphereShape(.5f));
     }
-
-    const uint64_t& getAttribBits() const {
-        return attrib_bits;
-    }
-    void setBit(attrib_id attrib) {
-        attrib_bits |= (1 << attrib);
-    }
-    void clearBit(attrib_id attrib) {
-        attrib_bits &= ~(1 << attrib);
-    }
+    std::unique_ptr<btCollisionShape> shape;
 };
 
-
-class ecsArchetypeBase {
+class ecsArchCollider : public ecsArchetype<ecsTranslation, ecsCollisionShape> {
 public:
-    virtual ~ecsArchetypeBase() {}
-    virtual uint64_t get_signature() const = 0;
+    ecsArchCollider(ecsEntity* ent)
+    : ecsArchetype<ecsTranslation, ecsCollisionShape>(ent) {}
+
+    std::shared_ptr<btCollisionObject> collision_object;
 };
-template<typename Arg>
-class ecsArchetypePart {
-    Arg* ptr;
+class ecsArchRigidBody : public ecsArchetype<ecsTranslation, ecsCollisionShape, ecsMass> {
 public:
-    virtual ~ecsArchetypePart() {}
-};
-template<typename... Args>
-class ecsArchetype : public ecsArchetypeBase {
-    std::tuple<Args*...> attribs;
-public:
-    ecsArchetype() {}
-    ecsArchetype(ecsEntity* ent) {
-        attribs = std::tuple<Args*...>(ent->getAttrib<Args>()...);
-    }
+    ecsArchRigidBody(ecsEntity* ent)
+    : ecsArchetype<ecsTranslation, ecsCollisionShape, ecsMass>(ent) {}
 
-    template<typename T>
-    T* get() {
-        return std::get<T*>(attribs);
-    }
-
-    static uint64_t get_signature_static() {
-        static uint64_t x[] = { Args::get_id_static()... };
-        static uint64_t sig = 0;
-        for(size_t i = 0; i < sizeof...(Args); ++i) {
-            sig |= (1 << x[i]);
-        }
-        return sig;
-    }
-    uint64_t get_signature() const override {
-        return get_signature_static();
-    }
-
-    template<typename T>
-    T makeStruct(ecsEntity* ent) {
-        return T { ent->getAttrib<Args>()... };
-    }
-
-};
-
-class ecsMovableArchetype : public ecsArchetype<ecsTranslation, ecsVelocity> {
-public:
-
-};
-
-struct ecsaMovable {
-    ecsTranslation* translation;
-    ecsVelocity* velocity;
-};
-
-
-class ecsWorld;
-
-class ecsSystemBase {
-public:
-    virtual ~ecsSystemBase() {}
-    virtual bool tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) = 0;
-
-    virtual void onUpdate() {
-
-    }
-};
-
-
-template<typename T>
-class ecsArchetypeMap {
-protected:
-    std::map<entity_id, std::shared_ptr<T>> values;
-public:
-    T* insert(entity_id ent, const T& arch) {
-        LOG("insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
-        T* arch_ptr = new T(arch);
-        values[ent].reset(arch_ptr);
-        return arch_ptr;
-    }
-};
-
-template<typename... Args>
-class ecsSystemRecursive;
-
-template<typename Arg>
-class ecsSystemRecursive<Arg> 
-: public ecsArchetypeMap<Arg>, public ecsSystemBase {
-public:
-    virtual void onFit(Arg* arch) {}
-    virtual void onUnfit(Arg* arch) {}
-
-    bool tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
-        uint64_t arch_sig = Arg::get_signature_static();
-        if((arch_sig & entity_sig) == arch_sig) {
-            auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
-            onFit(ptr);
-            return true;
-        }
-    }
-};
-
-template<typename Arg, typename... Args>
-class ecsSystemRecursive<Arg, Args...> 
-: public ecsArchetypeMap<Arg>, public ecsSystemRecursive<Args...> {
-public:
-    virtual void onFit(Arg* arch) {}
-    virtual void onUnfit(Arg* arch) {}
-
-    bool tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
-        uint64_t arch_sig = Arg::get_signature_static();
-        if((arch_sig & entity_sig) == arch_sig) {
-            auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
-            onFit(ptr);
-            return true;
-        }
-        return ecsSystemRecursive<Args...>::tryFit(world, ent, entity_sig);
-    }
-};
-
-template<typename... Args>
-class ecsSystem : public ecsSystemRecursive<Args...> {
-public:
-    template<typename ARCH_T>
-    std::map<entity_id, std::shared_ptr<ARCH_T>>& get_archetype_map() {
-        return ecsArchetypeMap<ARCH_T>::values;
-    }
-};
-
-
-class ecsWorld {
-    ObjectPool<ecsEntity> entities;
-    std::vector<std::unique_ptr<ecsSystemBase>> systems;
-
-    bool fitsSignature(uint64_t sig, uint64_t entity_bits) {
-        return (sig & entity_bits) == sig;
-    }
-
-public:
-    entity_id createEntity() {
-        return entities.acquire();
-    }
-    void removeEntity(entity_id id) {
-        entities.free(id);
-    }
-    ecsEntity* getEntity(entity_id id) {
-        return entities.deref(id);
-    }
-
-    template<typename T>
-    void setAttrib(entity_id ent) {
-        auto e = entities.deref(ent);
-        auto a = e->getAttrib<T>();
-        e->setBit(a->get_id());
-        for(auto& sys : systems) {
-            sys->tryFit(this, ent, e->getAttribBits());
-        }
-    }
-
-    template<typename T>
-    T* addSystem() {
-        T* sys = new T();
-        systems.push_back(std::unique_ptr<ecsSystemBase>(sys));
-        return sys;
-    }
-
-    void update() {
-        for(auto& sys : systems) {
-            sys->onUpdate();
-        }
-    }
+    std::shared_ptr<btRigidBody> rigid_body;
+    btDefaultMotionState motion_state;
 };
 
 
@@ -304,6 +91,88 @@ public:
     }
 };
 
+class ecsDynamicsSys : public ecsSystem<
+    ecsArchCollider,
+    ecsArchRigidBody
+> {
+    btDefaultCollisionConfiguration* collisionConf;
+    btCollisionDispatcher* dispatcher;
+    btDbvtBroadphase* broadphase;
+    btSequentialImpulseConstraintSolver* constraintSolver;
+    btDiscreteDynamicsWorld* world;
+
+    BulletDebugDrawer2_OpenGL debugDrawer;
+public:
+    ecsDynamicsSys(DebugDraw* dd = 0) {
+        collisionConf = new btDefaultCollisionConfiguration();
+        dispatcher = new btCollisionDispatcher(collisionConf);
+        broadphase = new btDbvtBroadphase();
+
+        constraintSolver = new btSequentialImpulseConstraintSolver();
+        world = new btDiscreteDynamicsWorld(
+            dispatcher, 
+            broadphase, 
+            constraintSolver,
+            collisionConf
+        );
+
+        broadphase->getOverlappingPairCache()->setInternalGhostPairCallback(new btGhostPairCallback());
+
+        world->setGravity(btVector3(0.0f, -10.0f, 0.0f));
+
+        world->setDebugDrawer(&debugDrawer);
+        debugDrawer.setDD(dd);
+    }
+
+    void onFit(ecsArchCollider* collider) {
+        collider->collision_object.reset(new btCollisionObject());
+        collider->collision_object->setCollisionShape(
+            collider->get<ecsCollisionShape>()->shape.get()
+        );
+
+        world->addCollisionObject(collider->collision_object.get());
+    }
+    void onFit(ecsArchRigidBody* rb) {
+        btVector3 local_inertia;
+        rb->get<ecsCollisionShape>()->shape->calculateLocalInertia(
+            rb->get<ecsMass>()->mass,
+            local_inertia
+        );
+        btTransform btt, com;
+        btt.setIdentity();
+        com.setIdentity();
+        rb->motion_state = btDefaultMotionState(
+            btt, com
+        );
+        
+        rb->rigid_body.reset(new btRigidBody(
+            rb->get<ecsMass>()->mass,
+            &rb->motion_state,
+            rb->get<ecsCollisionShape>()->shape.get(),
+            local_inertia
+        ));
+
+        world->addRigidBody(
+            rb->rigid_body.get()
+        );
+    }
+
+    void onUpdate() {
+        for(auto& kv : get_archetype_map<ecsArchCollider>()) {
+            gfxm::vec3 trans = kv.second->get<ecsTranslation>()->translation;
+
+        }
+
+        world->stepSimulation(1.0f/60.0f);
+
+        for(auto& kv : get_archetype_map<ecsArchRigidBody>()) {
+            
+        }
+
+        world->debugDrawWorld();
+    }
+};
+
 class ecsRenderSystem : public ecsSystem<
     ecsArchetype<ecsTranslation, ecsVelocity>
 > {
@@ -332,7 +201,6 @@ public:
     }
 };
 
-#include "../common/gui_viewport.hpp"
 
 class DocEcsWorld : public EditorDocumentTyped<EcsWorld> {
     ecsWorld world;
@@ -343,6 +211,7 @@ class DocEcsWorld : public EditorDocumentTyped<EcsWorld> {
 public:
     DocEcsWorld() {
         world.addSystem<ecsTestSystem>();
+        world.addSystem(new ecsDynamicsSys(&gvp.getDebugDraw()));
         renderSys = world.addSystem<ecsRenderSystem>();
         auto ent = world.createEntity();
         world.setAttrib<ecsTranslation>(ent);
@@ -364,9 +233,15 @@ public:
             world.setAttrib<ecsTranslation>(ent);
             world.setAttrib<ecsVelocity>(ent);
         }
-        if(ImGui::Button("Add entity TRANS+MASS")) {
+        if(ImGui::Button("Add entity TRANS+COLLISIONSHAPE")) {
             auto ent = world.createEntity();
             world.setAttrib<ecsTranslation>(ent);
+            world.setAttrib<ecsCollisionShape>(ent);
+        }
+        if(ImGui::Button("Add entity RIGID_BODY")) {
+            auto ent = world.createEntity();
+            world.setAttrib<ecsTranslation>(ent);
+            world.setAttrib<ecsCollisionShape>(ent);
             world.setAttrib<ecsMass>(ent);
         }
     }
