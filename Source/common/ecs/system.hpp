@@ -11,6 +11,7 @@ class ecsSystemBase {
 public:
     virtual ~ecsSystemBase() {}
     virtual void tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) = 0;
+    virtual void signalUpdate(entity_id ent, uint64_t attrib_sig) = 0;
 
     virtual void onUpdate() {
 
@@ -75,6 +76,18 @@ public:
             }
         }
     }
+
+    void signalUpdate(entity_id ent, uint64_t attrib_sig) {
+        uint64_t arch_sig = Arg::get_signature_static();
+        if((arch_sig & attrib_sig) != 0) {
+            auto map = ecsArchetypeMap<Arg>::values;
+            auto it = map.find(ent);
+            if(it != map.end()) {
+                it->second->signalAttribUpdate(attrib_sig);
+            }
+            
+        }
+    }
 };
 
 template<typename Arg, typename... Args>
@@ -106,6 +119,19 @@ public:
         }
 
         ecsSystemRecursive<Args...>::tryFit(world, ent, entity_sig);
+    }
+
+    void signalUpdate(entity_id ent, uint64_t attrib_sig) {
+        uint64_t arch_sig = Arg::get_signature_static();
+        if((arch_sig & attrib_sig) != 0) {
+            auto map = ecsArchetypeMap<Arg>::values;
+            auto it = map.find(ent);
+            if(it != map.end()) {
+                it->second->signalAttribUpdate(attrib_sig);
+            }
+        }
+
+        ecsSystemRecursive<Args...>::signalUpdate(ent, attrib_sig);
     }
 };
 

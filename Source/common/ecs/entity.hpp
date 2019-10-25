@@ -7,8 +7,6 @@
 
 #include "attribute.hpp"
 
-typedef size_t entity_id;
-
 class ecsEntity {
     uint64_t attrib_bits;
     std::unordered_map<uint8_t, std::shared_ptr<ecsAttribBase>> attribs;
@@ -25,6 +23,24 @@ public:
             ptr = (T*)it->second.get();
         }
         return ptr;
+    }
+
+    ecsAttribBase* getAttribPtr(uint8_t attrib_id) {
+        auto it = attribs.find(attrib_id);
+        if(it == attribs.end()) {
+            return 0;
+        }
+        return it->second.get();
+    }
+
+    template<typename T>
+    bool updateAttrib(const T& value) {
+        auto it = attribs.find(T::get_id_static());
+        if(it == attribs.end()) {
+            return false;
+        }
+        *(T*)(it->second.get()) = (value);        
+        return true;
     }
 
     const uint64_t& getAttribBits() const {

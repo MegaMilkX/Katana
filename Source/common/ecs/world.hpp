@@ -11,15 +11,24 @@ class ecsWorld {
     ObjectPool<ecsEntity> entities;
     std::vector<std::unique_ptr<ecsSystemBase>> systems;
 
+    std::set<entity_id> live_entities;
+
 public:
     entity_id createEntity() {
-        return entities.acquire();
+        entity_id id = entities.acquire();
+        live_entities.insert(id);
+        return id;
     }
     void removeEntity(entity_id id) {
         entities.free(id);
+        live_entities.erase(id);
     }
     ecsEntity* getEntity(entity_id id) {
         return entities.deref(id);
+    }
+
+    const std::set<entity_id>& getEntities() const {
+        return live_entities;
     }
 
     template<typename T>
@@ -29,6 +38,22 @@ public:
         e->setBit(a->get_id());
         for(auto& sys : systems) {
             sys->tryFit(this, ent, e->getAttribBits());
+        }
+    }
+
+    ecsAttribBase* getAttribPtr(entity_id ent, attrib_id id) {
+        auto e = entities.deref(ent);
+        if(!e) return 0;
+        return e->getAttribPtr(id);
+    }
+
+    template<typename T>
+    void updateAttrib(entity_id ent, const T& value) {
+        auto e = entities.deref(ent);
+        if(e->updateAttrib(value)) {
+            for(auto& sys : systems) {
+                sys->signalUpdate(ent, 1 << T::get_id_static());
+            }
         }
     }
 

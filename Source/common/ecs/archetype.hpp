@@ -10,6 +10,8 @@ public:
     virtual ~ecsArchetypeBase() {}
     virtual uint64_t get_signature() const = 0;
     virtual uint64_t get_exclusion_signature() const = 0;
+
+    virtual void signalAttribUpdate(uint64_t attrib_sig) = 0;
 };
 template<typename Arg>
 class ecsArchetypePart {
@@ -27,6 +29,15 @@ public:
     static uint64_t get_exclusion_sig() {
         return 0;
     }
+
+    int _signalAttribUpdate(uint64_t attrib_sig) {
+        if((1 << Arg::get_id_static()) == attrib_sig) {
+            onAttribUpdate(ptr);
+        }
+        return 0;
+    }
+
+    virtual void onAttribUpdate(Arg* arg) {}
 };
 template<typename Arg>
 class ecsArchetypePart<ecsExclude<Arg>> {
@@ -39,6 +50,10 @@ public:
     }
     static uint64_t get_exclusion_sig() {
         return 1 << Arg::get_id_static();
+    }
+
+    int _signalAttribUpdate(uint64_t attrib_sig) {
+        return 0;
     }
 };
 template<typename... Args>
@@ -56,6 +71,10 @@ public:
     T* get() {
         return ecsArchetypePart<T>::ptr;
         //return std::get<T*>(attribs);
+    }
+
+    void signalAttribUpdate(uint64_t attrib_sig) {
+        int x[] = { ecsArchetypePart<Args>::_signalAttribUpdate(attrib_sig)... };
     }
 
     static uint64_t get_signature_static() {

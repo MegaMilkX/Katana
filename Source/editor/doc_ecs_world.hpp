@@ -17,6 +17,12 @@
 class ecsTranslation : public ecsAttrib<ecsTranslation> {
 public:
     gfxm::vec3 translation;
+
+    virtual void onGui(ecsWorld* world, entity_id ent) {
+        if(ImGui::DragFloat3("translation", (float*)&translation, 0.01f)) {
+            world->updateAttrib(ent, *this);
+        }
+    }
 };
 class ecsRotation : public ecsAttrib<ecsRotation> {
 public:
@@ -29,17 +35,25 @@ public:
 class ecsVelocity : public ecsAttrib<ecsVelocity> {
 public:
     gfxm::vec3 velo;
+    virtual void onGui(ecsWorld* world, entity_id ent) {
+        ImGui::DragFloat3("velo", (float*)&velo, 0.01f);
+    }
 };
 class ecsMass : public ecsAttrib<ecsMass> {
 public:
     float mass = 1.0f;
+    virtual void onGui(ecsWorld* world, entity_id ent) {
+        if(ImGui::DragFloat("mass", &mass, 0.01f)) {
+            world->updateAttrib(ent, *this);
+        }
+    }
 };
 class ecsCollisionShape : public ecsAttrib<ecsCollisionShape> {
 public:
     ecsCollisionShape() {
         shape.reset(new btSphereShape(.5f));
     }
-    std::unique_ptr<btCollisionShape> shape;
+    std::shared_ptr<btCollisionShape> shape;
 };
 
 class ecsArchCollider : public ecsArchetype<ecsTranslation, ecsCollisionShape, ecsExclude<ecsMass>> {
@@ -47,6 +61,14 @@ public:
     ecsArchCollider(ecsEntity* ent)
     : ecsArchetype<ecsTranslation, ecsCollisionShape, ecsExclude<ecsMass>>(ent) {}
 
+    void onAttribUpdate(ecsCollisionShape* shape) override {
+        world->removeCollisionObject(collision_object.get());
+        collision_object->setCollisionShape(shape->shape.get());
+        world->addCollisionObject(collision_object.get());
+        LOG("Collider shape changed");
+    }
+
+    btCollisionWorld* world = 0;
     std::shared_ptr<btCollisionObject> collision_object;
 };
 class ecsArchRigidBody : public ecsArchetype<ecsTranslation, ecsCollisionShape, ecsMass> {
@@ -54,6 +76,25 @@ public:
     ecsArchRigidBody(ecsEntity* ent)
     : ecsArchetype<ecsTranslation, ecsCollisionShape, ecsMass>(ent) {}
 
+    void onAttribUpdate(ecsTranslation* t) override {
+        auto transform = rigid_body->getWorldTransform();
+        transform.setOrigin(btVector3(t->translation.x, t->translation.y, t->translation.z));
+        rigid_body->setWorldTransform(transform);
+        world->updateSingleAabb(rigid_body.get());
+    }
+
+    void onAttribUpdate(ecsMass* m) override {
+        rigid_body->setMassProps(m->mass, btVector3(.0f, .0f, .0f));
+    }
+
+    void onAttribUpdate(ecsCollisionShape* shape) override {
+        world->removeRigidBody(rigid_body.get());
+        rigid_body->setCollisionShape(shape->shape.get());
+        world->addRigidBody(rigid_body.get());
+        LOG("RigidBody shape changed");
+    }
+
+    btDiscreteDynamicsWorld* world = 0;
     std::shared_ptr<btRigidBody> rigid_body;
     btDefaultMotionState motion_state;
 };
@@ -125,6 +166,7 @@ public:
     }
 
     void onFit(ecsArchCollider* collider) {
+        collider->world = world;
         collider->collision_object.reset(new btCollisionObject());
         collider->collision_object->setCollisionShape(
             collider->get<ecsCollisionShape>()->shape.get()
@@ -138,6 +180,7 @@ public:
         );
     }
     void onFit(ecsArchRigidBody* rb) {
+        rb->world = world;
         btVector3 local_inertia;
         rb->get<ecsCollisionShape>()->shape->calculateLocalInertia(
             rb->get<ecsMass>()->mass,
@@ -249,12 +292,30 @@ public:
             auto ent = world.createEntity();
             world.setAttrib<ecsTranslation>(ent);
             world.setAttrib<ecsCollisionShape>(ent);
+
+            ecsCollisionShape shape;
+            shape.shape.reset(new btStaticPlaneShape(btVector3(.0f, 1.0f, .0f), .0f));
+            world.updateAttrib(ent, shape);
         }
         if(ImGui::Button("Add entity RIGID_BODY")) {
             auto ent = world.createEntity();
             world.setAttrib<ecsTranslation>(ent);
             world.setAttrib<ecsCollisionShape>(ent);
             world.setAttrib<ecsMass>(ent);
+        }
+
+        static entity_id selected_ent = 0;
+        for(auto& eid : world.getEntities()) {
+            if(ImGui::Selectable(MKSTR("entity###" << eid).c_str(), selected_ent == eid)) {
+                selected_ent = eid;
+            }
+        }
+
+        for(uint8_t i = 0; i < 64; ++i) {
+            auto attrib = world.getAttribPtr(selected_ent, i);
+            if(attrib) {
+                attrib->onGui(&world, selected_ent);
+            }
         }
     }
 };

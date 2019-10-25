@@ -4,16 +4,21 @@
 #include <stdint.h>
 
 typedef int32_t attrib_id;
+typedef size_t entity_id;
 
 inline uint64_t next_attrib_id() {
     static uint64_t id = 0;
     return id++;
 }
 
+class ecsWorld;
+
 class ecsAttribBase {
 public:
     virtual ~ecsAttribBase() {}
     virtual uint64_t get_id() const = 0;
+
+    virtual void onGui(ecsWorld* world, entity_id ent) {}
 };
 
 template<typename T>
