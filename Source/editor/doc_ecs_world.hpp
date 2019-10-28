@@ -13,25 +13,21 @@
 #include <btBulletCollisionCommon.h>
 #include "../common/util/bullet_debug_draw.hpp"
 
+#include "../common/ecs/attribs/transform.hpp"
 
-class ecsTranslation : public ecsAttrib<ecsTranslation> {
+class ecsName : public ecsAttrib<ecsName> {
 public:
-    gfxm::vec3 translation;
-
+    std::string name;
     virtual void onGui(ecsWorld* world, entity_id ent) {
-        if(ImGui::DragFloat3("translation", (float*)&translation, 0.01f)) {
-            world->updateAttrib(ent, *this);
+        char buf[256];
+        memset(buf, 0, sizeof(buf));
+        memcpy(buf, name.c_str(), name.size());
+        if(ImGui::InputText("name", buf, sizeof(buf))) {
+            name = buf;
         }
     }
 };
-class ecsRotation : public ecsAttrib<ecsRotation> {
-public:
-    gfxm::quat rotation;
-};
-class ecsScale : public ecsAttrib<ecsScale> {
-public:
-    gfxm::vec3 scale;
-};
+
 class ecsVelocity : public ecsAttrib<ecsVelocity> {
 public:
     gfxm::vec3 velo;
@@ -56,10 +52,10 @@ public:
     std::shared_ptr<btCollisionShape> shape;
 };
 
-class ecsArchCollider : public ecsArchetype<ecsTranslation, ecsCollisionShape, ecsExclude<ecsMass>> {
+class ecsArchCollider : public ecsArchetype<ecsTransform, ecsCollisionShape, ecsExclude<ecsMass>> {
 public:
     ecsArchCollider(ecsEntity* ent)
-    : ecsArchetype<ecsTranslation, ecsCollisionShape, ecsExclude<ecsMass>>(ent) {}
+    : ecsArchetype<ecsTransform, ecsCollisionShape, ecsExclude<ecsMass>>(ent) {}
 
     void onAttribUpdate(ecsCollisionShape* shape) override {
         world->removeCollisionObject(collision_object.get());
@@ -71,14 +67,25 @@ public:
     btCollisionWorld* world = 0;
     std::shared_ptr<btCollisionObject> collision_object;
 };
-class ecsArchRigidBody : public ecsArchetype<ecsTranslation, ecsCollisionShape, ecsMass> {
+class ecsArchRigidBody : public ecsArchetype<ecsTransform, ecsCollisionShape, ecsMass> {
 public:
     ecsArchRigidBody(ecsEntity* ent)
-    : ecsArchetype<ecsTranslation, ecsCollisionShape, ecsMass>(ent) {}
+    : ecsArchetype<ecsTransform, ecsCollisionShape, ecsMass>(ent) {}
 
-    void onAttribUpdate(ecsTranslation* t) override {
-        auto transform = rigid_body->getWorldTransform();
-        transform.setOrigin(btVector3(t->translation.x, t->translation.y, t->translation.z));
+    void onAttribUpdate(ecsTransform* t) override {
+        //auto& transform = rigid_body->getWorldTransform();        
+        btTransform transform;
+        const gfxm::mat4& world_transform = t->getWorldTransform();
+        //transform.setFromOpenGLMatrix((float*)&world_transform);
+        
+        auto p = t->getWorldPosition();
+        auto r = t->getWorldRotation();
+        auto s = t->getWorldScale();
+        transform.setIdentity();
+        transform.setOrigin(btVector3(p.x, p.y, p.z));
+        transform.setRotation(btQuaternion(r.x, r.y, r.z, r.w));
+        
+        //LOG(world_transform);
         rigid_body->setWorldTransform(transform);
         world->updateSingleAabb(rigid_body.get());
     }
@@ -99,38 +106,6 @@ public:
     btDefaultMotionState motion_state;
 };
 
-
-
-class ecsTestSystem : public ecsSystem<
-    ecsArchetype<ecsTranslation, ecsVelocity>,
-    ecsArchetype<ecsTranslation, ecsMass>
-> {
-public:
-    void onFit(ecsArchetype<ecsTranslation, ecsVelocity>* ptr) {
-        ptr->get<ecsTranslation>()->translation = gfxm::vec3(rand() % 100 * .1f, rand() % 100 * .1f, rand() % 100 * .1f);
-    }
-
-    void onUpdate() {
-        for(auto& kv : get_archetype_map<ecsArchetype<ecsTranslation, ecsVelocity>>()) {
-            gfxm::vec3& pos = kv.second->get<ecsTranslation>()->translation;
-            gfxm::vec3& vel = kv.second->get<ecsVelocity>()->velo;
-
-            vel.x += .01f;
-            vel.y += .01f;
-            float u = sinf(vel.x) * 10.0f;
-            float v = cosf(vel.y) * 10.0f;
-            
-            pos = gfxm::vec3(
-                (1 + v / 2 * cosf(u / 2)) * cosf(u), 
-                (1 + v / 2 * cosf(u / 2)) * sinf(u), 
-                v / 2 * sin(u / 2)
-            );
-        }
-        for(auto& kv : get_archetype_map<ecsArchetype<ecsTranslation, ecsMass>>()) {
-            //LOG(kv.first << ": Falling");
-        }
-    }
-};
 
 class ecsDynamicsSys : public ecsSystem<
     ecsArchCollider,
@@ -212,7 +187,6 @@ public:
 
     void onUpdate() {
         for(auto& kv : get_archetype_map<ecsArchCollider>()) {
-            gfxm::vec3 trans = kv.second->get<ecsTranslation>()->translation;
 
         }
 
@@ -221,7 +195,10 @@ public:
         for(auto& kv : get_archetype_map<ecsArchRigidBody>()) {
             auto& t = kv.second->rigid_body->getWorldTransform();
             btVector3 btv3 = t.getOrigin();
-            kv.second->get<ecsTranslation>()->translation = gfxm::vec3(btv3.getX(), btv3.getY(), btv3.getZ());
+            btQuaternion btq = t.getRotation();
+            auto transform = kv.second->get<ecsTransform>();
+            transform->setPosition(btv3.getX(), btv3.getY(), btv3.getZ());
+            transform->setRotation(btq.getX(), btq.getY(), btq.getZ(), btq.getW());
         }
 
         world->debugDrawWorld();
@@ -229,7 +206,7 @@ public:
 };
 
 class ecsRenderSystem : public ecsSystem<
-    ecsArchetype<ecsTranslation>
+    ecsArchetype<ecsTransform>
 > {
     DrawList draw_list;
     gl::IndexedMesh mesh;
@@ -238,16 +215,16 @@ public:
         makeSphere(&mesh, 0.5f, 6);
     }
 
-    void onFit(ecsArchetype<ecsTranslation>* object) {
+    void onFit(ecsArchetype<ecsTransform>* object) {
     }
 
     void fillDrawList(DrawList& dl) {
-        for(auto& kv : get_archetype_map<ecsArchetype<ecsTranslation>>()) {
+        for(auto& kv : get_archetype_map<ecsArchetype<ecsTransform>>()) {
             DrawCmdSolid cmd;
             cmd.indexOffset = 0;
             cmd.material = 0;
             cmd.object_ptr = 0;
-            cmd.transform = gfxm::translate(gfxm::mat4(1.0f), kv.second->get<ecsTranslation>()->translation);
+            cmd.transform = kv.second->get<ecsTransform>()->getWorldTransform();
             cmd.vao = mesh.getVao();
             cmd.indexCount = mesh.getIndexCount();
 
@@ -256,20 +233,44 @@ public:
     }
 };
 
+class ecsSceneGraphMonitorSys : public ecsSystem<
+    ecsArchetype<ecsTransform>
+> {
+    std::set<ecsArchetype<ecsTransform>*> root_transforms;
+public:
+    void onFit(ecsArchetype<ecsTransform>* object) override {
+        root_transforms.insert(object);
+    }
+    void onUnfit(ecsArchetype<ecsTransform>* object) override {
+        root_transforms.erase(object);
+    }
+
+    void onUpdate() {
+        
+    }
+
+    void onGui() {
+        for(auto o : root_transforms) {
+            ImGui::Selectable("ENTITY_NAME", false);
+        }
+    }
+};
+
 
 class DocEcsWorld : public EditorDocumentTyped<EcsWorld> {
     ecsWorld world;
     ecsRenderSystem* renderSys;
+    ecsSceneGraphMonitorSys* sceneGraphMonitor;
 
     GuiViewport gvp;
 
 public:
     DocEcsWorld() {
-        world.addSystem<ecsTestSystem>();
+        sceneGraphMonitor = new ecsSceneGraphMonitorSys();
+        world.addSystem(sceneGraphMonitor);
         world.addSystem(new ecsDynamicsSys(&gvp.getDebugDraw()));
         renderSys = world.addSystem<ecsRenderSystem>();
         auto ent = world.createEntity();
-        world.setAttrib<ecsTranslation>(ent);
         world.setAttrib<ecsVelocity>(ent);
 
         gvp.camMode(GuiViewport::CAM_ORBIT);
@@ -283,14 +284,17 @@ public:
         gvp.draw(dl);
     }
     void onGuiToolbox(Editor* ed) override {
+        sceneGraphMonitor->onGui();
+
         if(ImGui::Button("Add entity TRANS+VELO")) {
             auto ent = world.createEntity();
-            world.setAttrib<ecsTranslation>(ent);
+            world.setAttrib<ecsName>(ent);
+            world.setAttrib<ecsTransform>(ent);
             world.setAttrib<ecsVelocity>(ent);
         }
         if(ImGui::Button("Add entity TRANS+COLLISIONSHAPE")) {
             auto ent = world.createEntity();
-            world.setAttrib<ecsTranslation>(ent);
+            world.setAttrib<ecsTransform>(ent);
             world.setAttrib<ecsCollisionShape>(ent);
 
             ecsCollisionShape shape;
@@ -299,7 +303,8 @@ public:
         }
         if(ImGui::Button("Add entity RIGID_BODY")) {
             auto ent = world.createEntity();
-            world.setAttrib<ecsTranslation>(ent);
+            world.setAttrib<ecsName>(ent);
+            world.setAttrib<ecsTransform>(ent);
             world.setAttrib<ecsCollisionShape>(ent);
             world.setAttrib<ecsMass>(ent);
         }

@@ -48,6 +48,17 @@ public:
     }
 
     template<typename T>
+    void signalAttribUpdate(entity_id ent) {
+        uint64_t attr_mask = 1 << T::get_id_static();
+        auto e = entities.deref(ent);
+        if(e->getAttribBits() & attr_mask) {
+            for(auto& sys : systems) {
+                sys->signalUpdate(ent, 1 << T::get_id_static());
+            }
+        }
+    }
+
+    template<typename T>
     void updateAttrib(entity_id ent, const T& value) {
         auto e = entities.deref(ent);
         if(e->updateAttrib(value)) {

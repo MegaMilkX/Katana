@@ -1,6 +1,8 @@
 #ifndef ECS_ATTRIBUTE_HPP
 #define ECS_ATTRIBUTE_HPP
 
+#include "../lib/imgui_wrap.hpp"
+
 #include <stdint.h>
 
 typedef int32_t attrib_id;
