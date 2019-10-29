@@ -25,7 +25,7 @@ protected:
     std::map<entity_id, std::shared_ptr<T>> values;
 public:
     T* insert(entity_id ent, const T& arch) {
-        LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        //LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         T* arch_ptr = new T(arch);
         values[ent].reset(arch_ptr);
         return arch_ptr;
@@ -40,7 +40,7 @@ public:
     }
 
     void erase(entity_id ent) {
-        LOG(this << ": erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        //LOG(this << ": erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         values.erase(ent);
     }
 };

@@ -7,6 +7,33 @@
 
 #include <memory>
 
+class timer
+{
+public:
+    timer()
+    {
+        QueryPerformanceFrequency(&freq);
+    }
+
+    void start()
+    {
+        QueryPerformanceCounter(&_start);
+    }
+    
+    int64_t stop()
+    {
+        QueryPerformanceCounter(&_end);
+        elapsed.QuadPart = _end.QuadPart - _start.QuadPart;
+        elapsed.QuadPart *= 1000000;
+        elapsed.QuadPart /= freq.QuadPart;
+        return elapsed.QuadPart;
+    }
+private:
+    LARGE_INTEGER freq;
+    LARGE_INTEGER _start, _end;
+    LARGE_INTEGER elapsed;
+};
+
 class ecsWorld {
     ObjectPool<ecsEntity> entities;
     std::vector<std::unique_ptr<ecsSystemBase>> systems;
@@ -39,6 +66,13 @@ public:
         for(auto& sys : systems) {
             sys->tryFit(this, ent, e->getAttribBits());
         }
+    }
+
+    template<typename T>
+    T* findAttrib(entity_id ent) {
+        auto e = entities.deref(ent);
+        auto a = e->findAttrib<T>();
+        return a;
     }
 
     ecsAttribBase* getAttribPtr(entity_id ent, attrib_id id) {
@@ -86,9 +120,12 @@ public:
     }
 
     void update() {
+        timer t;
+        t.start();
         for(auto& sys : systems) {
             sys->onUpdate();
         }
+        LOG("ELAPSED: " << t.stop());
     }
 };
 

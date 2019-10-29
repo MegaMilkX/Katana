@@ -25,6 +25,15 @@ public:
         return ptr;
     }
 
+    template<typename T>
+    T* findAttrib() {
+        uint64_t mask = 1 << T::get_id_static();
+        if(attrib_bits & mask) {
+            return (T*)attribs[T::get_id_static()].get();
+        }
+        return 0;
+    }
+
     ecsAttribBase* getAttribPtr(uint8_t attrib_id) {
         auto it = attribs.find(attrib_id);
         if(it == attribs.end()) {
