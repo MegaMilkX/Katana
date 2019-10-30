@@ -19,7 +19,7 @@ protected:
     Arg* ptr;
 public:
     ecsArchetypePart(ecsEntity* ent) {
-        ptr = ent->getAttrib<Arg>();
+        ptr = ent->findAttrib<Arg>();
     }
     virtual ~ecsArchetypePart() {}
 

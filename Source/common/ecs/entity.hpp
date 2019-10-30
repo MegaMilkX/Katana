@@ -13,23 +13,42 @@ class ecsEntity {
 public:
     template<typename T>
     T* getAttrib() {
-        T* ptr = 0;
-        auto id = T::get_id_static();
-        auto it = attribs.find(id);
-        if(it == attribs.end()) {
-            ptr = new T();
-            attribs[id].reset(ptr);
-        } else {
-            ptr = (T*)it->second.get();
+        return dynamic_cast<T*>(getAttrib(T::get_id_static()));
+    }
+
+    ecsAttribBase* getAttrib(attrib_id id) {
+        ecsAttribBase* ptr = findAttrib(id);
+        if (ptr) {
+          return ptr;
         }
+        auto inf = getEcsAttribTypeLib().get_info(id);
+        if(!inf) {
+            LOG_WARN("Attribute info for id " << id << " doesn't exist");
+            return 0;
+        }
+        ptr = inf->constructor();
+        if(!ptr) {
+            LOG_WARN("Constructor for attrib " << inf->name << " failed");
+            return 0;
+        }
+        attribs[(uint8_t)id].reset(ptr);
+        setBit(id);
         return ptr;
+    }
+    void removeAttrib(attrib_id id) {
+        attribs.erase((uint8_t)id);
+        clearBit(id);
     }
 
     template<typename T>
     T* findAttrib() {
-        uint64_t mask = 1 << T::get_id_static();
+        return dynamic_cast<T*>(findAttrib(T::get_id_static()));
+    }
+
+    ecsAttribBase* findAttrib(attrib_id id) {
+        uint64_t mask = 1 << id;
         if(attrib_bits & mask) {
-            return (T*)attribs[T::get_id_static()].get();
+            return attribs[id].get();
         }
         return 0;
     }

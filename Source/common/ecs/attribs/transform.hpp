@@ -17,6 +17,14 @@ class ecsTransform : public ecsAttrib<ecsTransform> {
     std::set<ecsTransform*> _children;
 
 public:
+    ecsTransform() {
+      LOG("ecsTransform constructor");
+      Sleep(30);
+    }
+    ~ecsTransform() {
+      LOG("ecsTransform destructor");
+      Sleep(30);
+    }
     void dirty();
     bool isDirty();
 

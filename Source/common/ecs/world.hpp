@@ -47,6 +47,12 @@ public:
         return id;
     }
     void removeEntity(entity_id id) {
+        for(auto& sys : systems) {
+            // Signal this entity as an empty one
+            sys->tryFit(this, id, 0);
+        }
+
+        *entities.deref(id) = ecsEntity();
         entities.free(id);
         live_entities.erase(id);
     }
@@ -60,9 +66,19 @@ public:
 
     template<typename T>
     void setAttrib(entity_id ent) {
+        setAttrib(ent, T::get_id_static());
+    }
+
+    void setAttrib(entity_id ent, attrib_id attrib) {
         auto e = entities.deref(ent);
-        auto a = e->getAttrib<T>();
-        e->setBit(a->get_id());
+        auto a = e->getAttrib(attrib);
+        for(auto& sys : systems) {
+            sys->tryFit(this, ent, e->getAttribBits());
+        }
+    }
+    void removeAttrib(entity_id ent, attrib_id attrib) {
+        auto e = entities.deref(ent);
+        e->removeAttrib(attrib);
         for(auto& sys : systems) {
             sys->tryFit(this, ent, e->getAttribBits());
         }

@@ -2,10 +2,10 @@
 #define ECS_ATTRIBUTE_HPP
 
 #include "../lib/imgui_wrap.hpp"
+#include "attrib_lib.hpp"
 
 #include <stdint.h>
 
-typedef int32_t attrib_id;
 typedef size_t entity_id;
 
 inline uint64_t next_attrib_id() {

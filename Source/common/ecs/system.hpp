@@ -22,10 +22,10 @@ public:
 template<typename T>
 class ecsArchetypeMap {
 protected:
-    std::map<entity_id, std::shared_ptr<T>> values;
+    std::unordered_map<entity_id, std::shared_ptr<T>> values;
 public:
     T* insert(entity_id ent, const T& arch) {
-        //LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         T* arch_ptr = new T(arch);
         values[ent].reset(arch_ptr);
         return arch_ptr;
@@ -40,7 +40,7 @@ public:
     }
 
     void erase(entity_id ent) {
-        //LOG(this << ": erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        LOG(this << ": erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         values.erase(ent);
     }
 };
@@ -61,14 +61,16 @@ public:
         bool fit = false;
         if((arch_sig & entity_sig) == arch_sig) {
             if((exclusion_arch_sig & entity_sig) == 0) {
-                if(ecsArchetypeMap<Arg>::get(ent) == 0) {
-                    auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
-                    onFit(ptr);
-                }
-                fit = true;
+                fit = true;                
             }
         }
-        if(!fit) {
+
+        if(fit) {
+            if(ecsArchetypeMap<Arg>::get(ent) == 0) {
+                auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
+                onFit(ptr);
+            }
+        } else {
             Arg* ptr = ecsArchetypeMap<Arg>::get(ent);
             if(ptr) {
                 onUnfit(ptr);
@@ -103,14 +105,15 @@ public:
         bool fit = false;
         if((arch_sig & entity_sig) == arch_sig) {
             if((exclusion_arch_sig & entity_sig) == 0) {
-                if(ecsArchetypeMap<Arg>::get(ent) == 0) {
-                    auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
-                    onFit(ptr);
-                }
                 fit = true;
             }
         }
-        if(!fit) {
+        if(fit) {
+            if(ecsArchetypeMap<Arg>::get(ent) == 0) {
+                auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
+                onFit(ptr);
+            }
+        } else {
             Arg* ptr = ecsArchetypeMap<Arg>::get(ent);
             if(ptr) {
                 onUnfit(ptr);
@@ -139,7 +142,7 @@ template<typename... Args>
 class ecsSystem : public ecsSystemRecursive<Args...> {
 public:
     template<typename ARCH_T>
-    std::map<entity_id, std::shared_ptr<ARCH_T>>& get_archetype_map() {
+    std::unordered_map<entity_id, std::shared_ptr<ARCH_T>>& get_archetype_map() {
         return ecsArchetypeMap<ARCH_T>::values;
     }
 };

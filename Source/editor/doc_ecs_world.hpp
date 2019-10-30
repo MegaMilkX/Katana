@@ -358,6 +358,7 @@ public:
 
 class DocEcsWorld : public EditorDocumentTyped<EcsWorld> {
     ecsWorld world;
+    entity_id selected_ent = 0;
     ecsRenderSystem* renderSys;
     ecsSceneGraphMonitorSys* sceneGraphMonitor;
 
@@ -373,6 +374,12 @@ public:
         world.setAttrib<ecsVelocity>(ent);
 
         gvp.camMode(GuiViewport::CAM_ORBIT);
+    
+        regEcsAttrib<ecsName>("Name");
+        regEcsAttrib<ecsTransform>("Transform");
+        regEcsAttrib<ecsCollisionShape>("CollisionShape", "Collision");
+        regEcsAttrib<ecsMass>("Mass", "Physics");
+        regEcsAttrib<ecsMeshes>("Meshes", "Rendering");
     }
 
     void onGui(Editor* ed, float dt) override {
@@ -380,47 +387,17 @@ public:
 
         DrawList dl;
         renderSys->fillDrawList(dl);
+
+        ImGui::Columns(2);
+
         gvp.draw(dl);
-    }
-    void onGuiToolbox(Editor* ed) override {
-        sceneGraphMonitor->onGui();
 
-        if(ImGui::Button("Add entity TRANS+VELO")) {
-            auto ent = world.createEntity();
-            world.setAttrib<ecsName>(ent);
-            world.setAttrib<ecsTransform>(ent);
-            world.setAttrib<ecsVelocity>(ent);
-        }
-        if(ImGui::Button("Add entity TRANS+COLLISIONSHAPE")) {
-            auto ent = world.createEntity();
-            world.setAttrib<ecsTransform>(ent);
-            world.setAttrib<ecsCollisionShape>(ent);
-
-            ecsCollisionShape shape;
-            shape.shape.reset(new btStaticPlaneShape(btVector3(.0f, 1.0f, .0f), .0f));
-            world.updateAttrib(ent, shape);
-        }
-        if(ImGui::Button("Add entity TRANS+COLLISIONSHAPE2")) {
-            auto ent = world.createEntity();
-            world.setAttrib<ecsTransform>(ent);
-            world.setAttrib<ecsCollisionShape>(ent);
-        }
-        if(ImGui::Button("Add entity RIGID_BODY")) {
-            auto ent = world.createEntity();
-            world.setAttrib<ecsName>(ent);
-            world.setAttrib<ecsTransform>(ent);
-            world.setAttrib<ecsCollisionShape>(ent);
-            world.setAttrib<ecsMass>(ent);
-        }
-        if(ImGui::Button("Add entity MESH")) {
-            auto ent = world.createEntity();
-            world.setAttrib<ecsName>(ent);
-            world.setAttrib<ecsTransform>(ent);
-            world.setAttrib<ecsMeshes>(ent);
-        }
-
-        static entity_id selected_ent = 0;
-        if(ImGui::ListBoxHeader("Objects", ImVec2(0, 250))) {
+        ImGui::NextColumn();
+        //ImGui::SetColumnWidth(1, 150);
+        
+        ImGui::BeginChild(ImGui::GetID("0"));
+        ImGui::PushItemWidth(-1);
+        if(ImGui::ListBoxHeader("###OBJECT_LIST", ImVec2(0, 300))) {
             for(auto& eid : world.getEntities()) {
                 ecsName* name_attrib = world.findAttrib<ecsName>(eid);
                 std::string entity_name = "[anonymous]";
@@ -438,29 +415,69 @@ public:
                 
             ImGui::ListBoxFooter();
         }
+        ImGui::PopItemWidth();
+        if(ImGui::SmallButton(ICON_MDI_PLUS)) {
+            selected_ent = world.createEntity();
+        }
+        ImGui::SameLine();
+        if(ImGui::SmallButton(ICON_MDI_MINUS)) {
+            world.removeEntity(selected_ent);
+        }
+        ImGui::EndChild();
 
-        if(ImGui::CollapsingHeader("Composition")) {
-            uint64_t mask = world.getEntity(selected_ent)->getAttribBits();
-            bool b = mask & (1 << ecsName::get_id_static());
-            if(ImGui::Checkbox("Name", &b)) {
-                if(b) {
-                    world.setAttrib<ecsName>(selected_ent);
+        ImGui::Columns(1);
+    }
+    void onGuiToolbox(Editor* ed) override {
+        sceneGraphMonitor->onGui();
+
+        if(!world.getEntity(selected_ent)) {
+            ImGui::Text("Nothing selected");
+            return;
+        } else {
+            ImGui::Text(MKSTR("UID: " << selected_ent).c_str());
+        }
+
+        ImGui::PushItemWidth(-1);
+        if(ImGui::BeginCombo("###ADD_ATTRIBUTE", "Add attribute...")) {
+            for(auto& it : getEcsAttribTypeLib().getTable()) {
+                if(it.first == "") {
+                    for(auto& attr_id : it.second) {
+                        auto inf = getEcsAttribTypeLib().get_info(attr_id);
+                        if(ImGui::Selectable(inf->name.c_str())) {
+                            world.setAttrib(selected_ent, attr_id);
+                        }
+                    }
                 } else {
-                    // TODO: remove attrib
+                    bool open = ImGui::TreeNode(it.first.c_str());
+                    if(open) {
+                        for(auto& attr_id : it.second) {
+                            auto inf = getEcsAttribTypeLib().get_info(attr_id);
+                            if(ImGui::Selectable(inf->name.c_str())) {
+                                world.setAttrib(selected_ent, attr_id);
+                            }
+                        }
+
+                        ImGui::TreePop();
+                    }
                 }
             }
-            b = mask & (1 << ecsTransform::get_id_static());
-            if(ImGui::Checkbox("Transform", &b)) {
-            }
-            b = mask & (1 << ecsMeshes::get_id_static());
-            if(ImGui::Checkbox("Meshes", &b)) {
-            }
+            ImGui::EndCombo();
         }
+        ImGui::PopItemWidth();
 
         for(uint8_t i = 0; i < 64; ++i) {
             auto attrib = world.getAttribPtr(selected_ent, i);
-            if(attrib) {
+            if(!attrib) {
+                continue;
+            }
+            auto inf = getEcsAttribTypeLib().get_info(attrib->get_id());
+            const std::string& name = inf->name;
+            bool exists = true;
+            if(ImGui::CollapsingHeader(MKSTR( name ).c_str(), &exists, ImGuiTreeNodeFlags_DefaultOpen)) {
                 attrib->onGui(&world, selected_ent);
+            }
+            if(!exists) {
+                world.removeAttrib(selected_ent, i);
             }
         }
     }
