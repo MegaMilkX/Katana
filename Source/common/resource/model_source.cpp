@@ -2,11 +2,6 @@
 
 #include "../util/assimp_scene.hpp"
 
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-#include <assimp/cimport.h>
-
 #include "../util/filesystem.hpp"
 
 #include "../attributes/action_state_machine.hpp"

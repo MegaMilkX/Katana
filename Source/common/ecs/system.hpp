@@ -19,11 +19,22 @@ public:
 };
 
 
+class ecsArchetypeMapBase {
+public:
+    virtual ~ecsArchetypeMapBase() {}
+    virtual uint64_t get_exclusion_mask() const = 0;
+};
+
+
 template<typename T>
-class ecsArchetypeMap {
+class ecsArchetypeMap : public ecsArchetypeMapBase {
 protected:
     std::unordered_map<entity_id, std::shared_ptr<T>> values;
 public:
+    uint64_t get_exclusion_mask() const {
+        return T::get_exclusion_signature_static();
+    }
+
     T* insert(entity_id ent, const T& arch) {
         LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         T* arch_ptr = new T(arch);

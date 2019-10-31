@@ -34,11 +34,13 @@ private:
     LARGE_INTEGER elapsed;
 };
 
+typedef uint64_t archetype_mask_t;
+
 class ecsWorld {
-    ObjectPool<ecsEntity> entities;
+    ObjectPool<ecsEntity>                       entities;
     std::vector<std::unique_ptr<ecsSystemBase>> systems;
 
-    std::set<entity_id> live_entities;
+    std::set<entity_id>                         live_entities;
 
 public:
     entity_id createEntity() {
@@ -62,6 +64,19 @@ public:
 
     const std::set<entity_id>& getEntities() const {
         return live_entities;
+    }
+
+    template<typename T>
+    T* getAttrib(entity_id ent) {
+        auto e = entities.deref(ent);
+        auto a = e->findAttrib<T>();
+        if(!a) {
+            a = e->getAttrib<T>();
+            for(auto& sys : systems) {
+                sys->tryFit(this, ent, e->getAttribBits());
+            }
+        }
+        return a;
     }
 
     template<typename T>
