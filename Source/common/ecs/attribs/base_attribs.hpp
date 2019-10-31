@@ -7,6 +7,7 @@
 
 
 #include "../common/ecs/attribs/transform.hpp"
+#include "../common/ecs/attribs/transform_tree.hpp"
 
 class ecsName : public ecsAttrib<ecsName> {
 public:

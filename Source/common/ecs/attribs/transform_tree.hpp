@@ -1,22 +1,30 @@
-#ifndef ECS_TRANSFORM_HPP
-#define ECS_TRANSFORM_HPP
+#ifndef ECS_TRANSFORM_TREE_HPP
+#define ECS_TRANSFORM_TREE_HPP
+
 
 #include "../attribute.hpp"
-
 #include "../../gfxm.hpp"
 
-#include <set>
+#include "../world.hpp"
 
-class ecsTransform : public ecsAttrib<ecsTransform> {
+class TransformTreeNode {
+    std::string             _name;
     bool                    _dirty = false;
     gfxm::vec3              _position = gfxm::vec3(.0f, .0f, .0f);
     gfxm::quat              _rotation = gfxm::quat(.0f, .0f, .0f, 1.0f);
     gfxm::vec3              _scale = gfxm::vec3(1.0f, 1.0f, 1.0f);
     gfxm::mat4              _world_transform = gfxm::mat4(1.0f);
-    ecsTransform*           _parent = 0;
-    std::set<ecsTransform*> _children;
+    TransformTreeNode*           _parent = 0;
+    std::set<TransformTreeNode*> _children;
 
 public:
+    void setName(const char* name);
+    const std::string& getName() const;
+
+    TransformTreeNode* createChild();
+    size_t             childCount();
+    TransformTreeNode* getChild(size_t id);
+
     void dirty();
     bool isDirty();
 
@@ -58,11 +66,43 @@ public:
     gfxm::mat4        getParentTransform();
     const gfxm::mat4& getWorldTransform();
 
-    void setParent(ecsTransform* p);
-    ecsTransform* getParent() const;
+    void setParent(TransformTreeNode* p);
+    TransformTreeNode* getParent() const;
 
-    void onGui(ecsWorld* world, entity_id ent);
+};
 
+
+class ecsTransformTree : public ecsAttrib<ecsTransformTree> {
+    void imguiNode(TransformTreeNode* node) {
+        if(node->childCount()) {
+            bool open = ImGui::TreeNode(node->getName().c_str());
+            if(open) {
+                for(size_t i = 0; i < node->childCount(); ++i) {
+                    imguiNode(node->getChild(i));
+                }
+
+                ImGui::TreePop();
+            }
+        } else {
+            ImGui::Selectable(node->getName().c_str());
+        }
+    }
+public:
+    TransformTreeNode root_node;
+
+    TransformTreeNode* getRoot() {
+        return &root_node;
+    }
+
+    void onGui(ecsWorld* world, entity_id ent) {
+        ImGui::PushItemWidth(-1);
+        if(ImGui::ListBoxHeader("###OBJECT_LIST", ImVec2(0, 300))) {
+            imguiNode(&root_node);
+                
+            ImGui::ListBoxFooter();
+        }
+        ImGui::PopItemWidth();
+    }
 };
 
 

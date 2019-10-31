@@ -154,18 +154,23 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
 }
 
 
-void assimpImportEcsSceneGraph(ecsWorld* world, const aiScene* ai_scene, aiNode* ai_node, entity_id ent) {
+void assimpImportEcsSceneGraph(ecsWorld* world, const aiScene* ai_scene, aiNode* ai_node, entity_id ent, TransformTreeNode* ttnode) {
     ecsName* ecs_name = world->getAttrib<ecsName>(ent);
     ecsTransform* ecs_transform = world->getAttrib<ecsTransform>(ent);
     ecs_name->name = ai_node->mName.C_Str();
     ecs_transform->setTransform(
         gfxm::transpose(*(gfxm::mat4*)&ai_node->mTransformation)
     );
+    ttnode->setName(ai_node->mName.C_Str());
+    ttnode->setTransform(
+        gfxm::transpose(*(gfxm::mat4*)&ai_node->mTransformation)
+    );
 
     for(unsigned i = 0; i < ai_node->mNumChildren; ++i) {
         auto child_ent = world->createEntity();
         world->getAttrib<ecsTransform>(child_ent)->setParent(ecs_transform);
-        assimpImportEcsSceneGraph(world, ai_scene, ai_node->mChildren[i], child_ent);
+        auto child_ttnode = ttnode->createChild();
+        assimpImportEcsSceneGraph(world, ai_scene, ai_node->mChildren[i], child_ent, child_ttnode);
     }
 
     if(ai_node->mNumMeshes) {
@@ -188,7 +193,9 @@ void assimpImportEcsSceneGraph(ecsWorld* world, const aiScene* ai_scene, aiNode*
 
 void assimpImportEcsSceneGraph(ecsWorld* world, const aiScene* ai_scene) {
     entity_id root_ent = world->createEntity();
-    assimpImportEcsSceneGraph(world, ai_scene, ai_scene->mRootNode, root_ent);
+    ecsTransformTree* transform_tree = world->getAttrib<ecsTransformTree>(root_ent);
+    TransformTreeNode* ttnode = transform_tree->getRoot();
+    assimpImportEcsSceneGraph(world, ai_scene, ai_scene->mRootNode, root_ent, ttnode);
 
     double scaleFactor = 1.0f;
     if(ai_scene->mMetaData) {

@@ -1,22 +1,27 @@
-#ifndef ECS_TRANSFORM_HPP
-#define ECS_TRANSFORM_HPP
+#ifndef RESOURCE_MODEL_HPP
+#define RESOURCE_MODEL_HPP
 
-#include "../attribute.hpp"
 
-#include "../../gfxm.hpp"
+#include "resource.h"
 
-#include <set>
-
-class ecsTransform : public ecsAttrib<ecsTransform> {
+struct ModelNode {
+    std::string             _name;
     bool                    _dirty = false;
     gfxm::vec3              _position = gfxm::vec3(.0f, .0f, .0f);
     gfxm::quat              _rotation = gfxm::quat(.0f, .0f, .0f, 1.0f);
     gfxm::vec3              _scale = gfxm::vec3(1.0f, 1.0f, 1.0f);
     gfxm::mat4              _world_transform = gfxm::mat4(1.0f);
-    ecsTransform*           _parent = 0;
-    std::set<ecsTransform*> _children;
+    ModelNode*              _parent = 0;
+    std::set<ModelNode*>    _children;
 
 public:
+    void setName(const char* name);
+    const std::string& getName() const;
+
+    ModelNode*          createChild();
+    size_t              childCount();
+    ModelNode*          getChild(size_t id);
+
     void dirty();
     bool isDirty();
 
@@ -58,12 +63,21 @@ public:
     gfxm::mat4        getParentTransform();
     const gfxm::mat4& getWorldTransform();
 
-    void setParent(ecsTransform* p);
-    ecsTransform* getParent() const;
-
-    void onGui(ecsWorld* world, entity_id ent);
-
+    void        setParent(ModelNode* p);
+    ModelNode*  getParent() const;
 };
 
+class ModelScene : public Resource {
+    RTTR_ENABLE(Resource)
+
+    ModelNode root_node;
+
+public:
+    virtual bool deserialize(in_stream& in, size_t sz);
+};
+STATIC_RUN(ModelScene) {
+    rttr::registration::class_<ModelScene>("ModelScene")
+        .constructor<>()(rttr::policy::ctor::as_raw_ptr);
+}
 
 #endif

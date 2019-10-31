@@ -267,6 +267,7 @@ public:
     DocEcsWorld() {
         regEcsAttrib<ecsName>("Name");
         regEcsAttrib<ecsTransform>("Transform");
+        regEcsAttrib<ecsTransformTree>("TransformTree");
         regEcsAttrib<ecsCollisionShape>("CollisionShape", "Collision");
         regEcsAttrib<ecsMass>("Mass", "Physics");
         regEcsAttrib<ecsMeshes>("Meshes", "Rendering");
