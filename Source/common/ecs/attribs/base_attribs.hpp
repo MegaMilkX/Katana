@@ -9,6 +9,25 @@
 #include "../common/ecs/attribs/transform.hpp"
 #include "../common/ecs/attribs/transform_tree.hpp"
 
+class ecsSceneNode : public ecsAttrib<ecsSceneNode> {
+public:
+    entity_id entity;
+    ecsSceneNode* parent;
+    std::set<ecsSceneNode*> children;
+};
+
+class ecsLocalTransform : public ecsAttrib<ecsLocalTransform> {
+public:
+    gfxm::vec3 position;
+    gfxm::quat rotation;
+    gfxm::vec3 scale;
+};
+
+class ecsWorldTransform : public ecsAttrib<ecsWorldTransform> {
+public:
+    gfxm::mat4 transform;
+};
+
 class ecsName : public ecsAttrib<ecsName> {
 public:
     std::string name;
