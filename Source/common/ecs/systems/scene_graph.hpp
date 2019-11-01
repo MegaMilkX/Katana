@@ -11,7 +11,9 @@ public:
 };
 
 class ecsysSceneGraph : public ecsSystem<
-    ecsSceneNodeArch
+    ecsSceneNodeArch,
+    ecsArchetype<ecsExclude<ecsSceneNode>, ecsLocalTransform, ecsWorldTransform>,
+    ecsArchetype<ecsSceneNode, ecsLocalTransform, ecsWorldTransform>
 > {
     //std::set<ecsSceneNodeArch*> root_nodes;
     std::set<entity_id> root_entities;
@@ -25,7 +27,28 @@ class ecsysSceneGraph : public ecsSystem<
     }
 
     void onUpdate() {
-        
+        for(auto& kv : get_archetype_map<ecsArchetype<ecsExclude<ecsSceneNode>, ecsLocalTransform, ecsWorldTransform>>()) {
+            ecsLocalTransform* local = kv.second->get<ecsLocalTransform>();
+            ecsWorldTransform* world = kv.second->get<ecsWorldTransform>();
+
+            world->transform = gfxm::translate(gfxm::mat4(1.0f), local->position) * 
+                            gfxm::to_mat4(local->rotation) * 
+                            gfxm::scale(gfxm::mat4(1.0f), local->scale);
+        }
+        for(auto& kv : get_archetype_map<ecsArchetype<ecsSceneNode, ecsLocalTransform, ecsWorldTransform>>()) {
+            ecsSceneNode*      node = kv.second->get<ecsSceneNode>();
+            ecsLocalTransform* local = kv.second->get<ecsLocalTransform>();
+            ecsWorldTransform* world = kv.second->get<ecsWorldTransform>();
+            ecsWorldTransform* parent_world = node->world_transform;
+
+            gfxm::mat4 loc = gfxm::translate(gfxm::mat4(1.0f), local->position) * 
+                            gfxm::to_mat4(local->rotation) * 
+                            gfxm::scale(gfxm::mat4(1.0f), local->scale);
+
+            if(parent_world) {
+                world->transform = parent_world->transform * loc;
+            }
+        }
     }
 
     void imguiTreeNode(ecsWorld* world, entity_id e, entity_id* selected) {
