@@ -27,7 +27,7 @@ class ecsysSceneGraph : public ecsSystem<
     }
 
     void onUpdate() {
-        for(auto& kv : get_archetype_map<ecsArchetype<ecsExclude<ecsSceneNode>, ecsLocalTransform, ecsWorldTransform>>()) {
+        for(auto& kv : get_archetype_map<ecsArchetype<ecsLocalTransform, ecsWorldTransform>>()) {
             ecsLocalTransform* local = kv.second->get<ecsLocalTransform>();
             ecsWorldTransform* world = kv.second->get<ecsWorldTransform>();
 
@@ -35,7 +35,7 @@ class ecsysSceneGraph : public ecsSystem<
                             gfxm::to_mat4(local->rotation) * 
                             gfxm::scale(gfxm::mat4(1.0f), local->scale);
         }
-        for(auto& kv : get_archetype_map<ecsArchetype<ecsSceneNode, ecsLocalTransform, ecsWorldTransform>>()) {
+        for(auto& kv : get_archetype_map<ecsArchetype<ecsSceneNode, ecsWorldTransform>>()) {
             ecsSceneNode*      node = kv.second->get<ecsSceneNode>();
             ecsWorldTransform* parent_world = node->world_transform;
             ecsWorldTransform* world = kv.second->get<ecsWorldTransform>();
