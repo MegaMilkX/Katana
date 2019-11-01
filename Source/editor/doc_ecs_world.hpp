@@ -17,9 +17,6 @@
 
 class ecsArchCollider : public ecsArchetype<ecsTransform, ecsCollisionShape, ecsExclude<ecsMass>> {
 public:
-    ecsArchCollider(ecsEntity* ent)
-    : ecsArchetype<ecsTransform, ecsCollisionShape, ecsExclude<ecsMass>>(ent) {}
-
     void onAttribUpdate(ecsCollisionShape* shape) override {
         world->removeCollisionObject(collision_object.get());
         collision_object->setCollisionShape(shape->shape.get());
@@ -32,9 +29,6 @@ public:
 };
 class ecsArchRigidBody : public ecsArchetype<ecsTransform, ecsCollisionShape, ecsMass> {
 public:
-    ecsArchRigidBody(ecsEntity* ent)
-    : ecsArchetype<ecsTransform, ecsCollisionShape, ecsMass>(ent) {}
-
     void onAttribUpdate(ecsTransform* t) override {
         //auto& transform = rigid_body->getWorldTransform();        
         btTransform transform;
@@ -229,28 +223,8 @@ public:
     }
 };
 
-class ecsSceneGraphMonitorSys : public ecsSystem<
-    ecsArchetype<ecsTransform>
-> {
-    std::set<ecsArchetype<ecsTransform>*> root_transforms;
-public:
-    void onFit(ecsArchetype<ecsTransform>* object) override {
-        root_transforms.insert(object);
-    }
-    void onUnfit(ecsArchetype<ecsTransform>* object) override {
-        root_transforms.erase(object);
-    }
 
-    void onUpdate() {
-        
-    }
-
-    void onGui() {
-        for(auto o : root_transforms) {
-            //ImGui::Selectable("ENTITY_NAME", false);
-        }
-    }
-};
+#include "../common/ecs/systems/scene_graph.hpp"
 
 
 #include "../common/ecs/util/assimp_to_ecs_world.hpp"
@@ -259,7 +233,7 @@ class DocEcsWorld : public EditorDocumentTyped<EcsWorld> {
     ecsWorld world;
     entity_id selected_ent = 0;
     ecsRenderSystem* renderSys;
-    ecsSceneGraphMonitorSys* sceneGraphMonitor;
+    ecsysSceneGraph* sceneGraphSys;
 
     GuiViewport gvp;
 
@@ -272,10 +246,14 @@ public:
         regEcsAttrib<ecsMass>("Mass", "Physics");
         regEcsAttrib<ecsMeshes>("Meshes", "Rendering");
 
-        sceneGraphMonitor = new ecsSceneGraphMonitorSys();
-        world.addSystem(sceneGraphMonitor);
-        world.addSystem(new ecsDynamicsSys(&gvp.getDebugDraw()));
-        renderSys = world.addSystem<ecsRenderSystem>();
+        sceneGraphSys = new ecsysSceneGraph();
+
+        world.addSystems({
+            sceneGraphSys,
+            new ecsDynamicsSys(&gvp.getDebugDraw()),
+            renderSys = new ecsRenderSystem
+        });
+
         auto ent = world.createEntity();
         world.setAttrib<ecsVelocity>(ent);
 
@@ -296,7 +274,7 @@ public:
                 ResourceNode* node = *(ResourceNode**)payload->Data;
                 LOG("Payload received: " << node->getFullName());
                 if(has_suffix(node->getName(), ".fbx")) {
-                    assimpImportEcsScene(&world, node->getFullName().c_str());
+                    assimpImportEcsScene(sceneGraphSys, node->getFullName().c_str());
                 }
             }
             ImGui::EndDragDropTarget();
@@ -308,20 +286,7 @@ public:
         ImGui::BeginChild(ImGui::GetID("0"));
         ImGui::PushItemWidth(-1);
         if(ImGui::ListBoxHeader("###OBJECT_LIST", ImVec2(0, 300))) {
-            for(auto& eid : world.getEntities()) {
-                ecsName* name_attrib = world.findAttrib<ecsName>(eid);
-                std::string entity_name = "[anonymous]";
-                if(name_attrib) {
-                    if(name_attrib->name.size()) {
-                        entity_name = name_attrib->name;
-                    } else {
-                        entity_name = "[empty_name]";
-                    }
-                }
-                if(ImGui::Selectable(MKSTR(entity_name << "###" << eid).c_str(), selected_ent == eid)) {
-                    selected_ent = eid;
-                }
-            }    
+            sceneGraphSys->onGui(&selected_ent);
                 
             ImGui::ListBoxFooter();
         }
@@ -338,8 +303,6 @@ public:
         ImGui::Columns(1);
     }
     void onGuiToolbox(Editor* ed) override {
-        sceneGraphMonitor->onGui();
-
         if(!world.getEntity(selected_ent)) {
             ImGui::Text("Nothing selected");
             return;

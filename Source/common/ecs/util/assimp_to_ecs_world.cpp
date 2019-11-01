@@ -154,27 +154,22 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
 }
 
 
-void assimpImportEcsSceneGraph(ecsWorld* world, const aiScene* ai_scene, aiNode* ai_node, entity_id ent, TransformTreeNode* ttnode) {
-    ecsName* ecs_name = world->getAttrib<ecsName>(ent);
-    ecsTransform* ecs_transform = world->getAttrib<ecsTransform>(ent);
+void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene, aiNode* ai_node, entity_id ent) {
+    ecsName* ecs_name = graph->getWorld()->getAttrib<ecsName>(ent);
+    ecsTransform* ecs_transform = graph->getWorld()->getAttrib<ecsTransform>(ent);
     ecs_name->name = ai_node->mName.C_Str();
     ecs_transform->setTransform(
         gfxm::transpose(*(gfxm::mat4*)&ai_node->mTransformation)
     );
-    ttnode->setName(ai_node->mName.C_Str());
-    ttnode->setTransform(
-        gfxm::transpose(*(gfxm::mat4*)&ai_node->mTransformation)
-    );
 
     for(unsigned i = 0; i < ai_node->mNumChildren; ++i) {
-        auto child_ent = world->createEntity();
-        world->getAttrib<ecsTransform>(child_ent)->setParent(ecs_transform);
-        auto child_ttnode = ttnode->createChild();
-        assimpImportEcsSceneGraph(world, ai_scene, ai_node->mChildren[i], child_ent, child_ttnode);
+        auto child_ent = graph->createNode();
+        graph->setParent(child_ent, ent);
+        assimpImportEcsSceneGraph(graph, ai_scene, ai_node->mChildren[i], child_ent);
     }
 
     if(ai_node->mNumMeshes) {
-        auto ecs_meshes = world->getAttrib<ecsMeshes>(ent);
+        auto ecs_meshes = graph->getWorld()->getAttrib<ecsMeshes>(ent);
 
         std::vector<const aiMesh*> ai_meshes;
         for(unsigned i = 0; i < ai_node->mNumMeshes; ++i) {
@@ -191,11 +186,9 @@ void assimpImportEcsSceneGraph(ecsWorld* world, const aiScene* ai_scene, aiNode*
     }
 }
 
-void assimpImportEcsSceneGraph(ecsWorld* world, const aiScene* ai_scene) {
-    entity_id root_ent = world->createEntity();
-    ecsTransformTree* transform_tree = world->getAttrib<ecsTransformTree>(root_ent);
-    TransformTreeNode* ttnode = transform_tree->getRoot();
-    assimpImportEcsSceneGraph(world, ai_scene, ai_scene->mRootNode, root_ent, ttnode);
+void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene) {
+    entity_id root_ent = graph->createNode();
+    assimpImportEcsSceneGraph(graph, ai_scene, ai_scene->mRootNode, root_ent);
 
     double scaleFactor = 1.0f;
     if(ai_scene->mMetaData) {
@@ -204,10 +197,10 @@ void assimpImportEcsSceneGraph(ecsWorld* world, const aiScene* ai_scene) {
             scaleFactor *= 0.01;
         }
     }
-    world->getAttrib<ecsTransform>(root_ent)->setScale((float)scaleFactor);
+    graph->getWorld()->getAttrib<ecsTransform>(root_ent)->setScale((float)scaleFactor);
 }
 
-bool assimpImportEcsScene(ecsWorld* world, AssimpScene* scn) {
+bool assimpImportEcsScene(ecsysSceneGraph* graph, AssimpScene* scn) {
     const aiScene* ai_scene = scn->getScene();
     if(!ai_scene) {
         LOG_WARN("Assimp import: failed to load scene '" << "TODO: PUT NAME HERE" << "'");
@@ -224,7 +217,7 @@ bool assimpImportEcsScene(ecsWorld* world, AssimpScene* scn) {
     //scene_name = scene_name.substr(0, scene_name.find_first_of('.')); 
 
     //loadResources(ai_scene);
-    assimpImportEcsSceneGraph(world, ai_scene);
+    assimpImportEcsSceneGraph(graph, ai_scene);
     //scene->getRoot()->setName(scene_name);
 
 /*
@@ -241,7 +234,7 @@ bool assimpImportEcsScene(ecsWorld* world, AssimpScene* scn) {
 }
 
 
-bool assimpImportEcsScene(ecsWorld* world, const char* filename) {
+bool assimpImportEcsScene(ecsysSceneGraph* graph, const char* filename) {
     std::ifstream f(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + std::string(filename), std::ios::binary | std::ios::ate);
     if(!f.is_open()) {
         LOG_WARN("Failed to open " << filename);
@@ -257,5 +250,5 @@ bool assimpImportEcsScene(ecsWorld* world, const char* filename) {
 
     AssimpScene assimp_scene(buffer.data(), buffer.size(), filename);
 
-    return assimpImportEcsScene(world, &assimp_scene);
+    return assimpImportEcsScene(graph, &assimp_scene);
 }

@@ -7,7 +7,12 @@
 
 #include <set>
 
+class ecsysSceneGraph;
+
 class ecsTransform : public ecsAttrib<ecsTransform> {
+    friend ecsysSceneGraph;
+
+    entity_id               entity_uid;
     bool                    _dirty = false;
     gfxm::vec3              _position = gfxm::vec3(.0f, .0f, .0f);
     gfxm::quat              _rotation = gfxm::quat(.0f, .0f, .0f, 1.0f);
@@ -15,6 +20,8 @@ class ecsTransform : public ecsAttrib<ecsTransform> {
     gfxm::mat4              _world_transform = gfxm::mat4(1.0f);
     ecsTransform*           _parent = 0;
     std::set<ecsTransform*> _children;
+
+    void setParent(ecsTransform* p);
 
 public:
     void dirty();
@@ -58,7 +65,6 @@ public:
     gfxm::mat4        getParentTransform();
     const gfxm::mat4& getWorldTransform();
 
-    void setParent(ecsTransform* p);
     ecsTransform* getParent() const;
 
     void onGui(ecsWorld* world, entity_id ent);

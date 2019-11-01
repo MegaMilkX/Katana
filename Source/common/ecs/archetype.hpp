@@ -6,10 +6,16 @@
 #include "entity.hpp"
 
 class ecsArchetypeBase {
+protected:
+    entity_id entity_uid;
 public:
     virtual ~ecsArchetypeBase() {}
     virtual uint64_t get_signature() const = 0;
     virtual uint64_t get_exclusion_signature() const = 0;
+
+    virtual void init(ecsWorld* world, entity_id ent) = 0;
+
+    entity_id getEntityUid() const { return entity_uid; }
 
     virtual void signalAttribUpdate(uint64_t attrib_sig) = 0;
 };
@@ -18,6 +24,7 @@ class ecsArchetypePart {
 protected:
     Arg* ptr;
 public:
+    ecsArchetypePart() {}
     ecsArchetypePart(ecsEntity* ent) {
         ptr = ent->findAttrib<Arg>();
     }
@@ -42,6 +49,7 @@ public:
 template<typename Arg>
 class ecsArchetypePart<ecsExclude<Arg>> {
 public:
+    ecsArchetypePart() {}
     ecsArchetypePart(ecsEntity* ent) {}
     virtual ~ecsArchetypePart() {}
 
@@ -65,6 +73,11 @@ public:
         //(ecsArchetypePart<Args>::ptr... = ent->getAttrib<Args>()...);
         //int x[] = { foo<Args>(ent)... };
         //attribs = std::tuple<Args*...>(ent->getAttrib<Args>()...);
+    }
+
+    void init(ecsWorld* world, entity_id ent) override {
+        *this = ecsArchetype<Args...>(world->getEntity(ent));
+        entity_uid = ent;
     }
 
     template<typename T>

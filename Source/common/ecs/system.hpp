@@ -8,10 +8,16 @@
 class ecsWorld;
 
 class ecsSystemBase {
+    friend ecsWorld;
+protected:
+    ecsWorld* world = 0;
+
 public:
     virtual ~ecsSystemBase() {}
     virtual void tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) = 0;
     virtual void signalUpdate(entity_id ent, uint64_t attrib_sig) = 0;
+
+    ecsWorld* getWorld() const { return world; }
 
     virtual void onUpdate() {
 
@@ -78,7 +84,9 @@ public:
 
         if(fit) {
             if(ecsArchetypeMap<Arg>::get(ent) == 0) {
-                auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
+                Arg arg;
+                arg.init(getWorld(), ent);
+                auto ptr = ecsArchetypeMap<Arg>::insert(ent, arg);
                 onFit(ptr);
             }
         } else {
@@ -121,7 +129,9 @@ public:
         }
         if(fit) {
             if(ecsArchetypeMap<Arg>::get(ent) == 0) {
-                auto ptr = ecsArchetypeMap<Arg>::insert(ent, Arg(world->getEntity(ent)));
+                Arg arg;
+                arg.init(getWorld(), ent);
+                auto ptr = ecsArchetypeMap<Arg>::insert(ent, arg);
                 onFit(ptr);
             }
         } else {

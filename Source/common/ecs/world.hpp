@@ -43,28 +43,12 @@ class ecsWorld {
     std::set<entity_id>                         live_entities;
 
 public:
-    entity_id createEntity() {
-        entity_id id = entities.acquire();
-        live_entities.insert(id);
-        return id;
-    }
-    void removeEntity(entity_id id) {
-        for(auto& sys : systems) {
-            // Signal this entity as an empty one
-            sys->tryFit(this, id, 0);
-        }
+    entity_id           createEntity();
+    entity_id           createEntity(archetype_mask_t attrib_signature);
+    void                removeEntity(entity_id id);
+    ecsEntity*          getEntity(entity_id id);
 
-        *entities.deref(id) = ecsEntity();
-        entities.free(id);
-        live_entities.erase(id);
-    }
-    ecsEntity* getEntity(entity_id id) {
-        return entities.deref(id);
-    }
-
-    const std::set<entity_id>& getEntities() const {
-        return live_entities;
-    }
+    const std::set<entity_id>&  getEntities() const;
 
     template<typename T>
     T* getAttrib(entity_id ent) {
@@ -84,20 +68,8 @@ public:
         setAttrib(ent, T::get_id_static());
     }
 
-    void setAttrib(entity_id ent, attrib_id attrib) {
-        auto e = entities.deref(ent);
-        auto a = e->getAttrib(attrib);
-        for(auto& sys : systems) {
-            sys->tryFit(this, ent, e->getAttribBits());
-        }
-    }
-    void removeAttrib(entity_id ent, attrib_id attrib) {
-        auto e = entities.deref(ent);
-        e->removeAttrib(attrib);
-        for(auto& sys : systems) {
-            sys->tryFit(this, ent, e->getAttribBits());
-        }
-    }
+    void setAttrib(entity_id ent, attrib_id attrib);
+    void removeAttrib(entity_id ent, attrib_id attrib);
 
     template<typename T>
     T* findAttrib(entity_id ent) {
@@ -106,19 +78,19 @@ public:
         return a;
     }
 
-    ecsAttribBase* getAttribPtr(entity_id ent, attrib_id id) {
-        auto e = entities.deref(ent);
-        if(!e) return 0;
-        return e->getAttribPtr(id);
-    }
+    ecsAttribBase* getAttribPtr(entity_id ent, attrib_id id);
 
     template<typename T>
     void signalAttribUpdate(entity_id ent) {
-        uint64_t attr_mask = 1 << T::get_id_static();
+        signalAttribUpdate(ent, T::get_id_static());
+    }
+
+    void signalAttribUpdate(entity_id ent, attrib_id attrib) {
+        uint64_t attr_mask = 1 << attrib;
         auto e = entities.deref(ent);
         if(e->getAttribBits() & attr_mask) {
             for(auto& sys : systems) {
-                sys->signalUpdate(ent, 1 << T::get_id_static());
+                sys->signalUpdate(ent, attr_mask);
             }
         }
     }
@@ -137,27 +109,18 @@ public:
     T* addSystem() {
         T* sys = new T();
         systems.push_back(std::unique_ptr<ecsSystemBase>(sys));
+        sys->world = this;
         return sys;
     }
     template<typename T>
     T* addSystem(T* sys) {
         systems.push_back(std::unique_ptr<ecsSystemBase>(sys));
+        sys->world = this;
         return sys;
     }
-    void addSystem(const std::vector<ecsSystemBase*>& sys_array) {
-        for(auto& sys : sys_array) {
-            systems.push_back(std::unique_ptr<ecsSystemBase>(sys));
-        }
-    }
+    void addSystems(const std::vector<ecsSystemBase*>& sys_array);
 
-    void update() {
-        timer t;
-        t.start();
-        for(auto& sys : systems) {
-            sys->onUpdate();
-        }
-        LOG("ELAPSED: " << t.stop());
-    }
+    void update();
 };
 
 #endif

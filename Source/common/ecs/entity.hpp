@@ -7,6 +7,7 @@
 
 #include "attribute.hpp"
 
+class ecsWorld;
 class ecsEntity {
     uint64_t attrib_bits;
     std::unordered_map<uint8_t, std::shared_ptr<ecsAttribBase>> attribs;
@@ -80,6 +81,7 @@ public:
     void clearBit(attrib_id attrib) {
         attrib_bits &= ~(1 << attrib);
     }
+
 };
 
 #endif

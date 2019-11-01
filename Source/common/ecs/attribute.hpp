@@ -14,6 +14,7 @@ inline uint64_t next_attrib_id() {
 }
 
 class ecsWorld;
+class ecsEntity;
 
 class ecsAttribBase {
 public:
