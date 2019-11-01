@@ -12,8 +12,8 @@ public:
 
 class ecsysSceneGraph : public ecsSystem<
     ecsSceneNodeArch,
-    ecsArchetype<ecsExclude<ecsSceneNode>, ecsLocalTransform, ecsWorldTransform>,
-    ecsArchetype<ecsSceneNode, ecsLocalTransform, ecsWorldTransform>
+    ecsArchetype<ecsLocalTransform, ecsWorldTransform>,
+    ecsArchetype<ecsSceneNode, ecsWorldTransform>
 > {
     //std::set<ecsSceneNodeArch*> root_nodes;
     std::set<entity_id> root_entities;
@@ -37,16 +37,11 @@ class ecsysSceneGraph : public ecsSystem<
         }
         for(auto& kv : get_archetype_map<ecsArchetype<ecsSceneNode, ecsLocalTransform, ecsWorldTransform>>()) {
             ecsSceneNode*      node = kv.second->get<ecsSceneNode>();
-            ecsLocalTransform* local = kv.second->get<ecsLocalTransform>();
-            ecsWorldTransform* world = kv.second->get<ecsWorldTransform>();
             ecsWorldTransform* parent_world = node->world_transform;
-
-            gfxm::mat4 loc = gfxm::translate(gfxm::mat4(1.0f), local->position) * 
-                            gfxm::to_mat4(local->rotation) * 
-                            gfxm::scale(gfxm::mat4(1.0f), local->scale);
+            ecsWorldTransform* world = kv.second->get<ecsWorldTransform>();
 
             if(parent_world) {
-                world->transform = parent_world->transform * loc;
+                world->transform = parent_world->transform * world->transform;
             }
         }
     }
