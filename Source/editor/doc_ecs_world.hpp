@@ -143,19 +143,19 @@ public:
     }
 
     void onUpdate() {
-        for(auto& kv : get_archetype_map<ecsArchCollider>()) {
-            auto& matrix = kv.second->get<ecsTransform>()->getWorldTransform();
-            kv.second->collision_object->getWorldTransform().setFromOpenGLMatrix((float*)&matrix);
-            world->updateSingleAabb(kv.second->collision_object.get());
+        for(auto& a : get_array<ecsArchCollider>()) {
+            auto& matrix = a->get<ecsTransform>()->getWorldTransform();
+            a->collision_object->getWorldTransform().setFromOpenGLMatrix((float*)&matrix);
+            world->updateSingleAabb(a->collision_object.get());
         }
 
         world->stepSimulation(1.0f/60.0f);
 
-        for(auto& kv : get_archetype_map<ecsArchRigidBody>()) {
-            auto& t = kv.second->rigid_body->getWorldTransform();
+        for(auto& a : get_array<ecsArchRigidBody>()) {
+            auto& t = a->rigid_body->getWorldTransform();
             btVector3 btv3 = t.getOrigin();
             btQuaternion btq = t.getRotation();
-            auto transform = kv.second->get<ecsTransform>();
+            auto transform = a->get<ecsTransform>();
             transform->setPosition(btv3.getX(), btv3.getY(), btv3.getZ());
             transform->setRotation(btq.getX(), btq.getY(), btq.getZ(), btq.getW());
         }
@@ -165,7 +165,7 @@ public:
 };
 
 class ecsRenderSystem : public ecsSystem<
-    ecsArchetype<ecsTransform, ecsMeshes>
+    ecsArchetype<ecsWorldTransform, ecsMeshes>
 > {
     DrawList draw_list;
     gl::IndexedMesh mesh;
@@ -174,17 +174,17 @@ public:
         makeSphere(&mesh, 0.5f, 6);
     }
 
-    void onFit(ecsArchetype<ecsTransform, ecsMeshes>* object) {
+    void onFit(ecsArchetype<ecsWorldTransform, ecsMeshes>* object) {
     }
 
     void fillDrawList(DrawList& dl) {
-        for(auto& kv : get_archetype_map<ecsArchetype<ecsTransform, ecsMeshes>>()) {
-            for(auto& seg : kv.second->get<ecsMeshes>()->segments) {
+        for(auto& a : get_array<ecsArchetype<ecsWorldTransform, ecsMeshes>>()) {
+            for(auto& seg : a->get<ecsMeshes>()->segments) {
                 if(!seg.mesh) continue;
                 
                 GLuint vao = seg.mesh->mesh.getVao();
                 Material* mat = seg.material.get();
-                gfxm::mat4 transform = kv.second->get<ecsTransform>()->getWorldTransform();
+                gfxm::mat4 transform = a->get<ecsWorldTransform>()->transform;
                 size_t indexOffset = seg.mesh->submeshes.size() > 0 ? seg.mesh->submeshes[seg.submesh_index].indexOffset : 0;
                 size_t indexCount = seg.mesh->submeshes.size() > 0 ? (seg.mesh->submeshes[seg.submesh_index].indexCount) : seg.mesh->mesh.getIndexCount();
                 
@@ -224,12 +224,17 @@ public:
 };
 
 
+#include "../common/util/block_vector.hpp"
+
+
 #include "../common/ecs/systems/scene_graph.hpp"
 
 
 #include "../common/ecs/util/assimp_to_ecs_world.hpp"
 
-class DocEcsWorld : public EditorDocumentTyped<EcsWorld> {
+#include "../common/input_listener.hpp"
+
+class DocEcsWorld : public EditorDocumentTyped<EcsWorld>, public InputListenerWrap {
     ecsWorld world;
     entity_id selected_ent = 0;
     ecsRenderSystem* renderSys;
@@ -240,8 +245,13 @@ class DocEcsWorld : public EditorDocumentTyped<EcsWorld> {
 public:
     DocEcsWorld() {
         regEcsAttrib<ecsName>("Name");
+        regEcsAttrib<ecsTRS>("TRS");
+        regEcsAttrib<ecsWorldTransform>("WorldTransform");
+        regEcsAttrib<ecsParentTransform>("ParentTransform");
+        regEcsAttrib<ecsTransformChildren>("TransformChildren");
         regEcsAttrib<ecsTransform>("Transform");
         regEcsAttrib<ecsTransformTree>("TransformTree");
+        regEcsAttrib<ecsVelocity>("Velocity");
         regEcsAttrib<ecsCollisionShape>("CollisionShape", "Collision");
         regEcsAttrib<ecsMass>("Mass", "Physics");
         regEcsAttrib<ecsMeshes>("Meshes", "Rendering");
@@ -257,11 +267,30 @@ public:
         auto ent = world.createEntity();
         world.setAttrib<ecsVelocity>(ent);
 
-        gvp.camMode(GuiViewport::CAM_ORBIT);
+        gvp.camMode(GuiViewport::CAM_PAN);
+        bindActionPress("ALT", [this](){ 
+            gvp.camMode(GuiViewport::CAM_ORBIT); 
+        });
+        bindActionRelease("ALT", [this](){ gvp.camMode(GuiViewport::CAM_PAN); });
     }
 
     void onGui(Editor* ed, float dt) override {
         world.update();
+
+        /*
+        std::map<uint64_t, size_t> test_map;
+        for(int i = 0; i < 100000; ++i) {
+            test_map[i] = rand() % 100;
+        }
+        timer tmr;
+        tmr.start();
+        size_t value;
+        for(auto i = 0; i < 1000; ++i) {
+            auto it = test_map.find(rand() % 64);
+            value = it != test_map.end() ? it->second : 0;
+        }
+        LOG("lookup time: " << tmr.stop() << ", value: " << value);
+        */
 
         DrawList dl;
         renderSys->fillDrawList(dl);

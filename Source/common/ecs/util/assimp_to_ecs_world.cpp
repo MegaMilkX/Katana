@@ -156,11 +156,12 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
 
 void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene, aiNode* ai_node, entity_id ent) {
     ecsName* ecs_name = graph->getWorld()->getAttrib<ecsName>(ent);
-    ecsTransform* ecs_transform = graph->getWorld()->getAttrib<ecsTransform>(ent);
+    ecsTRS* ecs_trs = graph->getWorld()->getAttrib<ecsTRS>(ent);
     ecs_name->name = ai_node->mName.C_Str();
-    ecs_transform->setTransform(
+    ecs_trs->fromMatrix(
         gfxm::transpose(*(gfxm::mat4*)&ai_node->mTransformation)
     );
+    graph->getWorld()->getAttrib<ecsWorldTransform>(ent);
 
     for(unsigned i = 0; i < ai_node->mNumChildren; ++i) {
         auto child_ent = graph->createNode();
@@ -180,6 +181,7 @@ void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene, 
         for(unsigned i = 0; i < ai_node->mNumMeshes; ++i) {
             auto& seg = ecs_meshes->getSegment(i);
             seg.mesh = mesh;
+            seg.submesh_index = i;
             // TODO: Assign materials
             // TODO: Skin
         }
@@ -197,7 +199,7 @@ void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene) 
             scaleFactor *= 0.01;
         }
     }
-    graph->getWorld()->getAttrib<ecsTransform>(root_ent)->setScale((float)scaleFactor);
+    graph->getWorld()->getAttrib<ecsTRS>(root_ent)->scale = gfxm::vec3((float)scaleFactor, (float)scaleFactor, (float)scaleFactor);
 }
 
 bool assimpImportEcsScene(ecsysSceneGraph* graph, AssimpScene* scn) {

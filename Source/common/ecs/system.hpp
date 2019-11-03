@@ -35,30 +35,45 @@ public:
 template<typename T>
 class ecsArchetypeMap : public ecsArchetypeMapBase {
 protected:
-    std::unordered_map<entity_id, std::shared_ptr<T>> values;
+    std::vector<std::shared_ptr<T>> array;
+    std::unordered_map<entity_id, size_t> map;
 public:
     uint64_t get_exclusion_mask() const {
         return T::get_exclusion_signature_static();
     }
 
     T* insert(entity_id ent, const T& arch) {
-        LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        //LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         T* arch_ptr = new T(arch);
-        values[ent].reset(arch_ptr);
+        map[ent] = array.size();
+        array.resize(array.size() + 1);
+        array[array.size() - 1].reset(arch_ptr);
         return arch_ptr;
     }
 
     T* get(entity_id ent) {
-        auto it = values.find(ent);
-        if(it == values.end()) {
+        auto it = map.find(ent);
+        if(it == map.end()) {
             return 0;
         }
-        return it->second.get();
+        return array[it->second].get();
     }
 
     void erase(entity_id ent) {
-        LOG(this << ": erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
-        values.erase(ent);
+        //LOG(this << ": erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        auto it = map.find(ent);
+        if(it == map.end()) {
+            return;
+        }
+        size_t erase_pos = it->second;
+        map.erase(it);
+        if(erase_pos < array.size() - 1) {
+            array[erase_pos] = array[array.size() - 1];
+            array.resize(array.size() - 1);
+            map[array[erase_pos]->getEntityUid()] = erase_pos;
+        } else {
+            array.resize(array.size() - 1);
+        }
     }
 };
 
@@ -101,12 +116,11 @@ public:
     void signalUpdate(entity_id ent, uint64_t attrib_sig) {
         uint64_t arch_sig = Arg::get_signature_static();
         if((arch_sig & attrib_sig) != 0) {
-            auto map = ecsArchetypeMap<Arg>::values;
+            auto map = ecsArchetypeMap<Arg>::map;
             auto it = map.find(ent);
             if(it != map.end()) {
-                it->second->signalAttribUpdate(attrib_sig);
+                ecsArchetypeMap<Arg>::array[it->second]->signalAttribUpdate(attrib_sig);
             }
-            
         }
     }
 };
@@ -148,10 +162,10 @@ public:
     void signalUpdate(entity_id ent, uint64_t attrib_sig) {
         uint64_t arch_sig = Arg::get_signature_static();
         if((arch_sig & attrib_sig) != 0) {
-            auto map = ecsArchetypeMap<Arg>::values;
+            auto map = ecsArchetypeMap<Arg>::map;
             auto it = map.find(ent);
             if(it != map.end()) {
-                it->second->signalAttribUpdate(attrib_sig);
+                ecsArchetypeMap<Arg>::array[it->second]->signalAttribUpdate(attrib_sig);
             }
         }
 
@@ -163,8 +177,8 @@ template<typename... Args>
 class ecsSystem : public ecsSystemRecursive<Args...> {
 public:
     template<typename ARCH_T>
-    std::unordered_map<entity_id, std::shared_ptr<ARCH_T>>& get_archetype_map() {
-        return ecsArchetypeMap<ARCH_T>::values;
+    std::vector<std::shared_ptr<ARCH_T>>& get_array() {
+        return ecsArchetypeMap<ARCH_T>::array;
     }
 };
 

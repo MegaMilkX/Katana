@@ -2,7 +2,7 @@
 #define ECS_ENTITY_HPP
 
 #include <stdint.h>
-#include <unordered_map>
+#include <map>
 #include <memory>
 
 #include "attribute.hpp"
@@ -10,7 +10,7 @@
 class ecsWorld;
 class ecsEntity {
     uint64_t attrib_bits;
-    std::unordered_map<uint8_t, std::shared_ptr<ecsAttribBase>> attribs;
+    std::map<uint8_t, std::shared_ptr<ecsAttribBase>> attribs;
 public:
     template<typename T>
     T* getAttrib() {

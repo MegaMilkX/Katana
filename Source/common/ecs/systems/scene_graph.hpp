@@ -5,40 +5,65 @@
 #include "../system.hpp"
 #include "../attribs/base_attribs.hpp"
 
-
-class ecsSceneNodeArch : public ecsArchetype<ecsTransform> {
-public:
-};
+typedef ecsArchetype<ecsParentTransform, ecsWorldTransform> archGraphTransform;
 
 class ecsysSceneGraph : public ecsSystem<
-    ecsSceneNodeArch,
-    ecsArchetype<ecsLocalTransform, ecsWorldTransform>,
-    ecsArchetype<ecsSceneNode, ecsWorldTransform>
+    ecsArchetype<ecsWorldTransform>,
+    ecsArchetype<ecsParentTransform>,
+    ecsArchetype<ecsTRS, ecsWorldTransform>,
+    archGraphTransform
 > {
-    //std::set<ecsSceneNodeArch*> root_nodes;
-    std::set<entity_id> root_entities;
+    bool hierarchy_dirty = true;
+    struct Node {
+        entity_id id;
+        Node* parent = 0;
+        std::set<Node*> children;
 
-    void onFit(ecsSceneNodeArch* object) override {
-        object->get<ecsTransform>()->entity_uid = object->getEntityUid();
-        //root_nodes.insert(object);
+        bool operator<(const Node& other) const {
+            return id < other.id;
+        }
+    };
+    std::map<entity_id, Node> nodes;
+    std::set<Node*> root_nodes;
+
+    std::vector<archGraphTransform*> dirty_vector;
+
+    void onFit(ecsArchetype<ecsParentTransform>* o) {
+        hierarchy_dirty = true;
     }
-    void onUnfit(ecsSceneNodeArch* object) override {
-        //root_nodes.erase(object);
+    void onUnfit(ecsArchetype<ecsParentTransform>* o) {
+        hierarchy_dirty = true;
     }
+
+    void onUnfit(ecsArchetype<ecsWorldTransform>* o) {
+        for(auto& a : get_array<ecsArchetype<ecsParentTransform>>()) {
+            if(a->get<ecsParentTransform>()->parent_entity == o->getEntityUid()) {
+                world->removeAttrib(a->getEntityUid(), ecsParentTransform::get_id_static());
+            }
+        }
+        hierarchy_dirty = true;
+    }
+
+    void onFit(archGraphTransform* a) {
+
+    }
+    void onUnfit(archGraphTransform* a) {
+
+    }
+    
 
     void onUpdate() {
-        for(auto& kv : get_archetype_map<ecsArchetype<ecsLocalTransform, ecsWorldTransform>>()) {
-            ecsLocalTransform* local = kv.second->get<ecsLocalTransform>();
-            ecsWorldTransform* world = kv.second->get<ecsWorldTransform>();
+        for(auto& a : get_array<ecsArchetype<ecsTRS, ecsWorldTransform>>()) {
+            ecsTRS* trs = a->get<ecsTRS>();
+            ecsWorldTransform* world = a->get<ecsWorldTransform>();
 
-            world->transform = gfxm::translate(gfxm::mat4(1.0f), local->position) * 
-                            gfxm::to_mat4(local->rotation) * 
-                            gfxm::scale(gfxm::mat4(1.0f), local->scale);
+            world->transform = gfxm::translate(gfxm::mat4(1.0f), trs->position) * 
+                            gfxm::to_mat4(trs->rotation) * 
+                            gfxm::scale(gfxm::mat4(1.0f), trs->scale);
         }
-        for(auto& kv : get_archetype_map<ecsArchetype<ecsSceneNode, ecsWorldTransform>>()) {
-            ecsSceneNode*      node = kv.second->get<ecsSceneNode>();
-            ecsWorldTransform* parent_world = node->world_transform;
-            ecsWorldTransform* world = kv.second->get<ecsWorldTransform>();
+        for(auto& a : get_array<archGraphTransform>()) {
+            ecsWorldTransform* parent_world = a->get<ecsParentTransform>()->parent_transform;
+            ecsWorldTransform* world = a->get<ecsWorldTransform>();
 
             if(parent_world) {
                 world->transform = parent_world->transform * world->transform;
@@ -46,9 +71,8 @@ class ecsysSceneGraph : public ecsSystem<
         }
     }
 
-    void imguiTreeNode(ecsWorld* world, entity_id e, entity_id* selected) {
-        ecsName* name_attrib = getWorld()->findAttrib<ecsName>(e);
-        ecsTransform* node = getWorld()->findAttrib<ecsTransform>(e);
+    void imguiTreeNode(ecsWorld* world, Node* node, entity_id* selected) {
+        ecsName* name_attrib = getWorld()->findAttrib<ecsName>(node->id);
         std::string entity_name = "[anonymous]";
         if(name_attrib) {
             if(name_attrib->name.size()) {
@@ -57,52 +81,74 @@ class ecsysSceneGraph : public ecsSystem<
                 entity_name = "[empty_name]";
             }
         }
-        if(node && node->_children.size()) {
+        if(node->children.size()) {
             ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow;
-            if(selected && (*selected == e)) {
+            if(selected && (*selected == node->id)) {
                 tree_node_flags |= ImGuiTreeNodeFlags_Selected;
             }/*
             if(node == gResourceTree.getRoot()) {
                 tree_node_flags |= ImGuiTreeNodeFlags_DefaultOpen;
             }*/
-            bool open = ImGui::TreeNodeEx(MKSTR(entity_name << "###" << e).c_str(), tree_node_flags);
+            bool open = ImGui::TreeNodeEx(MKSTR(entity_name << "###" << node->id).c_str(), tree_node_flags);
             if(selected && ImGui::IsItemClicked(0)) {
-                *selected = e;
+                *selected = node->id;
             }
             if(open) {
-                for(auto& c : node->_children) {
-                    imguiTreeNode(world, c->entity_uid, selected);
+                for(auto& n : node->children) {
+                    imguiTreeNode(world, n, selected);
                 }
 
                 ImGui::TreePop();
             }
         } else {
-            if(ImGui::Selectable(MKSTR(entity_name << "###" << e).c_str(), selected && (*selected == e))) {
-                if(selected) *selected = e;
+            if(ImGui::Selectable(MKSTR(entity_name << "###" << node->id).c_str(), selected && (*selected == node->id))) {
+                if(selected) *selected = node->id;
             }
         }
     }
 
 public:
     entity_id createNode() {
-        entity_id ent = world->createEntity(ecsSceneNodeArch::get_inclusion_sig());
-        root_entities.insert(ent);
+        entity_id ent = world->createEntity();
         return ent;
     }
     void setParent(entity_id child, entity_id parent) {
-        world->getAttrib<ecsTransform>(child)->setParent(
-            world->getAttrib<ecsTransform>(parent)
-        );
-        root_entities.erase(child);
+        world->getAttrib<ecsParentTransform>(child)->parent_transform = 
+            world->getAttrib<ecsWorldTransform>(parent);
+        world->getAttrib<ecsParentTransform>(child)->parent_entity = parent;
+        hierarchy_dirty = true;
     }
     void removeParent(entity_id child) {
-        world->getAttrib<ecsTransform>(child)->setParent(0);
-        root_entities.insert(child);
+        ecsParentTransform* parent_transform = world->findAttrib<ecsParentTransform>(child);
+        if(!parent_transform) {
+            return;
+        }
+
+        world->removeAttrib(child, ecsParentTransform::get_id_static());
+        hierarchy_dirty = true;
     }
 
     void onGui(entity_id* selected = 0) {
-        for(auto e : root_entities) {
-            imguiTreeNode(getWorld(), e, selected);
+        if(hierarchy_dirty) {
+            root_nodes.clear();
+            nodes.clear();
+            for(auto e : world->getEntities()) {
+                nodes[e].id = e;
+            }
+            for(auto e : world->getEntities()) {
+                ecsParentTransform* parent = world->findAttrib<ecsParentTransform>(e);
+                if(parent == 0) {
+                    root_nodes.insert(&nodes[e]);
+                } else {
+                    nodes[e].parent = &nodes[parent->parent_entity];
+                    nodes[parent->parent_entity].children.insert(&nodes[e]);
+                }
+            }
+
+            hierarchy_dirty = false;
+        }
+        for(auto& n : root_nodes) {
+            imguiTreeNode(getWorld(), n, selected);
         }
     }
 };

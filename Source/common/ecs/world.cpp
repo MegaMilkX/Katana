@@ -43,10 +43,15 @@ void ecsWorld::setAttrib(entity_id ent, attrib_id attrib) {
 }
 void ecsWorld::removeAttrib(entity_id ent, attrib_id attrib) {
     auto e = entities.deref(ent);
-    e->removeAttrib(attrib);
-    for(auto& sys : systems) {
-        sys->tryFit(this, ent, e->getAttribBits());
+    uint64_t signature = e->getAttribBits();
+    if (signature & (1 << attrib) == 0) {
+        return;
     }
+    signature &= ~(1 << attrib);
+    for(auto& sys : systems) {
+        sys->tryFit(this, ent, signature);
+    }
+    e->removeAttrib(attrib);
 }
 
 
