@@ -15,7 +15,7 @@
 
 #include "../common/ecs/attribs/base_attribs.hpp"
 
-class ecsArchCollider : public ecsArchetype<ecsTransform, ecsCollisionShape, ecsExclude<ecsMass>> {
+class ecsArchCollider : public ecsTuple<ecsTransform, ecsCollisionShape, ecsExclude<ecsMass>> {
 public:
     void onAttribUpdate(ecsCollisionShape* shape) override {
         world->removeCollisionObject(collision_object.get());
@@ -27,7 +27,7 @@ public:
     btCollisionWorld* world = 0;
     std::shared_ptr<btCollisionObject> collision_object;
 };
-class ecsArchRigidBody : public ecsArchetype<ecsTransform, ecsCollisionShape, ecsMass> {
+class ecsArchRigidBody : public ecsTuple<ecsTransform, ecsCollisionShape, ecsMass> {
 public:
     void onAttribUpdate(ecsTransform* t) override {
         //auto& transform = rigid_body->getWorldTransform();        
@@ -165,7 +165,7 @@ public:
 };
 
 class ecsRenderSystem : public ecsSystem<
-    ecsArchetype<ecsWorldTransform, ecsMeshes>
+    ecsTuple<ecsWorldTransform, ecsMeshes>
 > {
     DrawList draw_list;
     gl::IndexedMesh mesh;
@@ -174,11 +174,11 @@ public:
         makeSphere(&mesh, 0.5f, 6);
     }
 
-    void onFit(ecsArchetype<ecsWorldTransform, ecsMeshes>* object) {
+    void onFit(ecsTuple<ecsWorldTransform, ecsMeshes>* object) {
     }
 
     void fillDrawList(DrawList& dl) {
-        for(auto& a : get_array<ecsArchetype<ecsWorldTransform, ecsMeshes>>()) {
+        for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsMeshes>>()) {
             for(auto& seg : a->get<ecsMeshes>()->segments) {
                 if(!seg.mesh) continue;
                 
@@ -201,7 +201,7 @@ public:
                     std::vector<gfxm::mat4> bone_transforms;
                     for(auto t : seg.skin_data->bone_nodes) {
                         if(t) {
-                            bone_transforms.emplace_back(t->getTransform()->getWorldTransform());
+                            bone_transforms.emplace_back(t->transform);
                         } else {
                             bone_transforms.emplace_back(gfxm::mat4(1.0f));
                         }

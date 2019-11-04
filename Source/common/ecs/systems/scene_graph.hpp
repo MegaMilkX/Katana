@@ -5,13 +5,44 @@
 #include "../system.hpp"
 #include "../attribs/base_attribs.hpp"
 
-typedef ecsArchetype<ecsParentTransform, ecsWorldTransform> archGraphTransform;
+
+class ecsysSceneGraph;
+class tupleTransform : public ecsTuple<ecsOptional<ecsParentTransform>, ecsOptional<ecsTRS>, ecsWorldTransform> {
+    friend ecsysSceneGraph;
+    ecsysSceneGraph* system = 0;
+    tupleTransform* parent = 0;
+    std::set<tupleTransform*> children;
+    size_t dirty_index;
+public:
+    ~tupleTransform() {
+        if(parent) {
+            parent->children.erase(this);
+        }
+        for(auto c : children) {
+            c->parent = 0;
+        }
+    }
+    void onAddOptional(ecsParentTransform* p) override;
+    void onRemoveOptional(ecsParentTransform* p) override;
+
+    void onAddOptional(ecsTRS* trs) override {
+        trs->system = system;
+        trs->dirty_index = dirty_index;
+    }
+
+
+    void setDirtyIndex(size_t i) {
+        dirty_index = i;
+        if(get_optional<ecsTRS>()) {
+            get_optional<ecsTRS>()->dirty_index = i;
+        }
+    }
+};
 
 class ecsysSceneGraph : public ecsSystem<
-    ecsArchetype<ecsWorldTransform>,
-    ecsArchetype<ecsParentTransform>,
-    ecsArchetype<ecsTRS, ecsWorldTransform>,
-    archGraphTransform
+    ecsTuple<ecsWorldTransform>,
+    ecsTuple<ecsParentTransform>,
+    tupleTransform
 > {
     bool hierarchy_dirty = true;
     struct Node {
@@ -26,17 +57,32 @@ class ecsysSceneGraph : public ecsSystem<
     std::map<entity_id, Node> nodes;
     std::set<Node*> root_nodes;
 
-    std::vector<archGraphTransform*> dirty_vector;
+    std::vector<tupleTransform*> dirty_vec;
+    size_t first_dirty_index = 0;
 
-    void onFit(ecsArchetype<ecsParentTransform>* o) {
+    void onFit(tupleTransform* o) {
+        o->system = this;
+        o->dirty_index = dirty_vec.size();
+        dirty_vec.emplace_back(o); 
+    }
+    void onUnfit(tupleTransform* o) {
+        uint64_t current_index = o->dirty_index;
+        dirty_vec.back()->dirty_index = current_index;
+        dirty_vec[current_index] = dirty_vec.back();
+        dirty_vec.resize(dirty_vec.size() - 1);
+    }
+
+    void onFit(ecsTuple<ecsParentTransform>* o) {
         hierarchy_dirty = true;
     }
-    void onUnfit(ecsArchetype<ecsParentTransform>* o) {
+    void onUnfit(ecsTuple<ecsParentTransform>* o) {
         hierarchy_dirty = true;
     }
 
-    void onUnfit(ecsArchetype<ecsWorldTransform>* o) {
-        for(auto& a : get_array<ecsArchetype<ecsParentTransform>>()) {
+    void onFit(ecsTuple<ecsWorldTransform>* o) {
+    }
+    void onUnfit(ecsTuple<ecsWorldTransform>* o) {        
+        for(auto& a : get_array<ecsTuple<ecsParentTransform>>()) {
             if(a->get<ecsParentTransform>()->parent_entity == o->getEntityUid()) {
                 world->removeAttrib(a->getEntityUid(), ecsParentTransform::get_id_static());
             }
@@ -44,31 +90,35 @@ class ecsysSceneGraph : public ecsSystem<
         hierarchy_dirty = true;
     }
 
-    void onFit(archGraphTransform* a) {
-
-    }
-    void onUnfit(archGraphTransform* a) {
-
-    }
-    
 
     void onUpdate() {
-        for(auto& a : get_array<ecsArchetype<ecsTRS, ecsWorldTransform>>()) {
-            ecsTRS* trs = a->get<ecsTRS>();
-            ecsWorldTransform* world = a->get<ecsWorldTransform>();
+        for(size_t i = first_dirty_index; i < dirty_vec.size(); ++i) {
+            auto a = dirty_vec[i];
 
-            world->transform = gfxm::translate(gfxm::mat4(1.0f), trs->position) * 
-                            gfxm::to_mat4(trs->rotation) * 
-                            gfxm::scale(gfxm::mat4(1.0f), trs->scale);
+            ecsTRS* trs = a->get_optional<ecsTRS>();
+            ecsWorldTransform* world = a->get<ecsWorldTransform>();
+            if(!trs) continue;
+
+            world->transform = 
+                gfxm::translate(gfxm::mat4(1.0f), trs->position) * 
+                gfxm::to_mat4(trs->rotation) * 
+                gfxm::scale(gfxm::mat4(1.0f), trs->scale);
         }
-        for(auto& a : get_array<archGraphTransform>()) {
-            ecsWorldTransform* parent_world = a->get<ecsParentTransform>()->parent_transform;
+
+        for(size_t i = first_dirty_index; i < dirty_vec.size(); ++i) {
+            auto a = dirty_vec[i];
+
+            ecsParentTransform* parent_transform = a->get_optional<ecsParentTransform>();
+            if(!parent_transform) continue;
+            ecsWorldTransform* parent_world = parent_transform->parent_transform;
             ecsWorldTransform* world = a->get<ecsWorldTransform>();
 
             if(parent_world) {
                 world->transform = parent_world->transform * world->transform;
             }
         }
+
+        first_dirty_index = dirty_vec.size();
     }
 
     void imguiTreeNode(ecsWorld* world, Node* node, entity_id* selected) {
@@ -107,7 +157,31 @@ class ecsysSceneGraph : public ecsSystem<
         }
     }
 
+    void setDirtyIndexRecursive(tupleTransform* o) {
+        for(auto c : o->children) {
+            setDirtyIndexRecursive(c);
+        }
+
+        //first_dirty_index = o->;
+        uint64_t current_index = o->dirty_index;
+        uint64_t new_index = first_dirty_index - 1;
+
+        tupleTransform* tmp = dirty_vec[new_index];
+        dirty_vec[new_index] = dirty_vec[current_index];
+        dirty_vec[current_index] = tmp;
+        tmp->setDirtyIndex(current_index);
+        o->setDirtyIndex(new_index);
+
+        first_dirty_index = new_index;
+    }
+
 public:
+    void setDirtyIndex(size_t index) {
+        if(index < first_dirty_index) {
+            setDirtyIndexRecursive(dirty_vec[index]);
+        }
+    }
+
     entity_id createNode() {
         entity_id ent = world->createEntity();
         return ent;
@@ -152,6 +226,21 @@ public:
         }
     }
 };
+
+
+inline void tupleTransform::onAddOptional(ecsParentTransform* p) {
+    parent = system->get_tuple<tupleTransform>(p->parent_entity);
+    if (parent) {
+        parent->children.insert(this);
+    }
+}
+inline void tupleTransform::onRemoveOptional(ecsParentTransform* p) {
+    if (parent) {
+        parent->children.erase(this);
+    }
+    parent = 0;
+    system->setDirtyIndex(dirty_index);
+}
 
 
 #endif

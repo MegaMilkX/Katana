@@ -36,9 +36,5 @@ public:
     }
 };
 
-template<typename T>
-class ecsExclude {
-public:
-};
 
 #endif

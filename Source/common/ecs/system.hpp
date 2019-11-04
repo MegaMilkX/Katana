@@ -14,7 +14,14 @@ protected:
 
 public:
     virtual ~ecsSystemBase() {}
-    virtual void tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) = 0;
+
+    virtual uint64_t get_mask() const = 0;
+    virtual uint64_t get_opt_mask() const = 0;
+    virtual uint64_t get_exclusion_mask() const = 0;
+
+    virtual void attribsCreated(ecsWorld* world, entity_id ent, uint64_t entity_sig, uint64_t diff_sig) = 0;
+    virtual void attribsRemoved(ecsWorld* world, entity_id ent, uint64_t entity_sig, uint64_t diff_sig) = 0;
+
     virtual void signalUpdate(entity_id ent, uint64_t attrib_sig) = 0;
 
     ecsWorld* getWorld() const { return world; }
@@ -25,30 +32,55 @@ public:
 };
 
 
-class ecsArchetypeMapBase {
+class ecsTupleMapBase {
 public:
-    virtual ~ecsArchetypeMapBase() {}
+    virtual ~ecsTupleMapBase() {}
+    virtual uint64_t get_mask() const = 0;
+    virtual uint64_t get_opt_mask() const = 0;
     virtual uint64_t get_exclusion_mask() const = 0;
 };
 
 
 template<typename T>
-class ecsArchetypeMap : public ecsArchetypeMapBase {
+class ecsTupleMap : public ecsTupleMapBase {
 protected:
     std::vector<std::shared_ptr<T>> array;
     std::unordered_map<entity_id, size_t> map;
 public:
-    uint64_t get_exclusion_mask() const {
+    uint64_t get_mask() const override {
+        return T::get_signature_static();
+    }
+    uint64_t get_opt_mask() const override {
+        return T::get_optional_signature_static();
+    }
+    uint64_t get_exclusion_mask() const override {
         return T::get_exclusion_signature_static();
     }
 
+    T* create(ecsWorld* world, entity_id ent) {
+        LOG(this << ": create " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        T* arch_ptr = new T();
+        arch_ptr->init(world, ent);
+        map[ent] = array.size();
+        array.resize(array.size() + 1);
+        array[array.size() - 1].reset(arch_ptr);
+        return arch_ptr;
+    }
+
     T* insert(entity_id ent, const T& arch) {
-        //LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         T* arch_ptr = new T(arch);
         map[ent] = array.size();
         array.resize(array.size() + 1);
         array[array.size() - 1].reset(arch_ptr);
         return arch_ptr;
+    }
+
+    void updateOptionals(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
+        T* value = get(ent);
+        if(!value) return;
+        value->updateOptionals(world, ent);
+        LOG(this << ": optional updated " << ent << ": " << rttr::type::get<T>().get_name().to_string());
     }
 
     T* get(entity_id ent) {
@@ -60,7 +92,7 @@ public:
     }
 
     void erase(entity_id ent) {
-        //LOG(this << ": erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        LOG(this << ": erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         auto it = map.find(ent);
         if(it == map.end()) {
             return;
@@ -82,33 +114,74 @@ class ecsSystemRecursive;
 
 template<typename Arg>
 class ecsSystemRecursive<Arg> 
-: public ecsArchetypeMap<Arg>, public ecsSystemBase {
+: public ecsTupleMap<Arg>, public ecsSystemBase {
 public:
     virtual void onFit(Arg* arch) {}
     virtual void onUnfit(Arg* arch) {}
 
-    void tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
-        uint64_t arch_sig = Arg::get_signature_static();
-        uint64_t exclusion_arch_sig = Arg::get_exclusion_signature_static();
-        bool fit = false;
-        if((arch_sig & entity_sig) == arch_sig) {
-            if((exclusion_arch_sig & entity_sig) == 0) {
-                fit = true;                
-            }
-        }
+    void attribsCreated(ecsWorld* world, entity_id ent, uint64_t entity_sig, uint64_t diff_sig) override {
+        uint64_t mask = Arg::get_signature_static();
+        uint64_t opt_mask = Arg::get_optional_signature_static();
+        uint64_t exclusion_mask = Arg::get_exclusion_signature_static();
 
-        if(fit) {
-            if(ecsArchetypeMap<Arg>::get(ent) == 0) {
-                Arg arg;
-                arg.init(getWorld(), ent);
-                auto ptr = ecsArchetypeMap<Arg>::insert(ent, arg);
-                onFit(ptr);
-            }
-        } else {
-            Arg* ptr = ecsArchetypeMap<Arg>::get(ent);
+        const bool requirements_satisfied = (entity_sig & mask) == mask;
+        const bool has_excluders = (entity_sig & exclusion_mask) != 0;
+        const bool has_optionals = (entity_sig & opt_mask) != 0;
+        const bool fits = requirements_satisfied && !has_excluders;
+        const bool added_requirement = (mask & diff_sig) != 0;
+        const bool added_optional = (opt_mask & diff_sig) != 0;
+        const bool added_excluder = (exclusion_mask & diff_sig) != 0;
+        
+        if(added_excluder) {
+            Arg* ptr = ecsTupleMap<Arg>::get(ent);
             if(ptr) {
                 onUnfit(ptr);
-                ecsArchetypeMap<Arg>::erase(ent);
+                ecsTupleMap<Arg>::erase(ent);
+            }
+        } else {
+            if(fits && added_requirement) {
+                Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
+                onFit(ptr);
+                if(has_optionals) {
+                    ptr->updateOptionals(world, ent);
+                }
+            }
+            if(fits && added_optional) {
+                ecsTupleMap<Arg>::updateOptionals(world, ent, entity_sig);
+            }
+        }
+    }
+    void attribsRemoved(ecsWorld* world, entity_id ent, uint64_t entity_sig, uint64_t diff_sig) override {
+        entity_sig &= ~(diff_sig); // entity_sig is still unchanged at this point, updating it locally
+
+        uint64_t mask = Arg::get_signature_static();
+        uint64_t opt_mask = Arg::get_optional_signature_static();
+        uint64_t exclusion_mask = Arg::get_exclusion_signature_static();
+
+        const bool requirements_satisfied = (entity_sig & mask) == mask;
+        const bool has_excluders = (entity_sig & exclusion_mask) != 0;
+        const bool fits = requirements_satisfied && !has_excluders;
+        const bool removed_requirement = (mask & diff_sig) != 0;
+        const bool removed_optional = (opt_mask & diff_sig) != 0;
+        const bool removed_excluder = (exclusion_mask & diff_sig) != 0;
+
+        if(removed_requirement) {
+            Arg* ptr = ecsTupleMap<Arg>::get(ent);
+            if(ptr) {
+                ptr->clearOptionals((uint64_t)-1);
+                onUnfit(ptr);
+                ecsTupleMap<Arg>::erase(ent);
+            }
+        } else {
+            if(fits && removed_excluder) {
+                Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
+                onFit(ptr);
+            }
+            if(fits && removed_optional) {
+                Arg* ptr = ecsTupleMap<Arg>::get(ent);
+                if(ptr) {
+                    ptr->clearOptionals(diff_sig);
+                }
             }
         }
     }
@@ -116,10 +189,10 @@ public:
     void signalUpdate(entity_id ent, uint64_t attrib_sig) {
         uint64_t arch_sig = Arg::get_signature_static();
         if((arch_sig & attrib_sig) != 0) {
-            auto map = ecsArchetypeMap<Arg>::map;
+            auto map = ecsTupleMap<Arg>::map;
             auto it = map.find(ent);
             if(it != map.end()) {
-                ecsArchetypeMap<Arg>::array[it->second]->signalAttribUpdate(attrib_sig);
+                ecsTupleMap<Arg>::array[it->second]->signalAttribUpdate(attrib_sig);
             }
         }
     }
@@ -127,45 +200,89 @@ public:
 
 template<typename Arg, typename... Args>
 class ecsSystemRecursive<Arg, Args...> 
-: public ecsArchetypeMap<Arg>, public ecsSystemRecursive<Args...> {
+: public ecsTupleMap<Arg>, public ecsSystemRecursive<Args...> {
 public:
     virtual void onFit(Arg* arch) {}
     virtual void onUnfit(Arg* arch) {}
 
-    void tryFit(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
-        uint64_t arch_sig = Arg::get_signature_static();
-        uint64_t exclusion_arch_sig = Arg::get_exclusion_signature_static();
-        bool fit = false;
-        if((arch_sig & entity_sig) == arch_sig) {
-            if((exclusion_arch_sig & entity_sig) == 0) {
-                fit = true;
-            }
-        }
-        if(fit) {
-            if(ecsArchetypeMap<Arg>::get(ent) == 0) {
-                Arg arg;
-                arg.init(getWorld(), ent);
-                auto ptr = ecsArchetypeMap<Arg>::insert(ent, arg);
-                onFit(ptr);
-            }
-        } else {
-            Arg* ptr = ecsArchetypeMap<Arg>::get(ent);
+    void attribsCreated(ecsWorld* world, entity_id ent, uint64_t entity_sig, uint64_t diff_sig) override {
+        uint64_t mask = Arg::get_signature_static();
+        uint64_t opt_mask = Arg::get_optional_signature_static();
+        uint64_t exclusion_mask = Arg::get_exclusion_signature_static();
+
+        const bool requirements_satisfied = (entity_sig & mask) == mask;
+        const bool has_excluders = (entity_sig & exclusion_mask) != 0;
+        const bool has_optionals = (entity_sig & opt_mask) != 0;
+        const bool fits = requirements_satisfied && !has_excluders;
+        const bool added_requirement = (mask & diff_sig) != 0;
+        const bool added_optional = (opt_mask & diff_sig) != 0;
+        const bool added_excluder = (exclusion_mask & diff_sig) != 0;
+        
+        if(added_excluder) {
+            Arg* ptr = ecsTupleMap<Arg>::get(ent);
             if(ptr) {
                 onUnfit(ptr);
-                ecsArchetypeMap<Arg>::erase(ent);
+                ecsTupleMap<Arg>::erase(ent);
+            }
+        } else {
+            if(fits && added_requirement) {
+                Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
+                onFit(ptr);
+                if(has_optionals) {
+                    ptr->updateOptionals(world, ent);
+                }
+            }
+            if(fits && added_optional) {
+                ecsTupleMap<Arg>::updateOptionals(world, ent, entity_sig);
             }
         }
 
-        ecsSystemRecursive<Args...>::tryFit(world, ent, entity_sig);
+        ecsSystemRecursive<Args...>::attribsCreated(world, ent, entity_sig, diff_sig);
+    }
+    void attribsRemoved(ecsWorld* world, entity_id ent, uint64_t entity_sig, uint64_t diff_sig) override {
+        entity_sig &= ~(diff_sig); // entity_sig is still unchanged at this point, updating it locally
+
+        uint64_t mask = Arg::get_signature_static();
+        uint64_t opt_mask = Arg::get_optional_signature_static();
+        uint64_t exclusion_mask = Arg::get_exclusion_signature_static();
+
+        const bool requirements_satisfied = (entity_sig & mask) == mask;
+        const bool has_excluders = (entity_sig & exclusion_mask) != 0;
+        const bool fits = requirements_satisfied && !has_excluders;
+        const bool removed_requirement = (mask & diff_sig) != 0;
+        const bool removed_optional = (opt_mask & diff_sig) != 0;
+        const bool removed_excluder = (exclusion_mask & diff_sig) != 0;
+
+        if(removed_requirement) {
+            Arg* ptr = ecsTupleMap<Arg>::get(ent);
+            if(ptr) {
+                ptr->clearOptionals((uint64_t)-1);
+                onUnfit(ptr);
+                ecsTupleMap<Arg>::erase(ent);
+            }
+        } else {
+            if(fits && removed_excluder) {
+                Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
+                onFit(ptr);
+            }
+            if(fits && removed_optional) {
+                Arg* ptr = ecsTupleMap<Arg>::get(ent);
+                if(ptr) {
+                    ptr->clearOptionals(diff_sig);
+                }
+            }
+        }
+        
+        ecsSystemRecursive<Args...>::attribsRemoved(world, ent, entity_sig, diff_sig);
     }
 
     void signalUpdate(entity_id ent, uint64_t attrib_sig) {
         uint64_t arch_sig = Arg::get_signature_static();
         if((arch_sig & attrib_sig) != 0) {
-            auto map = ecsArchetypeMap<Arg>::map;
+            auto map = ecsTupleMap<Arg>::map;
             auto it = map.find(ent);
             if(it != map.end()) {
-                ecsArchetypeMap<Arg>::array[it->second]->signalAttribUpdate(attrib_sig);
+                ecsTupleMap<Arg>::array[it->second]->signalAttribUpdate(attrib_sig);
             }
         }
 
@@ -178,7 +295,59 @@ class ecsSystem : public ecsSystemRecursive<Args...> {
 public:
     template<typename ARCH_T>
     std::vector<std::shared_ptr<ARCH_T>>& get_array() {
-        return ecsArchetypeMap<ARCH_T>::array;
+        return ecsTupleMap<ARCH_T>::array;
+    }
+    template<typename ARCH_T>
+    ARCH_T* get_tuple(entity_id ent) {
+        auto it = ecsTupleMap<ARCH_T>::map.find(ent);
+        if(it == ecsTupleMap<ARCH_T>::map.end()) {
+            return 0;
+        }
+        return ecsTupleMap<ARCH_T>::array[it->second].get();
+    }
+
+    uint64_t get_mask() const override {
+        static uint64_t x[] = { ecsTupleMap<Args>::get_mask()... };
+        static uint64_t sig = 0;
+        for(size_t i = 0; i < sizeof...(Args); ++i) {
+            sig |= x[i];
+        }
+        return sig;
+    }
+    uint64_t get_opt_mask() const override {
+        static uint64_t x[] = { ecsTupleMap<Args>::get_opt_mask()... };
+        static uint64_t sig = 0;
+        for(size_t i = 0; i < sizeof...(Args); ++i) {
+            sig |= x[i];
+        }
+        return sig;
+    }
+    uint64_t get_exclusion_mask() const override {
+        static uint64_t x[] = { ecsTupleMap<Args>::get_exclusion_mask()... };
+        static uint64_t sig = 0;
+        for(size_t i = 0; i < sizeof...(Args); ++i) {
+            sig |= x[i];
+        }
+        return sig;
+    }
+
+    void attribsCreated(ecsWorld* world, entity_id ent, uint64_t entity_sig, uint64_t diff_sig) override {
+        if(((get_mask() & diff_sig) == 0) 
+            && ((get_opt_mask() & diff_sig) == 0)
+            && ((get_exclusion_mask() & diff_sig) == 0)
+        ) {
+            return;
+        }
+        ecsSystemRecursive<Args...>::attribsCreated(world, ent, entity_sig, diff_sig);
+    }
+    void attribsRemoved(ecsWorld* world, entity_id ent, uint64_t entity_sig, uint64_t diff_sig) override {
+        if(((get_mask() & diff_sig) == 0) 
+            && ((get_opt_mask() & diff_sig) == 0)
+            && ((get_exclusion_mask() & diff_sig) == 0)
+        ) {
+            return;
+        }
+        ecsSystemRecursive<Args...>::attribsRemoved(world, ent, entity_sig, diff_sig);
     }
 };
 

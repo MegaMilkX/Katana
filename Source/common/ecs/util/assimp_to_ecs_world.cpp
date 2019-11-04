@@ -154,7 +154,9 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
 }
 
 
-void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene, aiNode* ai_node, entity_id ent) {
+typedef std::map<std::string, entity_id> name_to_ent_map_t;
+
+void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, name_to_ent_map_t& node_map, const aiScene* ai_scene, aiNode* ai_node, entity_id ent) {
     ecsName* ecs_name = graph->getWorld()->getAttrib<ecsName>(ent);
     ecsTRS* ecs_trs = graph->getWorld()->getAttrib<ecsTRS>(ent);
     ecs_name->name = ai_node->mName.C_Str();
@@ -162,11 +164,13 @@ void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene, 
         gfxm::transpose(*(gfxm::mat4*)&ai_node->mTransformation)
     );
     graph->getWorld()->getAttrib<ecsWorldTransform>(ent);
+    
+    node_map[ecs_name->name] = ent;
 
     for(unsigned i = 0; i < ai_node->mNumChildren; ++i) {
         auto child_ent = graph->createNode();
         graph->setParent(child_ent, ent);
-        assimpImportEcsSceneGraph(graph, ai_scene, ai_node->mChildren[i], child_ent);
+        assimpImportEcsSceneGraph(graph, node_map, ai_scene, ai_node->mChildren[i], child_ent);
     }
 
     if(ai_node->mNumMeshes) {
@@ -181,16 +185,33 @@ void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene, 
         for(unsigned i = 0; i < ai_node->mNumMeshes; ++i) {
             auto& seg = ecs_meshes->getSegment(i);
             seg.mesh = mesh;
+            // TODO: Assign material
             seg.submesh_index = i;
-            // TODO: Assign materials
-            // TODO: Skin
+            
+            aiMesh* ai_mesh = ai_scene->mMeshes[ai_node->mMeshes[i]];
+            if(ai_mesh->mNumBones) {
+                seg.skin_data.reset(new ecsMeshes::SkinData());
+                for(unsigned j = 0; j < ai_mesh->mNumBones; ++j) {
+                    aiBone* ai_bone = ai_mesh->mBones[j];
+                    std::string name(ai_bone->mName.data, ai_bone->mName.length);
+
+                    auto it = node_map.find(name);
+                    if(it != node_map.end()) {
+                        seg.skin_data->bone_nodes.emplace_back(graph->getWorld()->getAttrib<ecsWorldTransform>(it->second));
+                        seg.skin_data->bind_transforms.emplace_back(
+                            gfxm::transpose(*(gfxm::mat4*)&ai_bone->mOffsetMatrix)
+                        );
+                    }
+                }
+            }
         }
     }
 }
 
 void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene) {
     entity_id root_ent = graph->createNode();
-    assimpImportEcsSceneGraph(graph, ai_scene, ai_scene->mRootNode, root_ent);
+    name_to_ent_map_t node_map;
+    assimpImportEcsSceneGraph(graph, node_map, ai_scene, ai_scene->mRootNode, root_ent);
 
     double scaleFactor = 1.0f;
     if(ai_scene->mMetaData) {

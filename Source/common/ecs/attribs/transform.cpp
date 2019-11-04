@@ -2,6 +2,13 @@
 
 #include "../world.hpp"
 
+ecsTransform::~ecsTransform() {
+    std::set<ecsTransform*> children_copy = _children;
+    for(auto c : children_copy) {
+        c->setParent(0);
+    }
+}
+
 void ecsTransform::dirty() {
     if(!_dirty) {
         _dirty = true;

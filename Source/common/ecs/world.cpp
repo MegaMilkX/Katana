@@ -18,7 +18,8 @@ entity_id ecsWorld::createEntity(archetype_mask_t attrib_signature) {
 void ecsWorld::removeEntity(entity_id id) {
     for(auto& sys : systems) {
         // Signal this entity as an empty one
-        sys->tryFit(this, id, 0);
+        auto e = entities.deref(id);
+        sys->attribsRemoved(this, id, e->getAttribBits(), 0);
     }
 
     *entities.deref(id) = ecsEntity();
@@ -38,18 +39,13 @@ void ecsWorld::setAttrib(entity_id ent, attrib_id attrib) {
     auto e = entities.deref(ent);
     auto a = e->getAttrib(attrib);
     for(auto& sys : systems) {
-        sys->tryFit(this, ent, e->getAttribBits());
+        sys->attribsCreated(this, ent, e->getAttribBits(), 1 << attrib);
     }
 }
 void ecsWorld::removeAttrib(entity_id ent, attrib_id attrib) {
     auto e = entities.deref(ent);
-    uint64_t signature = e->getAttribBits();
-    if (signature & (1 << attrib) == 0) {
-        return;
-    }
-    signature &= ~(1 << attrib);
     for(auto& sys : systems) {
-        sys->tryFit(this, ent, signature);
+        sys->attribsRemoved(this, ent, e->getAttribBits(), 1 << attrib);
     }
     e->removeAttrib(attrib);
 }
@@ -75,5 +71,10 @@ void ecsWorld::update() {
     for(auto& sys : systems) {
         sys->onUpdate();
     }
-    LOG("ELAPSED: " << t.stop());
+    //LOG("ELAPSED: " << t.stop());
+}
+
+
+void ecsWorld::onGuiNodeTree() {
+    
 }

@@ -5,37 +5,51 @@
 
 #include "entity.hpp"
 
-class ecsArchetypeBase {
+template<typename T>
+struct ecsExclude {};
+template<typename T>
+struct ecsOptional {};
+
+class ecsTupleBase {
 protected:
     entity_id entity_uid;
 public:
-    virtual ~ecsArchetypeBase() {}
+    virtual ~ecsTupleBase() {}
     virtual uint64_t get_signature() const = 0;
+    virtual uint64_t get_optional_signature() const = 0;
     virtual uint64_t get_exclusion_signature() const = 0;
 
     virtual void init(ecsWorld* world, entity_id ent) = 0;
+    virtual void updateOptionals(ecsWorld* world, entity_id ent) = 0;
+    virtual void clearOptionals(uint64_t mask) = 0;
 
     entity_id getEntityUid() const { return entity_uid; }
 
     virtual void signalAttribUpdate(uint64_t attrib_sig) = 0;
 };
 template<typename Arg>
-class ecsArchetypePart {
+class ecsTuplePart {
 protected:
     Arg* ptr;
 public:
-    ecsArchetypePart() {}
-    ecsArchetypePart(ecsEntity* ent) {
+    ecsTuplePart() {}
+    ecsTuplePart(ecsEntity* ent) {
         ptr = ent->findAttrib<Arg>();
     }
-    virtual ~ecsArchetypePart() {}
+    virtual ~ecsTuplePart() {}
 
     static uint64_t get_inclusion_sig() {
         return 1 << Arg::get_id_static();
     }
+    static uint64_t get_optional_sig() {
+        return 0;
+    }
     static uint64_t get_exclusion_sig() {
         return 0;
     }
+
+    int updateOptional(ecsWorld* world, entity_id ent) { return 0; }
+    int clearOptional(uint64_t mask) { return 0; }
 
     int _signalAttribUpdate(uint64_t attrib_sig) {
         if((1 << Arg::get_id_static()) == attrib_sig) {
@@ -47,51 +61,116 @@ public:
     virtual void onAttribUpdate(Arg* arg) {}
 };
 template<typename Arg>
-class ecsArchetypePart<ecsExclude<Arg>> {
+class ecsTuplePart<ecsExclude<Arg>> {
 public:
-    ecsArchetypePart() {}
-    ecsArchetypePart(ecsEntity* ent) {}
-    virtual ~ecsArchetypePart() {}
+    ecsTuplePart() {}
+    ecsTuplePart(ecsEntity* ent) {}
+    virtual ~ecsTuplePart() {}
 
     static uint64_t get_inclusion_sig() {
+        return 0;
+    }
+    static uint64_t get_optional_sig() {
         return 0;
     }
     static uint64_t get_exclusion_sig() {
         return 1 << Arg::get_id_static();
     }
 
+    int updateOptional(ecsWorld* world, entity_id ent) { return 0; }
+    int clearOptional(uint64_t mask) { return 0; }
+
     int _signalAttribUpdate(uint64_t attrib_sig) {
         return 0;
     }
 };
-template<typename... Args>
-class ecsArchetype : public ecsArchetypeBase, public ecsArchetypePart<Args>... {
+template<typename Arg>
+class ecsTuplePart<ecsOptional<Arg>> {
+protected:
+    Arg* ptr = 0;
 public:
-    ecsArchetype() {}
-    ecsArchetype(ecsEntity* ent)
-    : ecsArchetypePart<Args>(ent)... {
-        //(ecsArchetypePart<Args>::ptr... = ent->getAttrib<Args>()...);
-        //int x[] = { foo<Args>(ent)... };
-        //attribs = std::tuple<Args*...>(ent->getAttrib<Args>()...);
+    ecsTuplePart() {}
+    ecsTuplePart(ecsEntity* ent) {
+        //ptr = ent->findAttrib<Arg>();
+    }
+    virtual ~ecsTuplePart() {}
+    
+    static uint64_t get_inclusion_sig() {
+        return 0;
+    }
+    static uint64_t get_optional_sig() {
+        return 1 << Arg::get_id_static();
+    }
+    static uint64_t get_exclusion_sig() {
+        return 0;
     }
 
+    int updateOptional(ecsWorld* world, entity_id ent) {
+        Arg* tmp = world->findAttrib<Arg>(ent);
+        if(tmp && !ptr) {
+            ptr = tmp;
+            onAddOptional(ptr);
+        } else if(!tmp && ptr) {
+            ptr = tmp;
+            onRemoveOptional(ptr);
+        }
+        return 0;
+    }
+    int clearOptional(uint64_t mask) {
+        if(ptr && ((1 << Arg::get_id_static()) & mask)) {
+            onRemoveOptional(ptr);
+            ptr = 0;
+        }
+        return 0;
+    }
+
+    int _signalAttribUpdate(uint64_t attrib_sig) {
+        if((1 << Arg::get_id_static()) == attrib_sig) {
+            onAttribUpdate(ptr);
+        }
+        return 0;
+    }
+
+    virtual void onAttribUpdate(Arg* arg) {}
+    virtual void onAddOptional(Arg* arg) {}
+    virtual void onRemoveOptional(Arg* arg) {}
+};
+
+template<typename... Args>
+class ecsTuple : public ecsTupleBase, public ecsTuplePart<Args>... {
+public:
+    ecsTuple() {}
+    ecsTuple(ecsEntity* ent)
+    : ecsTuplePart<Args>(ent)... {}
+
     void init(ecsWorld* world, entity_id ent) override {
-        *this = ecsArchetype<Args...>(world->getEntity(ent));
+        *this = ecsTuple<Args...>(world->getEntity(ent));
         entity_uid = ent;
+    }
+
+    void updateOptionals(ecsWorld* world, entity_id ent) override {
+        int x[] = { ecsTuplePart<Args>::updateOptional(world, ent)... };
+    }
+    void clearOptionals(uint64_t mask) override {
+        int x[] = { ecsTuplePart<Args>::clearOptional(mask)... };
     }
 
     template<typename T>
     T* get() {
-        return ecsArchetypePart<T>::ptr;
+        return ecsTuplePart<T>::ptr;
         //return std::get<T*>(attribs);
+    }
+    template<typename T>
+    T* get_optional() {
+        return ecsTuplePart<ecsOptional<T>>::ptr;
     }
 
     void signalAttribUpdate(uint64_t attrib_sig) {
-        int x[] = { ecsArchetypePart<Args>::_signalAttribUpdate(attrib_sig)... };
+        int x[] = { ecsTuplePart<Args>::_signalAttribUpdate(attrib_sig)... };
     }
 
     static uint64_t get_signature_static() {
-        static uint64_t x[] = { ecsArchetypePart<Args>::get_inclusion_sig()... };
+        static uint64_t x[] = { ecsTuplePart<Args>::get_inclusion_sig()... };
         static uint64_t sig = 0;
         for(size_t i = 0; i < sizeof...(Args); ++i) {
             sig |= x[i];
@@ -102,8 +181,20 @@ public:
         return get_signature_static();
     }
 
+    static uint64_t get_optional_signature_static() {
+        static uint64_t x[] = { ecsTuplePart<Args>::get_optional_sig()... };
+        static uint64_t sig = 0;
+        for(size_t i = 0; i < sizeof...(Args); ++i) {
+            sig |= x[i];
+        }
+        return sig;
+    }
+    uint64_t get_optional_signature() const override {
+        return get_optional_signature_static();
+    }
+
     static uint64_t get_exclusion_signature_static() {
-        static uint64_t x[] = { ecsArchetypePart<Args>::get_exclusion_sig()... };
+        static uint64_t x[] = { ecsTuplePart<Args>::get_exclusion_sig()... };
         static uint64_t sig = 0;
         for(size_t i = 0; i < sizeof...(Args); ++i) {
             sig |= x[i];

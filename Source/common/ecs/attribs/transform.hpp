@@ -24,6 +24,8 @@ class ecsTransform : public ecsAttrib<ecsTransform> {
     void setParent(ecsTransform* p);
 
 public:
+    ~ecsTransform();
+    
     void dirty();
     bool isDirty();
 

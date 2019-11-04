@@ -7,32 +7,7 @@
 
 #include <memory>
 
-class timer
-{
-public:
-    timer()
-    {
-        QueryPerformanceFrequency(&freq);
-    }
-
-    void start()
-    {
-        QueryPerformanceCounter(&_start);
-    }
-    
-    int64_t stop()
-    {
-        QueryPerformanceCounter(&_end);
-        elapsed.QuadPart = _end.QuadPart - _start.QuadPart;
-        elapsed.QuadPart *= 1000000;
-        elapsed.QuadPart /= freq.QuadPart;
-        return elapsed.QuadPart;
-    }
-private:
-    LARGE_INTEGER freq;
-    LARGE_INTEGER _start, _end;
-    LARGE_INTEGER elapsed;
-};
+#include "../util/timer.hpp"
 
 typedef uint64_t archetype_mask_t;
 
@@ -55,10 +30,8 @@ public:
         auto e = entities.deref(ent);
         auto a = e->findAttrib<T>();
         if(!a) {
-            a = e->getAttrib<T>();
-            for(auto& sys : systems) {
-                sys->tryFit(this, ent, e->getAttribBits());
-            }
+            setAttrib<T>(ent);
+            a = e->findAttrib<T>();
         }
         return a;
     }
@@ -121,6 +94,9 @@ public:
     void addSystems(const std::vector<ecsSystemBase*>& sys_array);
 
     void update();
+
+
+    void onGuiNodeTree();
 };
 
 #endif
