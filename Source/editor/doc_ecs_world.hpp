@@ -234,6 +234,8 @@ public:
 
 #include "../common/input_listener.hpp"
 
+#include "../common/render_test.hpp"
+
 class DocEcsWorld : public EditorDocumentTyped<EcsWorld>, public InputListenerWrap {
     ecsWorld world;
     entity_id selected_ent = 0;

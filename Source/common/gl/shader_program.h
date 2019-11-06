@@ -3,7 +3,15 @@
 
 #include "shader.h"
 
+#include <rttr/type>
+
 namespace gl {
+
+struct UniformInfo {
+    std::string name;
+    GLint loc;
+    rttr::type type;
+};
 
 class ShaderProgram {
 public:
@@ -21,6 +29,13 @@ public:
     bool validate();
     GLuint getId() const;
 
+    size_t uniformCount() const {
+        return uniforms.size();
+    }
+    const UniformInfo& getUniformInfo(size_t i) const {
+        return uniforms[i];
+    }
+
     void uploadModelTransform(const gfxm::mat4& v) {
         glUniformMatrix4fv(loc_model, 1, GL_FALSE, (float*)&v);
     }
@@ -32,6 +47,7 @@ private:
     GLuint loc_projection;
     GLuint loc_view;
     GLuint loc_model;
+    std::vector<UniformInfo> uniforms;
 };
 
 }

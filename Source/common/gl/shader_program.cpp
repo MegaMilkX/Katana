@@ -82,11 +82,21 @@ bool ShaderProgram::validate() {
         glGetActiveAttrib(id, (GLuint)i, nameBufSize, &length, &size, &type, name);
         LOG("Attrib " << i << ", type: " << type << ", name: " << name);
     }
+
+    static std::map<GLenum, rttr::type> gl_type_to_rttr = {
+        { GL_FLOAT_VEC3, rttr::type::get<gfxm::vec3>() },
+        { GL_FLOAT_MAT4, rttr::type::get<gfxm::mat4>() }
+    };
+
     glGetProgramiv(id, GL_ACTIVE_UNIFORMS, &count);
     LOG("Uniform count: " << count);
     for(int i = 0; i < count; ++i) {
         glGetActiveUniform(id, (GLuint)i, nameBufSize, &length, &size, &type, name);
-        LOG("Uniform " << i << ", type: " << type << ", name: " << name);
+        GLint loc = glGetUniformLocation(id, name);
+        auto it = gl_type_to_rttr.find(type);
+        if(it == gl_type_to_rttr.end()) continue;
+        uniforms.push_back(UniformInfo{ name, loc, it->second });
+        LOG("Uniform " << i << ", type: " << type << ", name: " << name << ", retrieved id: " << loc);
     }
 
 
