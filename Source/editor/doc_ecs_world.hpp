@@ -246,6 +246,8 @@ class DocEcsWorld : public EditorDocumentTyped<EcsWorld>, public InputListenerWr
 
 public:
     DocEcsWorld() {
+        foo_render();
+
         regEcsAttrib<ecsName>("Name");
         regEcsAttrib<ecsTRS>("TRS");
         regEcsAttrib<ecsWorldTransform>("WorldTransform");
