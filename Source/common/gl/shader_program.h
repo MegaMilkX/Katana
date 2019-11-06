@@ -10,7 +10,7 @@ namespace gl {
 struct UniformInfo {
     std::string name;
     GLint loc;
-    rttr::type type;
+    GLenum type;
 };
 
 class ShaderProgram {
