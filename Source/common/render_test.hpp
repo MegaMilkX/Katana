@@ -70,7 +70,7 @@ struct DrawBucket {
 
     template<typename T>
     void enable(T UNIFORMS::*ptr, const char* name) {
-        size_t offset = (size_t)&(((INSTANCE_UNIFORMS*)0)->*ptr);
+        size_t offset = (size_t)&(((UNIFORMS*)0)->*ptr);
         size_t size = sizeof(T);
         LOG("offset: " << offset << ", size: " << size);
     }
