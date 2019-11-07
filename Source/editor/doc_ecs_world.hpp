@@ -15,7 +15,7 @@
 
 #include "../common/ecs/attribs/base_attribs.hpp"
 
-class ecsArchCollider : public ecsTuple<ecsTransform, ecsCollisionShape, ecsExclude<ecsMass>> {
+class ecsArchCollider : public ecsTuple<ecsWorldTransform, ecsCollisionShape, ecsExclude<ecsMass>> {
 public:
     void onAttribUpdate(ecsCollisionShape* shape) override {
         world->removeCollisionObject(collision_object.get());
@@ -27,20 +27,13 @@ public:
     btCollisionWorld* world = 0;
     std::shared_ptr<btCollisionObject> collision_object;
 };
-class ecsArchRigidBody : public ecsTuple<ecsTransform, ecsCollisionShape, ecsMass> {
+class ecsArchRigidBody : public ecsTuple<ecsWorldTransform, ecsCollisionShape, ecsMass> {
 public:
-    void onAttribUpdate(ecsTransform* t) override {
+    void onAttribUpdate(ecsWorldTransform* t) override {
         //auto& transform = rigid_body->getWorldTransform();        
         btTransform transform;
-        const gfxm::mat4& world_transform = t->getWorldTransform();
-        //transform.setFromOpenGLMatrix((float*)&world_transform);
-        
-        auto p = t->getWorldPosition();
-        auto r = t->getWorldRotation();
-        auto s = t->getWorldScale();
-        transform.setIdentity();
-        transform.setOrigin(btVector3(p.x, p.y, p.z));
-        transform.setRotation(btQuaternion(r.x, r.y, r.z, r.w));
+        const gfxm::mat4& world_transform = t->transform;
+        transform.setFromOpenGLMatrix((float*)&world_transform);
         
         //LOG(world_transform);
         rigid_body->setWorldTransform(transform);
@@ -104,6 +97,10 @@ public:
             collider->get<ecsCollisionShape>()->shape.get()
         );
 
+        btTransform btt;
+        btt.setFromOpenGLMatrix((float*)&collider->get<ecsWorldTransform>()->transform);
+        collider->collision_object->setWorldTransform(btt);
+
         world->addCollisionObject(collider->collision_object.get());
     }
     void onUnfit(ecsArchCollider* collider) {
@@ -119,7 +116,7 @@ public:
             local_inertia
         );
         btTransform btt, com;
-        btt.setIdentity();
+        btt.setFromOpenGLMatrix((float*)&rb->get<ecsWorldTransform>()->transform);
         com.setIdentity();
         rb->motion_state = btDefaultMotionState(
             btt, com
@@ -144,7 +141,7 @@ public:
 
     void onUpdate() {
         for(auto& a : get_array<ecsArchCollider>()) {
-            auto& matrix = a->get<ecsTransform>()->getWorldTransform();
+            auto& matrix = a->get<ecsWorldTransform>()->transform;
             a->collision_object->getWorldTransform().setFromOpenGLMatrix((float*)&matrix);
             world->updateSingleAabb(a->collision_object.get());
         }
@@ -155,9 +152,8 @@ public:
             auto& t = a->rigid_body->getWorldTransform();
             btVector3 btv3 = t.getOrigin();
             btQuaternion btq = t.getRotation();
-            auto transform = a->get<ecsTransform>();
-            transform->setPosition(btv3.getX(), btv3.getY(), btv3.getZ());
-            transform->setRotation(btq.getX(), btq.getY(), btq.getZ(), btq.getW());
+            auto& transform = a->get<ecsWorldTransform>()->transform;
+            t.getOpenGLMatrix((float*)&transform);
         }
 
         world->debugDrawWorld();
@@ -250,6 +246,9 @@ public:
 
         regEcsAttrib<ecsName>("Name");
         regEcsAttrib<ecsTRS>("TRS");
+        regEcsAttrib<ecsTranslation>("Translation");
+        regEcsAttrib<ecsRotation>("Rotation");
+        regEcsAttrib<ecsScale>("Scale");
         regEcsAttrib<ecsWorldTransform>("WorldTransform");
         regEcsAttrib<ecsParentTransform>("ParentTransform");
         regEcsAttrib<ecsTransformChildren>("TransformChildren");

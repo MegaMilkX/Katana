@@ -3,6 +3,7 @@
 
 #include "../lib/imgui_wrap.hpp"
 #include "attrib_lib.hpp"
+#include "../gui_viewport.hpp"
 
 #include <stdint.h>
 

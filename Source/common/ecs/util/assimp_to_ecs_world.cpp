@@ -158,11 +158,23 @@ typedef std::map<std::string, entity_id> name_to_ent_map_t;
 
 void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, name_to_ent_map_t& node_map, const aiScene* ai_scene, aiNode* ai_node, entity_id ent) {
     ecsName* ecs_name = graph->getWorld()->getAttrib<ecsName>(ent);
-    ecsTRS* ecs_trs = graph->getWorld()->getAttrib<ecsTRS>(ent);
+    ecsTranslation* translation = graph->getWorld()->getAttrib<ecsTranslation>(ent);
+    ecsRotation* rotation = graph->getWorld()->getAttrib<ecsRotation>(ent);
+    ecsScale* scale = graph->getWorld()->getAttrib<ecsScale>(ent);
+
     ecs_name->name = ai_node->mName.C_Str();
-    ecs_trs->fromMatrix(
-        gfxm::transpose(*(gfxm::mat4*)&ai_node->mTransformation)
-    );
+    
+    if(ai_scene->mRootNode != ai_node) {
+        aiVector3D ai_pos;
+        aiQuaternion ai_quat;
+        aiVector3D ai_scale;
+        ai_node->mTransformation.Decompose(ai_scale, ai_quat, ai_pos);
+        
+        translation->setPosition(ai_pos.x, ai_pos.y, ai_pos.z);
+        rotation->setRotation(ai_quat.x, ai_quat.y, ai_quat.z, ai_quat.w);
+        scale->setScale(ai_scale.x, ai_scale.y, ai_scale.z);
+    }
+
     graph->getWorld()->getAttrib<ecsWorldTransform>(ent);
     
     node_map[ecs_name->name] = ent;
@@ -220,7 +232,7 @@ void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene) 
             scaleFactor *= 0.01;
         }
     }
-    graph->getWorld()->getAttrib<ecsTRS>(root_ent)->scale = gfxm::vec3((float)scaleFactor, (float)scaleFactor, (float)scaleFactor);
+    graph->getWorld()->getAttrib<ecsScale>(root_ent)->setScale((float)scaleFactor);
 }
 
 bool assimpImportEcsScene(ecsysSceneGraph* graph, AssimpScene* scn) {

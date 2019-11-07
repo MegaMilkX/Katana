@@ -7,7 +7,13 @@
 
 
 class ecsysSceneGraph;
-class tupleTransform : public ecsTuple<ecsOptional<ecsParentTransform>, ecsOptional<ecsTRS>, ecsWorldTransform> {
+class tupleTransform : public ecsTuple<
+    ecsOptional<ecsParentTransform>, 
+    ecsOptional<ecsTranslation>,
+    ecsOptional<ecsRotation>,
+    ecsOptional<ecsScale>, 
+    ecsWorldTransform
+> {
     friend ecsysSceneGraph;
     ecsysSceneGraph* system = 0;
     tupleTransform* parent = 0;
@@ -25,7 +31,15 @@ public:
     void onAddOptional(ecsParentTransform* p) override;
     void onRemoveOptional(ecsParentTransform* p) override;
 
-    void onAddOptional(ecsTRS* trs) override {
+    void onAddOptional(ecsTranslation* trs) override {
+        trs->system = system;
+        trs->dirty_index = dirty_index;
+    }
+    void onAddOptional(ecsRotation* trs) override {
+        trs->system = system;
+        trs->dirty_index = dirty_index;
+    }
+    void onAddOptional(ecsScale* trs) override {
         trs->system = system;
         trs->dirty_index = dirty_index;
     }
@@ -33,8 +47,14 @@ public:
 
     void setDirtyIndex(size_t i) {
         dirty_index = i;
-        if(get_optional<ecsTRS>()) {
-            get_optional<ecsTRS>()->dirty_index = i;
+        if(get_optional<ecsTranslation>()) {
+            get_optional<ecsTranslation>()->dirty_index = i;
+        }
+        if(get_optional<ecsRotation>()) {
+            get_optional<ecsRotation>()->dirty_index = i;
+        }
+        if(get_optional<ecsScale>()) {
+            get_optional<ecsScale>()->dirty_index = i;
         }
     }
 };
@@ -95,14 +115,23 @@ class ecsysSceneGraph : public ecsSystem<
         for(size_t i = first_dirty_index; i < dirty_vec.size(); ++i) {
             auto a = dirty_vec[i];
 
-            ecsTRS* trs = a->get_optional<ecsTRS>();
+            ecsTranslation* translation = a->get_optional<ecsTranslation>();
+            ecsRotation* rotation = a->get_optional<ecsRotation>();
+            ecsScale* scale = a->get_optional<ecsScale>();
             ecsWorldTransform* world = a->get<ecsWorldTransform>();
-            if(!trs) continue;
 
-            world->transform = 
-                gfxm::translate(gfxm::mat4(1.0f), trs->position) * 
-                gfxm::to_mat4(trs->rotation) * 
-                gfxm::scale(gfxm::mat4(1.0f), trs->scale);
+            gfxm::mat4 local = gfxm::mat4(1.0f);
+            if(translation) {
+                local = gfxm::translate(local, translation->getPosition());
+            }
+            if(rotation) {
+                local = local * gfxm::to_mat4(rotation->getRotation());
+            }
+            if(scale) {
+                local = gfxm::scale(local, scale->getScale());
+            }
+
+            world->transform = local;
         }
 
         for(size_t i = first_dirty_index; i < dirty_vec.size(); ++i) {
