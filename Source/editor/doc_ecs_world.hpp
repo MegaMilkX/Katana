@@ -299,6 +299,17 @@ public:
         renderSys->fillDrawList(dl);
 
         ImGui::Columns(2);
+        ImGui::BeginChild(ImGui::GetID("Toolbar0"), ImVec2(0, 32));
+        ImGui::Button("Btn0", ImVec2(32, 32));
+        ImGui::SameLine();
+        ImGui::Button("Btn1", ImVec2(32, 32));
+        ImGui::SameLine();
+        ImGui::Button("Btn2", ImVec2(32, 32));
+        ImGui::SameLine();
+        ImGui::Button("Btn3", ImVec2(32, 32));
+        ImGui::SameLine();
+        ImGui::Button("Btn4", ImVec2(32, 32));
+        ImGui::EndChild();
 
         gvp.draw(dl);
         if (ImGui::BeginDragDropTarget()) {
