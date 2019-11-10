@@ -69,7 +69,7 @@ class ecsDynamicsSys : public ecsSystem<
 
     BulletDebugDrawer2_OpenGL debugDrawer;
 public:
-    ecsDynamicsSys(DebugDraw* dd = 0) {
+    ecsDynamicsSys() {
         collisionConf = new btDefaultCollisionConfiguration();
         dispatcher = new btCollisionDispatcher(collisionConf);
         broadphase = new btDbvtBroadphase();
@@ -87,6 +87,9 @@ public:
         world->setGravity(btVector3(0.0f, -10.0f, 0.0f));
 
         world->setDebugDrawer(&debugDrawer);
+    }
+
+    void setDebugDraw(DebugDraw* dd) {
         debugDrawer.setDD(dd);
     }
 
@@ -160,20 +163,86 @@ public:
     }
 };
 
+
+class ecsRenderSubSystem;
+class ecsTupleSubSceneRenderable : public ecsTuple<ecsWorldTransform, ecsSubScene, ecsTagSubSceneRender> {
+public:
+    ecsRenderSubSystem* sub_system = 0;
+
+    void onAttribUpdate(ecsSubScene* scn) override {
+        sub_system = scn->world->getSystem<ecsRenderSubSystem>();
+    }
+};
+
+class ecsRenderSubSystem : public ecsSystem<
+    ecsTuple<ecsWorldTransform, ecsMeshes>,
+    ecsTupleSubSceneRenderable
+> {
+public:
+    void fillDrawList(DrawList& dl, const gfxm::mat4& root_transform) {
+        for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsMeshes>>()) {
+            for(auto& seg : a->get<ecsMeshes>()->segments) {
+                if(!seg.mesh) continue;
+                
+                GLuint vao = seg.mesh->mesh.getVao();
+                Material* mat = seg.material.get();
+                gfxm::mat4 transform = a->get<ecsWorldTransform>()->transform;
+                size_t indexOffset = seg.mesh->submeshes.size() > 0 ? seg.mesh->submeshes[seg.submesh_index].indexOffset : 0;
+                size_t indexCount = seg.mesh->submeshes.size() > 0 ? (seg.mesh->submeshes[seg.submesh_index].indexCount) : seg.mesh->mesh.getIndexCount();
+                
+                if(!seg.skin_data) {    // Static mesh
+                    DrawCmdSolid s;
+                    s.vao = vao;
+                    s.material = mat;
+                    s.indexCount = indexCount;
+                    s.indexOffset = indexOffset;
+                    s.transform = root_transform * transform;
+                    //s.object_ptr = getOwner();
+                    dl.solids.emplace_back(s);
+                } else {                // Skinned mesh
+                    std::vector<gfxm::mat4> bone_transforms;
+                    for(auto t : seg.skin_data->bone_nodes) {
+                        if(t) {
+                            bone_transforms.emplace_back(root_transform * t->transform);
+                        } else {
+                            bone_transforms.emplace_back(root_transform * gfxm::mat4(1.0f));
+                        }
+                    }
+
+                    DrawCmdSkin s;
+                    s.vao = vao;
+                    s.material = mat;
+                    s.indexCount = indexCount;
+                    s.indexOffset = indexOffset;
+                    s.transform = root_transform * transform;
+                    s.bone_transforms = bone_transforms;
+                    s.bind_transforms = seg.skin_data->bind_transforms;
+                    //s.object_ptr = getOwner();
+                    dl.skins.emplace_back(s);
+                }
+            }
+        }
+    }
+};
+
 class ecsRenderSystem : public ecsSystem<
-    ecsTuple<ecsWorldTransform, ecsMeshes>
+    ecsTuple<ecsWorldTransform, ecsMeshes>,
+    ecsTupleSubSceneRenderable
 > {
     DrawList draw_list;
-    gl::IndexedMesh mesh;
 public:
-    ecsRenderSystem() {
-        makeSphere(&mesh, 0.5f, 6);
-    }
+    ecsRenderSystem() {}
 
-    void onFit(ecsTuple<ecsWorldTransform, ecsMeshes>* object) {
+    void onFit(ecsTupleSubSceneRenderable* r) {
+        ecsRenderSubSystem* sys = r->get<ecsSubScene>()->world->getSystem<ecsRenderSubSystem>();
+        r->sub_system = sys;
     }
 
     void fillDrawList(DrawList& dl) {
+        for(auto& a : get_array<ecsTupleSubSceneRenderable>()) {
+            a->sub_system->fillDrawList(dl, a->get<ecsWorldTransform>()->transform);
+        }
+
         for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsMeshes>>()) {
             for(auto& seg : a->get<ecsMeshes>()->segments) {
                 if(!seg.mesh) continue;
@@ -242,16 +311,17 @@ class DocEcsWorld : public EditorDocumentTyped<EcsWorld>, public InputListenerWr
 
 public:
     DocEcsWorld() {
-        foo_render();
+        //foo_render();
 
         regEcsAttrib<ecsName>("Name");
+        regEcsAttrib<ecsSubScene>("SubScene");
+        regEcsAttrib<ecsTagSubSceneRender>("TagSubSceneRender");
         regEcsAttrib<ecsTRS>("TRS");
         regEcsAttrib<ecsTranslation>("Translation");
         regEcsAttrib<ecsRotation>("Rotation");
         regEcsAttrib<ecsScale>("Scale");
         regEcsAttrib<ecsWorldTransform>("WorldTransform");
         regEcsAttrib<ecsParentTransform>("ParentTransform");
-        regEcsAttrib<ecsTransformChildren>("TransformChildren");
         regEcsAttrib<ecsTransform>("Transform");
         regEcsAttrib<ecsTransformTree>("TransformTree");
         regEcsAttrib<ecsVelocity>("Velocity");
@@ -261,14 +331,12 @@ public:
 
         sceneGraphSys = new ecsysSceneGraph();
 
-        world.addSystems({
-            sceneGraphSys,
-            new ecsDynamicsSys(&gvp.getDebugDraw()),
-            renderSys = new ecsRenderSystem
-        });
+        sceneGraphSys = world.getSystem<ecsysSceneGraph>();
+        world.getSystem<ecsDynamicsSys>()->setDebugDraw(&gvp.getDebugDraw());
+        renderSys = world.getSystem<ecsRenderSystem>();
 
         auto ent = world.createEntity();
-        world.setAttrib<ecsVelocity>(ent);
+        ent.getAttrib<ecsVelocity>();
 
         gvp.camMode(GuiViewport::CAM_PAN);
         bindActionPress("ALT", [this](){ 
@@ -317,7 +385,16 @@ public:
                 ResourceNode* node = *(ResourceNode**)payload->Data;
                 LOG("Payload received: " << node->getFullName());
                 if(has_suffix(node->getName(), ".fbx")) {
-                    assimpImportEcsScene(sceneGraphSys, node->getFullName().c_str());
+                    entity_id ent = sceneGraphSys->createNode();
+                    ecsSubScene* sub_scene = world.getAttrib<ecsSubScene>(ent);
+                    sub_scene->world.reset(new ecsWorld());
+                    world.signalAttribUpdate<ecsSubScene>(ent);
+                    
+                    ecsysSceneGraph* sceneGraph = sub_scene->world->getSystem<ecsysSceneGraph>();
+                    world.createAttrib<ecsTagSubSceneRender>(ent);
+                    world.createAttrib<ecsWorldTransform>(ent);
+
+                    assimpImportEcsScene(sceneGraph, node->getFullName().c_str());
                 }
             }
             ImGui::EndDragDropTarget();
@@ -335,7 +412,7 @@ public:
         }
         ImGui::PopItemWidth();
         if(ImGui::SmallButton(ICON_MDI_PLUS)) {
-            selected_ent = world.createEntity();
+            selected_ent = world.createEntity().getId();
         }
         ImGui::SameLine();
         if(ImGui::SmallButton(ICON_MDI_MINUS)) {
@@ -346,12 +423,8 @@ public:
         ImGui::Columns(1);
     }
     void onGuiToolbox(Editor* ed) override {
-        if(!world.getEntity(selected_ent)) {
-            ImGui::Text("Nothing selected");
-            return;
-        } else {
-            ImGui::Text(MKSTR("UID: " << selected_ent).c_str());
-        }
+        // TODO: Check selected entity validity
+        ImGui::Text(MKSTR("UID: " << selected_ent).c_str());
 
         ImGui::PushItemWidth(-1);
         if(ImGui::BeginCombo("###ADD_ATTRIBUTE", "Add attribute...")) {
@@ -360,7 +433,7 @@ public:
                     for(auto& attr_id : it.second) {
                         auto inf = getEcsAttribTypeLib().get_info(attr_id);
                         if(ImGui::Selectable(inf->name.c_str())) {
-                            world.setAttrib(selected_ent, attr_id);
+                            world.createAttrib(selected_ent, attr_id);
                         }
                     }
                 } else {
@@ -369,7 +442,7 @@ public:
                         for(auto& attr_id : it.second) {
                             auto inf = getEcsAttribTypeLib().get_info(attr_id);
                             if(ImGui::Selectable(inf->name.c_str())) {
-                                world.setAttrib(selected_ent, attr_id);
+                                world.createAttrib(selected_ent, attr_id);
                             }
                         }
 

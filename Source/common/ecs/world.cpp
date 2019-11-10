@@ -1,19 +1,19 @@
 #include "world.hpp"
 
 
-entity_id ecsWorld::createEntity() {
+ecsEntityHandle ecsWorld::createEntity() {
     entity_id id = entities.acquire();
     live_entities.insert(id);
-    return id;
+    return ecsEntityHandle(this, id);
 }
-entity_id ecsWorld::createEntity(archetype_mask_t attrib_signature) {
-    entity_id ent = createEntity();
+ecsEntityHandle ecsWorld::createEntity(archetype_mask_t attrib_signature) {
+    auto hdl = createEntity();
     for(int i = 0; i < 64; ++i) {
         if(attrib_signature & (1 << i)) {
-            setAttrib(ent, i);
+            createAttrib(hdl.getId(), i);
         }
     }
-    return ent;
+    return hdl;
 }
 void ecsWorld::removeEntity(entity_id id) {
     for(auto& sys : systems) {
@@ -26,16 +26,14 @@ void ecsWorld::removeEntity(entity_id id) {
     entities.free(id);
     live_entities.erase(id);
 }
-ecsEntity* ecsWorld::getEntity(entity_id id) {
-    return entities.deref(id);
-}
+
 
 const std::set<entity_id>& ecsWorld::getEntities() const {
     return live_entities;
 }
 
 
-void ecsWorld::setAttrib(entity_id ent, attrib_id attrib) {
+void ecsWorld::createAttrib(entity_id ent, attrib_id attrib) {
     auto e = entities.deref(ent);
     auto a = e->getAttrib(attrib);
     for(auto& sys : systems) {
@@ -58,12 +56,16 @@ ecsAttribBase* ecsWorld::getAttribPtr(entity_id ent, attrib_id id) {
 }
 
 
-void ecsWorld::addSystems(const std::vector<ecsSystemBase*>& sys_array) {
-    for(auto& sys : sys_array) {
-        sys->world = this;
-        systems.push_back(std::unique_ptr<ecsSystemBase>(sys));
+void ecsWorld::signalAttribUpdate(entity_id ent, attrib_id attrib) {
+    uint64_t attr_mask = 1 << attrib;
+    auto e = entities.deref(ent);
+    if(e->getAttribBits() & attr_mask) {
+        for(auto& sys : systems) {
+            sys->signalUpdate(ent, attr_mask);
+        }
     }
 }
+
 
 void ecsWorld::update() {
     timer t;

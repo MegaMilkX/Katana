@@ -33,8 +33,8 @@ protected:
     Arg* ptr;
 public:
     ecsTuplePart() {}
-    ecsTuplePart(ecsEntity* ent) {
-        ptr = ent->findAttrib<Arg>();
+    ecsTuplePart(ecsWorld* world, entity_id ent) {
+        ptr = world->findAttrib<Arg>(ent);
     }
     virtual ~ecsTuplePart() {}
 
@@ -64,7 +64,7 @@ template<typename Arg>
 class ecsTuplePart<ecsExclude<Arg>> {
 public:
     ecsTuplePart() {}
-    ecsTuplePart(ecsEntity* ent) {}
+    ecsTuplePart(ecsWorld* world, entity_id ent) {}
     virtual ~ecsTuplePart() {}
 
     static uint64_t get_inclusion_sig() {
@@ -90,7 +90,7 @@ protected:
     Arg* ptr = 0;
 public:
     ecsTuplePart() {}
-    ecsTuplePart(ecsEntity* ent) {
+    ecsTuplePart(ecsWorld* world, entity_id ent) {
         //ptr = ent->findAttrib<Arg>();
     }
     virtual ~ecsTuplePart() {}
@@ -140,11 +140,11 @@ template<typename... Args>
 class ecsTuple : public ecsTupleBase, public ecsTuplePart<Args>... {
 public:
     ecsTuple() {}
-    ecsTuple(ecsEntity* ent)
-    : ecsTuplePart<Args>(ent)... {}
+    ecsTuple(ecsWorld* world, entity_id ent)
+    : ecsTuplePart<Args>(world, ent)... {}
 
     void init(ecsWorld* world, entity_id ent) override {
-        *this = ecsTuple<Args...>(world->getEntity(ent));
+        *this = ecsTuple<Args...>(world, ent);
         entity_uid = ent;
     }
 

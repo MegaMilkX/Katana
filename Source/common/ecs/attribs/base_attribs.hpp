@@ -11,10 +11,12 @@
 
 #include "../common/ecs/attribs/scene_graph_attribs.hpp"
 
-class ecsTransformChildren : public ecsAttrib<ecsTransformChildren> {
+class ecsSubScene : public ecsAttrib<ecsSubScene> {
 public:
-    std::set<entity_id> entities;
+    std::shared_ptr<ecsWorld> world;
 };
+
+class ecsTagSubSceneRender : public ecsAttrib<ecsTagSubSceneRender> {};
 
 class ecsName : public ecsAttrib<ecsName> {
 public:

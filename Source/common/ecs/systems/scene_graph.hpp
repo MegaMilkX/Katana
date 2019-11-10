@@ -59,10 +59,23 @@ public:
     }
 };
 
+class ecsysSceneGraph;
+class ecsTupleSubGraph : public ecsTuple<ecsSubScene> {
+public:
+    ecsysSceneGraph* sub_system = 0;
+
+    void onAttribUpdate(ecsSubScene* ss) {
+        if(ss->world) {
+            sub_system = ss->world->getSystem<ecsysSceneGraph>();
+        }
+    }
+};
+
 class ecsysSceneGraph : public ecsSystem<
     ecsTuple<ecsWorldTransform>,
     ecsTuple<ecsParentTransform>,
-    tupleTransform
+    tupleTransform,
+    ecsTupleSubGraph
 > {
     bool hierarchy_dirty = true;
     struct Node {
@@ -79,6 +92,12 @@ class ecsysSceneGraph : public ecsSystem<
 
     std::vector<tupleTransform*> dirty_vec;
     size_t first_dirty_index = 0;
+
+    void onFit(ecsTupleSubGraph* sub_graph) {
+        if(sub_graph->get<ecsSubScene>()->world) {
+            sub_graph->sub_system = sub_graph->get<ecsSubScene>()->world->getSystem<ecsysSceneGraph>();
+        }
+    }
 
     void onFit(tupleTransform* o) {
         o->system = this;
@@ -112,6 +131,11 @@ class ecsysSceneGraph : public ecsSystem<
 
 
     void onUpdate() {
+        for(auto& a : get_array<ecsTupleSubGraph>()) {
+            if(!a->sub_system) continue;
+            a->sub_system->onUpdate();
+        }
+
         for(size_t i = first_dirty_index; i < dirty_vec.size(); ++i) {
             auto a = dirty_vec[i];
 
@@ -212,7 +236,8 @@ public:
     }
 
     entity_id createNode() {
-        entity_id ent = world->createEntity();
+        entity_id ent = world->createEntity().getId();
+        hierarchy_dirty = true;
         return ent;
     }
     void setParent(entity_id child, entity_id parent) {
