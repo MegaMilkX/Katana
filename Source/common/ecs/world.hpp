@@ -89,10 +89,11 @@ T* ecsWorld::setAttrib(entity_id ent, const T& value) {
     auto e = entities.deref(ent);
     auto a = e->findAttrib<T>();
     if(!a) {
-        // TODO: 
-        createAttrib<T>(ent);
-        e->updateAttrib<T>(value);
+        e->setAttrib<T>(value);
         a = e->findAttrib<T>();
+        for(auto& sys : systems) {
+            sys->attribsCreated(this, ent, e->getAttribBits(), 1 << T::get_id_static());
+        }
     } else {
         updateAttrib(ent, value);
     }

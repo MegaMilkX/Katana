@@ -170,7 +170,11 @@ public:
     ecsRenderSubSystem* sub_system = 0;
 
     void onAttribUpdate(ecsSubScene* scn) override {
-        sub_system = scn->world->getSystem<ecsRenderSubSystem>();
+        if(!scn->getWorld()) {
+            sub_system = 0;
+        } else {
+            sub_system = scn->getWorld()->getSystem<ecsRenderSubSystem>();
+        }
     }
 };
 
@@ -234,8 +238,10 @@ public:
     ecsRenderSystem() {}
 
     void onFit(ecsTupleSubSceneRenderable* r) {
-        ecsRenderSubSystem* sys = r->get<ecsSubScene>()->world->getSystem<ecsRenderSubSystem>();
-        r->sub_system = sys;
+        if(r->get<ecsSubScene>()->getWorld()) {
+            ecsRenderSubSystem* sys = r->get<ecsSubScene>()->getWorld()->getSystem<ecsRenderSubSystem>();
+            r->sub_system = sys;
+        }
     }
 
     void fillDrawList(DrawList& dl) {
@@ -386,11 +392,10 @@ public:
                 LOG("Payload received: " << node->getFullName());
                 if(has_suffix(node->getName(), ".fbx")) {
                     entity_id ent = sceneGraphSys->createNode();
-                    ecsSubScene* sub_scene = world.getAttrib<ecsSubScene>(ent);
-                    sub_scene->world.reset(new ecsWorld());
-                    world.signalAttribUpdate<ecsSubScene>(ent);
+                    ecsSubScene sub_scene(std::shared_ptr<ecsWorld>(new ecsWorld()));
+                    world.setAttrib(ent, sub_scene);
                     
-                    ecsysSceneGraph* sceneGraph = sub_scene->world->getSystem<ecsysSceneGraph>();
+                    ecsysSceneGraph* sceneGraph = sub_scene.getWorld()->getSystem<ecsysSceneGraph>();
                     world.createAttrib<ecsTagSubSceneRender>(ent);
                     world.createAttrib<ecsWorldTransform>(ent);
 

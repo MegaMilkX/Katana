@@ -12,8 +12,12 @@
 #include "../common/ecs/attribs/scene_graph_attribs.hpp"
 
 class ecsSubScene : public ecsAttrib<ecsSubScene> {
-public:
     std::shared_ptr<ecsWorld> world;
+public:
+    ecsSubScene() {}
+    ecsSubScene(std::shared_ptr<ecsWorld> world)
+    : world(world) {}
+    ecsWorld* getWorld() const { return world.get(); }
 };
 
 class ecsTagSubSceneRender : public ecsAttrib<ecsTagSubSceneRender> {};

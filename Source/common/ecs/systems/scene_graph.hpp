@@ -65,8 +65,8 @@ public:
     ecsysSceneGraph* sub_system = 0;
 
     void onAttribUpdate(ecsSubScene* ss) {
-        if(ss->world) {
-            sub_system = ss->world->getSystem<ecsysSceneGraph>();
+        if(ss->getWorld()) {
+            sub_system = ss->getWorld()->getSystem<ecsysSceneGraph>();
         }
     }
 };
@@ -94,8 +94,8 @@ class ecsysSceneGraph : public ecsSystem<
     size_t first_dirty_index = 0;
 
     void onFit(ecsTupleSubGraph* sub_graph) {
-        if(sub_graph->get<ecsSubScene>()->world) {
-            sub_graph->sub_system = sub_graph->get<ecsSubScene>()->world->getSystem<ecsysSceneGraph>();
+        if(sub_graph->get<ecsSubScene>()->getWorld()) {
+            sub_graph->sub_system = sub_graph->get<ecsSubScene>()->getWorld()->getSystem<ecsysSceneGraph>();
         }
     }
 

@@ -11,17 +11,9 @@ class ecsWorld;
 class ecsEntity {
     uint64_t attrib_bits;
     std::map<uint8_t, std::shared_ptr<ecsAttribBase>> attribs;
-public:
-    template<typename T>
-    T* getAttrib() {
-        return dynamic_cast<T*>(getAttrib(T::get_id_static()));
-    }
 
-    ecsAttribBase* getAttrib(attrib_id id) {
-        ecsAttribBase* ptr = findAttrib(id);
-        if (ptr) {
-          return ptr;
-        }
+    ecsAttribBase* allocAttrib(attrib_id id) {
+        ecsAttribBase* ptr = 0;
         auto inf = getEcsAttribTypeLib().get_info(id);
         if(!inf) {
             LOG_WARN("Attribute info for id " << id << " doesn't exist");
@@ -32,10 +24,37 @@ public:
             LOG_WARN("Constructor for attrib " << inf->name << " failed");
             return 0;
         }
+        return ptr;
+    }
+
+public:
+    template<typename T>
+    T* getAttrib() {
+        return dynamic_cast<T*>(getAttrib(T::get_id_static()));
+    }
+
+    ecsAttribBase* getAttrib(attrib_id id) {
+        ecsAttribBase* ptr = findAttrib(id);
+        ptr = allocAttrib(id);
         attribs[(uint8_t)id].reset(ptr);
         setBit(id);
         return ptr;
     }
+    template<typename T>
+    T* setAttrib(const T& value) {
+        T* ptr = findAttrib<T>();
+        if(!ptr) {
+            ptr = (T*)allocAttrib(T::get_id_static());
+            if(!ptr) {
+                return 0;
+            }
+            attribs[(uint8_t)T::get_id_static()].reset(ptr);
+            setBit(T::get_id_static());
+        }
+        *ptr = value;
+        return ptr;
+    }
+
     void removeAttrib(attrib_id id) {
         attribs.erase((uint8_t)id);
         clearBit(id);
