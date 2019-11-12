@@ -12,6 +12,9 @@ public:
             ImGui::EndCombo();
         }
         if(ImGui::BeginCombo("motion", "SingleMotion")) {
+            ImGui::Selectable("SingleMotion");
+            ImGui::Selectable("MotionGraph");
+            ImGui::Selectable("BlendTree");
             ImGui::EndCombo();
         }
     }
