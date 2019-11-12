@@ -299,6 +299,7 @@ public:
 
 
 #include "../common/ecs/systems/scene_graph.hpp"
+#include "../common/ecs/attribs/sub_scene_animator.hpp"
 
 
 #include "../common/ecs/util/assimp_to_ecs_world.hpp"
@@ -334,6 +335,7 @@ public:
         regEcsAttrib<ecsCollisionShape>("CollisionShape", "Collision");
         regEcsAttrib<ecsMass>("Mass", "Physics");
         regEcsAttrib<ecsMeshes>("Meshes", "Rendering");
+        regEcsAttrib<ecsSubSceneAnimator>("SubSceneAnimator");
 
         sceneGraphSys = new ecsysSceneGraph();
 
