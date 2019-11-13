@@ -17,7 +17,7 @@ public:
     float cursor;
 };
 
-class BlendTreeMotion : public BaseMotion {
+class BlendTreeMotion2 : public BaseMotion {
 public:
 };
 
