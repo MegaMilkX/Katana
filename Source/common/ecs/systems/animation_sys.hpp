@@ -50,7 +50,7 @@ public:
             auto animator = t->get<ecsSubSceneAnimator>();
             if(!animator->motion) continue;
             if(!t->sysPose) continue;
-            animator->motion->update();
+            animator->motion->update(1.0f/60.0f);
             const auto& samples = animator->motion->getSamples();
             if(samples.size() == 0) continue;
             t->sysPose->setPose(samples);

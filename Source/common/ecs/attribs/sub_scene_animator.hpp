@@ -46,7 +46,7 @@ public:
     virtual void onGui() {}
     virtual void onSkeletonChange() = 0;
 
-    virtual void update() = 0;
+    virtual void update(float dt) = 0;
 
     void setSkeleton(std::shared_ptr<Skeleton> skel) {
         skeleton = skel;
@@ -62,22 +62,27 @@ class SingleMotion : public BaseMotion {
 public:
     std::shared_ptr<Animation> anim;
     std::vector<int32_t> mapping;
-    float cursor;
+    float cursor = 0.0f;
 
     MOTION_TYPE2 getMotionType() const override { return MOTION_SINGLE; }
     
     void onGui() override {
         imguiResourceTreeCombo("anim clip", anim, "anm", [this](){
+            cursor = .0f;
             onSkeletonChange();
         });
         ImGui::DragFloat(MKSTR("cursor###" << this).c_str(), &cursor);
     }
 
-    void update() override {
+    void update(float dt) override {
         if(!anim || !skeleton) {
             return;
         }
         anim->sample_remapped(samples, cursor, mapping);
+        cursor += dt * anim->fps;
+        if(cursor>=anim->length) {
+            cursor -= anim->length;
+        }
     }
 
     void onSkeletonChange() override {
@@ -91,7 +96,7 @@ class BlendTreeMotion2 : public BaseMotion {
 public:
     MOTION_TYPE2 getMotionType() const override { return MOTION_BLENDTREE; }
 
-    void update() override {
+    void update(float dt) override {
         // TODO: Get samples
     }
 
@@ -104,7 +109,7 @@ class ActionGraphMotion : public BaseMotion {
 public:
     MOTION_TYPE2 getMotionType() const override { return MOTION_ACTIONGRAPH; }
 
-    void update() override {
+    void update(float dt) override {
         // TODO: Get samples
     }
 
@@ -119,7 +124,7 @@ public:
 
     MOTION_TYPE2 getMotionType() const override { return MOTION_LAYERED; }
 
-    void update() override {
+    void update(float dt) override {
         // TODO: Get samples
     }
 

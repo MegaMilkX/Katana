@@ -340,10 +340,10 @@ public:
 
         sceneGraphSys = new ecsysSceneGraph();
 
+        world.getSystem<ecsysAnimation>();
         sceneGraphSys = world.getSystem<ecsysSceneGraph>();
         world.getSystem<ecsDynamicsSys>()->setDebugDraw(&gvp.getDebugDraw());
         renderSys = world.getSystem<ecsRenderSystem>();
-        world.getSystem<ecsysAnimation>();
 
         auto ent = world.createEntity();
         ent.getAttrib<ecsVelocity>();

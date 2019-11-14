@@ -8,19 +8,21 @@
 
 #include <assert.h>
 
+typedef ecsTuple<ecsName, ecsOptional<ecsTranslation>, ecsOptional<ecsRotation>, ecsOptional<ecsScale>> ecsTupleAnimNode;
+
 class ecsysSubScenePose : public ecsSystem<
-    ecsTuple<ecsName, ecsWorldTransform>
+    ecsTupleAnimNode
 > {
 private:
     std::shared_ptr<Skeleton> skeleton;
-    std::vector<ecsTuple<ecsName, ecsWorldTransform>*> nodes;
+    std::vector<ecsTupleAnimNode*> nodes;
 public:
-    void onFit(ecsTuple<ecsName, ecsWorldTransform>* node) {
+    void onFit(ecsTupleAnimNode* node) {
         if(!skeleton) return;
         Skeleton::Bone* bone = skeleton->getBone(node->get<ecsName>()->name);
         nodes[bone->id] = node;
     }
-    void onUnfit(ecsTuple<ecsName, ecsWorldTransform>* node) {
+    void onUnfit(ecsTupleAnimNode* node) {
         for(auto& n : nodes) { // No need to check for skeleton existence
             if(node == n) {
                 n = 0;
@@ -41,13 +43,14 @@ public:
         for(size_t i = 0; i < samples.size(); ++i) {
             auto n = nodes[i];
             if(!n) continue;
-            ecsWorldTransform* t = n->get<ecsWorldTransform>();
+            ecsTranslation* t = n->get_optional<ecsTranslation>();
+            ecsRotation* r = n->get_optional<ecsRotation>();
+            ecsScale* s = n->get_optional<ecsScale>();
             const AnimSample& sample = samples[i];
 
-            t->transform = 
-                gfxm::translate(gfxm::mat4(1.0f), sample.t)
-                * gfxm::to_mat4(sample.r)
-                * gfxm::scale(gfxm::mat4(1.0f), sample.s);
+            if(t) t->setPosition(sample.t);
+            if(r) r->setRotation(sample.r);
+            if(s) s->setScale(sample.s);
         }
     }
 
@@ -57,7 +60,7 @@ public:
         //samples = skeleton->makePoseArray();
         nodes.resize(skeleton->boneCount());
         
-        for(auto& t : get_array<ecsTuple<ecsName, ecsWorldTransform>>()) {
+        for(auto& t : get_array<ecsTupleAnimNode>()) {
             auto bone = skeleton->getBone(t->get<ecsName>()->name);
             if(bone) {
                 nodes[bone->id] = t.get();
