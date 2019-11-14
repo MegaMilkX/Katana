@@ -299,6 +299,7 @@ public:
 
 
 #include "../common/ecs/systems/scene_graph.hpp"
+#include "../common/ecs/systems/animation_sys.hpp"
 #include "../common/ecs/attribs/sub_scene_animator.hpp"
 
 
@@ -342,6 +343,7 @@ public:
         sceneGraphSys = world.getSystem<ecsysSceneGraph>();
         world.getSystem<ecsDynamicsSys>()->setDebugDraw(&gvp.getDebugDraw());
         renderSys = world.getSystem<ecsRenderSystem>();
+        world.getSystem<ecsysAnimation>();
 
         auto ent = world.createEntity();
         ent.getAttrib<ecsVelocity>();

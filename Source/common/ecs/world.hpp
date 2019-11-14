@@ -26,6 +26,10 @@ class ecsWorld {
         T* sys = new T();
         systems.push_back(std::unique_ptr<ecsSystemBase>(sys));
         ((ecsSystemBase*)sys)->world = this;
+        for(auto e : live_entities) {
+            ecsEntity* ent = entities.deref(e);
+            sys->attribsCreated(this, e, ent->getAttribBits(), ent->getAttribBits());
+        }
         return sys;
     }
 
