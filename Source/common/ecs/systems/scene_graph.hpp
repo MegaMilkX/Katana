@@ -218,6 +218,9 @@ class ecsysSceneGraph : public ecsSystem<
         //first_dirty_index = o->;
         uint64_t current_index = o->dirty_index;
         uint64_t new_index = first_dirty_index - 1;
+        if(current_index >= first_dirty_index) {
+            return;
+        }
 
         tupleTransform* tmp = dirty_vec[new_index];
         dirty_vec[new_index] = dirty_vec[current_index];
