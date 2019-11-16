@@ -11,6 +11,72 @@
 
 #include "entity_handle.hpp"
 
+class byte_block_vector {
+    char** _blocks = 0;
+    size_t _elem_size = 0;
+    size_t _elem_per_block = 0;
+    size_t _block_count = 0;
+    size_t _count = 0;
+    
+    void deconstruct_id(size_t id, size_t& out_block_id, size_t& out_local_item_id) const {
+        out_block_id = id / _elem_per_block;
+        out_local_item_id = id - _elem_per_block * out_block_id;
+    }
+public:
+    byte_block_vector(size_t elem_size, size_t elems_per_block)
+    : _elem_size(elem_size), _elem_per_block(elems_per_block) {
+        _blocks = new char*[1];
+        void* blockptr = malloc(_elem_size * _elem_per_block);
+
+    }
+    
+    size_t elem_size() const { return _elem_size; }
+    size_t block_count() const { return _block_count; }
+    size_t size() const { return _count; }
+    
+    void clear() {
+        for(size_t i = 0; i < _block_count; ++i) {
+            delete _blocks[i];
+        }
+        delete[] _blocks;
+        _blocks = 0;
+    }
+
+    void expand(size_t count) {
+
+    }
+
+    const void* operator[](size_t index) const {
+        size_t blockid = 0;
+        size_t localid = 0;
+        deconstruct_id(index, blockid, localid);
+        return _blocks[blockid] + localid * _elem_size;
+    }
+    void*       operator[](size_t index) {
+        size_t blockid = 0;
+        size_t localid = 0;
+        deconstruct_id(index, blockid, localid);
+        return _blocks[blockid] + localid * _elem_size;
+    }
+};
+
+inline size_t calcArchetypeSize(uint64_t attribmask) {
+    size_t sz = 0;
+    for(size_t i = 0; i < 64; ++i) {
+        if(attribmask & (1 << i) == 0) continue;
+        auto info = getEcsAttribTypeLib().get_info(i);
+        if(!info) break;
+        sz += info->size_of;
+    }
+    return sz;
+}
+
+class ArchetypeContainer {
+public:
+    
+};
+
+
 typedef uint64_t archetype_mask_t;
 
 class ecsWorld {
