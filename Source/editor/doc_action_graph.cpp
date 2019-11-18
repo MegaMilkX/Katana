@@ -337,72 +337,76 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
             selected_transition = 0;
         } else {
             ImGui::DragFloat("blend time", &selected_transition->blendTime);
-            if(action_graph->getParams().paramCount()) {
-                auto& conds = selected_transition->conditions;
-                for(size_t i = 0; i < conds.size(); ++i) {
-                    auto& cond = conds[i];
-                    ImGui::PushItemWidth(70);
-                    if(ImGui::BeginCombo(MKSTR("###cond_id"<<i).c_str(), action_graph->getParams().getParam(conds[i].param).name.c_str(), ImGuiComboFlags_NoArrowButton)) {
-                        auto& params = action_graph->getParams();
-                        for(size_t j = 0; j < params.paramCount(); ++j) {
-                            auto& p = params.getParam(j);
-                            if(ImGui::Selectable(p.name.c_str(), j == cond.param)) {
-                                cond.param = j;
-                            }
+            auto& conds = selected_transition->conditions;
+            for(size_t i = 0; i < conds.size(); ++i) {
+                auto& cond = conds[i];
+                ImGui::PushItemWidth(70);
+                if(ImGui::BeginCombo(MKSTR("###cond_id"<<i).c_str(), conds[i].param_name.c_str(), ImGuiComboFlags_NoArrowButton)) {
+                    for(size_t j = 0; j < blackboard.count(); ++j) {
+                        auto name = blackboard.getName(j);
+                        if(ImGui::Selectable(name, j == cond.param_hdl)) {
+                            cond.param_hdl = j;
+                            conds[i].param_name = name;
                         }
-                        ImGui::EndCombo();
-                    } 
-                    ImGui::PopItemWidth();
-                    ImGui::SameLine();
-                    ImGui::PushItemWidth(30);
-                    if(ImGui::BeginCombo(MKSTR("###cond_type"<<i).c_str(), condTypeToCStr(cond.type), ImGuiComboFlags_NoArrowButton)) {
-                        if(ImGui::Selectable(">")) { cond.type = ActionGraphTransition::LARGER; }
-                        if(ImGui::Selectable(">=")) { cond.type = ActionGraphTransition::LARGER_EQUAL; }
-                        if(ImGui::Selectable("<")) { cond.type = ActionGraphTransition::LESS; }
-                        if(ImGui::Selectable("<=")) { cond.type = ActionGraphTransition::LESS_EQUAL; }
-                        if(ImGui::Selectable("==")) { cond.type = ActionGraphTransition::EQUAL; }
-                        if(ImGui::Selectable("!=")) { cond.type = ActionGraphTransition::NOT_EQUAL; }
-                        ImGui::EndCombo();
                     }
-                    ImGui::PopItemWidth();
-                    //ImGui::Text(">=");
-                    ImGui::SameLine();
-                    ImGui::PushItemWidth(60);
-                    ImGui::DragFloat(MKSTR("###cond_value" << i).c_str(), &cond.ref_value, .01f);
-                    ImGui::PopItemWidth();
+                    ImGui::EndCombo();
+                } 
+                ImGui::PopItemWidth();
+                ImGui::SameLine();
+                ImGui::PushItemWidth(30);
+                if(ImGui::BeginCombo(MKSTR("###cond_type"<<i).c_str(), condTypeToCStr(cond.type), ImGuiComboFlags_NoArrowButton)) {
+                    if(ImGui::Selectable(">")) { cond.type = ActionGraphTransition::LARGER; }
+                    if(ImGui::Selectable(">=")) { cond.type = ActionGraphTransition::LARGER_EQUAL; }
+                    if(ImGui::Selectable("<")) { cond.type = ActionGraphTransition::LESS; }
+                    if(ImGui::Selectable("<=")) { cond.type = ActionGraphTransition::LESS_EQUAL; }
+                    if(ImGui::Selectable("==")) { cond.type = ActionGraphTransition::EQUAL; }
+                    if(ImGui::Selectable("!=")) { cond.type = ActionGraphTransition::NOT_EQUAL; }
+                    ImGui::EndCombo();
                 }
-                if(ImGui::SmallButton(ICON_MDI_PLUS "###cond_add")) {
-                    selected_transition->conditions.emplace_back(
-                        ActionGraphTransition::Condition{
-                            0, ActionGraphTransition::CONDITION::LARGER, .0f
-                        }
-                    );
-                }
+                ImGui::PopItemWidth();
+                //ImGui::Text(">=");
+                ImGui::SameLine();
+                ImGui::PushItemWidth(60);
+                ImGui::DragFloat(MKSTR("###cond_value" << i).c_str(), &cond.ref_value, .01f);
+                ImGui::PopItemWidth();
+            }
+            if(ImGui::SmallButton(ICON_MDI_PLUS "###cond_add")) {
+                selected_transition->conditions.emplace_back(
+                    ActionGraphTransition::Condition{
+                        0, "Param", ActionGraphTransition::CONDITION::LARGER, .0f
+                    }
+                );
             }
         }
     }
 
     ImGui::Separator();
-    ImGui::Text("Parameters");
-    auto& params = action_graph->getParams();
-    for(size_t i = 0; i < params.paramCount(); ++i) {
-        auto& p = params.getParam(i);
+    ImGui::Text("Blackboard");
+    
+    for(size_t i = 0; i < blackboard.count(); ++i) {
+        auto name = blackboard.getName(i);
+
         char buf[256];
         memset(buf, 0, sizeof(buf));
-        memcpy(buf, p.name.c_str(), p.name.size());
-        if(ImGui::InputText(MKSTR("###param_name" << &p).c_str(), buf, sizeof(buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
-            params.renameParam(i, buf);
+        memcpy(buf, name, strlen(name));
+        if(ImGui::InputText(MKSTR("###param_name" << i).c_str(), buf, sizeof(buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
+            blackboard.rename(i, buf);
         }
-        ImGui::SameLine();
-        ImGui::DragFloat(MKSTR("###" << &p).c_str(), &p.value, 0.01f);
     }
 
     if(ImGui::SmallButton(ICON_MDI_PLUS "###param_add")) {
-        action_graph->getParams().createParam("Param");
+        static int new_param_num = 0;
+        blackboard.getHandle(MKSTR("Param_" << new_param_num++).c_str());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
         ImGui::Text("Add parameter");
         ImGui::EndTooltip();
     }
+}
+
+
+void DocActionGraph::onResourceSet() {
+    auto& action_graph = _resource;
+    action_graph->setBlackboard(&blackboard);
 }

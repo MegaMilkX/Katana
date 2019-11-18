@@ -176,14 +176,14 @@ void ActionGraph::setEntryAction(const std::string& name) {
     current_action = entry_action;
 }
 
-ActionGraphParams& ActionGraph::getParams() {
-    return param_table;
-}
 
 void ActionGraph::update(
     float dt, 
     std::vector<AnimSample>& samples
 ) {
+    if(!blackboard) {
+        assert(false);
+    }
     if(current_action > actions.size()) {
         return;
     }
@@ -192,7 +192,7 @@ void ActionGraph::update(
     for(auto& t : act->getTransitions()) {
         bool res = false;
         for(auto& cond : t->conditions) {
-            float val = param_table.getParam(cond.param).value;
+            float val = blackboard->get_float(cond.param_hdl);
             float ref_val = cond.ref_value;
             switch(cond.type) {
             case ActionGraphTransition::LARGER: res = val > ref_val; break;
@@ -245,7 +245,6 @@ void ActionGraph::serialize(out_stream& out) {
 
     out.write<uint32_t>(actions.size());
     out.write<uint32_t>(transitions.size());
-    out.write<uint32_t>(param_table.paramCount());
     out.write<uint32_t>(entry_action);
     for(size_t i = 0; i < actions.size(); ++i) {
         auto& a = actions[i];
@@ -263,15 +262,10 @@ void ActionGraph::serialize(out_stream& out) {
         w.write<uint32_t>(t->conditions.size());
         for(size_t j = 0; j < t->conditions.size(); ++j) {
             auto& cond = t->conditions[j];
-            w.write<uint32_t>(cond.param);
+            w.write(std::string(cond.param_name)); // Blackboard value name
             w.write<uint8_t>(cond.type);
             w.write<float>(cond.ref_value);
         }
-    }
-    for(size_t i = 0; i < param_table.paramCount(); ++i) {
-        auto& param = param_table.getParam(i);
-        w.write(param.name);
-        w.write(param.value);
     }
 }
 bool ActionGraph::deserialize(in_stream& in, size_t sz) {
@@ -279,7 +273,6 @@ bool ActionGraph::deserialize(in_stream& in, size_t sz) {
 
     actions.resize(r.read<uint32_t>());
     transitions.resize(r.read<uint32_t>());
-    param_table.resize(r.read<uint32_t>());
     for(size_t i = 0; i < actions.size(); ++i) {
         actions[i] = new ActionGraphNode();
     }
@@ -313,15 +306,10 @@ bool ActionGraph::deserialize(in_stream& in, size_t sz) {
         t->conditions.resize(r.read<uint32_t>());
         for(size_t j = 0; j < t->conditions.size(); ++j) {
             auto& cond = t->conditions[j];
-            cond.param = (size_t)r.read<uint32_t>();
+            cond.param_name = r.readStr();
             cond.type = (ActionGraphTransition::CONDITION)r.read<uint8_t>();
             cond.ref_value = r.read<float>();
         }
-    }
-    for(size_t i = 0; i < param_table.paramCount(); ++i) {
-        auto& param = param_table.getParam(i);
-        param.name = r.readStr();
-        param.value = r.read<float>();
     }
 
     return true;

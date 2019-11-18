@@ -20,6 +20,8 @@ class ActionStateMachine : public Attribute {
     ActionGraph graph;
     int32_t current_action_id = -1;
 
+    AnimBlackboard blackboard;
+
     void resizeSampleBuffer();
     void makeGraphLocalCopy();
 

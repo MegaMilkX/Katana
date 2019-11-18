@@ -23,6 +23,7 @@ void ActionStateMachine::makeGraphLocalCopy() {
         strm.jump(0);
         graph.deserialize(strm, strm.bytes_available());
         graph.setSkeleton(skeleton);
+        graph.setBlackboard(&blackboard);
     }
 }
 
@@ -64,9 +65,11 @@ void ActionStateMachine::onGui() {
         makeGraphLocalCopy();
     });
 
-    for(size_t i = 0; i < graph.getParams().paramCount(); ++i) {
-        auto& p = graph.getParams().getParam(i);
-        ImGui::DragFloat(p.name.c_str(), &p.value, 0.001f);
+    for(size_t i = 0; i < blackboard.count(); ++i) {
+        float f = blackboard.get_float(i);
+        if(ImGui::DragFloat(blackboard.getName(i), &f, 0.001f)) {
+            blackboard.set(i, f);
+        }
     }
 }
 

@@ -12,50 +12,9 @@
 #include "clip_motion.hpp"
 #include "blend_tree_motion.hpp"
 
+#include "../util/anim_blackboard.hpp"
+
 class ActionGraph;
-
-class ActionGraphParams {
-    struct Param {
-        std::string name;
-        float value;
-    };
-    std::vector<Param> params;
-
-public:
-    void resize(size_t sz) {
-        params.resize(sz);
-    }
-    size_t paramCount() const {
-        return params.size();
-    }
-    size_t createParam(const std::string& name) {
-        std::set<std::string> names;
-        for(auto& p : params) {
-            names.insert(p.name);
-        }
-        std::string name_ = makeUniqueString(names, name);
-        
-        size_t i = params.size();
-        params.emplace_back(Param{name_, .0f});
-        return i;
-    }
-    void renameParam(size_t i, const std::string& new_name) {
-        if(i >= params.size()) {
-            return;
-        }
-        
-        std::set<std::string> names;
-        for(auto& p : params) {
-            names.insert(p.name);
-        }
-        std::string name_ = makeUniqueString(names, new_name);
-
-        params[i].name = name_;
-    }
-    Param& getParam(size_t i) {
-        return params[i];
-    }
-};
 
 class ActionGraphNode;
 struct ActionGraphTransition {
@@ -68,7 +27,8 @@ struct ActionGraphTransition {
         NOT_EQUAL
     };
     struct Condition {
-        size_t param;
+        size_t param_hdl;
+        std::string param_name;
         CONDITION type;
         float ref_value;
     };
@@ -127,7 +87,7 @@ class ActionGraph : public Resource {
     float trans_weight = 1.0f;
     float trans_speed = 0.1f;
     std::vector<AnimSample> trans_samples;
-    ActionGraphParams param_table;
+    AnimBlackboard* blackboard = 0;
 
     void pickEntryAction();
 
@@ -137,6 +97,14 @@ public:
     void setSkeleton(std::shared_ptr<Skeleton> skeleton) {
         for(auto a : actions) {
             a->setSkeleton(skeleton);
+        }
+    }
+    void setBlackboard(AnimBlackboard* bb) {
+        blackboard = bb;
+        for(auto& t : transitions) {
+            for(auto& c : t->conditions) {
+                c.param_hdl = blackboard->getHandle(c.param_name.c_str());
+            }
         }
     }
 
@@ -158,8 +126,6 @@ public:
     size_t                                     getEntryActionId();
     ActionGraphNode*                           getEntryAction();
     void                                       setEntryAction(const std::string& name);
-
-    ActionGraphParams&                         getParams();
 
     void                                       update(
         float dt, 

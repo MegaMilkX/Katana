@@ -9,11 +9,16 @@ class DocActionGraph : public EditorDocumentTyped<ActionGraph> {
     bool first_use = true;
     ActionGraphNode* selected_action = 0;
     ActionGraphTransition* selected_transition = 0;
+
+    AnimBlackboard blackboard;
+
 public:
     DocActionGraph();
 
     virtual void onGui(Editor* ed, float dt);
     void onGuiToolbox(Editor* ed) override;
+
+    void onResourceSet() override;
 };
 STATIC_RUN(DocActionGraph) {
     regEditorDocument<DocActionGraph>({ "action_graph" });
