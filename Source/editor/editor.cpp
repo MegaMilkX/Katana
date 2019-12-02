@@ -176,22 +176,22 @@ void Editor::onGui(float dt) {
         if(ImGui::BeginMenu("File")) {
             if(ImGui::BeginMenu("New Resource")) {
                 if(ImGui::MenuItem("Scene")) {
-                    addDocument(new EditorDocScene());
+                    addWindow(new EditorDocScene());
                 }
                 if(ImGui::MenuItem("ActionGraph")) {
-                    addDocument(new DocActionGraph());
+                    addWindow(new DocActionGraph());
                 }
                 if(ImGui::MenuItem("BlendTree")) {
-                    addDocument(new DocBlendTree());
+                    addWindow(new DocBlendTree());
                 }
                 if(ImGui::MenuItem("Material")) {
-                    addDocument(new DocMaterial());
+                    addWindow(new DocMaterial());
                 }
                 if(ImGui::MenuItem("RenderGraph")) {
-                    addDocument(new DocRenderGraph());
+                    addWindow(new DocRenderGraph());
                 }
                 if(ImGui::MenuItem("EcsWorld")) {
-                    addDocument(new DocEcsWorld());
+                    addWindow(new DocEcsWorld());
                 }
                 if(ImGui::MenuItem("Texture2D", 0, false, false)) {}
                 if(ImGui::MenuItem("Mesh", 0, false, false)) {}
@@ -206,16 +206,25 @@ void Editor::onGui(float dt) {
             }
             if(ImGui::MenuItem("Save as...")) {
                 if(focused_document) {
-                    focused_document->saveAs();
+                    // TODO
                 }
             }
             if(ImGui::MenuItem("Exit")) {}
             ImGui::EndMenu();
         }
+        if(ImGui::BeginMenu("Configuration")) {
+            if(ImGui::MenuItem("Settings")) {
+                
+            }
+            if(ImGui::MenuItem("Color scheme")) {
+
+            }
+            ImGui::EndMenu();
+        }
         ImGui::EndMenuBar();
     }
 
-    EditorDocument* doc_to_be_closed = 0;
+    EditorWindow* doc_to_be_closed = 0;
 
     ed_resource_tree.update(this);
     for(auto& d : open_documents) {
@@ -227,7 +236,7 @@ void Editor::onGui(float dt) {
             } else {
                 delete d;
                 open_documents.erase(d);
-                setFocusedDocument(0);
+                setFocusedWindow(0);
             }
         }
     }
@@ -237,7 +246,7 @@ void Editor::onGui(float dt) {
         if(ImGui::Button("Close")) {
             delete doc_to_be_closed;
             open_documents.erase(doc_to_be_closed);
-            setFocusedDocument(0);
+            setFocusedWindow(0);
             ImGui::CloseCurrentPopup();
         } ImGui::SameLine();
         if(ImGui::Button("Cancel")) {
@@ -248,7 +257,7 @@ void Editor::onGui(float dt) {
     }
     
     for(auto d : open_documents) {
-        d->update(this, dt);
+        d->draw(this, dt);
     }
     if(ImGui::Begin("Toolbox")) {
         if(focused_document) {
@@ -274,7 +283,7 @@ void Editor::onGui(float dt) {
     //ImGui::ShowDemoWindow(&demo);
 }
 
-EditorDocument* Editor::getFocusedDocument() {
+EditorWindow* Editor::getFocusedWindow() {
     return focused_document;
 }
 
@@ -286,21 +295,28 @@ void Editor::setCurrentDockspace(ImGuiID id) {
     current_dockspace = id;
 }
 
-void Editor::setFocusedDocument(EditorDocument* doc) {
-    if(focused_document != doc) {
-        if(doc) doc->onFocus();
+void Editor::setFocusedWindow(const std::string& name) {
+    for(auto w : open_documents) {
+        if(w->getName() == name) {
+            setFocusedWindow(w);
+        }
     }
-    focused_document = doc;
+}
+void Editor::setFocusedWindow(EditorWindow* w) {
+    if(focused_document != w) {
+        if(w) w->onFocus();
+    }
+    focused_document = w;
 }
 
-void Editor::addDocument(EditorDocument* doc) {
+void Editor::addWindow(EditorWindow* doc) {
     open_documents.insert(doc);
-    ImGui::SetWindowFocus(doc->getWindowName().c_str());
-    ImGui::DockBuilderDockWindow(doc->getWindowName().c_str(), current_dockspace);
-    setFocusedDocument(doc);
+    ImGui::SetWindowFocus(doc->getTitle().c_str());
+    ImGui::DockBuilderDockWindow(doc->getTitle().c_str(), current_dockspace);
+    setFocusedWindow(doc);
 }
 void Editor::tryOpenDocument(const std::string& res_path) {
-    EditorDocument* doc = 0;
+    EditorWindow* doc = 0;
     for(auto &d : open_documents) {
         // TODO: 
         if(d->getName() == res_path) {
@@ -311,8 +327,8 @@ void Editor::tryOpenDocument(const std::string& res_path) {
 
     if(doc) {
         // TODO: getWindowName()
-        ImGui::SetWindowFocus(doc->getWindowName().c_str());
-        setFocusedDocument(doc);
+        ImGui::SetWindowFocus(doc->getTitle().c_str());
+        setFocusedWindow(doc);
         return;
     }
 
@@ -323,7 +339,7 @@ void Editor::tryOpenDocument(const std::string& res_path) {
         ImGui::PopID();
         return;
     }
-    addDocument(doc);
+    addWindow(doc);
 }
 
 EditorState& Editor::getState() {

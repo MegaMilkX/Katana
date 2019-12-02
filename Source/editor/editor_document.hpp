@@ -4,8 +4,8 @@
 #include <string>
 #include <memory>
 
-#include "../common/lib/imgui_wrap.hpp"
-#include "../common/lib/imgui/imgui_internal.h"
+#include "editor_window.hpp"
+
 #include "../common/util/log.hpp"
 
 #include "../common/util/filesystem.hpp"
@@ -22,13 +22,9 @@
 
 class Resource;
 class ResourceNode;
-class Editor;
-class EditorDocument {
+class EditorDocument : public EditorWindow {
 protected:
-    std::string _name;
-    std::string _window_name;
     std::weak_ptr<ResourceNode> _node;
-    ImGuiWindowFlags imgui_win_flags = 0;
 
     virtual void setResourceNode(std::shared_ptr<ResourceNode>& node) = 0;
 
@@ -36,40 +32,16 @@ public:
     EditorDocument();
     virtual ~EditorDocument() {}
 
-    virtual void onFocus() {}
-
     void setResource(const std::string& path);
 
     ResourceNode* getNode();
 
-    const std::string& getName() const;
-    const std::string& getWindowName() const;
-
-    bool isOpen() const { return is_open; }
-    bool isUnsaved() const { return is_unsaved; }
-    void setOpen(bool b) { is_open = b; }
-
-    void markUnsaved() { is_unsaved = true; }
-
-    virtual void save() = 0;
-    void saveAs();
     bool saveResource(std::shared_ptr<Resource>& r, const std::string& path);
-
-    void undo();
-    void redo();
-    void backup();
-    
-    void update(Editor* ed, float dt);
 
     virtual void onPreSave() {
 
     }
 
-    virtual void onGui(Editor* ed, float dt) = 0;
-    virtual void onGuiToolbox(Editor* ed) {}
-protected:
-    bool is_open = true;
-    bool is_unsaved = false;
 };
 
 inline std::string sanitizeString(const std::string& str) {
@@ -91,10 +63,16 @@ protected:
     void setResourceNode(std::shared_ptr<ResourceNode>& node) override {
         if(!node) return;
 
-        _window_name = MKSTR(node->getFullName() << "###" << this);
-        _name = node->getFullName();
+        setTitle(MKSTR(node->getFullName() << "###" << this));
+        setName(node->getFullName());
         _node = node;
         _resource = node->getResource<T>();
+        
+        std::string ext;
+        if(getName().find_last_of(".") != getName().npos) {
+            ext = getName().substr(getName().find_last_of("."));
+            setIconCode(getExtIconCode(ext.c_str()));
+        }
 
         onResourceSet();
     }
@@ -140,11 +118,11 @@ public:
                 }
             }
             _resource->Name(rel_path);
-            _name = rel_path;
+            setName(rel_path);
             _node = gResourceTree.find_shared(rel_path);
             if(!_node.expired()) {
                 _node.lock()->overrideResource(_resource);
-                _window_name = MKSTR(rel_path << "###" << this);
+                setTitle(MKSTR(rel_path << "###" << this));
             } else {
                 LOG_WARN("Save failed");
             }

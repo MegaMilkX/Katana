@@ -49,12 +49,13 @@ public:
     virtual void onUpdate();
     virtual void onGui(float dt);
 
-    EditorDocument* getFocusedDocument();
+    EditorWindow* getFocusedWindow();
     EditorResourceTree& getResourceTree();
     void setCurrentDockspace(ImGuiID id);
-    void setFocusedDocument(EditorDocument* doc);
+    void setFocusedWindow(const std::string& name);
+    void setFocusedWindow(EditorWindow* w);
 
-    void addDocument(EditorDocument* doc);
+    void addWindow(EditorWindow* doc);
     void tryOpenDocument(const std::string& res_path);
 
     EditorState& getState();
@@ -67,8 +68,8 @@ private:
     EditorState editor_state;
 
     EditorResourceTree ed_resource_tree;
-    std::set<EditorDocument*> open_documents;
-    EditorDocument* focused_document = 0;
+    std::set<EditorWindow*> open_documents;
+    EditorWindow* focused_document = 0;
 
     ImGuiID dockspace_id;
     ImGuiID current_dockspace; // dockspace for the next opened document

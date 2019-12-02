@@ -99,7 +99,7 @@ void EditorDocScene::onGui (Editor* ed, float dt) {
     if(ImGui::IsRootWindowOrAnyChildFocused()) {
         // TODO: Shouldn't be here
         //ed->getResourceTree().setSelected(getNode());
-        ed->setFocusedDocument(this);
+        ed->setFocusedWindow(this);
     }
 
     scene->getController<DynamicsCtrl>()->updateBodyTransforms();
