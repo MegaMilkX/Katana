@@ -70,4 +70,18 @@ inline int pickTransition(const AnimGraph& graph, const AnimState& state) {
 }
 
 
+class AnimStateMachine {
+    int current_state = -1;
+    int current_transition = -1;
+    float transition_cursor = .0f;
+    std::shared_ptr<AnimGraph> graph;
+    AnimBlackboard* blackboard = 0;
+
+public:
+    void setBlackboard(AnimBlackboard* bb) { blackboard = bb; }
+    void setGraph(std::shared_ptr<AnimGraph> g) { graph = g; }
+
+};
+
+
 #endif

@@ -219,16 +219,20 @@ void ActionGraph::update(
         }
     }
 
+    
+    act->update(dt, samples, trans_weight);
     if(trans_weight < 1.0f) {
-        samples = trans_samples;
-    }
-    if(trans_weight < 1.0f) {
+        for(size_t i = 0; i < samples.size(); ++i) {
+            samples[i].t = gfxm::lerp(trans_samples[i].t, samples[i].t, trans_weight);
+            samples[i].r = gfxm::slerp(trans_samples[i].r, samples[i].r, trans_weight);
+            samples[i].s = gfxm::lerp(trans_samples[i].s, samples[i].s, trans_weight);
+        }
+
         trans_weight += dt * trans_speed;
         if(trans_weight > 1.0f) {
             trans_weight = 1.0f;
         }
     }
-    act->update(dt, samples, trans_weight);
 }
 
 void ActionGraph::serialize(out_stream& out) {

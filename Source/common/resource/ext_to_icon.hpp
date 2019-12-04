@@ -23,7 +23,9 @@ const std::map<std::string, const char*> g_ext_to_icon_code = {
 
     { ".fbx", ICON_MDI_PACKAGE_VARIANT },
 
-    { ".ogg", ICON_MDI_MUSIC_NOTE }
+    { ".ogg", ICON_MDI_MUSIC_NOTE },
+
+    { ".action_graph", ICON_MDI_SHARE_VARIANT }
 };
 
 inline const char* getExtIconCode(const char* ext) {
