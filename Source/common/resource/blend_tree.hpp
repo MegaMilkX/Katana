@@ -7,6 +7,7 @@
 
 #include "../scene/game_scene.hpp"
 #include "skeleton.hpp"
+#include "../util/anim_blackboard.hpp"
 
 
 class BlendTree : public Resource {
@@ -17,6 +18,7 @@ class BlendTree : public Resource {
     PoseResultJob* poseResult = 0;
     Pose pose;
     float cursor = .0f;
+    AnimBlackboard* blackboard = 0;
 
 public:
     // For editor purposes
@@ -31,6 +33,9 @@ public:
     void clear();
     void copy(BlendTree* other);
 
+    void setSkeleton(std::shared_ptr<Skeleton> skel);
+    void setBlackboard(AnimBlackboard* bb);
+
     void setCursor(float cur) {
         cursor = cur;
         if(cursor > 1.0f) {
@@ -41,7 +46,6 @@ public:
         return cursor;
     }
 
-    void setSkeleton(std::shared_ptr<Skeleton> skel);
     template<typename T>
     T* createNode() {
         auto node = new T();

@@ -18,6 +18,11 @@ void BlendTree::setSkeleton(std::shared_ptr<Skeleton> skel) {
     }
 }
 
+void BlendTree::setBlackboard(AnimBlackboard* bb) {
+    blackboard = bb;
+    // TODO: Hook up value nodes
+}
+
 void BlendTree::serialize(out_stream& out) {
     DataWriter w(&out);
 
