@@ -35,6 +35,8 @@ protected:
     virtual void onInit() = 0;
 
 public:
+    virtual uint64_t get_type_id() const = 0;
+
     void setUid(uint32_t uid) { this->uid = uid; }
     uint32_t getUid() const { return uid; }
     FuncNodeDesc& getDesc() { return *desc; }

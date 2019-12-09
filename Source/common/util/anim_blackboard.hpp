@@ -98,4 +98,33 @@ public:
 };
 
 
+#include "../common/lib/imgui_wrap.hpp"
+#include "../common/lib/imgui/imgui_internal.h"
+
+inline void animBlackboardGui(AnimBlackboard* bb) {
+    ImGui::Text("Blackboard");
+    
+    for(size_t i = 0; i < bb->count(); ++i) {
+        auto name = bb->getName(i);
+
+        char buf[256];
+        memset(buf, 0, sizeof(buf));
+        memcpy(buf, name, strlen(name));
+        if(ImGui::InputText(MKSTR("###param_name" << i).c_str(), buf, sizeof(buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
+            bb->rename(i, buf);
+        }
+    }
+
+    if(ImGui::SmallButton(ICON_MDI_PLUS "###param_add")) {
+        static int new_param_num = 0;
+        bb->getHandle(MKSTR("Param_" << new_param_num++).c_str());
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::Text("Add parameter");
+        ImGui::EndTooltip();
+    }
+}
+
+
 #endif
