@@ -16,15 +16,15 @@ class DocRenderGraph : public EditorDocumentTyped<RenderGraph> {
         gfxm::vec3 col = node->getDesc().color;
         ImGuiExt::BeginTreeNode(node_name.c_str(), pos, &clicked, selected, ImVec2(200, 0), ImGui::ColorConvertFloat4ToU32(ImVec4(col.x, col.y, col.z, 1.0f)));
 
-        void* new_conn_tgt = 0;
+        int64_t new_conn_tgt = 0;
         for(size_t j = 0; j < node->getDesc().ins.size(); ++j) {
-            if(new_conn_tgt = ImGuiExt::TreeNodeIn(node->getDesc().ins[j].name.c_str(), (void*)node->getInput(j), (void*)node->getInput(j)->source)) {
+            if(new_conn_tgt = ImGuiExt::TreeNodeIn(node->getDesc().ins[j].name.c_str(), (int64_t)node->getInput(j), (int64_t)node->getInput(j)->source)) {
                 node->connect(j, (JobOutput*)new_conn_tgt);
                 jobGraph.prepare();
             }
         }
         for(size_t j = 0; j < node->getDesc().outs.size(); ++j) {
-            if(new_conn_tgt = ImGuiExt::TreeNodeOut(node->getDesc().outs[j].name.c_str(), (void*)node->getOutput(j), 0)) {
+            if(new_conn_tgt = ImGuiExt::TreeNodeOut(node->getDesc().outs[j].name.c_str(), (int64_t)node->getOutput(j), 0)) {
                 node->connect(j, (JobInput*)new_conn_tgt);
                 jobGraph.prepare();
             }

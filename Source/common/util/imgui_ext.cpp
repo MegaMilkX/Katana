@@ -32,7 +32,7 @@ static bool s_node_selected = false;
 static bool* s_node_clicked_ptr = 0;
 static ImU32 s_node_col;
 
-static std::set<std::pair<void*, void*>> s_connections;
+static std::set<std::pair<int64_t, int64_t>> s_connections;
 static std::vector<NodeInOutCollection> s_node_cache;
 enum NEW_CONN_TYPE {
     NEW_CONN_NONE,
@@ -41,10 +41,10 @@ enum NEW_CONN_TYPE {
 };
 static ImGuiID s_new_conn_grid_owner = 0;
 static NEW_CONN_TYPE s_new_conn_type = NEW_CONN_NONE;
-static void* s_potential_connection_origin_id = 0;
+static int64_t s_potential_connection_origin_id = 0;
 static ImVec2 s_new_connection_origin;
 
-static std::map<void*, ImVec2> s_node_point_coords;
+static std::map<int64_t, ImVec2> s_node_point_coords;
 
 static ImVec2 GridPosToScreen(const ImVec2& pos) {
     return s_graph_edit_bb.Min + (pos + s_graph_edit_grid_offset_plus_drag_delta) * s_graph_edit_zoom;
@@ -160,7 +160,7 @@ void EndTreeNode() {
     s_node_clicked_ptr = 0;
 }
 
-void* TreeNodeIn(const char* name, void* user_id, void* other_user_id) {
+int64_t TreeNodeIn(const char* name, int64_t user_id, int64_t other_user_id) {
     bool new_connection_occured = false;
     ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
 
@@ -215,7 +215,7 @@ void* TreeNodeIn(const char* name, void* user_id, void* other_user_id) {
     }
 }
 
-void* TreeNodeOut(const char* name, void* user_id, void* other_user_id) {
+int64_t TreeNodeOut(const char* name, int64_t user_id, int64_t other_user_id) {
     bool new_connection_occured = false;
     ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
     

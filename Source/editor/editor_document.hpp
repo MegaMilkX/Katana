@@ -20,6 +20,8 @@
 
 #include "../common/lib/rttr_wrap.hpp"
 
+#include "../common/resource/resource_tree.hpp"
+
 class Resource;
 class ResourceNode;
 class EditorDocument : public EditorWindow {
