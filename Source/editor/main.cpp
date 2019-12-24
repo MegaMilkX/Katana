@@ -11,6 +11,9 @@
 
 #include "thumb_builder.hpp"
 
+#include "../common/input/draft/input_mgr.hpp"
+#include "../common/input/draft/input_device_xbox_pad.hpp"
+
 std::unique_ptr<KatanaImpl> kt_play_mode;
 
 class EscInputListener : public InputListenerWrap {
@@ -49,6 +52,13 @@ int main(int argc, char* argv[]) {
     input().getTable().addActionKey("EndPlayMode", "KB_ESCAPE");
     //
 
+    getInputMgr().setUserCount(1);
+    InputDevice* device = new InputDeviceXboxPad(0);
+    getInputMgr().addDevice(device);
+    getInputMgr().assignDevice(device, 0);
+
+    
+
     EscInputListener esc_input_listener;
 
     std::unique_ptr<AppState> app_state;
@@ -73,6 +83,7 @@ int main(int argc, char* argv[]) {
         while(!platformIsShuttingDown()) {
             frameTimer.start();
 
+            getInputMgr().update();
             platformUpdate(dt);
             unsigned w, h;
             unsigned cx, cy;

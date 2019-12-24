@@ -9,6 +9,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <xinput.h>
+#pragma comment (lib, "xinput.lib")
 
 class InputDeviceXboxPad : public InputDeviceTpl<InputAdapterXboxPad> {
     XINPUT_STATE xinput_state;
