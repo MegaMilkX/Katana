@@ -32,12 +32,12 @@ public:
     }
     template<typename T>
     regBlendTreeNode& in(const char* name) {
-        desc_ptr->inputs.emplace_back({ name, rttr::type::get<T>() });
+        desc_ptr->inputs.push_back({ std::string(name), rttr::type::get<T>() });
         return *this;
     }
     template<typename T>
     regBlendTreeNode& out(const char* name) {
-        desc_ptr->outputs.emplace_back({ name, rttr::type::get<T>() });
+        desc_ptr->outputs.push_back({ std::string(name), rttr::type::get<T>() });
         return *this;
     }
     regBlendTreeNode& job(void(*_job)(void)) {
