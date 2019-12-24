@@ -14,6 +14,9 @@ public:
         clear();
     }
 
+    input_adapter_type_id getTypeId() override {
+        return 0; // TODO:
+    }
     void clear() override {
         memset(keys, 0, sizeof(keys));
         memset(axes, 0, sizeof(axes));

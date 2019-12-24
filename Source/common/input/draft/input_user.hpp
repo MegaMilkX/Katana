@@ -22,6 +22,13 @@ public:
         }
         return (ADAPTER_T*)it->second.get();
     }
+    InputAdapter* getAdapter(rttr::type type) {
+        auto it = adapters.find(type);
+        if(it == adapters.end()) {
+            return 0;
+        }
+        return it->second.get();
+    }
 };
 
 

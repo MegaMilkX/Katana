@@ -12,7 +12,7 @@
 #include "thumb_builder.hpp"
 
 #include "../common/input/draft/input_mgr.hpp"
-#include "../common/input/draft/input_device_xbox_pad.hpp"
+#include "../common/input/draft/input_device_xinput_pad.hpp"
 
 std::unique_ptr<KatanaImpl> kt_play_mode;
 
@@ -53,10 +53,22 @@ int main(int argc, char* argv[]) {
     //
 
     getInputMgr().setUserCount(1);
-    InputDevice* device = new InputDeviceXboxPad(0);
+    InputDevice* device = new InputDeviceXInputPad(0);
     getInputMgr().addDevice(device);
-    getInputMgr().assignDevice(device, 0);
+    getInputMgr().addDevice(new InputDeviceXInputPad(1));
+    getInputMgr().addDevice(new InputDeviceXInputPad(2));
+    getInputMgr().addDevice(new InputDeviceXInputPad(3));
 
+    InputAction action;
+    InputAction actionJump;
+    InputAction actionBack;
+    ButtonCombo comb(rttr::type::get<InputAdapterXboxPad>(), 0, 10);
+    action.inputs.push_back(comb);
+    actionJump.inputs.push_back(ButtonCombo(rttr::type::get<InputAdapterXboxPad>(), 10));
+    actionBack.inputs.push_back(ButtonCombo(rttr::type::get<InputAdapterXboxPad>(), 11));
+    getInputMgr().addAction("Test action", action);
+    getInputMgr().addAction("Jump", actionJump);
+    getInputMgr().addAction("Back", actionBack);
     
 
     EscInputListener esc_input_listener;

@@ -1,5 +1,5 @@
-#ifndef INPUT_DEVICE_XBOX_PAD_HPP
-#define INPUT_DEVICE_XBOX_PAD_HPP
+#ifndef INPUT_DEVICE_XINPUT_PAD_HPP
+#define INPUT_DEVICE_XINPUT_PAD_HPP
 
 
 #include "input_device_tpl.hpp"
@@ -11,11 +11,11 @@
 #include <xinput.h>
 #pragma comment (lib, "xinput.lib")
 
-class InputDeviceXboxPad : public InputDeviceTpl<InputAdapterXboxPad> {
+class InputDeviceXInputPad : public InputDeviceTpl<InputAdapterXboxPad> {
     XINPUT_STATE xinput_state;
     DWORD xinput_index;
 public:
-    InputDeviceXboxPad(DWORD xinput_index)
+    InputDeviceXInputPad(DWORD xinput_index)
     : xinput_index(xinput_index) {}
 
     void update (void) {
