@@ -13,6 +13,7 @@
 
 #include "../common/input/draft/input_mgr.hpp"
 #include "../common/input/draft/input_device_xinput_pad.hpp"
+#include "../common/audio.hpp"
 
 std::unique_ptr<KatanaImpl> kt_play_mode;
 
@@ -52,6 +53,10 @@ int main(int argc, char* argv[]) {
     input().getTable().addActionKey("EndPlayMode", "KB_ESCAPE");
     //
 
+
+    auto clip0 = retrieve<AudioClip>("audio/sfx/mgs.ogg");
+    auto clip1 = retrieve<AudioClip>("audio/sfx/hit.ogg");
+
     getInputMgr().setUserCount(1);
     InputDevice* device = new InputDeviceXInputPad(0);
     getInputMgr().addDevice(device);
@@ -66,13 +71,14 @@ int main(int argc, char* argv[]) {
     action.inputs.push_back(comb);
     actionJump.inputs.push_back(ButtonCombo(rttr::type::get<InputAdapterXboxPad>(), 10));
     actionBack.inputs.push_back(ButtonCombo(rttr::type::get<InputAdapterXboxPad>(), 11));
-    getInputMgr().addAction("Test action", action);
-    getInputMgr().addAction("Jump", actionJump);
-    getInputMgr().addAction("Back", actionBack);
+    getInputMgr().setAction("Test action", action);
+    getInputMgr().setAction("Jump", actionJump);
+    getInputMgr().setAction("Back", actionBack);
 
     InputListenerHdl menu_hdl;
     InputListenerHdl hdl;
-    menu_hdl.bindPress("Jump", [](){
+    menu_hdl.bindPress("Jump", [&clip0](){
+        //audio().playOnce(clip0->getBuffer(), 0.5f);
         LOG("Pressed a menu button");
     });
     menu_hdl.bindPress("Test action", [&menu_hdl](){
@@ -84,7 +90,8 @@ int main(int argc, char* argv[]) {
         LOG("Closed menu")
     });
     
-    hdl.bindPress("Jump", [](){
+    hdl.bindPress("Jump", [&clip1](){
+        //audio().playOnce(clip1->getBuffer(), 0.5f);
         LOG("Jumped");
     });
     

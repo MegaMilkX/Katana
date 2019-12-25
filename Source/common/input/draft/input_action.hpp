@@ -23,6 +23,7 @@ struct ButtonCombo {
 };
 
 struct InputAction {
+    std::string name;
     std::vector<ButtonCombo> inputs;
 };
 

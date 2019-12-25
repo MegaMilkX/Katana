@@ -13,9 +13,11 @@ enum InputActionEventType {
     INPUT_ACTION_TAP
 };
 
+typedef size_t input_action_uid_t;
+
 struct InputActionDesc {
-    InputActionEventType type;
-    std::string          name;
+    InputActionEventType      type;
+    input_action_uid_t        action_uid;
     std::function<void(void)> callback;
 };
 

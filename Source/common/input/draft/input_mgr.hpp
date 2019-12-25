@@ -5,13 +5,14 @@
 #include <assert.h>
 #include <vector>
 #include <set>
-#include <stack>
-#include <list>
+#include <queue>
 #include <memory>
 #include "input_user.hpp"
 #include "input_device.hpp"
 #include "input_action.hpp"
 #include "input_listener.hpp"
+
+#include "../../util/log.hpp"
 
 
 typedef size_t input_listener_uid_t;
@@ -68,118 +69,32 @@ public:
 };
 
 class InputMgr2 {
-    std::vector<InputUser>                  users;
-    std::set<std::shared_ptr<InputDevice>>  devices;
-    std::map<std::string, InputAction>      actions;
-    InputListenerStack                      listener_stack;
-    std::queue<InputActionDesc>             deferred_callbacks;
+    std::vector<InputUser>                      users;
+    std::set<std::shared_ptr<InputDevice>>      devices;
+
+    std::map<std::string, input_action_uid_t>   action_uids;
+    std::vector<InputAction>                    actions;
+
+    InputListenerStack                          listener_stack;
+    std::queue<InputActionDesc>                 deferred_callbacks;
+
 public:
-    InputMgr2() {
-        setUserCount(1);
-    }
-    size_t userCount() const { 
-        return users.size(); 
-    }
-    void setUserCount(size_t count) {
-        assert(count > 0);
-        users.resize(count);
-    }
-    InputUser* getUser(size_t idx) { 
-        assert(idx < users.size());
-        return &users[idx]; 
-    }
+    InputMgr2();
+    size_t userCount() const;
+    void setUserCount(size_t count);
+    InputUser* getUser(size_t idx);
 
     // Ownership is transferred to input manager
-    void addDevice(InputDevice* device) {
-        devices.insert(std::shared_ptr<InputDevice>(device));
-        assignDevice(device, 0);
-    }
-    void clearDevices() {
-        devices.clear();
-    }
-    void assignDevice(InputDevice* device, size_t user_idx) {
-        assert(device && user_idx < users.size());
-        device->setUser(&users[user_idx]);
-    }
+    void addDevice(InputDevice* device);
+    void clearDevices();
+    void assignDevice(InputDevice* device, size_t user_idx);
 
-    void addAction(const char* name, const InputAction& action) {
-        actions[name] = action;
-    }
+    void setAction(const char* name, const InputAction& action);
+    input_action_uid_t getActionUid(const char* name);
 
-    InputListenerStack& getListenerStack() {
-        return listener_stack;
-    }
+    InputListenerStack& getListenerStack();
 
-    void update() {
-        for(auto& d : devices) {
-            d->update();
-        }
-
-        for(auto& kv : actions) {
-            InputAction& action = kv.second;
-            for(auto& input : action.inputs) {
-                InputAdapter* adp = users[0].getAdapter(input.adapter_type); // TODO: Template getAdapter creates adapter if it doesnt exist, but this version doesnt
-                if(!adp) {
-                    continue;
-                }
-
-                bool input_satisfied = false;
-                for(int i = 0; i < 3 /* SHORTCUT MAX KEY NUM */; ++i) {
-                    if(input.keys[i] < 0) {
-                        break;
-                    } 
-                    if(adp->getKeyState(input.keys[i])) {
-                        input_satisfied = true;
-                    } else {
-                        input_satisfied = false;
-                        break;
-                    }
-                }
-
-                if(!input.is_pressed && input_satisfied) { // ON PRESS
-                    input.is_pressed = true;
-                    for(size_t i = 0; i < listener_stack.stackLength(); ++i) {
-                        auto listener_uid = listener_stack.getStackElement(i);
-                        auto listener = listener_stack.deref(listener_uid);
-                        bool event_consumed = false;
-                        for(auto& act : listener->expected_actions) {
-                            if(act.name == kv.first && act.type == INPUT_ACTION_PRESS) {
-                                event_consumed = true;
-                                deferred_callbacks.push(act);
-                                break;
-                            }
-                        }
-                        if(event_consumed) {
-                            break;
-                        }
-                    }
-                } else if(input.is_pressed && !input_satisfied) { // ON RELEASE
-                    input.is_pressed = false;
-                    for(size_t i = 0; i < listener_stack.stackLength(); ++i) {
-                        auto listener_uid = listener_stack.getStackElement(i);
-                        auto listener = listener_stack.deref(listener_uid);
-                        bool event_consumed = false;
-                        for(auto& act : listener->expected_actions) {
-                            if(act.name == kv.first && act.type == INPUT_ACTION_RELEASE) {
-                                event_consumed = true;
-                                deferred_callbacks.push(act);
-                                break;
-                            }
-                        }
-                        if(event_consumed) {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        while(!deferred_callbacks.empty()) {
-            auto cb = deferred_callbacks.front();
-            deferred_callbacks.pop();
-            cb.callback();
-        }
-    }
+    void update();
 };
 
 
@@ -204,16 +119,44 @@ public:
     }
 
     void bindPress(const char* name, std::function<void(void)> cb) {
-        getInputMgr().getListenerStack().deref(uid)->expected_actions.push_back(InputActionDesc{ INPUT_ACTION_PRESS, name, cb });
+        auto& stack = getInputMgr().getListenerStack();
+        input_action_uid_t action_uid = getInputMgr().getActionUid(name);
+        if(!action_uid) {
+            LOG_WARN("Failed to bind input action press '" << name << "', no such action registered");
+            return;
+        }
+        stack.deref(uid)->expected_actions.push_back(InputActionDesc{ INPUT_ACTION_PRESS, action_uid, cb });
+    }
+    void bindPressRepeater(const char* name, std::function<void(void)> cb) {
+        assert(false);
+        // TODO:
     }
     void bindRelease(const char* name, std::function<void(void)> cb) {
-        getInputMgr().getListenerStack().deref(uid)->expected_actions.push_back(InputActionDesc{ INPUT_ACTION_RELEASE, name, cb });
+        auto& stack = getInputMgr().getListenerStack();
+        input_action_uid_t action_uid = getInputMgr().getActionUid(name);
+        if(!action_uid) {
+            LOG_WARN("Failed to bind input action release '" << name << "', no such action registered");
+            return;
+        }
+        stack.deref(uid)->expected_actions.push_back(InputActionDesc{ INPUT_ACTION_RELEASE, action_uid, cb });
     }
     void bindHold(const char* name, float time, std::function<void(void)> cb) {
-        getInputMgr().getListenerStack().deref(uid)->expected_actions.push_back(InputActionDesc{ INPUT_ACTION_HOLD, name, cb });
+        auto& stack = getInputMgr().getListenerStack();
+        input_action_uid_t action_uid = getInputMgr().getActionUid(name);
+        if(!action_uid) {
+            LOG_WARN("Failed to bind input action hold '" << name << "', no such action registered");
+            return;
+        }
+        stack.deref(uid)->expected_actions.push_back(InputActionDesc{ INPUT_ACTION_HOLD, action_uid, cb });
     }
     void bindTap(const char* name, std::function<void(void)> cb) {
-        getInputMgr().getListenerStack().deref(uid)->expected_actions.push_back(InputActionDesc{ INPUT_ACTION_TAP, name, cb });
+        auto& stack = getInputMgr().getListenerStack();
+        input_action_uid_t action_uid = getInputMgr().getActionUid(name);
+        if(!action_uid) {
+            LOG_WARN("Failed to bind input action hold '" << name << "', no such action registered");
+            return;
+        }
+        stack.deref(uid)->expected_actions.push_back(InputActionDesc{ INPUT_ACTION_TAP, action_uid, cb });
     }
 };
 
