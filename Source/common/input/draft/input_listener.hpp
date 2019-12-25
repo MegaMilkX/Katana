@@ -16,24 +16,11 @@ enum InputActionEventType {
 struct InputActionDesc {
     InputActionEventType type;
     std::string          name;
+    std::function<void(void)> callback;
 };
 
-class InputActionListener {
+struct InputActionListener {
     std::vector<InputActionDesc> expected_actions;
-public:
-    void bindPressAction(const char* name, std::function<void(void)> cb) {
-        expected_actions.push_back(InputActionDesc{ INPUT_ACTION_PRESS, name });
-    }
-    void bindReleaseAction(const char* name, std::function<void(void)> cb) {
-        expected_actions.push_back(InputActionDesc{ INPUT_ACTION_RELEASE, name });
-    }
-    void bindHoldAction(const char* name, std::function<void(void)> cb) {
-
-    }
-    void bindTapAction(const char* name, std::function<void(void)> cb) {
-
-    }
-
 };
 
 

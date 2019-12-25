@@ -62,13 +62,33 @@ int main(int argc, char* argv[]) {
     InputAction action;
     InputAction actionJump;
     InputAction actionBack;
-    ButtonCombo comb(rttr::type::get<InputAdapterXboxPad>(), 0, 10);
+    ButtonCombo comb(rttr::type::get<InputAdapterXboxPad>(), 0);
     action.inputs.push_back(comb);
     actionJump.inputs.push_back(ButtonCombo(rttr::type::get<InputAdapterXboxPad>(), 10));
     actionBack.inputs.push_back(ButtonCombo(rttr::type::get<InputAdapterXboxPad>(), 11));
     getInputMgr().addAction("Test action", action);
     getInputMgr().addAction("Jump", actionJump);
     getInputMgr().addAction("Back", actionBack);
+
+    InputListenerHdl menu_hdl;
+    InputListenerHdl hdl;
+    menu_hdl.bindPress("Jump", [](){
+        LOG("Pressed a menu button");
+    });
+    menu_hdl.bindPress("Test action", [&menu_hdl](){
+        menu_hdl.moveToTop();
+        LOG("Opened the menu");
+    });
+    menu_hdl.bindRelease("Test action", [&hdl](){
+        hdl.moveToTop();
+        LOG("Closed menu")
+    });
+    
+    hdl.bindPress("Jump", [](){
+        LOG("Jumped");
+    });
+    
+    
     
 
     EscInputListener esc_input_listener;
