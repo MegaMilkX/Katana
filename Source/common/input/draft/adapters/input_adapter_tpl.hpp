@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include "input_adapter.hpp"
 
-template<int KEY_COUNT, int AXIS_COUNT>
+template<int KEY_COUNT, int AXIS_COUNT, INPUT_ADAPTER_TYPE ADAPTER_TYPE>
 class InputAdapterTpl : public InputAdapter {
     int16_t keys[KEY_COUNT];
     int16_t axes[AXIS_COUNT];
@@ -14,8 +14,8 @@ public:
         clear();
     }
 
-    input_adapter_type_id getTypeId() override {
-        return 0; // TODO:
+    INPUT_ADAPTER_TYPE getType() override {
+        return ADAPTER_TYPE;
     }
     void clear() override {
         memset(keys, 0, sizeof(keys));

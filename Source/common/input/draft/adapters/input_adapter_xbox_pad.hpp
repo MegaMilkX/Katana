@@ -4,7 +4,7 @@
 
 #include "input_adapter_tpl.hpp"
 
-class InputAdapterXboxPad : public InputAdapterTpl<20, 6> {
+class InputAdapterXboxPad : public InputAdapterTpl<20, 6, INPUT_ADAPTER_XBOX> {
 public:
 };
 

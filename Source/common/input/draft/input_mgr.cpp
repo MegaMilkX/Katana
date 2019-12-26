@@ -1,5 +1,19 @@
 #include "input_mgr.hpp"
 
+// === PRIVATE ===
+
+int InputMgr2::findListener(InputListenerBase* lis) {
+    int lis_stack_id = -1;
+    for(int i = 0; i < listener_stack.size(); ++i) {
+        if(listener_stack[i] == lis) {
+            lis_stack_id = i;
+            break;
+        }
+    }
+    return lis_stack_id;
+}
+
+// === PUBLIC ===
 
 InputMgr2::InputMgr2() {
     setUserCount(1);
@@ -50,11 +64,27 @@ input_action_uid_t InputMgr2::getActionUid(const char* name) {
     return it->second;
 }
 
-InputListenerStack& InputMgr2::getListenerStack() {
-    return listener_stack;
+void InputMgr2::addListener(InputListenerBase* lis) {
+    int lis_stack_id = findListener(lis);
+    if(lis_stack_id < 0) {
+        listener_stack.push_back(lis);
+    }
+}
+void InputMgr2::removeListener(InputListenerBase* lis) {
+    int lis_stack_id = findListener(lis);
+    if(lis_stack_id >= 0) {
+        listener_stack.erase(listener_stack.begin() + lis_stack_id);
+    }
+}
+void InputMgr2::moveListenerToTop(InputListenerBase* lis) {
+    int lis_stack_id = findListener(lis);
+    if(lis_stack_id >= 0) {
+        listener_stack.erase(listener_stack.begin() + lis_stack_id);
+        listener_stack.push_back(lis);
+    }
 }
 
-void InputMgr2::update() {
+void InputMgr2::update(float dt) {
     for(auto& d : devices) {
         d->update();
     }
@@ -63,66 +93,73 @@ void InputMgr2::update() {
         auto& action = actions[i];
         input_action_uid_t action_uid = i + 1;
 
-        for(auto& input : action.inputs) {
-            InputAdapter* adp = users[0].getAdapter(input.adapter_type); // TODO: Template getAdapter creates adapter if it doesnt exist, but this version doesnt
-            if(!adp) {
-                continue;
-            }
-
-            bool input_satisfied = false;
-            for(int j = 0; j < 3 /* SHORTCUT MAX KEY NUM */; ++j) {
-                if(input.keys[j] < 0) {
-                    break;
-                } 
-                if(adp->getKeyState(input.keys[j])) {
-                    input_satisfied = true;
-                } else {
-                    input_satisfied = false;
-                    break;
+        for(int user_id = 0; user_id < users.size(); ++user_id) {
+            for(auto& input : action.inputs) {
+                InputAdapter* adp = users[user_id].getAdapter(input.adapter_type); // TODO: Template getAdapter creates adapter if it doesnt exist, but this overload doesnt
+                if(!adp) {
+                    continue;
                 }
-            }
 
-            if(!input.is_pressed && input_satisfied) { // ON PRESS
-                input.is_pressed = true;
-                for(size_t j = 0; j < listener_stack.stackLength(); ++j) {
-                    auto listener_uid = listener_stack.getStackElement(j);
-                    auto listener = listener_stack.deref(listener_uid);
-                    bool event_consumed = false;
-                    for(auto& act : listener->expected_actions) {
-                        if(act.action_uid == action_uid && act.type == INPUT_ACTION_PRESS) {
-                            event_consumed = true;
-                            deferred_callbacks.push(act);
-                            break;
-                        }
-                    }
-                    if(event_consumed) {
+                bool input_satisfied = false;
+                for(int j = 0; j < 3 /* SHORTCUT MAX KEY NUM */; ++j) {
+                    if(input.keys[j] < 0) {
+                        break;
+                    } 
+                    if(adp->getKeyState(input.keys[j])) {
+                        input_satisfied = true;
+                    } else {
+                        input_satisfied = false;
                         break;
                     }
                 }
-            } else if(input.is_pressed && !input_satisfied) { // ON RELEASE
-                input.is_pressed = false;
-                for(size_t j = 0; j < listener_stack.stackLength(); ++j) {
-                    auto listener_uid = listener_stack.getStackElement(j);
-                    auto listener = listener_stack.deref(listener_uid);
-                    bool event_consumed = false;
-                    for(auto& act : listener->expected_actions) {
-                        if(act.action_uid == action_uid && act.type == INPUT_ACTION_RELEASE) {
-                            event_consumed = true;
-                            deferred_callbacks.push(act);
-                            break;
+
+                if(input.is_pressed && input_satisfied) {
+                    float prev_pressed_time = input.pressed_time;
+                    input.pressed_time += dt;
+                    float cur_pressed_time = input.pressed_time;
+
+                    //deferred_events.push(InputActionEvent{ INPUT_ACTION_HOLD, action_uid, user_id });
+
+                    cur_pressed_time -= INPUT_REPEAT_DELAY;
+                    if(cur_pressed_time > .0f) {
+                        prev_pressed_time -= INPUT_REPEAT_DELAY;
+
+                        int prev_repeat_count = prev_pressed_time / INPUT_REPEAT_RATE;
+                        int cur_repeat_count = cur_pressed_time / INPUT_REPEAT_RATE;
+
+                        if(cur_repeat_count - prev_repeat_count > 0) {
+                            deferred_events.push(InputActionEvent{ INPUT_ACTION_PRESS_REPEAT, action_uid, user_id });
                         }
                     }
-                    if(event_consumed) {
-                        break;
+                }
+
+                if(!input.is_pressed && input_satisfied) { // ON PRESS
+                    input.is_pressed = true;
+                    input.pressed_time = .0f;
+                    deferred_events.push(InputActionEvent{ INPUT_ACTION_PRESS, action_uid, user_id });
+
+                } else if(input.is_pressed && !input_satisfied) { // ON RELEASE
+                    deferred_events.push(InputActionEvent{ INPUT_ACTION_RELEASE, action_uid, user_id });
+                    if(input.pressed_time <= INPUT_TAP_TIME) {
+                        deferred_events.push(InputActionEvent{ INPUT_ACTION_TAP, action_uid, user_id });
                     }
+
+                    input.is_pressed = false;
+                    input.pressed_time = .0f;
                 }
             }
         }
     }
 
-    while(!deferred_callbacks.empty()) {
-        auto cb = deferred_callbacks.front();
-        deferred_callbacks.pop();
-        cb.callback();
+    while(!deferred_events.empty()) {
+        auto evt = deferred_events.front();
+        deferred_events.pop();
+
+        for(int j = listener_stack.size() - 1; j >= 0; --j) {
+            bool event_consumed = listener_stack[j]->onAction(evt.type, evt.action, evt.user_id);
+            if(event_consumed) {
+                break;
+            }
+        }
     }
 }

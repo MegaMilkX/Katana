@@ -8,21 +8,24 @@
 
 enum InputActionEventType {
     INPUT_ACTION_PRESS,
+    INPUT_ACTION_PRESS_REPEAT,
     INPUT_ACTION_RELEASE,
-    INPUT_ACTION_HOLD,
     INPUT_ACTION_TAP
 };
 
 typedef size_t input_action_uid_t;
 
-struct InputActionDesc {
-    InputActionEventType      type;
-    input_action_uid_t        action_uid;
-    std::function<void(void)> callback;
+struct InputActionEvent {
+    InputActionEventType type;
+    input_action_uid_t   action;
+    int                  user_id;
 };
 
-struct InputActionListener {
-    std::vector<InputActionDesc> expected_actions;
+class InputListenerBase {
+public:
+    virtual ~InputListenerBase() {}
+
+    virtual bool onAction(InputActionEventType type, input_action_uid_t action_uid, int user_id) = 0;
 };
 
 

@@ -4,13 +4,20 @@
 
 #include <stdint.h>
 
-typedef int32_t input_adapter_type_id;
+enum INPUT_ADAPTER_TYPE {
+    INPUT_ADAPTER_KEYBOARD,
+    INPUT_ADAPTER_MOUSE,
+    INPUT_ADAPTER_GENERIC_GAMEPAD,
+    INPUT_ADAPTER_XBOX,
+    INPUT_ADAPTER_DUALSHOCK4,
+    INPUT_ADAPTER_STEERING_WHEEL
+};
 
 class InputAdapter {
 public:
     virtual ~InputAdapter() {}
 
-    virtual input_adapter_type_id getTypeId() = 0;
+    virtual INPUT_ADAPTER_TYPE getType() = 0;
     virtual void clear() = 0;
     virtual size_t keyCount() const = 0;
     virtual size_t axisCount() const = 0;

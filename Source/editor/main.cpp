@@ -56,6 +56,8 @@ int main(int argc, char* argv[]) {
 
     auto clip0 = retrieve<AudioClip>("audio/sfx/mgs.ogg");
     auto clip1 = retrieve<AudioClip>("audio/sfx/hit.ogg");
+    auto clip2 = retrieve<AudioClip>("audio/sfx/gravel1.ogg");
+    auto clip3 = retrieve<AudioClip>("audio/sfx/swoosh.ogg");
 
     getInputMgr().setUserCount(1);
     InputDevice* device = new InputDeviceXInputPad(0);
@@ -78,7 +80,7 @@ int main(int argc, char* argv[]) {
     InputListenerHdl menu_hdl;
     InputListenerHdl hdl;
     menu_hdl.bindPress("Jump", [&clip0](){
-        //audio().playOnce(clip0->getBuffer(), 0.5f);
+        audio().playOnce(clip0->getBuffer(), 0.5f);
         LOG("Pressed a menu button");
     });
     menu_hdl.bindPress("Test action", [&menu_hdl](){
@@ -91,8 +93,15 @@ int main(int argc, char* argv[]) {
     });
     
     hdl.bindPress("Jump", [&clip1](){
-        //audio().playOnce(clip1->getBuffer(), 0.5f);
+        audio().playOnce(clip1->getBuffer(), 0.5f);
         LOG("Jumped");
+    });
+    hdl.bindPressRepeater("Jump", [&clip2](){
+        audio().playOnce(clip2->getBuffer(), 1.0f);
+    });
+    hdl.bindTap("Jump", [&clip3](){
+        audio().playOnce(clip3->getBuffer(), .5f);
+        LOG("Jump tapped");
     });
     
     
@@ -122,7 +131,8 @@ int main(int argc, char* argv[]) {
         while(!platformIsShuttingDown()) {
             frameTimer.start();
 
-            getInputMgr().update();
+            getInputMgr().update(dt);
+
             platformUpdate(dt);
             unsigned w, h;
             unsigned cx, cy;

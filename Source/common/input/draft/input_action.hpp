@@ -20,6 +20,7 @@ struct ButtonCombo {
     rttr::type  adapter_type;
     int         keys[3];
     bool        is_pressed;
+    float       pressed_time;
 };
 
 struct InputAction {
