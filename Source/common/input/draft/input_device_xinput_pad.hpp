@@ -26,11 +26,12 @@ public:
         XINPUT_STATE state = { 0 };
         DWORD ret = XInputGetState(xinput_index, &state);
         if(ret != ERROR_SUCCESS) {
-            // TODO: Device not connected
+            // Device not connected
+            getAdapter()->clear();
             return;
         }
 
-        const uint16_t max_val = -1;
+        const float max_val = 1.0f;
         getAdapter()->setKeyState(0, state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP ? max_val : 0);
         getAdapter()->setKeyState(1, state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN ? max_val : 0);
         getAdapter()->setKeyState(2, state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT ? max_val : 0);
@@ -46,14 +47,14 @@ public:
         getAdapter()->setKeyState(12, state.Gamepad.wButtons & XINPUT_GAMEPAD_X ? max_val : 0);
         getAdapter()->setKeyState(13, state.Gamepad.wButtons & XINPUT_GAMEPAD_Y ? max_val : 0);
 
-        getAdapter()->setKeyState(14, state.Gamepad.bLeftTrigger / 255.0f * max_val);
-        getAdapter()->setKeyState(15, state.Gamepad.bRightTrigger / 255.0f * max_val);
+        getAdapter()->setKeyState(14, state.Gamepad.bLeftTrigger / 255.0f);
+        getAdapter()->setKeyState(15, state.Gamepad.bRightTrigger / 255.0f);
 
-        getAdapter()->setKeyState(16, state.Gamepad.sThumbLX);
-        getAdapter()->setKeyState(17, state.Gamepad.sThumbLY);
+        getAdapter()->setKeyState(16, state.Gamepad.sThumbLX / 32767.0f);
+        getAdapter()->setKeyState(17, state.Gamepad.sThumbLY / 32767.0f);
 
-        getAdapter()->setKeyState(18, state.Gamepad.sThumbRX);
-        getAdapter()->setKeyState(19, state.Gamepad.sThumbRY);
+        getAdapter()->setKeyState(18, state.Gamepad.sThumbRX / 32767.0f);
+        getAdapter()->setKeyState(19, state.Gamepad.sThumbRY / 32767.0f);
     }
 };
 

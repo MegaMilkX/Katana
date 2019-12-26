@@ -105,7 +105,7 @@ void InputMgr2::update(float dt) {
                     if(input.keys[j] < 0) {
                         break;
                     } 
-                    if(adp->getKeyState(input.keys[j])) {
+                    if(adp->getKeyState(input.keys[j]) != .0f) {
                         input_satisfied = true;
                     } else {
                         input_satisfied = false;
