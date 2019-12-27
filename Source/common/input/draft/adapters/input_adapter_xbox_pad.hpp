@@ -4,7 +4,31 @@
 
 #include "input_adapter_tpl.hpp"
 
-class InputAdapterXboxPad : public InputAdapterTpl<20, INPUT_ADAPTER_XBOX> {
+enum KEY_XBOX {
+    KEY_XBOX_DPAD_UP,
+    KEY_XBOX_DPAD_DOWN,
+    KEY_XBOX_DPAD_LEFT,
+    KEY_XBOX_DPAD_RIGHT,
+    KEY_XBOX_START,
+    KEY_XBOX_BACK,
+    KEY_XBOX_LEFT_THUMB,
+    KEY_XBOX_RIGHT_THUMB,
+    KEY_XBOX_LEFT_SHOULDER,
+    KEY_XBOX_RIGHT_SHOULDER,
+    KEY_XBOX_A,
+    KEY_XBOX_B,
+    KEY_XBOX_X,
+    KEY_XBOX_Y,
+    KEY_XBOX_LEFT_TRIGGER,
+    KEY_XBOX_RIGHT_TRIGGER,
+    KEY_XBOX_LEFT_STICK_X,
+    KEY_XBOX_LEFT_STICK_Y,
+    KEY_XBOX_RIGHT_STICK_X,
+    KEY_XBOX_RIGHT_STICK_Y,
+    KEY_XBOX_COUNT
+};
+
+class InputAdapterXboxPad : public InputAdapterTpl<KEY_XBOX_COUNT, INPUT_ADAPTER_XBOX> {
 public:
 };
 
