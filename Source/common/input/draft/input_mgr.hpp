@@ -118,9 +118,9 @@ public:
         expected_actions.push_back(InputActionDesc{ INPUT_ACTION_TAP, action_uid, cb });
     }
 
-    bool onAction(InputActionEventType type, input_action_uid_t action_uid, int user_id) override {
+    bool onAction(const InputActionEvent& evt) override {
         for(auto& act : expected_actions) {
-            if(act.action_uid == action_uid && act.type == type) {
+            if(act.action_uid == evt.action && act.type == evt.type) {
                 if(act.callback) 
                     act.callback();
                 return true;

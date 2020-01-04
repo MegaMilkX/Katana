@@ -25,7 +25,7 @@ class InputListenerBase {
 public:
     virtual ~InputListenerBase() {}
 
-    virtual bool onAction(InputActionEventType type, input_action_uid_t action_uid, int user_id) = 0;
+    virtual bool onAction(const InputActionEvent& evt) = 0;
 };
 
 

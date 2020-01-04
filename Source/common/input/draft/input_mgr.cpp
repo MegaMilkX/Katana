@@ -156,7 +156,7 @@ void InputMgr2::update(float dt) {
         deferred_events.pop();
 
         for(int j = listener_stack.size() - 1; j >= 0; --j) {
-            bool event_consumed = listener_stack[j]->onAction(evt.type, evt.action, evt.user_id);
+            bool event_consumed = listener_stack[j]->onAction(evt);
             if(event_consumed) {
                 break;
             }
