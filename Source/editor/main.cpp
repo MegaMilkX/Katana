@@ -69,6 +69,7 @@ int main(int argc, char* argv[]) {
     InputAction action;
     InputAction actionJump;
     InputAction actionBack;
+    InputAxis   axis;
     ButtonCombo comb(rttr::type::get<InputAdapterXboxPad>(), 0);
     action.inputs.push_back(comb);
     actionJump.inputs.push_back(ButtonCombo(rttr::type::get<InputAdapterXboxPad>(), 10));
@@ -76,6 +77,8 @@ int main(int argc, char* argv[]) {
     getInputMgr().setAction("Test action", action);
     getInputMgr().setAction("Jump", actionJump);
     getInputMgr().setAction("Back", actionBack);
+    axis.keys.push_back(InputAxisKey{rttr::type::get<InputAdapterXboxPad>(), KEY_XBOX_LEFT_STICK_X, 1.0f});
+    getInputMgr().setAxis("MoveX", axis);
 
     InputListenerHdl menu_hdl;
     InputListenerHdl hdl;
@@ -102,6 +105,9 @@ int main(int argc, char* argv[]) {
     hdl.bindTap("Jump", [&clip3](){
         audio().playOnce(clip3->getBuffer(), .5f);
         LOG("Jump tapped");
+    });
+    hdl.bindAxis("MoveX", [](float v){
+        LOG("X: " << v);
     });
     
     

@@ -27,7 +27,6 @@ public:
         DWORD ret = XInputGetState(xinput_index, &state);
         if(ret != ERROR_SUCCESS) {
             // Device not connected
-            getAdapter()->clear();
             return;
         }
 

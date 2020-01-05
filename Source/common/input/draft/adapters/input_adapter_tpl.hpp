@@ -27,7 +27,9 @@ public:
     }
     void setKeyState(size_t key, float value) override {
         assert(key < KEY_COUNT);
-        keys[key] = value;
+        if(keys[key] < value) {
+            keys[key] = value;
+        }
     }
 };
 
