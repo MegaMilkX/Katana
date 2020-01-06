@@ -18,7 +18,7 @@
 const float INPUT_REPEAT_DELAY = .5f;
 const float INPUT_REPEAT_RATE = .1f;
 const float INPUT_TAP_TIME = .1f;
-const int INPUT_MAX_ACTION_KEY_COMBINATION = 3;
+const int   INPUT_MAX_ACTION_KEY_COMBINATION = 3;
 
 enum INPUT_PLATFORM_HINT {
     INPUT_PLATFORM_PC,
