@@ -13,6 +13,7 @@
 
 #include "../common/input/draft/input_mgr.hpp"
 #include "../common/input/draft/input_device_xinput_pad.hpp"
+#include "../common/input/hid/hid.hpp"
 #include "../common/audio.hpp"
 
 std::unique_ptr<KatanaImpl> kt_play_mode;
@@ -111,6 +112,7 @@ int main(int argc, char* argv[]) {
     });
     
     
+    hidEnumDevices();
     
 
     EscInputListener esc_input_listener;
@@ -137,6 +139,7 @@ int main(int argc, char* argv[]) {
         while(!platformIsShuttingDown()) {
             frameTimer.start();
 
+            hidUpdateDevices();
             getInputMgr().update(dt);
 
             platformUpdate(dt);

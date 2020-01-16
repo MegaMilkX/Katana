@@ -109,6 +109,8 @@ target_link_directories($PROJECT_NAME PRIVATE
 target_link_libraries($PROJECT_NAME 
 	shlwapi.lib
 	OpenGL32.lib
+	hid.lib
+	setupapi.lib
 	BulletCollision
 	BulletDynamics
 	LinearMath
@@ -135,6 +137,8 @@ target_link_directories(${PROJECT_NAME}_editor PRIVATE
 target_link_libraries(${PROJECT_NAME}_editor
 	shlwapi.lib
 	OpenGL32.lib
+	hid.lib
+	setupapi.lib
 	BulletCollision
 	BulletDynamics
 	LinearMath
@@ -161,6 +165,8 @@ target_link_directories(thumb_builder PRIVATE
 target_link_libraries(thumb_builder
 	shlwapi.lib
 	OpenGL32.lib
+	hid.lib
+	setupapi.lib
 	BulletCollision
 	BulletDynamics
 	LinearMath
