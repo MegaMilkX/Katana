@@ -41,7 +41,7 @@ void SingleAnimJob::setSkeleton(std::shared_ptr<Skeleton> skel) {
     pose.samples = skel->makePoseArray();
 }
 
-void SingleAnimJob::onInit() {
+void SingleAnimJob::onInit(JobGraph*) {
     bind<Pose>(&pose);
 }
 void SingleAnimJob::onInvoke() {

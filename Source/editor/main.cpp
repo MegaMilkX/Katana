@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
     });
     
     
-    hidEnumDevices();
+    //hidEnumDevices();
     
 
     EscInputListener esc_input_listener;
@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
         while(!platformIsShuttingDown()) {
             frameTimer.start();
 
-            hidUpdateDevices();
+            //hidUpdateDevices();
             getInputMgr().update(dt);
 
             platformUpdate(dt);

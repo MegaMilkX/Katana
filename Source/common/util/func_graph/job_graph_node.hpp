@@ -22,6 +22,7 @@ struct JobOutput {
 
 class FuncNodeDesc;
 
+class JobGraph;
 class JobGraphNode {
     RTTR_ENABLE()
 protected:
@@ -32,10 +33,12 @@ protected:
 
     gfxm::vec2 visual_pos;
 
-    virtual void onInit() = 0;
+    virtual void onInit_(JobGraph* owner_graph) = 0;
 
 public:
     virtual uint64_t get_type_id() const = 0;
+
+    virtual rttr::type getGraphType() const = 0;
 
     void setUid(uint32_t uid) { this->uid = uid; }
     uint32_t getUid() const { return uid; }
@@ -78,8 +81,8 @@ public:
         return true;
     }
 
-    void init() {
-        onInit();
+    void init(JobGraph* owner_graph) {
+        onInit_(owner_graph);
     }
     virtual void invoke() {}
 

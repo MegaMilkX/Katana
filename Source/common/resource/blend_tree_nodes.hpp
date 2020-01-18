@@ -14,10 +14,10 @@ struct Pose {
     float speed = 1.0f;
 };
 
-class Blend3Job : public JobNode<Blend3Job> {
+class Blend3Job : public JobNode<Blend3Job, JobGraph> {
     Pose pose;
 public:
-    void onInit() override {
+    void onInit(JobGraph*) override {
         bind<Pose>(&pose);
     }
     void onInvoke() override {
@@ -59,7 +59,7 @@ public:
 };
 
 
-class SingleAnimJob : public JobNode<SingleAnimJob> {
+class SingleAnimJob : public JobNode<SingleAnimJob, JobGraph> {
     // TODO: Remove?
     std::shared_ptr<Skeleton> skel;
 
@@ -75,30 +75,30 @@ public:
 
     void setSkeleton(std::shared_ptr<Skeleton> skel);
 
-    void onInit() override;
+    void onInit(JobGraph*) override;
     void onInvoke() override;
 
     void onGui() override;
 };
 
 
-class PoseResultJob : public JobNode<PoseResultJob> {
+class PoseResultJob : public JobNode<PoseResultJob, JobGraph> {
 public:
     Pose& getPose() {
         return get<Pose>(0);
     }
 
-    void onInit() override {}
+    void onInit(JobGraph*) override {}
     void onInvoke() override {
         
     }
 };
 
 
-class FloatNode : public JobNode<FloatNode> {
+class FloatNode : public JobNode<FloatNode, JobGraph> {
     float v;
 public:
-    void onInit() {
+    void onInit(JobGraph*) {
         bind<float>(&v);
     }
     void onInvoke() {
