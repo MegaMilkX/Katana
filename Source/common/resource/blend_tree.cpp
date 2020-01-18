@@ -1,9 +1,9 @@
 #include "blend_tree.hpp"
 
 void BlendTree::clear() {
-    jobGraph.clear();
+    JobGraph::clear();
     poseResult = new PoseResultJob;
-    jobGraph.addNode(poseResult);
+    addNode(poseResult);
 }
 void BlendTree::copy(BlendTree* other) {
     dstream strm;
@@ -26,7 +26,8 @@ void BlendTree::setBlackboard(AnimBlackboard* bb) {
 void BlendTree::serialize(out_stream& out) {
     DataWriter w(&out);
 
-    jobGraph.write(out);
+    write(out);
+    
     out.write(poseResult->getUid());
     out.write<uint32_t>(anim_nodes.size());
     for(auto a : anim_nodes) {
@@ -48,13 +49,14 @@ bool BlendTree::deserialize(in_stream& in, size_t sz) {
 
     anim_nodes.clear();
 
-    jobGraph.clear();
-    jobGraph.read(in);
+    clear();
+    read(in);
+    
     uint32_t pose_node_uid = r.read<uint32_t>();
-    poseResult = (PoseResultJob*)jobGraph.getNode(pose_node_uid);
+    poseResult = (PoseResultJob*)getNode(pose_node_uid);
     uint32_t anim_node_uid_count = r.read<uint32_t>();
     for(uint32_t i = 0; i < anim_node_uid_count; ++i) {
-        auto node = (SingleAnimJob*)jobGraph.getNode(r.read<uint32_t>());
+        auto node = (SingleAnimJob*)getNode(r.read<uint32_t>());
         anim_nodes.insert(node);
         node->setBlendTree(this);
     }
@@ -63,6 +65,6 @@ bool BlendTree::deserialize(in_stream& in, size_t sz) {
     ref_object = retrieve<GameScene>(ref_name);
     ref_skel = retrieve<Skeleton>(skl_name);
 
-    jobGraph.prepare();
+    prepare();
     return true;
 }

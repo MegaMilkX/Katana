@@ -10,10 +10,9 @@
 #include "../util/anim_blackboard.hpp"
 
 
-class BlendTree : public Resource {
+class BlendTree : public Resource, public JobGraph {
     RTTR_ENABLE(Resource)
     
-    JobGraph jobGraph;
     std::set<SingleAnimJob*> anim_nodes;
     PoseResultJob* poseResult = 0;
     Pose pose;
@@ -27,10 +26,10 @@ public:
 
     BlendTree() {
         poseResult = new PoseResultJob();
-        jobGraph.addNode(poseResult);
+        addNode(poseResult);
     }
 
-    void clear();
+    void clear() override;
     void copy(BlendTree* other);
 
     void setSkeleton(std::shared_ptr<Skeleton> skel);
@@ -53,24 +52,20 @@ public:
             anim_nodes.insert(node);
             ((SingleAnimJob*)node)->setBlendTree(this);
         }
-        jobGraph.addNode(node);
+        addNode(node);
         return node;
     }
 
     const char* getWriteExtension() const override { return "blend_tree"; }
 
     Pose& getPoseData(float normal_cursor) {
-        jobGraph.run();
+        run();
         
         if(!poseResult->isValid()) {
             return pose;
         } else {
             return poseResult->getPose();
         }
-    }
-
-    JobGraph& getGraph() {
-        return jobGraph;
     }
 
     void         serialize(out_stream& out);

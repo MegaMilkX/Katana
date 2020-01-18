@@ -1,5 +1,7 @@
 #include "blend_tree.hpp"
 
+#include "blend_tree.hpp"
+
 STATIC_RUN(BLEND_TREE_NODES) {
     regJobNode<TestJob>("Test")
         .out<float>("value");
@@ -41,7 +43,7 @@ void SingleAnimJob::setSkeleton(std::shared_ptr<Skeleton> skel) {
     pose.samples = skel->makePoseArray();
 }
 
-void SingleAnimJob::onInit(JobGraph*) {
+void SingleAnimJob::onInit(BlendTree*) {
     bind<Pose>(&pose);
 }
 void SingleAnimJob::onInvoke() {

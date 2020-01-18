@@ -84,10 +84,10 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
 
     ImGui::BeginColumns("First", 2);
     if(ImGuiExt::BeginGridView("BlendTreeGrid")) {
-        for(auto n : blendTree.getGraph().getNodes()) {
+        for(auto n : blendTree.getNodes()) {
             const gfxm::vec2& p = n->getPos();
             ImVec2 pos(p.x, p.y);
-            guiDrawNode(blendTree.getGraph(), n, &pos);
+            guiDrawNode(blendTree, n, &pos);
             n->setPos(gfxm::vec2(pos.x, pos.y));
         }
     }
@@ -154,29 +154,29 @@ void DocBlendTree::onGuiToolbox(Editor* ed) {
     }
     if(ImGui::BeginPopup("test")) {
         if(ImGui::MenuItem("Multiply")) {
-            blendTree.getGraph().addNode(new MultiplyJob);
-            blendTree.getGraph().prepare();
+            blendTree.addNode(new MultiplyJob);
+            blendTree.prepare();
         }
         if(ImGui::MenuItem("Printer")) {
-            blendTree.getGraph().addNode(new PrintJob);
-            blendTree.getGraph().prepare();
+            blendTree.addNode(new PrintJob);
+            blendTree.prepare();
         }
         if(ImGui::MenuItem("Test")) {
-            blendTree.getGraph().addNode(new TestJob);
-            blendTree.getGraph().prepare();
+            blendTree.addNode(new TestJob);
+            blendTree.prepare();
         }
         if(ImGui::MenuItem("Float")) {
-            blendTree.getGraph().addNode(new FloatNode);
-            blendTree.getGraph().prepare();
+            blendTree.addNode(new FloatNode);
+            blendTree.prepare();
         }
         if(ImGui::MenuItem("SingleAnim")) {
             auto node = blendTree.createNode<SingleAnimJob>();
             node->setSkeleton(motion.getSkeleton());
-            blendTree.getGraph().prepare();
+            blendTree.prepare();
         }
         if(ImGui::MenuItem("Blend3")) {
-            blendTree.getGraph().addNode(new Blend3Job);
-            blendTree.getGraph().prepare();
+            blendTree.addNode(new Blend3Job);
+            blendTree.prepare();
         }
         ImGui::EndPopup();
     }
