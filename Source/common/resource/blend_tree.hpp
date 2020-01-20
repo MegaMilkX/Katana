@@ -9,6 +9,8 @@
 #include "skeleton.hpp"
 #include "../util/anim_blackboard.hpp"
 
+#include "../util/object_pool.hpp"
+
 
 class BlendTree : public Resource, public JobGraph {
     RTTR_ENABLE(Resource)
@@ -17,6 +19,9 @@ class BlendTree : public Resource, public JobGraph {
     Pose pose;
     float cursor = .0f;
     AnimBlackboard* blackboard = 0;
+
+    std::map<std::string, int> value_indices;
+    std::vector<float>         values;
 
 public:
     // For editor purposes
@@ -33,6 +38,12 @@ public:
     void setSkeleton(std::shared_ptr<Skeleton> skel);
     Skeleton* getSkeleton();
     void setBlackboard(AnimBlackboard* bb);
+
+    int getValueIndex(const char* name);
+    int declValue(const char* name);
+    void removeValue(const char* name);
+    void setValue(int idx, float val);
+    int valueCount();
 
     void setCursor(float cur) {
         cursor = cur;

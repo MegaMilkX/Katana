@@ -25,6 +25,48 @@ void BlendTree::setBlackboard(AnimBlackboard* bb) {
     // TODO: Hook up value nodes
 }
 
+int BlendTree::getValueIndex(const char* name) {
+    auto it = value_indices.find(name);
+    if(it == value_indices.end()) {
+        return -1;
+    }
+    return it->second;
+}
+int BlendTree::declValue(const char* name) {
+    int idx = getValueIndex(name);
+    if(idx >= 0) {
+        LOG_WARN("BlendTree value " << std::string(name) << " already declared");
+        return idx;
+    }
+
+    idx = (int)values.size();
+    value_indices[name] = idx;
+    values.emplace_back(.0f);
+    return idx;
+}
+void BlendTree::removeValue(const char* name) {
+    int idx = getValueIndex(name);
+    if(idx < 0) {
+        LOG_WARN("Failed to remove BlendTree value " << std::string(name) << ": doesn't exist");
+        return;
+    }
+
+    values.erase(values.begin() + idx);
+    value_indices.erase(name);
+    
+    for(auto& kv : value_indices) {
+        if(kv.second > idx) {
+            kv.second--;
+        }
+    }
+}
+void BlendTree::setValue(int idx, float val) {
+    values[idx] = val;
+}
+int BlendTree::valueCount() {
+    return (int)values.size();
+}
+
 void BlendTree::serialize(out_stream& out) {
     DataWriter w(&out);
 
