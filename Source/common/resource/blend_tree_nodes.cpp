@@ -33,29 +33,40 @@ STATIC_RUN(BLEND_TREE_NODES) {
 SingleAnimJob::SingleAnimJob() {
 }
 
-void SingleAnimJob::setBlendTree(BlendTree* bt) {
-    blendTree = bt;
-}
-
-void SingleAnimJob::setSkeleton(std::shared_ptr<Skeleton> skel) {
-    this->skel = skel;
-    if(!skel) return;
-    pose.samples = skel->makePoseArray();
-}
-
-void SingleAnimJob::onInit(BlendTree*) {
+void SingleAnimJob::onInit(BlendTree* bt) {
     bind<Pose>(&pose);
+
+    tryInit();
 }
 void SingleAnimJob::onInvoke() {
-    if(!skel || !anim || !blendTree) return;
+    if(!ready) return;
 
-    std::vector<int32_t>& mapping = anim->getMapping(skel.get());
-    anim->sample_remapped(pose.samples, blendTree->getCursor() * anim->length, mapping);
+    anim->sample_remapped(pose.samples, graph->getCursor() * anim->length, mapping);
     pose.speed = anim->fps / anim->length;
 }
 
 void SingleAnimJob::onGui() {
-    imguiResourceTreeCombo("anim clip", anim, "anm", [](){
-
+    imguiResourceTreeCombo("anim clip", anim, "anm", [this](){
+        tryInit();
     });
+}
+
+void SingleAnimJob::tryInit() {
+    auto skel = graph->getSkeleton();
+    if(skel) {
+        pose.samples = skel->makePoseArray();
+    }
+    if(skel && anim) {
+        mapping = anim->getMapping(skel);
+
+        ready = true;
+    } else {
+        ready = false;
+    }
+}
+
+
+void PoseResultJob::onInvoke() {
+    auto& pose = get<Pose>(0);
+    graph->_reportPose(pose);
 }

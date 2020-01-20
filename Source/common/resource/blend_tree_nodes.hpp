@@ -60,20 +60,15 @@ public:
 
 
 class SingleAnimJob : public JobNode<SingleAnimJob, BlendTree> {
-    // TODO: Remove?
-    std::shared_ptr<Skeleton> skel;
-
     std::shared_ptr<Animation> anim;
+    std::vector<int32_t> mapping;
     Pose pose;
+    bool ready = false;
 
-    BlendTree* blendTree = 0;
+    void tryInit();
 
 public:
     SingleAnimJob();
-
-    void setBlendTree(BlendTree* bt);
-
-    void setSkeleton(std::shared_ptr<Skeleton> skel);
 
     void onInit(BlendTree*) override;
     void onInvoke() override;
@@ -84,14 +79,8 @@ public:
 
 class PoseResultJob : public JobNode<PoseResultJob, BlendTree> {
 public:
-    Pose& getPose() {
-        return get<Pose>(0);
-    }
-
     void onInit(BlendTree*) override {}
-    void onInvoke() override {
-        
-    }
+    void onInvoke() override;
 };
 
 

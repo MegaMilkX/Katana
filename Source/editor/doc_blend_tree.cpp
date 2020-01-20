@@ -170,8 +170,7 @@ void DocBlendTree::onGuiToolbox(Editor* ed) {
             blendTree.prepare();
         }
         if(ImGui::MenuItem("SingleAnim")) {
-            auto node = blendTree.createNode<SingleAnimJob>();
-            node->setSkeleton(motion.getSkeleton());
+            blendTree.createNode<SingleAnimJob>();
             blendTree.prepare();
         }
         if(ImGui::MenuItem("Blend3")) {

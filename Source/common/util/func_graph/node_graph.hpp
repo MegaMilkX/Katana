@@ -16,9 +16,9 @@ inline uint64_t next_job_node_type_id() {
 
 template<typename NODE_T, typename GRAPH_T>
 class JobNode : public JobGraphNode {
+protected:
     GRAPH_T* graph = 0; // Direct owner graph access for global data
 
-protected:
     rttr::type getGraphType() const override { 
         return rttr::type::get<GRAPH_T>(); 
     }
@@ -125,6 +125,7 @@ public:
     virtual ~JobGraph() {}
 
     virtual void clear();
+    void reinitNodes();
     std::set<JobGraphNode*>& getNodes();
 
     template<typename T>

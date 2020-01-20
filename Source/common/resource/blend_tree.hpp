@@ -13,8 +13,7 @@
 class BlendTree : public Resource, public JobGraph {
     RTTR_ENABLE(Resource)
     
-    std::set<SingleAnimJob*> anim_nodes;
-    PoseResultJob* poseResult = 0;
+    std::shared_ptr<Skeleton> skeleton;
     Pose pose;
     float cursor = .0f;
     AnimBlackboard* blackboard = 0;
@@ -25,14 +24,14 @@ public:
     std::shared_ptr<Skeleton> ref_skel;
 
     BlendTree() {
-        poseResult = new PoseResultJob();
-        addNode(poseResult);
+        addNode(new PoseResultJob());
     }
 
     void clear() override;
     void copy(BlendTree* other);
 
     void setSkeleton(std::shared_ptr<Skeleton> skel);
+    Skeleton* getSkeleton();
     void setBlackboard(AnimBlackboard* bb);
 
     void setCursor(float cur) {
@@ -48,10 +47,6 @@ public:
     template<typename T>
     T* createNode() {
         auto node = new T();
-        if(rttr::type::get<T>() == rttr::type::get<SingleAnimJob>()) {
-            anim_nodes.insert(node);
-            ((SingleAnimJob*)node)->setBlendTree(this);
-        }
         addNode(node);
         return node;
     }
@@ -60,16 +55,14 @@ public:
 
     Pose& getPoseData(float normal_cursor) {
         run();
-        
-        if(!poseResult->isValid()) {
-            return pose;
-        } else {
-            return poseResult->getPose();
-        }
+        return pose;
     }
 
     void         serialize(out_stream& out);
     bool         deserialize(in_stream& in, size_t sz);
+
+    // Functions for node feedback
+    void         _reportPose(const Pose& pose);
 };
 STATIC_RUN(BlendTree) {
     rttr::registration::class_<BlendTree>("BlendTree")

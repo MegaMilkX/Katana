@@ -12,6 +12,12 @@ void JobGraph::clear() {
     nodes_by_type.clear();
 }
 
+void JobGraph::reinitNodes() {
+    for(auto job : nodes) {
+        job->init(this);
+    }
+}
+
 std::set<JobGraphNode*>& JobGraph::getNodes() {
     return nodes;
 }
