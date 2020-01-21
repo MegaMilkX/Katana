@@ -86,17 +86,13 @@ public:
 
 class FloatNode : public JobNode<FloatNode, BlendTree> {
     float v;
+    std::string value_name;
+    int value_index = -1;
 public:
-    void onInit(BlendTree*) {
-        bind<float>(&v);
-    }
-    void onInvoke() {
+    void onInit(BlendTree* bt);
+    void onInvoke();
 
-    }
-
-    void onGui() {
-        ImGui::DragFloat("value", &v, .001f, .0f, 1.0f);
-    }
+    void onGui();
 };
 
 

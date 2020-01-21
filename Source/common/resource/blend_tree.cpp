@@ -32,6 +32,14 @@ int BlendTree::getValueIndex(const char* name) {
     }
     return it->second;
 }
+const char* BlendTree::getValueName(int idx) {
+    for(auto& kv : value_indices) {
+        if(kv.second == idx) {
+            return kv.first.c_str();
+        }
+    }
+    return "";
+}
 int BlendTree::declValue(const char* name) {
     int idx = getValueIndex(name);
     if(idx >= 0) {
@@ -63,6 +71,9 @@ void BlendTree::removeValue(const char* name) {
 void BlendTree::setValue(int idx, float val) {
     values[idx] = val;
 }
+float BlendTree::getValue(int idx) {
+    return values[idx];
+}
 int BlendTree::valueCount() {
     return (int)values.size();
 }
@@ -88,7 +99,7 @@ void BlendTree::serialize(out_stream& out) {
 bool BlendTree::deserialize(in_stream& in, size_t sz) {
     DataReader r(&in);
 
-    clear();
+    JobGraph::clear();
     read(in);
     
     uint32_t pose_node_uid = r.read<uint32_t>(); // unused

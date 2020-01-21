@@ -203,13 +203,11 @@ void DocBlendTree::onGuiToolbox(Editor* ed) {
     ImGui::Text("Values");
 
     for(int i = 0; i < blendTree.valueCount(); ++i) {
-        static float v = .0f;
-        ImGui::DragFloat("Value", &v);
+        const char* name = blendTree.getValueName(i);
+        float val = blendTree.getValue(i);
+        if(ImGui::DragFloat(name, &val, .001f)) {
+            blendTree.setValue(i, val);
+        }
         // TODO: List values, allow changing and renaming
-    }
-
-    float btn_width = ImGui::GetContentRegionAvailWidth();
-    if(ImGui::Button(ICON_MDI_PLUS, ImVec2(btn_width, 0))) {
-        blendTree.declValue("new_value");
     }
 }

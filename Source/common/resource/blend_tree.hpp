@@ -12,7 +12,7 @@
 #include "../util/object_pool.hpp"
 
 
-class BlendTree : public Resource, public JobGraph {
+class BlendTree : public Resource, public JobGraphTpl<BlendTree> {
     RTTR_ENABLE(Resource)
     
     std::shared_ptr<Skeleton> skeleton;
@@ -40,9 +40,11 @@ public:
     void setBlackboard(AnimBlackboard* bb);
 
     int getValueIndex(const char* name);
+    const char* getValueName(int idx);
     int declValue(const char* name);
     void removeValue(const char* name);
     void setValue(int idx, float val);
+    float getValue(int idx);
     int valueCount();
 
     void setCursor(float cur) {
@@ -61,6 +63,14 @@ public:
         addNode(node);
         return node;
     }
+
+
+    void compile() {
+        value_indices.clear();
+        values.clear();
+        JobGraph::reinitNodes();
+    }
+
 
     const char* getWriteExtension() const override { return "blend_tree"; }
 
