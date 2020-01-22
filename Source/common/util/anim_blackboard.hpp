@@ -113,6 +113,10 @@ inline void animBlackboardGui(AnimBlackboard* bb) {
         if(ImGui::InputText(MKSTR("###param_name" << i).c_str(), buf, sizeof(buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
             bb->rename(i, buf);
         }
+        float f = bb->get_float(i);
+        if(ImGui::DragFloat(MKSTR("val" << "###" << i).c_str(), &f, 0.001f)) {
+            bb->set(i, f);
+        }
     }
 
     if(ImGui::SmallButton(ICON_MDI_PLUS "###param_add")) {

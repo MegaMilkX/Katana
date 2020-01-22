@@ -3,7 +3,8 @@
 #include "../common/util/imgui_helpers.hpp"
 
 DocActionGraph::DocActionGraph() {
-
+    viewport.camMode(GuiViewport::CAM_ORBIT);
+    viewport.enableDebugDraw(false);
 }
 
 static ImRect s_graph_edit_bb;
@@ -245,6 +246,9 @@ void EndGridView() {
 bool s_creating_transition = false;
 void DocActionGraph::onGui(Editor* ed, float dt) {
     auto& action_graph = _resource;
+
+    ImGui::BeginColumns("First", 2);
+
     if(BeginGridView("test")) {
         for(auto& t : action_graph->getTransitions()) {
             gfxm::vec2 from = t->from->getEditorPos();
@@ -279,6 +283,47 @@ void DocActionGraph::onGui(Editor* ed, float dt) {
         }
     }
     EndGridView();
+
+    ImGui::NextColumn();  // ================================
+
+    std::vector<ktNode*> tgt_nodes;
+    if(action_graph->reference_skel) {
+        auto& skel = action_graph->reference_skel;
+
+        tgt_nodes.resize(skel->boneCount());
+
+        action_graph->update(dt, sample_buffer);
+
+        for(size_t i = 0; i < skel->boneCount(); ++i) {
+            auto& bone = skel->getBone(i);
+            ktNode* node = scn.findObject(bone.name);
+            tgt_nodes[i] = node;
+        }
+        for(size_t i = 0; i < sample_buffer.size(); ++i) {
+            auto n = tgt_nodes[i];
+            if(n) {
+                n->getTransform()->setPosition(sample_buffer[i].t);
+                n->getTransform()->setRotation(sample_buffer[i].r);
+                n->getTransform()->setScale(sample_buffer[i].s);
+            }
+        }
+    }
+
+
+    if(cam_pivot) {
+        viewport.camSetPivot(cam_pivot->getTransform()->getWorldPosition());
+    }
+    if(cam_light) {
+        cam_light->getOwner()->getTransform()->setTransform(gfxm::inverse(viewport.getView()));
+    }
+    auto skel_ref = scn.find<SkeletonRef>();
+    if(skel_ref) {
+        //skel_ref->debugDraw(&viewport.getDebugDraw());
+    }
+
+    viewport.draw(&scn);
+
+    ImGui::EndColumns();
 }
 
 const char* condTypeToCStr(ActionGraphTransition::CONDITION cond) {
@@ -294,8 +339,44 @@ const char* condTypeToCStr(ActionGraphTransition::CONDITION cond) {
     return cstr;
 }
 
+void DocActionGraph::setReferenceObject(ktNode* node) {
+    scn.clear();
+                    
+    scn.copy(node);
+    scn.getTransform()->setScale(
+        node->getTransform()->getScale()
+    );
+    gfxm::aabb box;
+    scn.makeAabb(box);
+
+    cam_light = scn.createChild()->get<DirLight>().get();
+    cam_light->intensity = 500.0f;
+
+    viewport.resetCamera((box.from + box.to) * 0.5f, gfxm::length(box.to - box.from));
+
+    auto skel_ref = scn.find<SkeletonRef>();
+    if(skel_ref && skel_ref->skeleton) {
+        _resource->reference_skel = skel_ref->skeleton;
+        _resource->setSkeleton(skel_ref->skeleton);
+
+        sample_buffer.resize(_resource->reference_skel->boneCount());
+    }
+}
+
 void DocActionGraph::onGuiToolbox(Editor* ed) {
     auto& action_graph = _resource;
+
+    imguiResourceTreeCombo("reference", action_graph->reference_object, "so", [this, &action_graph](){
+        if(action_graph->reference_object) {
+            setReferenceObject(action_graph->reference_object.get());
+        }
+    });
+    imguiResourceTreeCombo("skeleton", action_graph->reference_skel, "skl", [this, &action_graph](){
+        action_graph->setSkeleton(action_graph->reference_skel);
+
+        sample_buffer.resize(action_graph->reference_skel->boneCount());
+    });
+
     if(ImGui::Button("Add action")) {
         auto act = action_graph->createAction();
         ImVec2 new_pos = GraphEditGridScreenToPos(s_graph_edit_bb.Min + s_graph_edit_bb.Max * 0.5f);
@@ -389,4 +470,8 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
 void DocActionGraph::onResourceSet() {
     auto& action_graph = _resource;
     action_graph->setBlackboard(&blackboard);
+
+    if(action_graph->reference_object) {
+        setReferenceObject(action_graph->reference_object.get());
+    }
 }

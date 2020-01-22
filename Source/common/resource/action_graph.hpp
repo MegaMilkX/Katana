@@ -92,6 +92,10 @@ class ActionGraph : public Resource {
     void pickEntryAction();
 
 public:
+    // For editor purposes
+    std::shared_ptr<GameScene> reference_object;
+    std::shared_ptr<Skeleton> reference_skel;
+
     const char* getWriteExtension() const override { return "action_graph"; }
 
     void setSkeleton(std::shared_ptr<Skeleton> skeleton) {

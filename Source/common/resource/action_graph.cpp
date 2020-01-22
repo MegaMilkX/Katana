@@ -271,6 +271,17 @@ void ActionGraph::serialize(out_stream& out) {
             w.write<float>(cond.ref_value);
         }
     }
+
+    if(reference_object) {
+        w.write(reference_object->Name());
+    } else {
+        w.write(std::string());
+    }
+    if(reference_skel) {
+        w.write(reference_skel->Name());
+    } else {
+        w.write(std::string());
+    }
 }
 bool ActionGraph::deserialize(in_stream& in, size_t sz) {
     DataReader r(&in);
@@ -315,6 +326,11 @@ bool ActionGraph::deserialize(in_stream& in, size_t sz) {
             cond.ref_value = r.read<float>();
         }
     }
+
+    std::string ref_name = r.readStr();
+    std::string skl_name = r.readStr();
+    reference_object = retrieve<GameScene>(ref_name);
+    reference_skel = retrieve<Skeleton>(skl_name);
 
     return true;
 }
