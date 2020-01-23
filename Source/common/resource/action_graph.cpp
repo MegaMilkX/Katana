@@ -187,6 +187,9 @@ void ActionGraph::update(
     if(current_action > actions.size()) {
         return;
     }
+    if (actions.empty()) {
+        return;
+    }
     auto act = actions[current_action];
 
     for(auto& t : act->getTransitions()) {

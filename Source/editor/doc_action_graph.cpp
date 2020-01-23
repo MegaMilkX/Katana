@@ -5,6 +5,8 @@
 DocActionGraph::DocActionGraph() {
     viewport.camMode(GuiViewport::CAM_ORBIT);
     viewport.enableDebugDraw(false);
+
+    onResourceSet();
 }
 
 static ImRect s_graph_edit_bb;
