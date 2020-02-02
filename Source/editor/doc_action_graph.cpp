@@ -149,40 +149,39 @@ bool Node(const char* id, ImVec2& pos, const ImVec2& node_size, bool selected = 
 }
 
 bool BeginGridView(const char* id) {
-    std::string name = id;
-    auto window = ImGui::GetCurrentWindow();
-
-    auto bb = s_graph_edit_bb = window->ContentsRegionRect;
-    ImVec2 size = ImVec2(bb.Max.x - bb.Min.x, bb.Max.y - bb.Min.y);
-
-    ImGuiIO& io = ImGui::GetIO();
-    ImVec2 cursor_pos = io.MousePos;
-    cursor_pos.x = cursor_pos.x - bb.Min.x;
-    cursor_pos.y = cursor_pos.y - bb.Min.y;
-
-    if(io.MouseWheel != .0f && ImGui::IsMouseHoveringRect(bb.Min, bb.Max)) {
-        ImVec2 observed_size_before_zoom_change = size / s_graph_edit_zoom;
-        s_graph_edit_zoom += io.MouseWheel * 0.1f;
-        if(s_graph_edit_zoom < 0.1f) {
-            s_graph_edit_zoom = 0.1f;
-        }
-        ImVec2 observed_size_after_zoom_change = size / s_graph_edit_zoom;
-        ImVec2 observed_box_size_delta = observed_size_before_zoom_change - observed_size_after_zoom_change;
-        ImVec2 cursor_pos_factor = cursor_pos / size;
-        ImVec2 zoom_pos_adjustment = observed_box_size_delta * cursor_pos_factor;
-        s_graph_edit_offset -= zoom_pos_adjustment;
-    }
-
-    s_graph_edit_tmp_offset = ImGui::GetMouseDragDelta(2) / s_graph_edit_zoom;
-
-    s_graph_edit_grid_offset_plus_drag_delta = s_graph_edit_offset + s_graph_edit_tmp_offset;
-    if(ImGui::IsMouseReleased(2)) {
-        s_graph_edit_offset += s_graph_edit_tmp_offset;
-        s_graph_edit_tmp_offset = ImVec2();
-    }
-    
-
     if(ImGui::BeginChild(id)) {
+        std::string name = id;
+        auto window = ImGui::GetCurrentWindow();
+
+        auto bb = s_graph_edit_bb = window->ContentsRegionRect;
+        ImVec2 size = ImVec2(bb.Max.x - bb.Min.x, bb.Max.y - bb.Min.y);
+
+        ImGuiIO& io = ImGui::GetIO();
+        ImVec2 cursor_pos = io.MousePos;
+        cursor_pos.x = cursor_pos.x - bb.Min.x;
+        cursor_pos.y = cursor_pos.y - bb.Min.y;
+
+        if(io.MouseWheel != .0f && ImGui::IsMouseHoveringRect(bb.Min, bb.Max)) {
+            ImVec2 observed_size_before_zoom_change = size / s_graph_edit_zoom;
+            s_graph_edit_zoom += io.MouseWheel * 0.1f;
+            if(s_graph_edit_zoom < 0.1f) {
+                s_graph_edit_zoom = 0.1f;
+            }
+            ImVec2 observed_size_after_zoom_change = size / s_graph_edit_zoom;
+            ImVec2 observed_box_size_delta = observed_size_before_zoom_change - observed_size_after_zoom_change;
+            ImVec2 cursor_pos_factor = cursor_pos / size;
+            ImVec2 zoom_pos_adjustment = observed_box_size_delta * cursor_pos_factor;
+            s_graph_edit_offset -= zoom_pos_adjustment;
+        }
+
+        s_graph_edit_tmp_offset = ImGui::GetMouseDragDelta(2) / s_graph_edit_zoom;
+
+        s_graph_edit_grid_offset_plus_drag_delta = s_graph_edit_offset + s_graph_edit_tmp_offset;
+        if(ImGui::IsMouseReleased(2)) {
+            s_graph_edit_offset += s_graph_edit_tmp_offset;
+            s_graph_edit_tmp_offset = ImVec2();
+        }
+
         ImGui::PushClipRect(bb.Min, bb.Max, false);
         ImGui::RenderFrame(
             bb.Min, bb.Max, 

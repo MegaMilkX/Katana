@@ -6,6 +6,7 @@
 */
 
 #include <string>
+#include <memory>
 #include "../common/lib/imgui_wrap.hpp"
 #include "../common/lib/imgui/imgui_internal.h"
 
@@ -23,6 +24,8 @@ protected:
     std::string _window_title;
     std::string _icon = ICON_MDI_FILE_DOCUMENT;
 
+    std::vector<std::shared_ptr<EditorWindow>> nested_window_stack;
+
 public:
     bool isOpen() const { return _is_open; }
     bool isUnsaved() const { return _is_unsaved; }
@@ -35,6 +38,8 @@ public:
     void                setTitle(const std::string& title) { _window_title = title; }
     const std::string&  getIconCode() const { return _icon; }
     void                setIconCode(const std::string& icon_code) { _icon = icon_code; }
+
+    void                addNestedWindow(EditorWindow* w) { nested_window_stack.push_back(std::shared_ptr<EditorWindow>(w)); }
 
     virtual void save() = 0;
 

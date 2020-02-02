@@ -31,8 +31,34 @@
 
 int setupImguiLayout();
 
+static void tryOpenDocument(const std::string& res_path) {
+    if(!Editor::get()) {
+        LOG_WARN("Editor is null");
+        return;
+    }
+    Editor::get()->tryOpenDocument(res_path);
+}
+
+static void tryOpenNestedDocument(const std::string& res_path) {
+    if(!Editor::get()) {
+        LOG_WARN("Editor is null");
+        return;
+    }
+    Editor::get()->tryOpenNestedDocument(res_path);
+}
+
+static void tryOpenDocumentFromPtr(std::shared_ptr<Resource> res) {
+    if(!Editor::get()) {
+        LOG_WARN("Editor is null");
+        return;
+    }
+    Editor::get()->tryOpenDocumentFromPtr(res);
+}
+
+
 Editor::Editor() {
-    
+    gTryOpenDocumentFn = &::tryOpenNestedDocument;
+    gTryOpenDocumentFromPtrFn = &::tryOpenDocumentFromPtr;
 }
 Editor::~Editor() {
     
@@ -344,6 +370,32 @@ void Editor::tryOpenDocument(const std::string& res_path) {
         return;
     }
     addWindow(doc);
+}
+
+void Editor::tryOpenNestedDocument(const std::string& res_path) {
+    EditorWindow* doc = 0;
+    EditorWindow* current_doc = getFocusedWindow();
+    if(!current_doc) {
+        LOG_WARN("No window in focus");
+        return;
+    }
+
+    doc = createEditorDocument(res_path);
+    current_doc->addNestedWindow(doc);
+}
+
+void Editor::tryOpenDocumentFromPtr(std::shared_ptr<Resource> res) {
+    if(!res) return;
+    rttr::type t = res->get_type();
+
+    EditorWindow* current_doc = getFocusedWindow();
+    if(!current_doc) {
+        LOG_WARN("No window in focus");
+        return;
+    }
+
+    EditorWindow* doc = createEditorDocument(t);
+    current_doc->addNestedWindow(doc);
 }
 
 EditorState& Editor::getState() {

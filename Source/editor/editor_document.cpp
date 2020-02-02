@@ -24,6 +24,16 @@ void regEditorDocument(rttr::type doc_type, const std::vector<std::string>& file
     }
 }
 
+EditorDocument* createEditorDocument(rttr::type resource_type) {
+    EditorDocument* doc = rttrCreate<EditorDocument>(resource_type);
+    if(!doc) {
+        LOG_WARN("createEditorDocument (from type): " << resource_type.get_name().to_string() << " failed");
+        return 0;
+    }
+
+    return doc;
+}
+
 EditorDocument* createEditorDocument(const std::string& resource_path) {
     std::string ext = get_extension(resource_path);
     if(ext.empty()) {

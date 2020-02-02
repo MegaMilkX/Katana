@@ -22,8 +22,26 @@ void EditorWindow::draw (Editor* ed, float dt) {
             ed->setCurrentDockspace(ImGui::GetWindowDockID());
             ed->setFocusedWindow(this);
         }
-        
-        onGui(ed, dt);
+
+        if(nested_window_stack.empty()) {
+            onGui(ed, dt);
+        } else {
+           if(ImGui::SmallButton("Root")) {
+               nested_window_stack.clear();
+           }
+           for(size_t i = 0; i < nested_window_stack.size(); ++i) {
+               ImGui::SameLine(); ImGui::Text(">"); ImGui::SameLine();
+               if(ImGui::SmallButton(MKSTR(nested_window_stack[i]->getIconCode() << " " << nested_window_stack[i]->getTitle()).c_str())) {
+                   nested_window_stack.resize(i + 1);
+               }
+           }
+
+           if(nested_window_stack.empty()) {
+               onGui(ed, dt);
+           } else {
+               nested_window_stack.back()->onGui(ed, dt);
+           }
+        }
     }
     ImGui::End();
 }

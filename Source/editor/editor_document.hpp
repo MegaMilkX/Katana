@@ -153,6 +153,7 @@ void regEditorDocument(const char* file_extension) {
     regEditorDocument<DOC_T>({ std::string(file_extension) });
 }
 
+EditorDocument* createEditorDocument(rttr::type resource_type);
 EditorDocument* createEditorDocument(const std::string& resource_path);
 
 

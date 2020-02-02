@@ -1,14 +1,6 @@
 #include "imgui_helpers.hpp"
 
-#include "../editor/editor.hpp"
+tryOpenDocumentFn_t gTryOpenDocumentFn = 0;
+tryOpenDocumentFromPtrFn_t gTryOpenDocumentFromPtrFn = 0;
 
-void tryOpenDocument(const std::string& res_path) {
-#ifdef KT_EDITOR
-    if(!Editor::get()) {
-        LOG_WARN("Editor is null");
-        return;
-    }
-    Editor::get()->tryOpenDocument(res_path);
-#endif
-}
 

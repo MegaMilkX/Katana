@@ -57,6 +57,8 @@ public:
 
     void addWindow(EditorWindow* doc);
     void tryOpenDocument(const std::string& res_path);
+    void tryOpenNestedDocument(const std::string& res_path);
+    void tryOpenDocumentFromPtr(std::shared_ptr<Resource> res);
 
     EditorState& getState();
 private:

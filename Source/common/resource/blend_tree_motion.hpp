@@ -24,6 +24,12 @@ public:
         } else {
             local_tree.setSkeleton(tree->ref_skel);
         }
+        local_tree.compile();
+        
+        for(int i = 0; i < local_tree.valueCount(); ++i) {
+            std::string name = local_tree.getValueName(i);
+            // TODO
+        }
     }
 
     BlendTree& getTree() {
@@ -34,7 +40,7 @@ public:
         if(!tree) return;
 
 
-        Pose& pose = local_tree.getPoseData(.0f);
+        Pose& pose = local_tree.getPoseData(cursor);
         cursor += dt * pose.speed;
         local_tree.setCursor(cursor);
         
@@ -50,8 +56,8 @@ public:
     }
 
     void onGui() override {
-        imguiResourceTreeCombo("blend tree", tree, "blend_tree", [](){
-
+        imguiResourceTreeCombo("blend tree", tree, "blend_tree", [this](){
+            setBlendTree(tree);
         });
     }
 };

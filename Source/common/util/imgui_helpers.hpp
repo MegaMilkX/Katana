@@ -20,6 +20,14 @@
 
 #include "../resource/resource_desc_library.hpp"
 
+
+typedef void(*tryOpenDocumentFn_t)(const std::string&);
+typedef void(*tryOpenDocumentFromPtrFn_t)(std::shared_ptr<Resource> res);
+
+extern tryOpenDocumentFn_t gTryOpenDocumentFn;
+extern tryOpenDocumentFromPtrFn_t gTryOpenDocumentFromPtrFn;
+
+
 template<typename BASE_T>
 inline void imguiHeapObjectCombo(
     const char* label,
@@ -61,7 +69,6 @@ inline void imguiHeapObjectCombo(
     }
 }
 
-void tryOpenDocument(const std::string& res_path);
 
 template<typename T>
 void imguiResourceTreeCombo(
@@ -74,35 +81,11 @@ void imguiResourceTreeCombo(
     if(res) {
         current_name = res->Name();
     }
-    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), label);
-    if(res) {
-        auto res_flags = ResourceDescLibrary::get()->getFlags(res->get_type());
-        if((res_flags & ResourceDescLibrary::FLAG_VIEWABLE) == 0) {
-            ImGui::TextDisabled(ICON_MDI_OPEN_IN_NEW);
-        } else {
-            if(ImGui::Button(MKSTR(ICON_MDI_OPEN_IN_NEW << "###" << res.get()).c_str())) {
-                tryOpenDocument(res->Name());
-            }
-        }
-        ImGui::SameLine();
-    } else {
-        auto res_flags = ResourceDescLibrary::get()->getFlags(rttr::type::get<T>());
-        if((res_flags & ResourceDescLibrary::FLAG_WRITABLE) == 0) {
-            ImGui::TextDisabled(ICON_MDI_PLUS);
-        } else {
-            if(ImGui::Button(MKSTR(ICON_MDI_PLUS << "###" << res.get()).c_str())) {
-                std::shared_ptr<T> ptr(new T());
-                std::string save_path = dialogSave(ext);
-                if (!save_path.empty()) {
-                  ptr->write_to_file(save_path);
-
-                  res = ptr;
-                  if (callback) callback();
-                }
-            }
-        }
-        ImGui::SameLine();
+    if(current_name.empty()) {
+        current_name = "<embedded>";
     }
+    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), label);
+    
     if(ImGui::BeginCombo(MKSTR("###" << label).c_str(), current_name.c_str())) {
         std::set<const ResourceNode*> valid_nodes;
         std::function<bool(const std::shared_ptr<ResourceNode>&, const std::string&, std::set<const ResourceNode*>&)> walkNodes;
@@ -166,6 +149,49 @@ void imguiResourceTreeCombo(
         }
 
         ImGui::EndCombo();
+    }
+
+    //ImGui::SameLine();
+
+    if(res) {
+        auto res_flags = ResourceDescLibrary::get()->getFlags(res->get_type());
+        if((res_flags & ResourceDescLibrary::FLAG_VIEWABLE) == 0) {
+            ImGui::TextDisabled(ICON_MDI_OPEN_IN_NEW);
+        } else {
+            if(ImGui::SmallButton(MKSTR(ICON_MDI_OPEN_IN_NEW << "###" << res.get()).c_str())) {
+                if(res->Name().empty()) {
+                    if(gTryOpenDocumentFromPtrFn) gTryOpenDocumentFromPtrFn(res);
+                } else {
+                    if(gTryOpenDocumentFn) gTryOpenDocumentFn(res->Name());
+                }
+            }
+        }
+        if (res_flags & ResourceDescLibrary::FLAG_WRITABLE) {
+          if (res->Name().empty()) {
+            ImGui::SameLine();
+            if (ImGui::SmallButton(MKSTR(ICON_MDI_FLOPPY << "###" << res.get()).c_str())) {
+              std::string save_path = dialogSave(ext);
+              if (!save_path.empty()) {
+                if (res->write_to_file(save_path)) {
+                  res->Name(save_path);
+                  if (callback) callback();
+                }
+              }
+            }
+          }
+        }
+        //ImGui::SameLine();
+    } else {
+        auto res_flags = ResourceDescLibrary::get()->getFlags(rttr::type::get<T>());
+        if((res_flags & ResourceDescLibrary::FLAG_WRITABLE) == 0) {
+            ImGui::TextDisabled(ICON_MDI_PLUS);
+        } else {
+            if(ImGui::SmallButton(MKSTR(ICON_MDI_PLUS << "###" << res.get()).c_str())) {
+                res.reset(new T());
+                if (callback) callback();
+            }
+        }
+        //ImGui::SameLine();
     }
 }
 
