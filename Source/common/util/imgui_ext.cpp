@@ -454,4 +454,40 @@ void EndGridView() {
     ImGui::RenderText(s_graph_edit_bb.Min + ImVec2(0, ImGui::GetTextLineHeight() * 2), MKSTR("y: " << s_graph_edit_grid_offset_plus_drag_delta.y).c_str());
 }
 
+
+static ImVec2 inset_segment_min;
+static ImU32 inset_segment_col;
+static float inset_segment_orig_cursor_x;
+static float inset_segment_orig_region_width;
+static float inset_segment_line_height;
+void BeginInsetSegment(ImU32 bg_color) {
+    inset_segment_orig_cursor_x = ImGui::GetCursorPosX();
+    inset_segment_line_height = ImGui::GetTextLineHeight();
+
+    inset_segment_col = bg_color;
+    ImGui::GetWindowDrawList()->ChannelsSplit(2);
+    ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
+    inset_segment_min = ImGui::GetCursorPos() + ImGui::GetWindowPos();
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetStyle().WindowPadding.y);
+
+    ImGui::Indent(ImGui::GetStyle().WindowPadding.x);
+    //ImGui::PushItemWidth(-ImGui::GetStyle().WindowPadding.x);
+    //ImGui::SetCursorPosX(ImGui::GetStyle().WindowPadding.x + inset_segment_orig_cursor_x);
+}
+void EndInsetSegment() {
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetStyle().WindowPadding.y);
+    
+    ImVec2 inset_segment_max = ImGui::GetCursorPos() + ImGui::GetWindowPos();
+    inset_segment_max.x = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionWidth();
+    ImGui::GetWindowDrawList()->ChannelsSetCurrent(0);
+    ImGui::RenderFrame(inset_segment_min, inset_segment_max, inset_segment_col, false, 10.0f);
+    ImGui::GetWindowDrawList()->ChannelsMerge();
+
+    ImGui::Unindent(ImGui::GetStyle().WindowPadding.x);
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetStyle().WindowPadding.y);
+    //ImGui::PopItemWidth();
+    //ImGui::SetCursorPosX(inset_segment_orig_cursor_x);
+}
+
+
 }

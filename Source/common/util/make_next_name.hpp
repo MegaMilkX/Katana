@@ -1,12 +1,12 @@
-#ifndef MAKE_UNIQUE_STRING_HPP
-#define MAKE_UNIQUE_STRING_HPP
+#ifndef PICK_UNUSED_NAME_HPP
+#define PICK_UNUSED_NAME_HPP
 
 #include <string>
 #include <set>
 
-inline std::string makeUniqueString(const std::set<std::string>& names, const std::string& name) {
+inline std::string makeNextName(const std::set<std::string>& existing_names, const std::string& name) {
     std::string result = name;
-    for(auto& a : names) {
+    for(auto& a : existing_names) {
         if(a == name) {
             std::string action_name = a;
             size_t postfix_pos = std::string::npos;
@@ -27,7 +27,7 @@ inline std::string makeUniqueString(const std::set<std::string>& names, const st
                 action_name = action_name + std::to_string(postfix_int + 1);
             }
             
-            result = makeUniqueString(names, action_name);
+            result = makeNextName(existing_names, action_name);
 
             break;
         }

@@ -1,6 +1,7 @@
 #include "doc_action_graph.hpp"
 
 #include "../common/util/imgui_helpers.hpp"
+#include "../common/util/imgui_ext.hpp"
 
 DocActionGraph::DocActionGraph() {
     viewport.camMode(GuiViewport::CAM_ORBIT);
@@ -80,20 +81,29 @@ bool TransitionLine(const ImVec2& from, const ImVec2& to, bool selected = false)
 
 static const char* s_node_drag_id = 0;
 
-bool Node(const char* id, ImVec2& pos, const ImVec2& node_size, bool selected = false, bool highlight = false, bool* double_clicked = 0) {
+static const int NODE_FLAG_CLIP = 1;
+static const int NODE_FLAG_FSM = 2;
+static const int NODE_FLAG_BLEND_TREE = 4;
+static const int NODE_FLAG_HIGHLIGHT = 8;
+static const int NODE_FLAG_SELECTED = 16;
+
+bool Node(const char* id, ImVec2& pos, const ImVec2& node_size, int node_flags, bool* double_clicked = 0) {
     if(double_clicked) {
         *double_clicked = false;
     }
     bool clicked = false;
     ImVec2 text_size = ImGui::CalcTextSize(id);
 
+    bool selected = (node_flags & NODE_FLAG_SELECTED);
+    bool highlight = (node_flags & NODE_FLAG_HIGHLIGHT);
+
     ImVec2 node_half_size = node_size * 0.5f;
     ImVec2 node_frame_min = (s_graph_edit_bb.Min + (pos - node_half_size + s_graph_edit_grid_offset_plus_drag_delta) * s_graph_edit_zoom);
     ImVec2 node_frame_max = node_frame_min + node_size * s_graph_edit_zoom;
-    ImU32 node_col = ImGui::GetColorU32(ImGuiCol_WindowBg, 1);
+    ImU32 node_col = ImGui::ColorConvertFloat4ToU32(ImVec4(.0f, .0f, .0f, 1.f));// ImGui::GetColorU32(ImGuiCol_WindowBg, 1);
 
     if(highlight) {
-        node_col = ImGui::GetColorU32(ImGuiCol_PlotHistogram);
+        node_col = ImGui::ColorConvertFloat4ToU32(ImVec4(209 / 255.0f, 99 / 255.0f, 44 / 255.0f, 1.0f)); //ImGui::GetColorU32(ImGuiCol_PlotHistogram);
     }
     //ImGui::PushClipRect(node_frame_min, node_frame_max, true);
 
@@ -143,6 +153,16 @@ bool Node(const char* id, ImVec2& pos, const ImVec2& node_size, bool selected = 
     }
 
     ImGui::RenderText((node_frame_min + (node_size * s_graph_edit_zoom * 0.5f) - (text_size * 0.5f)), id);
+
+    const char* icon_str = "";
+    if(node_flags & NODE_FLAG_CLIP)
+        icon_str = ICON_MDI_RUN;
+    else if(node_flags & NODE_FLAG_FSM)
+        icon_str = ICON_MDI_SETTINGS;
+    else if(node_flags & NODE_FLAG_BLEND_TREE)
+        icon_str = "BT";
+
+    ImGui::RenderText(node_frame_min, icon_str);
 
     //ImGui::PopClipRect();
     return clicked;
@@ -263,7 +283,23 @@ void DocActionGraph::onGui(Editor* ed, float dt) {
             gfxm::vec2 ed_pos = a->getEditorPos();
             ImVec2 node_pos(ed_pos.x, ed_pos.y);
             bool dbl_clicked = false;
-            if(Node(a->getName().c_str(), node_pos, ImVec2(200, 50), selected_action == a, a == action_graph->getEntryAction(), &dbl_clicked)) {
+            int node_flags = 0;
+            if(selected_action == a) {
+                node_flags |= NODE_FLAG_SELECTED;
+            }
+            if(a == action_graph->getEntryAction()) {
+                node_flags |= NODE_FLAG_HIGHLIGHT;
+            }
+
+            if(a->getType() == rttr::type::get<AnimFSMStateClip>()) {
+                node_flags |= NODE_FLAG_CLIP;
+            } else if(a->getType() == rttr::type::get<AnimFSMStateFSM>()) {
+                node_flags |= NODE_FLAG_FSM;
+            } else if(a->getType() == rttr::type::get<AnimFSMStateBlendTree>()) {
+                node_flags |= NODE_FLAG_BLEND_TREE;
+            }
+
+            if(Node(a->getName().c_str(), node_pos, ImVec2(200, 50), node_flags, &dbl_clicked)) {
                 if(s_creating_transition && (selected_action != a)) {
                     action_graph->createTransition(selected_action->getName(), a->getName());
                     s_creating_transition = false;
@@ -378,40 +414,54 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
         sample_buffer.resize(action_graph->reference_skel->boneCount());
     });
 
-    if(ImGui::Button("Add action")) {
-        auto act = action_graph->createAction();
+    if(ImGui::Button(ICON_MDI_PLUS " clip state", ImVec2(ImGui::GetContentRegionAvailWidth(), .0f))) {
+        auto act = action_graph->createAction<AnimFSMStateClip>("Clip state");
+        ImVec2 new_pos = GraphEditGridScreenToPos(s_graph_edit_bb.Min + s_graph_edit_bb.Max * 0.5f);
+        act->setEditorPos(gfxm::vec2(new_pos.x, new_pos.y));
+        selected_action = act;
+    }
+    if(ImGui::Button(ICON_MDI_PLUS " FSM state", ImVec2(ImGui::GetContentRegionAvailWidth(), .0f))) {
+        auto act = action_graph->createAction<AnimFSMStateFSM>("FSM state");
+        ImVec2 new_pos = GraphEditGridScreenToPos(s_graph_edit_bb.Min + s_graph_edit_bb.Max * 0.5f);
+        act->setEditorPos(gfxm::vec2(new_pos.x, new_pos.y));
+        selected_action = act;
+    }
+    if(ImGui::Button(ICON_MDI_PLUS " BlendTree state", ImVec2(ImGui::GetContentRegionAvailWidth(), .0f))) {
+        auto act = action_graph->createAction<AnimFSMStateBlendTree>("BlendTree state");
         ImVec2 new_pos = GraphEditGridScreenToPos(s_graph_edit_bb.Min + s_graph_edit_bb.Max * 0.5f);
         act->setEditorPos(gfxm::vec2(new_pos.x, new_pos.y));
         selected_action = act;
     }
     if(selected_action) {
+        ImGuiExt::BeginInsetSegment(ImGui::ColorConvertFloat4ToU32(ImVec4(.3f, .15f, .0f, 1.f)));
+        ImGui::Text("Selected state");
+
         char buf[256];
         memset(buf, 0, sizeof(buf));
         memcpy(buf, selected_action->getName().c_str(), selected_action->getName().size());
         if(ImGui::InputText("name", buf, sizeof(buf))) {
             action_graph->renameAction(selected_action, buf);
         }
-        if(ImGui::BeginCombo("motion type", motionTypeToCStr(selected_action->motion->getType()))) {
-            if(ImGui::Selectable(motionTypeToCStr(MOTION_CLIP))) {
-                selected_action->motion.reset(new ClipMotion());
-            }
-            if(ImGui::Selectable(motionTypeToCStr(MOTION_BLEND_TREE))) {
-                selected_action->motion.reset(new BlendTreeMotion());
-            }
-            ImGui::EndCombo();
-        }
+        
+        selected_action->onGuiToolbox();
+        /*
         if(selected_action->motion) {
             selected_action->motion->onGui();
-        }
+        }*/
 
         if(ImGui::Button("Delete action")) {
             action_graph->deleteAction(selected_action);
             selected_action = 0;
             selected_transition = 0;
         }
+
+        ImGuiExt::EndInsetSegment();
     }
+    ImGui::Separator();
     if(selected_transition) {
-        ImGui::Separator();
+        ImGuiExt::BeginInsetSegment(ImGui::ColorConvertFloat4ToU32(ImVec4(.0f, .3f, .15f, 1.f)));
+        ImGui::Text("Selected state");
+
         ImGui::Text(MKSTR(selected_transition->from->getName() << " -> " << selected_transition->to->getName()).c_str());
         ImGui::SameLine();
         if(ImGui::SmallButton(ICON_MDI_DELETE_EMPTY )) {
@@ -460,6 +510,8 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
                 );
             }
         }
+
+        ImGuiExt::EndInsetSegment();
     }
 
     ImGui::Separator();

@@ -7,11 +7,11 @@
 #include "../resource/animation.hpp"
 #include "../resource/skeleton.hpp"
 
-#include "../util/make_unique_string.hpp"
-
 #include "../util/anim_blackboard.hpp"
 
 #include "anim_fsm/anim_fsm_state.hpp"
+
+#include "../util/make_next_name.hpp"
 
 // ==========================
 
@@ -50,15 +50,16 @@ public:
         }
     }
 
-    AnimFSMState* createAction(const std::string& name = "Action");
-    void             renameAction(AnimFSMState* action, const std::string& name);
-    AnimFSMTransition* createTransition(const std::string& from, const std::string& to);
+    template<typename ANIM_FSM_STATE_T>
+    AnimFSMState*       createAction(const std::string& name = "Action");
+    void                renameAction(AnimFSMState* action, const std::string& name);
+    AnimFSMTransition*  createTransition(const std::string& from, const std::string& to);
 
-    AnimFSMState* findAction(const std::string& name);
-    int32_t          findActionId(const std::string& name);
+    AnimFSMState*       findAction(const std::string& name);
+    int32_t             findActionId(const std::string& name);
 
-    void            deleteAction(AnimFSMState* action);
-    void            deleteTransition(AnimFSMTransition* transition);
+    void                deleteAction(AnimFSMState* action);
+    void                deleteTransition(AnimFSMTransition* transition);
 
     const std::vector<AnimFSMState*>&       getActions() const;
     const std::vector<AnimFSMTransition*>& getTransitions() const;
@@ -82,6 +83,22 @@ STATIC_RUN(AnimFSM) {
         .constructor<>()(
             rttr::policy::ctor::as_raw_ptr
         );
+}
+
+template<typename ANIM_FSM_STATE_T>
+AnimFSMState* AnimFSM::createAction(const std::string& name) {
+    ANIM_FSM_STATE_T* state = new ANIM_FSM_STATE_T();
+    std::set<std::string> existing_names;
+    for(auto a : actions) {
+        existing_names.insert(a->getName());
+    }
+    state->setName(makeNextName(existing_names, name));
+
+    actions.emplace_back(state);
+
+    pickEntryAction();
+
+    return state;
 }
 
 #endif

@@ -29,6 +29,11 @@ void EndTimeline();
 void TimelineEvent(const char* label, float pos);
 void TimelineMarker(const char* label, float pos);
 
+
+void BeginInsetSegment(ImU32 bg_color = ImGui::GetColorU32(ImGuiCol_FrameBg));
+void EndInsetSegment();
+
+
 }
 
 #endif

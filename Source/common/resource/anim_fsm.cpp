@@ -2,61 +2,17 @@
 
 #include "resource_tree.hpp"
 
-std::string pickUnusedName(const std::set<std::string>& names, const std::string& name) {
-    std::string result = name;
-    for(auto& a : names) {
-        if(a == name) {
-            std::string action_name = a;
-            size_t postfix_pos = std::string::npos;
-            for(int i = action_name.size() - 1; i >= 0; --i) {
-                if((action_name[i] >= '0') && (action_name[i] <= '9')) {
-                    postfix_pos = i;
-                } else {
-                    break;
-                }
-            }
-            
-            if(postfix_pos == std::string::npos) {
-                action_name = action_name + "_1";
-            } else {
-                std::string postfix = action_name.substr(postfix_pos);
-                action_name = action_name.substr(0, postfix_pos);
-                int postfix_int = std::stoi(postfix);
-                action_name = action_name + std::to_string(postfix_int + 1);
-            }
-            
-            result = pickUnusedName(names, action_name);
-
-            break;
-        }
-    }
-    return result;
-}
+#include "../util/make_next_name.hpp"
 
 std::string pickUnusedName(const std::vector<AnimFSMState*>& actions, const std::string& name) {
     std::set<std::string> names;
     for(auto& a : actions) {
         names.insert(a->getName());
     }
-    return pickUnusedName(names, name);
+    return makeNextName(names, name);
 }
 
-AnimFSMState::AnimFSMState() {
-    motion.reset(new ClipMotion());
-}
 
-void AnimFSMState::update(
-    float dt, 
-    std::vector<AnimSample>& samples,
-    float weight
-) {
-    auto& pose = motion->getPose();
-    motion->advance(dt);
-
-    for(size_t i = 0; i < pose.size() && i < samples.size(); ++i) {
-        samples[i] = pose[i];
-    }
-}
 
 void AnimFSM::pickEntryAction() {
     if(actions.empty()) {
@@ -64,16 +20,6 @@ void AnimFSM::pickEntryAction() {
     }
     entry_action = 0;
     current_action = entry_action;
-}
-
-AnimFSMState* AnimFSM::createAction(const std::string& name) {
-    AnimFSMState* node = new AnimFSMState();
-    node->setName(pickUnusedName(actions, name));
-    actions.emplace_back(node);
-
-    pickEntryAction();
-
-    return node;
 }
 
 void AnimFSM::renameAction(AnimFSMState* action, const std::string& name) {
@@ -292,7 +238,7 @@ bool AnimFSM::deserialize(in_stream& in, size_t sz) {
     actions.resize(r.read<uint32_t>());
     transitions.resize(r.read<uint32_t>());
     for(size_t i = 0; i < actions.size(); ++i) {
-        actions[i] = new AnimFSMState();
+        actions[i] = new AnimFSMStateClip();
     }
     for(size_t i = 0; i < transitions.size(); ++i) {
         transitions[i] = new AnimFSMTransition();
