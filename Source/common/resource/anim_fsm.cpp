@@ -203,8 +203,8 @@ void AnimFSM::serialize(out_stream& out) {
         auto& a = actions[i];
         w.write(a->getName());
         w.write(a->getEditorPos());
-        w.write<uint8_t>((uint8_t)a->motion->getType());
-        a->motion->write(out);
+        w.write<uint8_t>((uint8_t)1); // TODO:
+        a->write(out);
     }
     for(size_t i = 0; i < transitions.size(); ++i) {
         auto& t = transitions[i];
@@ -237,9 +237,6 @@ bool AnimFSM::deserialize(in_stream& in, size_t sz) {
 
     actions.resize(r.read<uint32_t>());
     transitions.resize(r.read<uint32_t>());
-    for(size_t i = 0; i < actions.size(); ++i) {
-        actions[i] = new AnimFSMStateClip();
-    }
     for(size_t i = 0; i < transitions.size(); ++i) {
         transitions[i] = new AnimFSMTransition();
     }
@@ -248,16 +245,18 @@ bool AnimFSM::deserialize(in_stream& in, size_t sz) {
 
     for(size_t i = 0; i < actions.size(); ++i) {
         auto& a = actions[i];
-        a->setName(r.readStr());
-        a->setEditorPos(r.read<gfxm::vec2>());
-        MOTION_TYPE motion_type = (MOTION_TYPE)r.read<uint8_t>();
-        if(motion_type == MOTION_CLIP) {
-            a->motion.reset(new ClipMotion());
-        } else if(motion_type == MOTION_BLEND_TREE) {
-            a->motion.reset(new BlendTreeMotion());
+        std::string name = r.readStr();
+        gfxm::vec2 ed_pos = r.read<gfxm::vec2>();
+        uint8_t motion_type = r.read<uint8_t>();
+        
+        // TODO: !
+        if(motion_type == 1) {
+            a = new AnimFSMStateClip();
         }
-        if(a->motion) {
-            a->motion->read(in);
+        if(a) {
+            a->read(in);        
+            a->setName(name);
+            a->setEditorPos(ed_pos);
         }
     }
     for(size_t i = 0; i < transitions.size(); ++i) {

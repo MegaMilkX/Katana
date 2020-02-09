@@ -17,16 +17,12 @@
 
 #include "../common/attributes/light_source.hpp"
 
-#include "../common/resource/blend_tree_motion.hpp"
-
 class DocBlendTree : public EditorDocumentTyped<BlendTree> {
     GuiViewport viewport;
     GameScene scn;
 
     ktNode* cam_pivot = 0;
     DirLight* cam_light = 0;
-
-    BlendTreeMotion motion;
 
     JobGraphNode* selected_node = 0;
 

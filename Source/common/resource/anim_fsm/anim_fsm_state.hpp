@@ -4,21 +4,26 @@
 #include "anim_fsm_transition.hpp"
 #include "../../gfxm.hpp"
 
-#include "../clip_motion.hpp"
-#include "../blend_tree_motion.hpp"
-
 #include "../skeleton.hpp"
+#include "../animation.hpp"
+#include "../blend_tree.hpp"
+
+#include "../../util/imgui_helpers.hpp"
 
 #include <memory>
 #include <set>
 
 class AnimFSMState {
+protected:
     std::string name = "Action";
     gfxm::vec2 editor_pos;
     std::set<AnimFSMTransition*> out_transitions;
-public:
-    std::shared_ptr<Motion> motion;
 
+    float cursor = .0f; // normalized
+    std::vector<AnimSample> samples;
+    std::shared_ptr<Skeleton> skeleton;
+
+public:
     AnimFSMState();
     virtual ~AnimFSMState();
 
@@ -28,7 +33,13 @@ public:
     virtual void onGuiToolbox() = 0;
 
     void setSkeleton(std::shared_ptr<Skeleton> skel) {
-        motion->setSkeleton(skel);
+        skeleton = skel;
+        if(!skel) {
+            return;
+        }
+        samples = skeleton->makePoseArray();
+
+        //onSkeletonChanged();
     }
 
     const std::string& getName() const { return name; }
@@ -40,19 +51,24 @@ public:
         return out_transitions;
     }
 
-    void               update(
-        float dt, 
-        std::vector<AnimSample>& samples,
-        float weight
-    );
+    virtual void       update(float dt, std::vector<AnimSample>& samples, float weight) = 0;
 
-    void               write(out_stream& out);
-    void               read(in_stream& in);
+    virtual void       write(out_stream& out) = 0;
+    virtual void       read(in_stream& in)    = 0;
 };
 
 class AnimFSMStateClip : public AnimFSMState {
     std::shared_ptr<Animation> anim;
 public:
+    void update(float dt, std::vector<AnimSample>& samples, float weight) override {
+        if(!anim || !skeleton) return;
+        anim->sample_remapped(samples, cursor * anim->length, anim->getMapping(skeleton.get()));
+        cursor += dt * (anim->fps / anim->length);
+        if(cursor > 1.0f) {
+            cursor -= 1.0f;
+        }
+    }
+
     rttr::type getType() const override {
         return rttr::type::get<AnimFSMStateClip>();
     }
@@ -62,28 +78,58 @@ public:
             // Or send a signal to recompile whole structure
         });
     }
+
+    void write(out_stream& out) override {
+        DataWriter w(&out);
+        if(anim) {
+            w.write(anim->Name());
+        } else {
+            w.write(std::string());
+        }
+    }
+    void read(in_stream& in) override    {
+        DataReader r(&in);
+        std::string anim_name = r.readStr();
+        anim = retrieve<Animation>(anim_name);
+    }
 };
 
 class AnimFSMStateFSM : public AnimFSMState {
     std::shared_ptr<AnimFSM> fsm;
 public:
+    void update(float dt, std::vector<AnimSample>& samples, float weight) override {
+    }
+
     rttr::type getType() const override {
         return rttr::type::get<AnimFSMStateFSM>();
     }
     void onGuiToolbox() override {
+        if(ImGui::Button("Edit FSM", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
 
+        }
     }
+
+    void write(out_stream& out) override {}
+    void read(in_stream& in) override    {}
 };
 
 class AnimFSMStateBlendTree : public AnimFSMState {
     std::shared_ptr<BlendTree> blend_tree;
 public:
+    void update(float dt, std::vector<AnimSample>& samples, float weight) override {
+    }
+
     rttr::type getType() const override {
         return rttr::type::get<AnimFSMStateBlendTree>();
     }
     void onGuiToolbox() override {
+        if(ImGui::Button("Edit BlendTree", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
 
+        }
     }
+
+    void write(out_stream& out) override {}
+    void read(in_stream& in) override    {}
 };
 
 #endif

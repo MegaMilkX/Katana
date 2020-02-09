@@ -1,59 +1,20 @@
 #ifndef MOTION_HPP
 #define MOTION_HPP
 
-#include "skeleton.hpp"
+#include "resource.h"
 
-enum MOTION_TYPE {
-    MOTION_UNKNOWN,
-    MOTION_CLIP,
-    MOTION_BLEND_TREE
-};
+class Motion : public Resource {
+    RTTR_ENABLE(Resource)
 
-inline const char* motionTypeToCStr(MOTION_TYPE t) {
-    const char* ptr = 0;
-    switch(t) {
-    case MOTION_CLIP:
-        ptr = "Animation Clip";
-        break;
-    case MOTION_BLEND_TREE:
-        ptr = "Blend Tree";
-        break;
-    default:
-        ptr = "Unknown";
-        break;
-    }
-    return ptr;
-}
-
-class Motion {
-protected:
-    float cursor = .0f; // normalized
-    std::vector<AnimSample> samples;
-    std::shared_ptr<Skeleton> skeleton;
 public:
-    void setSkeleton(std::shared_ptr<Skeleton> skel) {
-        skeleton = skel;
-        if(!skel) {
-            return;
-        }
-        samples = skeleton->makePoseArray();
+    const char* getWriteExtension() const override { return "motion"; }
 
-        onSkeletonChanged();
-    }
-    std::shared_ptr<Skeleton> getSkeleton() {
-        return skeleton;
-    }
-    virtual void advance(float dt) = 0;
-    virtual std::vector<AnimSample>& getPose() {
-        return samples;
-    }
-    virtual MOTION_TYPE getType() const { return MOTION_UNKNOWN; }
-    
-    virtual void onSkeletonChanged() {}
-    virtual void onGui() {}
-
-    virtual void write(out_stream& out) {}
-    virtual void read(in_stream& in) {}
 };
+STATIC_RUN(Motion) {
+    rttr::registration::class_<Motion>("Motion")
+        .constructor<>()(
+            rttr::policy::ctor::as_raw_ptr
+        );
+}
 
 #endif

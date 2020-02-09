@@ -449,7 +449,7 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
             selected_action->motion->onGui();
         }*/
 
-        if(ImGui::Button("Delete action")) {
+        if(ImGui::Button("Delete action", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
             action_graph->deleteAction(selected_action);
             selected_action = 0;
             selected_transition = 0;

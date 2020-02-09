@@ -13,20 +13,20 @@ DocBlendTree::DocBlendTree() {
     viewport.enableDebugDraw(true);
 }
 
-void DocBlendTree::onResourceSet() {
+void DocBlendTree::onResourceSet() {/*
     motion.setBlendTree(std::dynamic_pointer_cast<BlendTree>(_resource));
 
     if(motion.getTree().ref_object) {
         setReferenceObject(motion.getTree().ref_object.get());
-    }
+    }*/
 }
-void DocBlendTree::onPreSave() {
+void DocBlendTree::onPreSave() {/*
     auto res = std::dynamic_pointer_cast<BlendTree>(_resource);
-    res->copy(&motion.getTree());
+    res->copy(&motion.getTree());*/
 }
 
 
-void DocBlendTree::setReferenceObject(ktNode* node) {
+void DocBlendTree::setReferenceObject(ktNode* node) {/*
     scn.clear();
                     
     scn.copy(node);
@@ -45,11 +45,11 @@ void DocBlendTree::setReferenceObject(ktNode* node) {
     if(skel_ref && skel_ref->skeleton) {
         motion.getTree().ref_skel = skel_ref->skeleton;
         motion.setSkeleton(skel_ref->skeleton);
-    }
+    }*/
 }
 
 
-void DocBlendTree::guiDrawNode(JobGraph& jobGraph, JobGraphNode* node, ImVec2* pos) {
+void DocBlendTree::guiDrawNode(JobGraph& jobGraph, JobGraphNode* node, ImVec2* pos) {/*
     bool clicked = false;
     bool selected = selected_node == node;
     std::string node_name = MKSTR(node->getDesc().name << "###" << node);
@@ -73,10 +73,10 @@ void DocBlendTree::guiDrawNode(JobGraph& jobGraph, JobGraphNode* node, ImVec2* p
     ImGuiExt::EndTreeNode();
     if(clicked) {
         selected_node = node;
-    }
+    }*/
 }
 
-void DocBlendTree::onGui(Editor* ed, float dt) {
+void DocBlendTree::onGui(Editor* ed, float dt) {/*
     auto& blendTree = motion.getTree();
     
     motion.advance(dt);
@@ -144,9 +144,9 @@ void DocBlendTree::onGui(Editor* ed, float dt) {
         ImGui::EndDragDropTarget();
     }
 
-    ImGui::EndColumns();
+    ImGui::EndColumns();*/
 }
-void DocBlendTree::onGuiToolbox(Editor* ed) {
+void DocBlendTree::onGuiToolbox(Editor* ed) {/*
     auto& blendTree = motion.getTree();
 
     if(ImGui::Button(ICON_MDI_PLUS " Add node")) {
@@ -209,5 +209,5 @@ void DocBlendTree::onGuiToolbox(Editor* ed) {
             blendTree.setValue(i, val);
         }
         // TODO: List values, allow changing and renaming
-    }
+    }*/
 }
