@@ -9,67 +9,9 @@
 
 #include "../util/make_unique_string.hpp"
 
-#include "clip_motion.hpp"
-#include "blend_tree_motion.hpp"
-
 #include "../util/anim_blackboard.hpp"
 
-class AnimFSM;
-
-class AnimFSMState;
-struct AnimFSMTransition {
-    enum CONDITION {
-        LARGER,
-        LARGER_EQUAL,
-        LESS,
-        LESS_EQUAL,
-        EQUAL,
-        NOT_EQUAL
-    };
-    struct Condition {
-        size_t param_hdl;
-        std::string param_name;
-        CONDITION type;
-        float ref_value;
-    };
-
-    float blendTime = 0.1f;
-    AnimFSMState* from = 0;
-    AnimFSMState* to = 0;
-    std::vector<Condition> conditions;
-};
-
-class AnimFSMState {
-    std::string name = "Action";
-    gfxm::vec2 editor_pos;
-    std::set<AnimFSMTransition*> out_transitions;
-public:
-    std::shared_ptr<Motion> motion;
-
-    AnimFSMState();
-
-    void setSkeleton(std::shared_ptr<Skeleton> skel) {
-        motion->setSkeleton(skel);
-    }
-
-    const std::string& getName() const { return name; }
-    void               setName(const std::string& value) { name = value; }
-    const gfxm::vec2&  getEditorPos() const { return editor_pos; }
-    void               setEditorPos(const gfxm::vec2& value) { editor_pos = value; }
-
-    std::set<AnimFSMTransition*>& getTransitions() {
-        return out_transitions;
-    }
-
-    void               update(
-        float dt, 
-        std::vector<AnimSample>& samples,
-        float weight
-    );
-
-    void               write(out_stream& out);
-    void               read(in_stream& in);
-};
+#include "anim_fsm/anim_fsm_state.hpp"
 
 // ==========================
 
