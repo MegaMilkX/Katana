@@ -327,15 +327,15 @@ void DocActionGraph::onGui(Editor* ed, float dt) {
     ImGui::EndColumns();
 }
 
-const char* condTypeToCStr(ActionGraphTransition::CONDITION cond) {
+const char* condTypeToCStr(AnimFSMTransition::CONDITION cond) {
     const char* cstr = 0;
     switch(cond) {
-    case ActionGraphTransition::LARGER: cstr = ">"; break;
-    case ActionGraphTransition::LARGER_EQUAL: cstr = ">="; break;
-    case ActionGraphTransition::LESS: cstr = "<"; break;
-    case ActionGraphTransition::LESS_EQUAL: cstr = "<="; break;
-    case ActionGraphTransition::EQUAL: cstr = "=="; break;
-    case ActionGraphTransition::NOT_EQUAL: cstr = "!="; break;
+    case AnimFSMTransition::LARGER: cstr = ">"; break;
+    case AnimFSMTransition::LARGER_EQUAL: cstr = ">="; break;
+    case AnimFSMTransition::LESS: cstr = "<"; break;
+    case AnimFSMTransition::LESS_EQUAL: cstr = "<="; break;
+    case AnimFSMTransition::EQUAL: cstr = "=="; break;
+    case AnimFSMTransition::NOT_EQUAL: cstr = "!="; break;
     };
     return cstr;
 }
@@ -437,12 +437,12 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
                 ImGui::SameLine();
                 ImGui::PushItemWidth(30);
                 if(ImGui::BeginCombo(MKSTR("###cond_type"<<i).c_str(), condTypeToCStr(cond.type), ImGuiComboFlags_NoArrowButton)) {
-                    if(ImGui::Selectable(">")) { cond.type = ActionGraphTransition::LARGER; }
-                    if(ImGui::Selectable(">=")) { cond.type = ActionGraphTransition::LARGER_EQUAL; }
-                    if(ImGui::Selectable("<")) { cond.type = ActionGraphTransition::LESS; }
-                    if(ImGui::Selectable("<=")) { cond.type = ActionGraphTransition::LESS_EQUAL; }
-                    if(ImGui::Selectable("==")) { cond.type = ActionGraphTransition::EQUAL; }
-                    if(ImGui::Selectable("!=")) { cond.type = ActionGraphTransition::NOT_EQUAL; }
+                    if(ImGui::Selectable(">")) { cond.type = AnimFSMTransition::LARGER; }
+                    if(ImGui::Selectable(">=")) { cond.type = AnimFSMTransition::LARGER_EQUAL; }
+                    if(ImGui::Selectable("<")) { cond.type = AnimFSMTransition::LESS; }
+                    if(ImGui::Selectable("<=")) { cond.type = AnimFSMTransition::LESS_EQUAL; }
+                    if(ImGui::Selectable("==")) { cond.type = AnimFSMTransition::EQUAL; }
+                    if(ImGui::Selectable("!=")) { cond.type = AnimFSMTransition::NOT_EQUAL; }
                     ImGui::EndCombo();
                 }
                 ImGui::PopItemWidth();
@@ -454,8 +454,8 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
             }
             if(ImGui::SmallButton(ICON_MDI_PLUS "###cond_add")) {
                 selected_transition->conditions.emplace_back(
-                    ActionGraphTransition::Condition{
-                        0, "Param", ActionGraphTransition::CONDITION::LARGER, .0f
+                    AnimFSMTransition::Condition{
+                        0, "Param", AnimFSMTransition::CONDITION::LARGER, .0f
                     }
                 );
             }

@@ -79,7 +79,7 @@ void ActionStateMachine::write(SceneWriteCtx& out) {
 } 
 void ActionStateMachine::read(SceneReadCtx& in) {
     skeleton = in.readResource<Skeleton>();
-    graph_ref = in.readResource<ActionGraph>();
+    graph_ref = in.readResource<AnimFSM>();
 
     resizeSampleBuffer();
     makeGraphLocalCopy();

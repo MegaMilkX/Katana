@@ -34,7 +34,7 @@ void ecsSubSceneAnimator::onGui(ecsWorld* world, entity_id ent) {
             motion.reset(new BlendTreeMotion2());
             motion->setSkeleton(skeleton);
         }
-        if(ImGui::Selectable("ActionGraph", (motion && (motion->getMotionType() == MOTION_ACTIONGRAPH)))) {
+        if(ImGui::Selectable("AnimFSM", (motion && (motion->getMotionType() == MOTION_ACTIONGRAPH)))) {
             motion.reset(new ActionGraphMotion());
             motion->setSkeleton(skeleton);
         }

@@ -205,7 +205,7 @@ void Editor::onGui(float dt) {
                 if(ImGui::MenuItem("Scene")) {
                     addWindow(new EditorDocScene());
                 }
-                if(ImGui::MenuItem("ActionGraph")) {
+                if(ImGui::MenuItem("AnimFSM")) {
                     addWindow(new DocActionGraph());
                 }
                 if(ImGui::MenuItem("BlendTree")) {

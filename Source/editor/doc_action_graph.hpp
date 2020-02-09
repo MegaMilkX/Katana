@@ -2,13 +2,13 @@
 #define DOC_ACTION_GRAPH_HPP
 
 #include "editor_document.hpp"
-#include "../common/resource/action_graph.hpp"
+#include "../common/resource/anim_fsm.hpp"
 #include "../common/resource/resource_tree.hpp"
 
 #include "../common/attributes/light_source.hpp"
 #include "../common/attributes/skeleton_ref.hpp"
 
-class DocActionGraph : public EditorDocumentTyped<ActionGraph> {
+class DocActionGraph : public EditorDocumentTyped<AnimFSM> {
     // Preview stuff
     GuiViewport viewport;
     GameScene scn;
@@ -18,8 +18,8 @@ class DocActionGraph : public EditorDocumentTyped<ActionGraph> {
     // ========
 
     bool first_use = true;
-    ActionGraphNode* selected_action = 0;
-    ActionGraphTransition* selected_transition = 0;
+    AnimFSMState* selected_action = 0;
+    AnimFSMTransition* selected_transition = 0;
 
     AnimBlackboard blackboard;
 

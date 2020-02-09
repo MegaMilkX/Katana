@@ -1,4 +1,4 @@
-#include "action_graph.hpp"
+#include "anim_fsm.hpp"
 
 #include "resource_tree.hpp"
 
@@ -33,7 +33,7 @@ std::string pickUnusedName(const std::set<std::string>& names, const std::string
     return result;
 }
 
-std::string pickUnusedName(const std::vector<ActionGraphNode*>& actions, const std::string& name) {
+std::string pickUnusedName(const std::vector<AnimFSMState*>& actions, const std::string& name) {
     std::set<std::string> names;
     for(auto& a : actions) {
         names.insert(a->getName());
@@ -41,11 +41,11 @@ std::string pickUnusedName(const std::vector<ActionGraphNode*>& actions, const s
     return pickUnusedName(names, name);
 }
 
-ActionGraphNode::ActionGraphNode() {
+AnimFSMState::AnimFSMState() {
     motion.reset(new ClipMotion());
 }
 
-void ActionGraphNode::update(
+void AnimFSMState::update(
     float dt, 
     std::vector<AnimSample>& samples,
     float weight
@@ -58,7 +58,7 @@ void ActionGraphNode::update(
     }
 }
 
-void ActionGraph::pickEntryAction() {
+void AnimFSM::pickEntryAction() {
     if(actions.empty()) {
         return;
     }
@@ -66,8 +66,8 @@ void ActionGraph::pickEntryAction() {
     current_action = entry_action;
 }
 
-ActionGraphNode* ActionGraph::createAction(const std::string& name) {
-    ActionGraphNode* node = new ActionGraphNode();
+AnimFSMState* AnimFSM::createAction(const std::string& name) {
+    AnimFSMState* node = new AnimFSMState();
     node->setName(pickUnusedName(actions, name));
     actions.emplace_back(node);
 
@@ -76,13 +76,13 @@ ActionGraphNode* ActionGraph::createAction(const std::string& name) {
     return node;
 }
 
-void ActionGraph::renameAction(ActionGraphNode* action, const std::string& name) {
+void AnimFSM::renameAction(AnimFSMState* action, const std::string& name) {
     action->setName(pickUnusedName(actions, name));
 }
 
-ActionGraphTransition* ActionGraph::createTransition(const std::string& from, const std::string& to) {
-    ActionGraphNode* a = findAction(from);
-    ActionGraphNode* b = findAction(to);
+AnimFSMTransition* AnimFSM::createTransition(const std::string& from, const std::string& to) {
+    AnimFSMState* a = findAction(from);
+    AnimFSMState* b = findAction(to);
     if(!a || !b) return 0;
 
     for(auto& t : transitions) {
@@ -91,7 +91,7 @@ ActionGraphTransition* ActionGraph::createTransition(const std::string& from, co
         }
     }
 
-    ActionGraphTransition* trans = new ActionGraphTransition{
+    AnimFSMTransition* trans = new AnimFSMTransition{
         0.1f, a, b
     };
     transitions.emplace_back(trans);
@@ -101,8 +101,8 @@ ActionGraphTransition* ActionGraph::createTransition(const std::string& from, co
     return trans;
 }
 
-ActionGraphNode* ActionGraph::findAction(const std::string& name) {
-    ActionGraphNode* node = 0;
+AnimFSMState* AnimFSM::findAction(const std::string& name) {
+    AnimFSMState* node = 0;
     for(auto& a : actions) {
         if(name == a->getName()) {
             node = a;
@@ -111,8 +111,8 @@ ActionGraphNode* ActionGraph::findAction(const std::string& name) {
     }
     return node;
 }
-int32_t ActionGraph::findActionId(const std::string& name) {
-    ActionGraphNode* node = 0;
+int32_t AnimFSM::findActionId(const std::string& name) {
+    AnimFSMState* node = 0;
     for(size_t i = 0; i < actions.size(); ++i) {
         if(name == actions[i]->getName()) {
             return i;
@@ -121,7 +121,7 @@ int32_t ActionGraph::findActionId(const std::string& name) {
     return -1;
 }
 
-void ActionGraph::deleteAction(ActionGraphNode* action) {
+void AnimFSM::deleteAction(AnimFSMState* action) {
     std::set<size_t> transitions_to_remove;
     for(size_t i = 0; i < actions.size(); ++i) {
         auto& a = actions[i];
@@ -145,7 +145,7 @@ void ActionGraph::deleteAction(ActionGraphNode* action) {
         pickEntryAction();
     }
 }
-void ActionGraph::deleteTransition(ActionGraphTransition* transition) {
+void AnimFSM::deleteTransition(AnimFSMTransition* transition) {
     for(size_t i = 0; i < transitions.size(); ++i) {
         auto& t = transitions[i];
         if(t == transition) {
@@ -157,27 +157,27 @@ void ActionGraph::deleteTransition(ActionGraphTransition* transition) {
     }
 }
 
-const std::vector<ActionGraphNode*>&       ActionGraph::getActions() const {
+const std::vector<AnimFSMState*>&       AnimFSM::getActions() const {
     return actions;
 }
-const std::vector<ActionGraphTransition*>& ActionGraph::getTransitions() const {
+const std::vector<AnimFSMTransition*>& AnimFSM::getTransitions() const {
     return transitions;
 }
 
-size_t ActionGraph::getEntryActionId() {
+size_t AnimFSM::getEntryActionId() {
     return entry_action;
 }
-ActionGraphNode* ActionGraph::getEntryAction() {
+AnimFSMState* AnimFSM::getEntryAction() {
     if(entry_action < 0) return 0;
     return actions[entry_action];
 }
-void ActionGraph::setEntryAction(const std::string& name) {
+void AnimFSM::setEntryAction(const std::string& name) {
     entry_action = findActionId(name);
     current_action = entry_action;
 }
 
 
-void ActionGraph::update(
+void AnimFSM::update(
     float dt, 
     std::vector<AnimSample>& samples
 ) {
@@ -198,12 +198,12 @@ void ActionGraph::update(
             float val = blackboard->get_float(cond.param_hdl);
             float ref_val = cond.ref_value;
             switch(cond.type) {
-            case ActionGraphTransition::LARGER: res = val > ref_val; break;
-            case ActionGraphTransition::LARGER_EQUAL: res = val >= ref_val; break;
-            case ActionGraphTransition::LESS: res = val < ref_val; break;
-            case ActionGraphTransition::LESS_EQUAL: res = val <= ref_val; break;
-            case ActionGraphTransition::EQUAL: res = val == ref_val; break;
-            case ActionGraphTransition::NOT_EQUAL: res = val != ref_val; break;
+            case AnimFSMTransition::LARGER: res = val > ref_val; break;
+            case AnimFSMTransition::LARGER_EQUAL: res = val >= ref_val; break;
+            case AnimFSMTransition::LESS: res = val < ref_val; break;
+            case AnimFSMTransition::LESS_EQUAL: res = val <= ref_val; break;
+            case AnimFSMTransition::EQUAL: res = val == ref_val; break;
+            case AnimFSMTransition::NOT_EQUAL: res = val != ref_val; break;
             };
             if(res == false) {
                 break;
@@ -238,11 +238,11 @@ void ActionGraph::update(
     }
 }
 
-void ActionGraph::serialize(out_stream& out) {
+void AnimFSM::serialize(out_stream& out) {
     DataWriter w(&out);
 
-    std::map<ActionGraphNode*, uint32_t> node_ids;
-    std::map<ActionGraphTransition*, uint32_t> trans_ids;
+    std::map<AnimFSMState*, uint32_t> node_ids;
+    std::map<AnimFSMTransition*, uint32_t> trans_ids;
     for(size_t i = 0; i < actions.size(); ++i) {
         node_ids[actions[i]] = (uint32_t)i;
     }
@@ -286,16 +286,16 @@ void ActionGraph::serialize(out_stream& out) {
         w.write(std::string());
     }
 }
-bool ActionGraph::deserialize(in_stream& in, size_t sz) {
+bool AnimFSM::deserialize(in_stream& in, size_t sz) {
     DataReader r(&in);
 
     actions.resize(r.read<uint32_t>());
     transitions.resize(r.read<uint32_t>());
     for(size_t i = 0; i < actions.size(); ++i) {
-        actions[i] = new ActionGraphNode();
+        actions[i] = new AnimFSMState();
     }
     for(size_t i = 0; i < transitions.size(); ++i) {
-        transitions[i] = new ActionGraphTransition();
+        transitions[i] = new AnimFSMTransition();
     }
     entry_action = r.read<uint32_t>();
     current_action = entry_action;
@@ -325,7 +325,7 @@ bool ActionGraph::deserialize(in_stream& in, size_t sz) {
         for(size_t j = 0; j < t->conditions.size(); ++j) {
             auto& cond = t->conditions[j];
             cond.param_name = r.readStr();
-            cond.type = (ActionGraphTransition::CONDITION)r.read<uint8_t>();
+            cond.type = (AnimFSMTransition::CONDITION)r.read<uint8_t>();
             cond.ref_value = r.read<float>();
         }
     }

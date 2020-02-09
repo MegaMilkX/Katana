@@ -14,10 +14,10 @@
 
 #include "../util/anim_blackboard.hpp"
 
-class ActionGraph;
+class AnimFSM;
 
-class ActionGraphNode;
-struct ActionGraphTransition {
+class AnimFSMState;
+struct AnimFSMTransition {
     enum CONDITION {
         LARGER,
         LARGER_EQUAL,
@@ -34,19 +34,19 @@ struct ActionGraphTransition {
     };
 
     float blendTime = 0.1f;
-    ActionGraphNode* from = 0;
-    ActionGraphNode* to = 0;
+    AnimFSMState* from = 0;
+    AnimFSMState* to = 0;
     std::vector<Condition> conditions;
 };
 
-class ActionGraphNode {
+class AnimFSMState {
     std::string name = "Action";
     gfxm::vec2 editor_pos;
-    std::set<ActionGraphTransition*> out_transitions;
+    std::set<AnimFSMTransition*> out_transitions;
 public:
     std::shared_ptr<Motion> motion;
 
-    ActionGraphNode();
+    AnimFSMState();
 
     void setSkeleton(std::shared_ptr<Skeleton> skel) {
         motion->setSkeleton(skel);
@@ -57,7 +57,7 @@ public:
     const gfxm::vec2&  getEditorPos() const { return editor_pos; }
     void               setEditorPos(const gfxm::vec2& value) { editor_pos = value; }
 
-    std::set<ActionGraphTransition*>& getTransitions() {
+    std::set<AnimFSMTransition*>& getTransitions() {
         return out_transitions;
     }
 
@@ -71,17 +71,13 @@ public:
     void               read(in_stream& in);
 };
 
-class ActionGraphLayer {
-public:
-};
-
 // ==========================
 
-class ActionGraph : public Resource {
+class AnimFSM : public Resource {
     RTTR_ENABLE(Resource)
 
-    std::vector<ActionGraphTransition*> transitions;
-    std::vector<ActionGraphNode*> actions;
+    std::vector<AnimFSMTransition*> transitions;
+    std::vector<AnimFSMState*> actions;
     size_t entry_action = 0;
     size_t current_action = 0;
     float trans_weight = 1.0f;
@@ -112,23 +108,23 @@ public:
         }
     }
 
-    ActionGraphNode* createAction(const std::string& name = "Action");
-    void             renameAction(ActionGraphNode* action, const std::string& name);
-    ActionGraphTransition* createTransition(const std::string& from, const std::string& to);
+    AnimFSMState* createAction(const std::string& name = "Action");
+    void             renameAction(AnimFSMState* action, const std::string& name);
+    AnimFSMTransition* createTransition(const std::string& from, const std::string& to);
 
-    ActionGraphNode* findAction(const std::string& name);
+    AnimFSMState* findAction(const std::string& name);
     int32_t          findActionId(const std::string& name);
 
-    void            deleteAction(ActionGraphNode* action);
-    void            deleteTransition(ActionGraphTransition* transition);
+    void            deleteAction(AnimFSMState* action);
+    void            deleteTransition(AnimFSMTransition* transition);
 
-    const std::vector<ActionGraphNode*>&       getActions() const;
-    const std::vector<ActionGraphTransition*>& getTransitions() const;
+    const std::vector<AnimFSMState*>&       getActions() const;
+    const std::vector<AnimFSMTransition*>& getTransitions() const;
 
-    ActionGraphNode*                           getAction(size_t i);
+    AnimFSMState*                           getAction(size_t i);
 
     size_t                                     getEntryActionId();
-    ActionGraphNode*                           getEntryAction();
+    AnimFSMState*                           getEntryAction();
     void                                       setEntryAction(const std::string& name);
 
     void                                       update(
@@ -139,8 +135,8 @@ public:
     void serialize(out_stream& out) override;
     bool deserialize(in_stream& in, size_t sz) override;
 };
-STATIC_RUN(ActionGraph) {
-    rttr::registration::class_<ActionGraph>("ActionGraph")
+STATIC_RUN(AnimFSM) {
+    rttr::registration::class_<AnimFSM>("AnimFSM")
         .constructor<>()(
             rttr::policy::ctor::as_raw_ptr
         );

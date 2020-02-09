@@ -27,7 +27,7 @@ inline const char* getMotionTypeName(MOTION_TYPE2 type) {
     switch(type) {
     case MOTION_SINGLE: cstr = "SingleMotion"; break;
     case MOTION_BLENDTREE: cstr = "BlendTree"; break;
-    case MOTION_ACTIONGRAPH: cstr = "ActionGraph"; break;
+    case MOTION_ACTIONGRAPH: cstr = "AnimFSM"; break;
     case MOTION_LAYERED: cstr = "MotionLayers"; break;
     default: cstr = "Unknown"; break;
     }

@@ -4,20 +4,20 @@
 #include "attribute.hpp"
 
 #include "../resource/skeleton.hpp"
-#include "../resource/action_graph.hpp"
+#include "../resource/anim_fsm.hpp"
 #include "../resource/animation.hpp"
 
 class ActionStateMachine : public Attribute {
     RTTR_ENABLE(Attribute)
 
     std::shared_ptr<Skeleton> skeleton;
-    std::shared_ptr<ActionGraph> graph_ref;
+    std::shared_ptr<AnimFSM> graph_ref;
 
     bool skeleton_nodes_dirty = true;
     std::vector<ktNode*> skeleton_nodes;
     std::vector<AnimSample> sample_buffer;
 
-    ActionGraph graph;
+    AnimFSM graph;
     int32_t current_action_id = -1;
 
     AnimBlackboard blackboard;

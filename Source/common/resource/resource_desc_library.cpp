@@ -7,7 +7,7 @@
 #include "scene/game_scene.hpp"
 #include "resource/model_source.hpp"
 #include "resource/audio_clip.hpp"
-#include "resource/action_graph.hpp"
+#include "resource/anim_fsm.hpp"
 #include "resource/blend_tree.hpp"
 #include "resource/material.hpp"
 #include "resource/render_graph.hpp"
@@ -29,7 +29,7 @@ void ResourceDescLibrary::init() {
         {"fbx", "obj", "dae"}, 
         FLAG_VIEWABLE
     )
-    .add<ActionGraph>(
+    .add<AnimFSM>(
         "action_graph", 
         FLAG_VIEWABLE | FLAG_WRITABLE
     )
