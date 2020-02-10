@@ -2,6 +2,7 @@
 #define ACTION_GRAPH_HPP
 
 #include "resource.h"
+#include "anim_primitive.hpp"
 #include "../gfxm.hpp"
 
 #include "../resource/animation.hpp"
@@ -15,7 +16,7 @@
 
 // ==========================
 
-class AnimFSM : public Resource {
+class AnimFSM : public Resource, public AnimPrimitive {
     RTTR_ENABLE(Resource)
 
     std::vector<AnimFSMTransition*> transitions;

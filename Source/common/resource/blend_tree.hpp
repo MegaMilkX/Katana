@@ -2,6 +2,7 @@
 #define BLEND_TREE_HPP
 
 #include "resource.h"
+#include "anim_primitive.hpp"
 
 #include "blend_tree_nodes.hpp"
 
@@ -12,13 +13,15 @@
 #include "../util/object_pool.hpp"
 
 
-class BlendTree : public Resource, public JobGraphTpl<BlendTree> {
+class BlendTree : public Resource, public AnimPrimitive, public JobGraphTpl<BlendTree> {
     RTTR_ENABLE(Resource)
     
     std::shared_ptr<Skeleton> skeleton;
     Pose pose;
     float cursor = .0f;
     AnimBlackboard* blackboard = 0;
+
+    // TODO: BlendTreeMotion was here
 
     std::map<std::string, int> value_indices;
     std::vector<float>         values;
