@@ -16,7 +16,7 @@
 
 // ==========================
 
-class AnimFSM : public Resource, public AnimPrimitive {
+class AnimFSM : public Resource, public AnimatorBase {
     RTTR_ENABLE(Resource)
 
     std::vector<AnimFSMTransition*> transitions;
@@ -36,6 +36,8 @@ public:
     std::shared_ptr<Skeleton> reference_skel;
 
     const char* getWriteExtension() const override { return "action_graph"; }
+
+    ANIMATOR_TYPE getType() const override { return ANIMATOR_FSM; }
 
     void setSkeleton(std::shared_ptr<Skeleton> skeleton) {
         for(auto a : actions) {

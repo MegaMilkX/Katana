@@ -13,7 +13,7 @@
 #include "../util/object_pool.hpp"
 
 
-class BlendTree : public Resource, public AnimPrimitive, public JobGraphTpl<BlendTree> {
+class BlendTree : public Resource, public AnimatorBase, public JobGraphTpl<BlendTree> {
     RTTR_ENABLE(Resource)
     
     std::shared_ptr<Skeleton> skeleton;
@@ -34,6 +34,8 @@ public:
     BlendTree() {
         addNode(new PoseResultJob());
     }
+
+    ANIMATOR_TYPE getType() const override { return ANIMATOR_BLEND_TREE; }
 
     void clear() override;
     void copy(BlendTree* other);

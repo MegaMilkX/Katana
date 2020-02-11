@@ -414,19 +414,20 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
         sample_buffer.resize(action_graph->reference_skel->boneCount());
     });
 
-    if(ImGui::Button(ICON_MDI_PLUS " clip state", ImVec2(ImGui::GetContentRegionAvailWidth(), .0f))) {
+    ImGui::Text("Add state");
+    if(ImGui::Button("Clip", ImVec2(ImGui::GetContentRegionAvailWidth(), .0f))) {
         auto act = action_graph->createAction<AnimFSMStateClip>("Clip state");
         ImVec2 new_pos = GraphEditGridScreenToPos(s_graph_edit_bb.Min + s_graph_edit_bb.Max * 0.5f);
         act->setEditorPos(gfxm::vec2(new_pos.x, new_pos.y));
         selected_action = act;
     }
-    if(ImGui::Button(ICON_MDI_PLUS " FSM state", ImVec2(ImGui::GetContentRegionAvailWidth(), .0f))) {
+    if(ImGui::Button("FSM", ImVec2(ImGui::GetContentRegionAvailWidth(), .0f))) {
         auto act = action_graph->createAction<AnimFSMStateFSM>("FSM state");
         ImVec2 new_pos = GraphEditGridScreenToPos(s_graph_edit_bb.Min + s_graph_edit_bb.Max * 0.5f);
         act->setEditorPos(gfxm::vec2(new_pos.x, new_pos.y));
         selected_action = act;
     }
-    if(ImGui::Button(ICON_MDI_PLUS " BlendTree state", ImVec2(ImGui::GetContentRegionAvailWidth(), .0f))) {
+    if(ImGui::Button("BlendTree", ImVec2(ImGui::GetContentRegionAvailWidth(), .0f))) {
         auto act = action_graph->createAction<AnimFSMStateBlendTree>("BlendTree state");
         ImVec2 new_pos = GraphEditGridScreenToPos(s_graph_edit_bb.Min + s_graph_edit_bb.Max * 0.5f);
         act->setEditorPos(gfxm::vec2(new_pos.x, new_pos.y));
@@ -444,10 +445,16 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
         }
         
         selected_action->onGuiToolbox();
-        /*
-        if(selected_action->motion) {
-            selected_action->motion->onGui();
-        }*/
+        
+        if(selected_action->getType() == rttr::type::get<AnimFSMStateFSM>()) {
+            if(ImGui::Button(ICON_MDI_PENCIL " Edit FSM", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
+                setNestedWindow(new DocActionGraph());
+            }
+        } else if(selected_action->getType() == rttr::type::get<AnimFSMStateBlendTree>()) {
+            if(ImGui::Button(ICON_MDI_PENCIL " Edit BlendTree", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
+                // TODO: Open nested document
+            }
+        }
 
         if(ImGui::Button("Delete action", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
             action_graph->deleteAction(selected_action);

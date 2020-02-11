@@ -22,6 +22,7 @@
 #include "../common/resource/resource_desc_library.hpp"
 
 #include "editor_doc_scene.hpp"
+#include "doc_motion.hpp"
 #include "doc_action_graph.hpp"
 #include "doc_blend_tree.hpp"
 #include "doc_blend_tree_2.hpp"
@@ -205,6 +206,9 @@ void Editor::onGui(float dt) {
                 if(ImGui::MenuItem("Scene")) {
                     addWindow(new EditorDocScene());
                 }
+                if(ImGui::MenuItem("Motion")) {
+                    addWindow(new DocMotion());
+                }
                 if(ImGui::MenuItem("AnimFSM")) {
                     addWindow(new DocActionGraph());
                 }
@@ -287,11 +291,11 @@ void Editor::onGui(float dt) {
     }
     
     for(auto d : open_documents) {
-        d->draw(this, dt);
+        d->drawAsRoot(this, dt);
     }
     if(ImGui::Begin("Toolbox")) {
         if(focused_document) {
-            focused_document->onGuiToolbox(this);
+            focused_document->drawToolbox(this);
         }
     }
     ImGui::End();
@@ -381,7 +385,7 @@ void Editor::tryOpenNestedDocument(const std::string& res_path) {
     }
 
     doc = createEditorDocument(res_path);
-    current_doc->addNestedWindow(doc);
+    current_doc->setNestedWindow(doc);
 }
 
 void Editor::tryOpenDocumentFromPtr(std::shared_ptr<Resource> res) {
@@ -395,7 +399,7 @@ void Editor::tryOpenDocumentFromPtr(std::shared_ptr<Resource> res) {
     }
 
     EditorWindow* doc = createEditorDocument(t);
-    current_doc->addNestedWindow(doc);
+    current_doc->setNestedWindow(doc);
 }
 
 EditorState& Editor::getState() {

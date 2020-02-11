@@ -104,9 +104,7 @@ public:
         return rttr::type::get<AnimFSMStateFSM>();
     }
     void onGuiToolbox() override {
-        if(ImGui::Button("Edit FSM", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
-
-        }
+        
     }
 
     void write(out_stream& out) override {}
@@ -123,9 +121,7 @@ public:
         return rttr::type::get<AnimFSMStateBlendTree>();
     }
     void onGuiToolbox() override {
-        if(ImGui::Button("Edit BlendTree", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
-
-        }
+        
     }
 
     void write(out_stream& out) override {}

@@ -24,7 +24,8 @@ protected:
     std::string _window_title;
     std::string _icon = ICON_MDI_FILE_DOCUMENT;
 
-    std::vector<std::shared_ptr<EditorWindow>> nested_window_stack;
+    EditorWindow* nested_parent = 0;
+    std::unique_ptr<EditorWindow> nested_window;
 
 public:
     bool isOpen() const { return _is_open; }
@@ -39,7 +40,8 @@ public:
     const std::string&  getIconCode() const { return _icon; }
     void                setIconCode(const std::string& icon_code) { _icon = icon_code; }
 
-    void                addNestedWindow(EditorWindow* w) { nested_window_stack.push_back(std::shared_ptr<EditorWindow>(w)); }
+    void                setNestedWindow(EditorWindow* w) { if(w) w->nested_parent = this; nested_window.reset(w); }
+    EditorWindow*       getNestedWindow() { return nested_window.get(); }
 
     virtual void save() = 0;
 
@@ -47,7 +49,10 @@ public:
     virtual void onGui(Editor* ed, float dt) = 0;
     virtual void onGuiToolbox(Editor* ed) {}
 
-    void draw(Editor* ed, float dt);
+    void drawInternal(Editor* ed, float dt);
+    void drawAsRoot(Editor* ed, float dt);
+
+    void drawToolbox(Editor* ed);
 };
 
 

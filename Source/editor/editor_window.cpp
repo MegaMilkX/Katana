@@ -2,7 +2,35 @@
 
 #include "editor.hpp"
 
-void EditorWindow::draw (Editor* ed, float dt) {
+void EditorWindow::drawInternal(Editor* ed, float dt) {
+    if(!nested_window) {
+        onGui(ed, dt);
+    } else {
+        if(ImGui::SmallButton("Root")) {
+            setNestedWindow(0);
+        }
+        EditorWindow* cur_nested = nested_window.get();
+        while (cur_nested) {
+            ImGui::SameLine(); ImGui::Text(">"); ImGui::SameLine();
+            if (ImGui::SmallButton(MKSTR(cur_nested->getIconCode() << " " << cur_nested->getTitle()).c_str())) {
+                cur_nested->setNestedWindow(0);
+            }
+            if(!cur_nested->getNestedWindow()) {
+                break;
+            } else {
+                cur_nested = cur_nested->getNestedWindow();
+            }
+        }
+
+        if(!cur_nested) {
+            onGui(ed, dt);
+        } else {
+            cur_nested->onGui(ed, dt);
+        }
+    }
+}
+
+void EditorWindow::drawAsRoot(Editor* ed, float dt) {
     ImGuiWindowFlags flags = imgui_win_flags;
     if(isUnsaved()) {
         flags |= ImGuiWindowFlags_UnsavedDocument;
@@ -23,25 +51,35 @@ void EditorWindow::draw (Editor* ed, float dt) {
             ed->setFocusedWindow(this);
         }
 
-        if(nested_window_stack.empty()) {
-            onGui(ed, dt);
-        } else {
-           if(ImGui::SmallButton("Root")) {
-               nested_window_stack.clear();
-           }
-           for(size_t i = 0; i < nested_window_stack.size(); ++i) {
-               ImGui::SameLine(); ImGui::Text(">"); ImGui::SameLine();
-               if(ImGui::SmallButton(MKSTR(nested_window_stack[i]->getIconCode() << " " << nested_window_stack[i]->getTitle()).c_str())) {
-                   nested_window_stack.resize(i + 1);
-               }
-           }
-
-           if(nested_window_stack.empty()) {
-               onGui(ed, dt);
-           } else {
-               nested_window_stack.back()->onGui(ed, dt);
-           }
-        }
+        drawInternal(ed, dt);
     }
     ImGui::End();
+}
+
+void EditorWindow::drawToolbox(Editor* ed) {
+    if(!nested_window) {
+        onGuiToolbox(ed);
+    } else {
+        if(ImGui::SmallButton("Root")) {
+            setNestedWindow(0);
+        }
+        EditorWindow* cur_nested = nested_window.get();
+        while (cur_nested) {
+            ImGui::SameLine(); ImGui::Text(">"); ImGui::SameLine();
+            if (ImGui::SmallButton(MKSTR(cur_nested->getIconCode() << " " << cur_nested->getTitle()).c_str())) {
+                cur_nested->setNestedWindow(0);
+            }
+            if(!cur_nested->getNestedWindow()) {
+                break;
+            } else {
+                cur_nested = cur_nested->getNestedWindow();
+            }
+        }
+
+        if(!cur_nested) {
+            onGuiToolbox(ed);
+        } else {
+            cur_nested->onGuiToolbox(ed);
+        }
+    }
 }
