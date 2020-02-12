@@ -180,6 +180,7 @@ void GuiViewport::camRotate(gfxm::vec2 v) {
 }
 void GuiViewport::camZoom(float v) {
     float mod = cam_zoom;
+    if(mod < FLT_EPSILON) mod = 0.0001f;
     cam_zoom += -v * mod * 0.15f;
 }
 void GuiViewport::camSetPivot(const gfxm::vec3& pivot) {

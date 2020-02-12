@@ -40,7 +40,7 @@ public:
     void clear() override;
     void copy(BlendTree* other);
 
-    void setSkeleton(std::shared_ptr<Skeleton> skel);
+    void setSkeleton(std::shared_ptr<Skeleton> skel) override;
     Skeleton* getSkeleton();
     void setBlackboard(AnimBlackboard* bb);
 
@@ -82,6 +82,18 @@ public:
     Pose& getPoseData(float normal_cursor) {
         run();
         return pose;
+    }
+
+    void update(float dt, std::vector<AnimSample>& samples) override {
+        run();
+        cursor += dt * pose.speed;
+        if(cursor > 1.0f) {
+            cursor -= 1.0f;
+        }
+        
+        for(size_t i = 0; i < samples.size() && i < pose.samples.size(); ++i) {
+            samples[i] = pose.samples[i];
+        }
     }
 
     void         serialize(out_stream& out);

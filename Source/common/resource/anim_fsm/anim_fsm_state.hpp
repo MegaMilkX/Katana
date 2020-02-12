@@ -20,7 +20,6 @@ protected:
     std::set<AnimFSMTransition*> out_transitions;
 
     float cursor = .0f; // normalized
-    std::vector<AnimSample> samples;
     std::shared_ptr<Skeleton> skeleton;
 
 public:
@@ -32,15 +31,7 @@ public:
     }
     virtual void onGuiToolbox() = 0;
 
-    void setSkeleton(std::shared_ptr<Skeleton> skel) {
-        skeleton = skel;
-        if(!skel) {
-            return;
-        }
-        samples = skeleton->makePoseArray();
-
-        //onSkeletonChanged();
-    }
+    virtual void setSkeleton(std::shared_ptr<Skeleton> skel) = 0;
 
     const std::string& getName() const { return name; }
     void               setName(const std::string& value) { name = value; }
@@ -60,6 +51,15 @@ public:
 class AnimFSMStateClip : public AnimFSMState {
     std::shared_ptr<Animation> anim;
 public:
+    void setSkeleton(std::shared_ptr<Skeleton> skel) override {
+        skeleton = skel;
+        if(!skel) {
+            return;
+        }
+
+        //onSkeletonChanged();
+    }
+
     void update(float dt, std::vector<AnimSample>& samples, float weight) override {
         if(!anim || !skeleton) return;
         anim->sample_remapped(samples, cursor * anim->length, anim->getMapping(skeleton.get()));
@@ -97,35 +97,37 @@ public:
 class AnimFSMStateFSM : public AnimFSMState {
     std::shared_ptr<AnimFSM> fsm;
 public:
-    void update(float dt, std::vector<AnimSample>& samples, float weight) override {
-    }
+    AnimFSMStateFSM();
 
-    rttr::type getType() const override {
-        return rttr::type::get<AnimFSMStateFSM>();
-    }
-    void onGuiToolbox() override {
-        
-    }
+    AnimFSM* getFSM() { return fsm.get(); }
 
-    void write(out_stream& out) override {}
-    void read(in_stream& in) override    {}
+    void setSkeleton(std::shared_ptr<Skeleton> skel) override;
+
+    void update(float dt, std::vector<AnimSample>& samples, float weight) override;
+
+    rttr::type getType() const override;
+    void onGuiToolbox() override;
+
+    void write(out_stream& out) override;
+    void read(in_stream& in) override;
 };
 
 class AnimFSMStateBlendTree : public AnimFSMState {
     std::shared_ptr<BlendTree> blend_tree;
 public:
-    void update(float dt, std::vector<AnimSample>& samples, float weight) override {
-    }
+    AnimFSMStateBlendTree();
 
-    rttr::type getType() const override {
-        return rttr::type::get<AnimFSMStateBlendTree>();
-    }
-    void onGuiToolbox() override {
-        
-    }
+    BlendTree* getBlendTree() { return blend_tree.get(); }
 
-    void write(out_stream& out) override {}
-    void read(in_stream& in) override    {}
+    void setSkeleton(std::shared_ptr<Skeleton> skel) override;
+
+    void update(float dt, std::vector<AnimSample>& samples, float weight) override;
+
+    rttr::type getType() const override;
+    void onGuiToolbox() override;
+
+    void write(out_stream& out) override;
+    void read(in_stream& in) override;
 };
 
 #endif

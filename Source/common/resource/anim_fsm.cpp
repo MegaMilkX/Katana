@@ -128,7 +128,8 @@ void AnimFSM::update(
     std::vector<AnimSample>& samples
 ) {
     if(!blackboard) {
-        assert(false);
+        // TODO
+        //assert(false);
     }
     if(current_action > actions.size()) {
         return;

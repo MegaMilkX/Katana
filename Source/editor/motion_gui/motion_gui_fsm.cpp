@@ -1,24 +1,22 @@
-#include "doc_action_graph.hpp"
+#include "motion_gui_fsm.hpp"
 
-#include "../common/util/imgui_helpers.hpp"
+#include "fsm_gui_elements.hpp"
 
-#include "motion_gui/fsm_gui_elements.hpp"
+#include "../../common/util/imgui_helpers.hpp"
 
-DocActionGraph::DocActionGraph() {
-    viewport.camMode(GuiViewport::CAM_ORBIT);
-    viewport.enableDebugDraw(false);
+#include "../doc_motion.hpp"
 
-    onResourceSet();
+
+
+MotionGuiFSM::MotionGuiFSM(const std::string& title, DocMotion* doc, AnimFSM* fsm)
+: MotionGuiBase(title, doc), fsm(fsm) {
+
 }
 
-bool s_creating_transition = false;
-void DocActionGraph::onGui(Editor* ed, float dt) {
-    auto& action_graph = _resource;
-
-    ImGui::BeginColumns("First", 2);
-
+static bool s_creating_transition = false;
+void MotionGuiFSM::drawGui(Editor* ed, float dt) {
     if(BeginGridView("test")) {
-        for(auto& t : action_graph->getTransitions()) {
+        for(auto& t : fsm->getTransitions()) {
             gfxm::vec2 from = t->from->getEditorPos();
             gfxm::vec2 to = t->to->getEditorPos();
             if(TransitionLine(ImVec2(from.x, from.y), ImVec2(to.x, to.y), selected_transition == t)) {
@@ -26,7 +24,7 @@ void DocActionGraph::onGui(Editor* ed, float dt) {
             }
         }
 
-        for(auto& a : action_graph->getActions()) {
+        for(auto& a : fsm->getActions()) {
             gfxm::vec2 ed_pos = a->getEditorPos();
             ImVec2 node_pos(ed_pos.x, ed_pos.y);
             bool dbl_clicked = false;
@@ -34,7 +32,7 @@ void DocActionGraph::onGui(Editor* ed, float dt) {
             if(selected_action == a) {
                 node_flags |= NODE_FLAG_SELECTED;
             }
-            if(a == action_graph->getEntryAction()) {
+            if(a == fsm->getEntryAction()) {
                 node_flags |= NODE_FLAG_HIGHLIGHT;
             }
 
@@ -48,7 +46,7 @@ void DocActionGraph::onGui(Editor* ed, float dt) {
 
             if(Node(a->getName().c_str(), node_pos, ImVec2(200, 50), node_flags, &dbl_clicked)) {
                 if(s_creating_transition && (selected_action != a)) {
-                    action_graph->createTransition(selected_action->getName(), a->getName());
+                    fsm->createTransition(selected_action->getName(), a->getName());
                     s_creating_transition = false;
                 }
                 selected_action = a;
@@ -67,102 +65,24 @@ void DocActionGraph::onGui(Editor* ed, float dt) {
         }
     }
     EndGridView();
-
-    ImGui::NextColumn();  // ================================
-
-    std::vector<ktNode*> tgt_nodes;
-    if(action_graph->reference_skel) {
-        auto& skel = action_graph->reference_skel;
-
-        tgt_nodes.resize(skel->boneCount());
-
-        action_graph->update(dt, sample_buffer);
-
-        for(size_t i = 0; i < skel->boneCount(); ++i) {
-            auto& bone = skel->getBone(i);
-            ktNode* node = scn.findObject(bone.name);
-            tgt_nodes[i] = node;
-        }
-        for(size_t i = 0; i < sample_buffer.size(); ++i) {
-            auto n = tgt_nodes[i];
-            if(n) {
-                n->getTransform()->setPosition(sample_buffer[i].t);
-                n->getTransform()->setRotation(sample_buffer[i].r);
-                n->getTransform()->setScale(sample_buffer[i].s);
-            }
-        }
-    }
-
-
-    if(cam_pivot) {
-        viewport.camSetPivot(cam_pivot->getTransform()->getWorldPosition());
-    }
-    if(cam_light) {
-        cam_light->getOwner()->getTransform()->setTransform(gfxm::inverse(viewport.getView()));
-    }
-    auto skel_ref = scn.find<SkeletonRef>();
-    if(skel_ref) {
-        //skel_ref->debugDraw(&viewport.getDebugDraw());
-    }
-
-    viewport.draw(&scn);
-
-    ImGui::EndColumns();
 }
 
-void DocActionGraph::setReferenceObject(ktNode* node) {
-    scn.clear();
-                    
-    scn.copy(node);
-    scn.getTransform()->setScale(
-        node->getTransform()->getScale()
-    );
-    gfxm::aabb box;
-    scn.makeAabb(box);
-
-    cam_light = scn.createChild()->get<DirLight>().get();
-    cam_light->intensity = 500.0f;
-
-    viewport.resetCamera((box.from + box.to) * 0.5f, gfxm::length(box.to - box.from));
-
-    auto skel_ref = scn.find<SkeletonRef>();
-    if(skel_ref && skel_ref->skeleton) {
-        _resource->reference_skel = skel_ref->skeleton;
-        _resource->setSkeleton(skel_ref->skeleton);
-
-        sample_buffer.resize(_resource->reference_skel->boneCount());
-    }
-}
-
-void DocActionGraph::onGuiToolbox(Editor* ed) {
-    auto& action_graph = _resource;
-
-    imguiResourceTreeCombo("reference", action_graph->reference_object, "so", [this, &action_graph](){
-        if(action_graph->reference_object) {
-            setReferenceObject(action_graph->reference_object.get());
-        }
-    });
-    imguiResourceTreeCombo("skeleton", action_graph->reference_skel, "skl", [this, &action_graph](){
-        action_graph->setSkeleton(action_graph->reference_skel);
-
-        sample_buffer.resize(action_graph->reference_skel->boneCount());
-    });
-
+void MotionGuiFSM::drawToolbox(Editor* ed) {
     ImGui::Text("Add state");
     if(ImGui::Button("Clip", ImVec2(ImGui::GetContentRegionAvailWidth(), .0f))) {
-        auto act = action_graph->createAction<AnimFSMStateClip>("Clip state");
+        auto act = fsm->createAction<AnimFSMStateClip>("Clip state");
         ImVec2 new_pos;// = GraphEditGridScreenToPos(s_graph_edit_bb.Min + s_graph_edit_bb.Max * 0.5f);
         act->setEditorPos(gfxm::vec2(new_pos.x, new_pos.y));
         selected_action = act;
     }
     if(ImGui::Button("FSM", ImVec2(ImGui::GetContentRegionAvailWidth(), .0f))) {
-        auto act = action_graph->createAction<AnimFSMStateFSM>("FSM state");
+        auto act = fsm->createAction<AnimFSMStateFSM>("FSM state");
         ImVec2 new_pos;// = GraphEditGridScreenToPos(s_graph_edit_bb.Min + s_graph_edit_bb.Max * 0.5f);
         act->setEditorPos(gfxm::vec2(new_pos.x, new_pos.y));
         selected_action = act;
     }
     if(ImGui::Button("BlendTree", ImVec2(ImGui::GetContentRegionAvailWidth(), .0f))) {
-        auto act = action_graph->createAction<AnimFSMStateBlendTree>("BlendTree state");
+        auto act = fsm->createAction<AnimFSMStateBlendTree>("BlendTree state");
         ImVec2 new_pos;// = GraphEditGridScreenToPos(s_graph_edit_bb.Min + s_graph_edit_bb.Max * 0.5f);
         act->setEditorPos(gfxm::vec2(new_pos.x, new_pos.y));
         selected_action = act;
@@ -175,23 +95,26 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
         memset(buf, 0, sizeof(buf));
         memcpy(buf, selected_action->getName().c_str(), selected_action->getName().size());
         if(ImGui::InputText("name", buf, sizeof(buf))) {
-            action_graph->renameAction(selected_action, buf);
+            fsm->renameAction(selected_action, buf);
         }
         
         selected_action->onGuiToolbox();
         
         if(selected_action->getType() == rttr::type::get<AnimFSMStateFSM>()) {
             if(ImGui::Button(ICON_MDI_PENCIL " Edit FSM", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
-                setNestedWindow(new DocActionGraph());
+                //setNestedWindow(new DocActionGraph());
+                AnimFSMStateFSM* fsmState = (AnimFSMStateFSM*)selected_action;
+                doc->pushGuiLayer(new MotionGuiFSM(MKSTR(ICON_MDI_SETTINGS << " " << selected_action->getName()), doc, fsmState->getFSM()));
             }
         } else if(selected_action->getType() == rttr::type::get<AnimFSMStateBlendTree>()) {
             if(ImGui::Button(ICON_MDI_PENCIL " Edit BlendTree", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
-                // TODO: Open nested document
+                AnimFSMStateBlendTree* state = (AnimFSMStateBlendTree*)selected_action;
+                doc->pushGuiLayer(new MotionGuiBlendTree(MKSTR("[BT] " << selected_action->getName()), doc, state->getBlendTree()));
             }
         }
 
         if(ImGui::Button("Delete action", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
-            action_graph->deleteAction(selected_action);
+            fsm->deleteAction(selected_action);
             selected_action = 0;
             selected_transition = 0;
         }
@@ -206,7 +129,7 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
         ImGui::Text(MKSTR(selected_transition->from->getName() << " -> " << selected_transition->to->getName()).c_str());
         ImGui::SameLine();
         if(ImGui::SmallButton(ICON_MDI_DELETE_EMPTY )) {
-            action_graph->deleteTransition(selected_transition);
+            fsm->deleteTransition(selected_transition);
             selected_transition = 0;
         } else {
             ImGui::DragFloat("blend time", &selected_transition->blendTime);
@@ -215,13 +138,14 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
                 auto& cond = conds[i];
                 ImGui::PushItemWidth(70);
                 if(ImGui::BeginCombo(MKSTR("###cond_id"<<i).c_str(), conds[i].param_name.c_str(), ImGuiComboFlags_NoArrowButton)) {
+                    /*
                     for(size_t j = 0; j < blackboard.count(); ++j) {
                         auto name = blackboard.getName(j);
                         if(ImGui::Selectable(name, j == cond.param_hdl)) {
                             cond.param_hdl = j;
                             conds[i].param_name = name;
                         }
-                    }
+                    }*/
                     ImGui::EndCombo();
                 } 
                 ImGui::PopItemWidth();
@@ -253,19 +177,5 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
         }
 
         ImGuiExt::EndInsetSegment();
-    }
-
-    ImGui::Separator();
-    
-    animBlackboardGui(&blackboard);
-}
-
-
-void DocActionGraph::onResourceSet() {
-    auto& action_graph = _resource;
-    action_graph->setBlackboard(&blackboard);
-
-    if(action_graph->reference_object) {
-        setReferenceObject(action_graph->reference_object.get());
     }
 }

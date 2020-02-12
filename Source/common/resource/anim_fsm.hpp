@@ -16,6 +16,21 @@
 
 // ==========================
 
+
+inline const char* condTypeToCStr(AnimFSMTransition::CONDITION cond) {
+    const char* cstr = 0;
+    switch(cond) {
+    case AnimFSMTransition::LARGER: cstr = ">"; break;
+    case AnimFSMTransition::LARGER_EQUAL: cstr = ">="; break;
+    case AnimFSMTransition::LESS: cstr = "<"; break;
+    case AnimFSMTransition::LESS_EQUAL: cstr = "<="; break;
+    case AnimFSMTransition::EQUAL: cstr = "=="; break;
+    case AnimFSMTransition::NOT_EQUAL: cstr = "!="; break;
+    };
+    return cstr;
+}
+
+
 class AnimFSM : public Resource, public AnimatorBase {
     RTTR_ENABLE(Resource)
 
@@ -39,7 +54,7 @@ public:
 
     ANIMATOR_TYPE getType() const override { return ANIMATOR_FSM; }
 
-    void setSkeleton(std::shared_ptr<Skeleton> skeleton) {
+    void setSkeleton(std::shared_ptr<Skeleton> skeleton) override {
         for(auto a : actions) {
             a->setSkeleton(skeleton);
         }
@@ -73,10 +88,7 @@ public:
     AnimFSMState*                           getEntryAction();
     void                                       setEntryAction(const std::string& name);
 
-    void                                       update(
-        float dt, 
-        std::vector<AnimSample>& samples
-    );
+    void update(float dt, std::vector<AnimSample>& samples) override;
 
     void serialize(out_stream& out) override;
     bool deserialize(in_stream& in, size_t sz) override;
