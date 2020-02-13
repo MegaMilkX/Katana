@@ -91,7 +91,7 @@ bool Node(const char* id, ImVec2& pos, const ImVec2& node_size, int node_flags, 
     ImU32 node_col = ImGui::ColorConvertFloat4ToU32(ImVec4(.0f, .0f, .0f, 1.f));// ImGui::GetColorU32(ImGuiCol_WindowBg, 1);
 
     if(highlight) {
-        node_col = ImGui::ColorConvertFloat4ToU32(ImVec4(209 / 255.0f, 99 / 255.0f, 44 / 255.0f, 1.0f)); //ImGui::GetColorU32(ImGuiCol_PlotHistogram);
+        node_col = ImGui::ColorConvertFloat4ToU32(ImVec4(166 / 255.0f, 50 / 255.0f, 12 / 255.0f, 1.0f)); //ImGui::GetColorU32(ImGuiCol_PlotHistogram);
     }
     //ImGui::PushClipRect(node_frame_min, node_frame_max, true);
 
@@ -99,7 +99,7 @@ bool Node(const char* id, ImVec2& pos, const ImVec2& node_size, int node_flags, 
 
     ImGui::RenderFrame(
         node_frame_min, node_frame_max, 
-        node_col, true, ImGui::GetStyle().FrameRounding
+        node_col, true, ImGui::GetStyle().WindowRounding
     );
 
     if((s_node_drag_id == id) && ImGui::IsMouseDragging(0)) {
@@ -131,12 +131,16 @@ bool Node(const char* id, ImVec2& pos, const ImVec2& node_size, int node_flags, 
         (s_node_drag_id == id || ImGui::IsMouseHoveringRect(node_frame_min, node_frame_max, true))
         || (selected)
     ) {
-        ImGui::GetWindowDrawList()->AddQuad(
-            node_frame_min,
-            ImVec2(node_frame_max.x, node_frame_min.y), 
-            node_frame_max,
-            ImVec2(node_frame_min.x, node_frame_max.y),
-            ImGui::GetColorU32(ImGuiCol_Text, 1.0f), 2.0f
+        ImGui::GetWindowDrawList()->AddRect(
+            node_frame_min + ImVec2(2, 2), node_frame_max - ImVec2(2, 2), ImGui::GetColorU32(ImGuiCol_Text, 1.0f),
+            ImGui::GetStyle().WindowRounding, 15, 2
+        );
+    }
+
+    if(node_flags & NODE_FLAG_PLAYING) {
+        ImGui::GetWindowDrawList()->AddRect(
+            node_frame_min, node_frame_max, ImGui::ColorConvertFloat4ToU32(ImVec4(240 / 255.f, 147 / 255.f, 41 / 255.f, 1.0f)),
+            ImGui::GetStyle().WindowRounding, 15, 2
         );
     }
 

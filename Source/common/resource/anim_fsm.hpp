@@ -79,14 +79,16 @@ public:
     void                deleteAction(AnimFSMState* action);
     void                deleteTransition(AnimFSMTransition* transition);
 
-    const std::vector<AnimFSMState*>&       getActions() const;
-    const std::vector<AnimFSMTransition*>& getTransitions() const;
+    const std::vector<AnimFSMState*>&           getActions() const;
+    const std::vector<AnimFSMTransition*>&      getTransitions() const;
 
-    AnimFSMState*                           getAction(size_t i);
+    AnimFSMState*                               getAction(size_t i);
 
-    size_t                                     getEntryActionId();
-    AnimFSMState*                           getEntryAction();
-    void                                       setEntryAction(const std::string& name);
+    size_t                                      getEntryActionId();
+    AnimFSMState*                               getEntryAction();
+    void                                        setEntryAction(const std::string& name);
+
+    AnimFSMState*                               getCurrentAction();
 
     void update(float dt, std::vector<AnimSample>& samples) override;
 

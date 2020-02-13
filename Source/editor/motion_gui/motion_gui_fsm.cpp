@@ -35,6 +35,9 @@ void MotionGuiFSM::drawGui(Editor* ed, float dt) {
             if(a == fsm->getEntryAction()) {
                 node_flags |= NODE_FLAG_HIGHLIGHT;
             }
+            if(a == fsm->getCurrentAction()) {
+                node_flags |= NODE_FLAG_PLAYING;
+            }
 
             if(a->getType() == rttr::type::get<AnimFSMStateClip>()) {
                 node_flags |= NODE_FLAG_CLIP;
@@ -91,6 +94,15 @@ void MotionGuiFSM::drawToolbox(Editor* ed) {
         ImGuiExt::BeginInsetSegment(ImGui::ColorConvertFloat4ToU32(ImVec4(.3f, .15f, .0f, 1.f)));
         ImGui::Text("Selected state");
 
+        bool is_startup = selected_action == fsm->getEntryAction();
+        if(ImGui::Checkbox("Startup", &is_startup)) {
+            if(is_startup) {
+                fsm->setEntryAction(selected_action->getName());
+            } else {
+                is_startup = true;
+            }
+        }
+
         char buf[256];
         memset(buf, 0, sizeof(buf));
         memcpy(buf, selected_action->getName().c_str(), selected_action->getName().size());
@@ -124,7 +136,7 @@ void MotionGuiFSM::drawToolbox(Editor* ed) {
     ImGui::Separator();
     if(selected_transition) {
         ImGuiExt::BeginInsetSegment(ImGui::ColorConvertFloat4ToU32(ImVec4(.0f, .3f, .15f, 1.f)));
-        ImGui::Text("Selected state");
+        ImGui::Text("Selected transition");
 
         ImGui::Text(MKSTR(selected_transition->from->getName() << " -> " << selected_transition->to->getName()).c_str());
         ImGui::SameLine();

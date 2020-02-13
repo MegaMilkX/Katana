@@ -16,6 +16,7 @@ const int NODE_FLAG_FSM = 2;
 const int NODE_FLAG_BLEND_TREE = 4;
 const int NODE_FLAG_HIGHLIGHT = 8;
 const int NODE_FLAG_SELECTED = 16;
+const int NODE_FLAG_PLAYING = 32;
 
 ImVec2 GraphEditGridPosToScreen(const ImVec2& pos);
 

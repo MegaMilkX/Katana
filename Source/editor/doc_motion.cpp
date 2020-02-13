@@ -54,9 +54,7 @@ void DocMotion::pushGuiLayer(MotionGuiBase* gui) {
 }
 
 
-void DocMotion::onGui(Editor* ed, float dt) {
-    ImGui::BeginColumns("First", 2);
-    
+void DocMotion::onGui(Editor* ed, float dt) {    
     if(gui_stack.empty()) {
         ImGui::Text("Create new");
         if(ImGui::Button("Animation FSM")) {
@@ -85,7 +83,9 @@ void DocMotion::onGui(Editor* ed, float dt) {
         gui_stack.back()->drawGui(ed, dt);
     }
 
-    ImGui::NextColumn();  // ================================
+    // === PREVIEW ===
+    bool is_open = true;
+    ImGui::Begin("Motion preview", &is_open, ImVec2(300, 200));
 
     std::vector<ktNode*> tgt_nodes;
     if(_resource->skeleton) {
@@ -123,7 +123,7 @@ void DocMotion::onGui(Editor* ed, float dt) {
 
     viewport.draw(&scn);
 
-    ImGui::EndColumns();
+    ImGui::End();
 }
 
 void DocMotion::onGuiToolbox(Editor* ed) {
@@ -138,9 +138,53 @@ void DocMotion::onGuiToolbox(Editor* ed) {
         sample_buffer.resize(_resource->skeleton->boneCount());
     });
 
+    ImGui::Separator();
+
+    ImGui::Text("Parameters");
+    static bool param_edit_open = false;
+    static bool debug_input_open = false;
+    if(ImGui::Button(ICON_MDI_PENCIL " Edit", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
+        param_edit_open = !param_edit_open;
+    }
+    if(ImGui::Button(ICON_MDI_GAMEPAD " Debug input", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
+        debug_input_open = !debug_input_open;
+    }
+
+
+    ImGui::Separator();
     if(gui_stack.empty()) {
 
     } else {
         gui_stack.back()->drawToolbox(ed);
     }
+
+    if(param_edit_open) {
+        if(ImGui::Begin("Motion params", &param_edit_open, ImVec2(300, 400))) {
+            if(ImGui::Button(ICON_MDI_PLUS, ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
+                
+            }
+
+        }
+        ImGui::End();
+    }
+
+    if(debug_input_open) {
+        ImGui::Begin("Motion debug input", &debug_input_open, ImVec2(300, 400));
+
+        bool dummy = true;
+        ImGui::Checkbox("Enable input", &dummy);
+        ImGui::Text("velo: "); ImGui::SameLine(); ImGui::Button("Left stick");
+        ImGui::Text("grounded toggle: "); ImGui::SameLine(); ImGui::Button("R1");
+        ImGui::Text("on_hit trigger: "); ImGui::SameLine(); ImGui::Button("SQUARE");
+
+        ImGui::End();
+    }
+
+    /*
+    
+    bool bDummy = true;
+    ImGui::Checkbox("grounded", &bDummy);
+    ImGui::Button("event 13", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f));
+    ImGui::Button("event 536", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f));
+    */
 }

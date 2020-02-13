@@ -122,6 +122,9 @@ void AnimFSM::setEntryAction(const std::string& name) {
     current_action = entry_action;
 }
 
+AnimFSMState* AnimFSM::getCurrentAction() {
+    return actions[current_action];
+}
 
 void AnimFSM::update(
     float dt, 
