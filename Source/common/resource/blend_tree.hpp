@@ -19,9 +19,7 @@ class BlendTree : public Resource, public AnimatorBase, public JobGraphTpl<Blend
     std::shared_ptr<Skeleton> skeleton;
     Pose pose;
     float cursor = .0f;
-    AnimBlackboard* blackboard = 0;
-
-    // TODO: BlendTreeMotion was here
+    Motion*         owner_motion = 0;
 
     std::map<std::string, int> value_indices;
     std::vector<float>         values;
@@ -40,9 +38,15 @@ public:
     void clear() override;
     void copy(BlendTree* other);
 
+    void setMotion(Motion* motion) override {
+        owner_motion = motion;
+        // TODO: Should not happen, but update value references anyway
+    }
+    Motion* getMotion() override {
+        return owner_motion;
+    }
     void setSkeleton(std::shared_ptr<Skeleton> skel) override;
     Skeleton* getSkeleton();
-    void setBlackboard(AnimBlackboard* bb);
 
     int getValueIndex(const char* name);
     const char* getValueName(int idx);

@@ -14,6 +14,8 @@
 
 #include "../util/make_next_name.hpp"
 
+#include "motion.hpp"
+
 // ==========================
 
 
@@ -41,7 +43,7 @@ class AnimFSM : public Resource, public AnimatorBase {
     float trans_weight = 1.0f;
     float trans_speed = 0.1f;
     std::vector<AnimSample> trans_samples;
-    AnimBlackboard* blackboard = 0;
+    Motion* owner_motion = 0;
 
     void pickEntryAction();
 
@@ -59,13 +61,12 @@ public:
             a->setSkeleton(skeleton);
         }
     }
-    void setBlackboard(AnimBlackboard* bb) {
-        blackboard = bb;
-        for(auto& t : transitions) {
-            for(auto& c : t->conditions) {
-                c.param_hdl = blackboard->getHandle(c.param_name.c_str());
-            }
-        }
+    void setMotion(Motion* motion) override {
+        owner_motion = motion;
+        // TODO: Should not happen, but update value references anyway
+    }
+    Motion* getMotion() override {
+        return owner_motion;
     }
 
     template<typename ANIM_FSM_STATE_T>
@@ -104,7 +105,7 @@ STATIC_RUN(AnimFSM) {
 
 template<typename ANIM_FSM_STATE_T>
 AnimFSMState* AnimFSM::createAction(const std::string& name) {
-    ANIM_FSM_STATE_T* state = new ANIM_FSM_STATE_T();
+    ANIM_FSM_STATE_T* state = new ANIM_FSM_STATE_T(getMotion());
     std::set<std::string> existing_names;
     for(auto a : actions) {
         existing_names.insert(a->getName());

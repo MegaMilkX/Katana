@@ -1,6 +1,7 @@
 #include "doc_motion.hpp"
 
 #include "../common/util/imgui_helpers.hpp"
+#include "../common/util/imgui_ext.hpp"
 
 
 void DocMotion::resetGui() {
@@ -46,6 +47,8 @@ void DocMotion::setReferenceObject(ktNode* node) {
 
         sample_buffer.resize(_resource->skeleton->boneCount());
     }
+
+    cam_pivot = 0;
 }
 
 
@@ -137,6 +140,9 @@ void DocMotion::onGuiToolbox(Editor* ed) {
 
         sample_buffer.resize(_resource->skeleton->boneCount());
     });
+    imguiObjectCombo("camera pivot", cam_pivot, &scn, [](){
+
+    });
 
     ImGui::Separator();
 
@@ -160,8 +166,16 @@ void DocMotion::onGuiToolbox(Editor* ed) {
 
     if(param_edit_open) {
         if(ImGui::Begin("Motion params", &param_edit_open, ImVec2(300, 400))) {
+            int i = 0;
+            for(auto& param : _resource->getBlackboard()) {
+                ImGuiExt::InputText(MKSTR("name###" << "name" << i).c_str(), param.name);
+                ImGui::DragFloat(MKSTR("value###" << "value" << i).c_str(), &param.value, 0.001f);
+                ++i;
+            }
+            
             if(ImGui::Button(ICON_MDI_PLUS, ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
-                
+                int hdl = _resource->getBlackboard().allocValue();
+                _resource->getBlackboard().setName(hdl, "param");
             }
 
         }
@@ -169,14 +183,13 @@ void DocMotion::onGuiToolbox(Editor* ed) {
     }
 
     if(debug_input_open) {
-        ImGui::Begin("Motion debug input", &debug_input_open, ImVec2(300, 400));
-
-        bool dummy = true;
-        ImGui::Checkbox("Enable input", &dummy);
-        ImGui::Text("velo: "); ImGui::SameLine(); ImGui::Button("Left stick");
-        ImGui::Text("grounded toggle: "); ImGui::SameLine(); ImGui::Button("R1");
-        ImGui::Text("on_hit trigger: "); ImGui::SameLine(); ImGui::Button("SQUARE");
-
+        if(ImGui::Begin("Motion debug input", &debug_input_open, ImVec2(300, 400))) {
+            bool dummy = true;
+            ImGui::Checkbox("Enable input", &dummy);
+            ImGui::Text("velo: "); ImGui::SameLine(); ImGui::Button("Left stick");
+            ImGui::Text("grounded toggle: "); ImGui::SameLine(); ImGui::Button("R1");
+            ImGui::Text("on_hit trigger: "); ImGui::SameLine(); ImGui::Button("SQUARE");
+        }
         ImGui::End();
     }
 

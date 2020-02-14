@@ -130,10 +130,6 @@ void AnimFSM::update(
     float dt, 
     std::vector<AnimSample>& samples
 ) {
-    if(!blackboard) {
-        // TODO
-        //assert(false);
-    }
     if(current_action > actions.size()) {
         return;
     }
@@ -145,7 +141,7 @@ void AnimFSM::update(
     for(auto& t : act->getTransitions()) {
         bool res = false;
         for(auto& cond : t->conditions) {
-            float val = blackboard->get_float(cond.param_hdl);
+            float val = getMotion()->getBlackboard().getValue(cond.param_hdl);
             float ref_val = cond.ref_value;
             switch(cond.type) {
             case AnimFSMTransition::LARGER: res = val > ref_val; break;
@@ -255,7 +251,7 @@ bool AnimFSM::deserialize(in_stream& in, size_t sz) {
         
         // TODO: !
         if(motion_type == 1) {
-            a = new AnimFSMStateClip();
+            a = new AnimFSMStateClip(getMotion());
         }
         if(a) {
             a->read(in);        

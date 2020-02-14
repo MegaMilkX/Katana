@@ -150,14 +150,12 @@ void MotionGuiFSM::drawToolbox(Editor* ed) {
                 auto& cond = conds[i];
                 ImGui::PushItemWidth(70);
                 if(ImGui::BeginCombo(MKSTR("###cond_id"<<i).c_str(), conds[i].param_name.c_str(), ImGuiComboFlags_NoArrowButton)) {
-                    /*
-                    for(size_t j = 0; j < blackboard.count(); ++j) {
-                        auto name = blackboard.getName(j);
-                        if(ImGui::Selectable(name, j == cond.param_hdl)) {
-                            cond.param_hdl = j;
-                            conds[i].param_name = name;
+                    for(auto it = fsm->getMotion()->getBlackboard().begin(); it != false; ++it) {
+                        if(ImGui::Selectable((*it).name.c_str(), cond.param_hdl == it.getIndex())) {
+                            cond.param_hdl = it.getIndex();
+                            cond.param_name = (*it).name;
                         }
-                    }*/
+                    }
                     ImGui::EndCombo();
                 } 
                 ImGui::PopItemWidth();

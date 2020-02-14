@@ -23,7 +23,7 @@ void ActionStateMachine::makeGraphLocalCopy() {
         strm.jump(0);
         graph.deserialize(strm, strm.bytes_available());
         graph.setSkeleton(skeleton);
-        graph.setBlackboard(&blackboard);
+        //graph.setBlackboard(&blackboard);
     }
 }
 

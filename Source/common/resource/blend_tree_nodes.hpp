@@ -96,5 +96,17 @@ public:
 };
 
 
+class MotionParam : public JobNode<MotionParam, BlendTree> {
+    float v = .0f;
+    std::string param_name = "<null>";
+    int index = -1;
+public:
+    void onInit(BlendTree* bt);
+    void onInvoke();
+
+    void onGui();
+};
+
+
 
 #endif

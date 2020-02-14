@@ -32,6 +32,64 @@ class MotionBlackboard {
     std::set<int> free_slots;
 
 public:
+    class iterator {
+        MotionBlackboard* bb = 0;
+        int idx = -1;
+    public:
+        iterator() {}
+        iterator(MotionBlackboard* bb, int idx)
+        : bb(bb), idx(idx) {}
+
+        int getIndex() const {
+            return idx;
+        }
+
+        iterator& operator++() {
+            while(idx < bb->params.size()) {
+                ++idx;
+                if(!bb->free_slots.count(idx)) {
+                    break;
+                }
+            }
+            return *this;
+        }
+
+        operator bool() const {
+            if(idx < 0 || idx >= bb->params.size() || !bb) {
+                return false;
+            }
+            if(bb->free_slots.count(idx)) {
+                return false;
+            }
+            return true;
+        }
+
+        bool operator<(const iterator& other) const {
+            return idx < other.idx;
+        }
+        MotionParamData& operator->() {
+            return bb->params[idx];
+        }
+        MotionParamData& operator*() {
+            return bb->params[idx];
+        }
+
+    };
+
+    iterator begin() {
+        int idx = 0;
+        for(int i = 0; i < params.size(); ++i) {
+            if(free_slots.count(i) == 0) {
+                idx = i;
+                break;
+            }
+        }
+        return iterator(this, idx);
+    }
+    iterator end() {
+        return iterator(this, -1);
+    }
+
     int allocValue() {
         int id = 0;
         if(free_slots.empty()) {
@@ -91,12 +149,16 @@ public:
     template<typename ANIMATOR_T>
     void resetAnimator() {
         animator.reset(new ANIMATOR_T());
+        animator->setMotion(this); // TODO: Move to constructor
         if(skeleton) {
             animator->setSkeleton(skeleton);
         }
     }
     AnimatorBase* getAnimator() {
         return animator.get();
+    }
+    MotionBlackboard& getBlackboard() {
+        return blackboard;
     }
 
     void rebuild() {

@@ -13,8 +13,9 @@ AnimFSMState::~AnimFSMState() {
 
 #include "../../common/resource/anim_fsm.hpp"
 
-AnimFSMStateFSM::AnimFSMStateFSM() {
+AnimFSMStateFSM::AnimFSMStateFSM(Motion* motion) {
     fsm.reset(new AnimFSM());
+    fsm->setMotion(motion);
 }
 
 void AnimFSMStateFSM::setSkeleton(std::shared_ptr<Skeleton> skel) {
@@ -39,8 +40,9 @@ void AnimFSMStateFSM::read(in_stream& in)    {}
 
 #include "../../common/resource/blend_tree.hpp"
 
-AnimFSMStateBlendTree::AnimFSMStateBlendTree() {
+AnimFSMStateBlendTree::AnimFSMStateBlendTree(Motion* motion) {
     blend_tree.reset(new BlendTree());
+    blend_tree->setMotion(motion);
 }
 
 void AnimFSMStateBlendTree::setSkeleton(std::shared_ptr<Skeleton> skel) {

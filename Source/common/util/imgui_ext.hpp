@@ -2,12 +2,16 @@
 #define IMGUI_EXT_HPP
 
 #include <stdint.h>
+#include <string>
 
 #include "../lib/imgui/imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "../lib/imgui/imgui_internal.h"
 
 namespace ImGuiExt {
+
+
+bool InputText(const char* name, std::string& value, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = 0, void* user_data = 0);
 
 
 void  BeginTreeNode(const char* name, ImVec2* pos, bool* clicked, bool selected, const ImVec2& size, ImU32 col);

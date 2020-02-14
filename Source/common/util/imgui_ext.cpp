@@ -8,6 +8,20 @@
 
 namespace ImGuiExt {
 
+
+bool InputText(const char* name, std::string& value, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
+    char buf[256];
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, value.c_str(), value.size());
+    if(ImGui::InputText(name, buf, sizeof(buf), flags, callback, user_data)) {
+        value = buf;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
 struct NodeInOutCollection {
     std::vector<ImVec2> ins;
     std::vector<ImVec2> outs;

@@ -27,6 +27,9 @@ STATIC_RUN(BLEND_TREE_NODES) {
     regJobNode<FloatNode>("Float")
         .out<float>("float")
         .color(0.4, 0.0, 0.0);
+    regJobNode<MotionParam>("MotionParam")
+        .out<float>("value")
+        .color(0.4, .0f, .0f);
 }
 
 
@@ -107,4 +110,27 @@ void FloatNode::onGui() {
 
         ImGui::EndCombo();
     }*/
+}
+
+#include "motion.hpp"
+
+void MotionParam::onInit(BlendTree* bt) {
+    bind<float>(&v);
+}
+void MotionParam::onInvoke() {
+    if(index < 0) {
+        return;
+    }
+    v = graph->getMotion()->getBlackboard().getValue(index);
+}
+void MotionParam::onGui() {
+    if(ImGui::BeginCombo(MKSTR("param###cond_id").c_str(), param_name.c_str(), ImGuiComboFlags_NoArrowButton)) {
+        for(auto it = graph->getMotion()->getBlackboard().begin(); it != false; ++it) {
+            if(ImGui::Selectable((*it).name.c_str(), index == it.getIndex())) {
+                index = it.getIndex();
+                param_name = (*it).name;
+            }
+        }
+        ImGui::EndCombo();
+    } 
 }

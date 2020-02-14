@@ -263,7 +263,7 @@ void DocActionGraph::onGuiToolbox(Editor* ed) {
 
 void DocActionGraph::onResourceSet() {
     auto& action_graph = _resource;
-    action_graph->setBlackboard(&blackboard);
+    //action_graph->setBlackboard(&blackboard);
 
     if(action_graph->reference_object) {
         setReferenceObject(action_graph->reference_object.get());

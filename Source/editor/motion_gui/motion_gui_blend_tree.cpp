@@ -65,6 +65,10 @@ void MotionGuiBlendTree::drawToolbox(Editor* ed) {
             blendTree->addNode(new TestJob);
             blendTree->prepare();
         }
+        if(ImGui::MenuItem("MotionParam")) {
+            blendTree->addNode(new MotionParam);
+            blendTree->prepare();
+        }
         if(ImGui::MenuItem("Float")) {
             blendTree->addNode(new FloatNode);
             blendTree->prepare();

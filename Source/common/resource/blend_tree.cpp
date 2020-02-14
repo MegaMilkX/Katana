@@ -20,11 +20,6 @@ Skeleton* BlendTree::getSkeleton() {
     return skeleton.get();
 }
 
-void BlendTree::setBlackboard(AnimBlackboard* bb) {
-    blackboard = bb;
-    // TODO: Hook up value nodes
-}
-
 int BlendTree::getValueIndex(const char* name) {
     auto it = value_indices.find(name);
     if(it == value_indices.end()) {

@@ -51,6 +51,8 @@ public:
 class AnimFSMStateClip : public AnimFSMState {
     std::shared_ptr<Animation> anim;
 public:
+    AnimFSMStateClip(Motion* motion) {}
+
     void setSkeleton(std::shared_ptr<Skeleton> skel) override {
         skeleton = skel;
         if(!skel) {
@@ -97,7 +99,7 @@ public:
 class AnimFSMStateFSM : public AnimFSMState {
     std::shared_ptr<AnimFSM> fsm;
 public:
-    AnimFSMStateFSM();
+    AnimFSMStateFSM(Motion* motion);
 
     AnimFSM* getFSM() { return fsm.get(); }
 
@@ -115,7 +117,7 @@ public:
 class AnimFSMStateBlendTree : public AnimFSMState {
     std::shared_ptr<BlendTree> blend_tree;
 public:
-    AnimFSMStateBlendTree();
+    AnimFSMStateBlendTree(Motion* motion);
 
     BlendTree* getBlendTree() { return blend_tree.get(); }
 
