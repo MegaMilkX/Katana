@@ -90,16 +90,4 @@ void MotionGuiBlendTree::drawToolbox(Editor* ed) {
         selected_node->onGui();
         ImGui::EndGroup();
     }
-
-    ImGui::Separator();
-    ImGui::Text("Values");
-
-    for(int i = 0; i < blendTree->valueCount(); ++i) {
-        const char* name = blendTree->getValueName(i);
-        float val = blendTree->getValue(i);
-        if(ImGui::DragFloat(name, &val, .001f)) {
-            blendTree->setValue(i, val);
-        }
-        // TODO: List values, allow changing and renaming
-    }
 }

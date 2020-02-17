@@ -42,10 +42,8 @@ void DocMotion::setReferenceObject(ktNode* node) {
 
     auto skel_ref = scn.find<SkeletonRef>();
     if(skel_ref && skel_ref->skeleton) {
-        _resource->skeleton = skel_ref->skeleton;
-        _resource->setSkeleton(skel_ref->skeleton);
-
-        sample_buffer.resize(_resource->skeleton->boneCount());
+        _resource->rebuild(skel_ref->skeleton);
+        sample_buffer.resize(skel_ref->skeleton->boneCount());
     }
 
     cam_pivot = 0;
@@ -105,11 +103,32 @@ void DocMotion::onGui(Editor* ed, float dt) {
         }
         for(size_t i = 0; i < sample_buffer.size(); ++i) {
             auto n = tgt_nodes[i];
+            if(n == root_motion_node) {
+                ktNode* root = scn.getRoot();
+
+                gfxm::vec3 pos_diff = sample_buffer[i].t - root_motion_pos;
+                pos_diff = root->getTransform()->getWorldTransform() * gfxm::vec4(pos_diff, 0.0f);
+                //gfxm::quat rot_diff = gfxm::inverse(root_motion_rot) * sample_buffer[i].r;
+
+    
+                root->getTransform()->translate(pos_diff);
+                //root->getTransform()->rotate(rot_diff);
+
+                root_motion_pos = sample_buffer[i].t;
+                root_motion_rot = sample_buffer[i].r;
+                continue;
+            }
             if(n) {
                 n->getTransform()->setPosition(sample_buffer[i].t);
                 n->getTransform()->setRotation(sample_buffer[i].r);
                 n->getTransform()->setScale(sample_buffer[i].s);
             }
+        }
+
+        if(root_motion_node) {
+            ktNode* root = scn.getRoot();
+
+
         }
     }
 
@@ -136,7 +155,7 @@ void DocMotion::onGuiToolbox(Editor* ed) {
         }
     });
     imguiResourceTreeCombo("skeleton", _resource->skeleton, "skl", [this](){
-        _resource->setSkeleton(_resource->skeleton);
+        _resource->rebuild(_resource->skeleton);
 
         sample_buffer.resize(_resource->skeleton->boneCount());
     });
@@ -200,4 +219,8 @@ void DocMotion::onGuiToolbox(Editor* ed) {
     ImGui::Button("event 13", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f));
     ImGui::Button("event 536", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f));
     */
+}
+
+void DocMotion::onResourceSet() {
+    resetGui();
 }

@@ -23,9 +23,6 @@
 
 #include "editor_doc_scene.hpp"
 #include "doc_motion.hpp"
-#include "doc_action_graph.hpp"
-#include "doc_blend_tree.hpp"
-#include "doc_blend_tree_2.hpp"
 #include "doc_material.hpp"
 #include "doc_render_graph.hpp"
 #include "doc_ecs_world.hpp"
@@ -208,15 +205,6 @@ void Editor::onGui(float dt) {
                 }
                 if(ImGui::MenuItem("Motion")) {
                     addWindow(new DocMotion());
-                }
-                if(ImGui::MenuItem("AnimFSM")) {
-                    addWindow(new DocActionGraph());
-                }
-                if(ImGui::MenuItem("BlendTree")) {
-                    addWindow(new DocBlendTree());
-                }
-                if(ImGui::MenuItem("BlendTree2")) {
-                    addWindow(new DocBlendTree2());
                 }
                 if(ImGui::MenuItem("Material")) {
                     addWindow(new DocMaterial());

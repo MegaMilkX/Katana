@@ -18,6 +18,7 @@ void buildAnimSkeletonMapping(Animation* anim, Skeleton* skel, std::vector<int32
 
 void Animation::clearNodes() {
     nodes.clear();
+    node_indices.clear();
     node_names.clear();
     root_motion_node.t.set_keyframes(std::vector<keyframe<gfxm::vec3>>());
     root_motion_node.r.set_keyframes(std::vector<keyframe<gfxm::quat>>());
@@ -29,20 +30,25 @@ size_t Animation::nodeCount() {
 }
 
 AnimNode& Animation::getNode(const std::string& name) {
-    auto it = node_names.find(name);
-    if(it == node_names.end()) {
-        node_names[name] = nodes.size();
+    auto it = node_indices.find(name);
+    if(it == node_indices.end()) {
+        node_indices[name] = nodes.size();
+        node_names.emplace_back(name);
         nodes.emplace_back(AnimNode());
     }
-    return nodes[node_names[name]];
+    return nodes[node_indices[name]];
 }
 
 int32_t Animation::getNodeIndex(const std::string& name) {
-    auto it = node_names.find(name);
-    if(it == node_names.end()) {
+    auto it = node_indices.find(name);
+    if(it == node_indices.end()) {
         return -1;
     }
-    return node_names[name];
+    return node_indices[name];
+}
+
+const std::string& Animation::getNodeName(int i) {
+    return node_names[i];
 }
 
 AnimNode& Animation::getRootMotionNode() {
@@ -120,6 +126,12 @@ std::vector<int32_t>& Animation::getMapping(Skeleton* skel) {
     return vec;
 }
 
+
+void Animation::sample_one(int node_id, float cursor, AnimSample& sample) {
+    sample.t = nodes[node_id].t.at(cursor);
+    sample.r = nodes[node_id].r.at(cursor);
+    sample.s = nodes[node_id].s.at(cursor);
+}
 
 void Animation::sample_remapped(
     std::vector<AnimSample>& out,
@@ -273,7 +285,7 @@ void Animation::serialize(out_stream& out_) {
         }
         write_node(out, root_motion_node);
 
-        for(auto& kv : node_names) {
+        for(auto& kv : node_indices) {
             const std::string& name = kv.first;
             size_t id = kv.second;
 
@@ -387,7 +399,8 @@ bool Animation::deserialize(in_stream& in_, size_t sz) {
             uint64_t node_id = 0;
             in.read((char*)&node_id, sizeof(node_id));
 
-            node_names[name] = (size_t)node_id;
+            node_indices[name] = (size_t)node_id;
+            node_names.emplace_back(name);
         }
 
         in.read((char*)&root_motion_enabled, sizeof(root_motion_enabled));

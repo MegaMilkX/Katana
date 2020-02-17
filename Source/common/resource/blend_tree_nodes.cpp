@@ -2,6 +2,8 @@
 
 #include "blend_tree.hpp"
 
+#include "motion.hpp"
+
 STATIC_RUN(BLEND_TREE_NODES) {
     regJobNode<TestJob>("Test")
         .out<float>("value");
@@ -55,12 +57,12 @@ void SingleAnimJob::onGui() {
 }
 
 void SingleAnimJob::tryInit() {
-    auto skel = graph->getSkeleton();
+    auto skel = graph->getMotion()->getSkeleton();
     if(skel) {
         pose.samples = skel->makePoseArray();
     }
     if(skel && anim) {
-        mapping = anim->getMapping(skel);
+        mapping = anim->getMapping(skel.get());
 
         ready = true;
     } else {
@@ -77,45 +79,26 @@ void PoseResultJob::onInvoke() {
 
 void FloatNode::onInit(BlendTree* bt) {
     bind<float>(&v);
-
-    //value_index = bt->getValueIndex(value_name.c_str());
-    value_index = bt->declValue(value_name.c_str());
 }
 
 void FloatNode::onInvoke() {
-    if(value_index >= 0) {
-        v = graph->getValue(value_index);
-    }
 }   
 
 void FloatNode::onGui() {
-    char buf[256];
-    memset(buf, 0, sizeof(buf));
-    if(!value_name.empty()) {
-        memcpy(buf, value_name.c_str(), value_name.size());
-    }
-    if (ImGui::InputText("value name", buf, sizeof(buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
-        value_name = buf;
-        graph->compile();
-    }
-    /*
-    if (ImGui::BeginCombo("value", value_name.c_str())) {
-        for (int i = 0; i < graph->valueCount(); ++i) {
-            std::string name = graph->getValueName(i);
-            if (ImGui::Selectable(name.c_str(), value_name == name)) {
-                value_name = name;
-                value_index = graph->getValueIndex(value_name.c_str());
-            }
-        }
-
-        ImGui::EndCombo();
-    }*/
 }
 
 #include "motion.hpp"
 
 void MotionParam::onInit(BlendTree* bt) {
     bind<float>(&v);
+
+    if(!param_name.empty()) {
+        index = graph->getMotion()->getBlackboard().getIndex(param_name.c_str());
+        if (index < 0) {
+            index = graph->getMotion()->getBlackboard().allocValue();
+            graph->getMotion()->getBlackboard().setName(index, param_name.c_str());
+        }
+    }
 }
 void MotionParam::onInvoke() {
     if(index < 0) {
@@ -124,7 +107,11 @@ void MotionParam::onInvoke() {
     v = graph->getMotion()->getBlackboard().getValue(index);
 }
 void MotionParam::onGui() {
-    if(ImGui::BeginCombo(MKSTR("param###cond_id").c_str(), param_name.c_str(), ImGuiComboFlags_NoArrowButton)) {
+    std::string preview_name = "<null>";
+    if(!param_name.empty()) {
+        preview_name = param_name;
+    }
+    if(ImGui::BeginCombo(MKSTR("param###cond_id").c_str(), preview_name.c_str(), ImGuiComboFlags_NoArrowButton)) {
         for(auto it = graph->getMotion()->getBlackboard().begin(); it != false; ++it) {
             if(ImGui::Selectable((*it).name.c_str(), index == it.getIndex())) {
                 index = it.getIndex();

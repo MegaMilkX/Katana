@@ -33,9 +33,7 @@ inline const char* condTypeToCStr(AnimFSMTransition::CONDITION cond) {
 }
 
 
-class AnimFSM : public Resource, public AnimatorBase {
-    RTTR_ENABLE(Resource)
-
+class AnimFSM : public AnimatorBase {
     std::vector<AnimFSMTransition*> transitions;
     std::vector<AnimFSMState*> actions;
     size_t entry_action = 0;
@@ -48,25 +46,19 @@ class AnimFSM : public Resource, public AnimatorBase {
     void pickEntryAction();
 
 public:
-    // For editor purposes
-    std::shared_ptr<GameScene> reference_object;
-    std::shared_ptr<Skeleton> reference_skel;
-
-    const char* getWriteExtension() const override { return "action_graph"; }
+    AnimFSM(Motion* motion)
+    : owner_motion(motion) {}
 
     ANIMATOR_TYPE getType() const override { return ANIMATOR_FSM; }
 
-    void setSkeleton(std::shared_ptr<Skeleton> skeleton) override {
-        for(auto a : actions) {
-            a->setSkeleton(skeleton);
-        }
-    }
-    void setMotion(Motion* motion) override {
-        owner_motion = motion;
-        // TODO: Should not happen, but update value references anyway
-    }
     Motion* getMotion() override {
         return owner_motion;
+    }
+
+    void rebuild() override {
+        for(auto a : actions) {
+            a->rebuild();
+        }
     }
 
     template<typename ANIM_FSM_STATE_T>
@@ -92,20 +84,15 @@ public:
     AnimFSMState*                               getCurrentAction();
 
     void update(float dt, std::vector<AnimSample>& samples) override;
+    AnimSample getRootMotion() override { return AnimSample(); }
 
-    void serialize(out_stream& out) override;
-    bool deserialize(in_stream& in, size_t sz) override;
+    void write(out_stream& out) override;
+    void read(in_stream& in) override;
 };
-STATIC_RUN(AnimFSM) {
-    rttr::registration::class_<AnimFSM>("AnimFSM")
-        .constructor<>()(
-            rttr::policy::ctor::as_raw_ptr
-        );
-}
 
 template<typename ANIM_FSM_STATE_T>
 AnimFSMState* AnimFSM::createAction(const std::string& name) {
-    ANIM_FSM_STATE_T* state = new ANIM_FSM_STATE_T(getMotion());
+    ANIM_FSM_STATE_T* state = new ANIM_FSM_STATE_T(this);
     std::set<std::string> existing_names;
     for(auto a : actions) {
         existing_names.insert(a->getName());

@@ -39,11 +39,11 @@ void MotionGuiFSM::drawGui(Editor* ed, float dt) {
                 node_flags |= NODE_FLAG_PLAYING;
             }
 
-            if(a->getType() == rttr::type::get<AnimFSMStateClip>()) {
+            if(a->getType() == ANIM_FSM_STATE_CLIP) {
                 node_flags |= NODE_FLAG_CLIP;
-            } else if(a->getType() == rttr::type::get<AnimFSMStateFSM>()) {
+            } else if(a->getType() == ANIM_FSM_STATE_FSM) {
                 node_flags |= NODE_FLAG_FSM;
-            } else if(a->getType() == rttr::type::get<AnimFSMStateBlendTree>()) {
+            } else if(a->getType() == ANIM_FSM_STATE_BLEND_TREE) {
                 node_flags |= NODE_FLAG_BLEND_TREE;
             }
 
@@ -112,13 +112,13 @@ void MotionGuiFSM::drawToolbox(Editor* ed) {
         
         selected_action->onGuiToolbox();
         
-        if(selected_action->getType() == rttr::type::get<AnimFSMStateFSM>()) {
+        if(selected_action->getType() == ANIM_FSM_STATE_FSM) {
             if(ImGui::Button(ICON_MDI_PENCIL " Edit FSM", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
                 //setNestedWindow(new DocActionGraph());
                 AnimFSMStateFSM* fsmState = (AnimFSMStateFSM*)selected_action;
                 doc->pushGuiLayer(new MotionGuiFSM(MKSTR(ICON_MDI_SETTINGS << " " << selected_action->getName()), doc, fsmState->getFSM()));
             }
-        } else if(selected_action->getType() == rttr::type::get<AnimFSMStateBlendTree>()) {
+        } else if(selected_action->getType() == ANIM_FSM_STATE_BLEND_TREE) {
             if(ImGui::Button(ICON_MDI_PENCIL " Edit BlendTree", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
                 AnimFSMStateBlendTree* state = (AnimFSMStateBlendTree*)selected_action;
                 doc->pushGuiLayer(new MotionGuiBlendTree(MKSTR("[BT] " << selected_action->getName()), doc, state->getBlendTree()));

@@ -32,6 +32,7 @@ public:
     size_t               nodeCount();
     AnimNode&            getNode(const std::string& name);
     int32_t              getNodeIndex(const std::string& name);
+    const std::string&   getNodeName(int i);
     AnimNode&            getRootMotionNode();
 
     bool                 curveExists(const std::string& name);
@@ -49,6 +50,8 @@ public:
     void                 fireEvents(float from, float to, std::function<void(const std::string& name)> cb, float threshold = 1.0f);
 
     std::vector<int32_t>& getMapping(Skeleton* skel);
+
+    void                 sample_one(int node_id, float cursor, AnimSample& sample);
 
     void                 sample_remapped(
         std::vector<AnimSample>& out,
@@ -83,6 +86,8 @@ public:
         const std::vector<int32_t>& remap
     );
 
+    void                 calcRootMotion(float from, float to, AnimSample& delta);
+
     virtual void         serialize(out_stream& out);
     virtual bool         deserialize(in_stream& in, size_t sz);
 
@@ -90,7 +95,8 @@ public:
 private:
     AnimNode root_motion_node;
     std::vector<AnimNode> nodes;
-    std::map<std::string, size_t> node_names;
+    std::map<std::string, size_t> node_indices;
+    std::vector<std::string>      node_names;
     std::map<std::string, curve<float>> extra_curves;
     std::map<std::string, event> events;
 

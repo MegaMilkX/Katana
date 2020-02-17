@@ -11,7 +11,8 @@ class BlendTree;
 
 struct Pose {
     std::vector<AnimSample> samples;
-    float speed = 1.0f;
+    AnimSample              root_motion;
+    float                   speed = 1.0f;
 };
 
 class Blend3Job : public JobNode<Blend3Job, BlendTree> {
@@ -74,6 +75,20 @@ public:
     void onInvoke() override;
 
     void onGui() override;
+
+    void write(out_stream& out) override {
+        DataWriter w(&out);
+        if(anim) {
+            w.write(anim->Name());
+        } else {
+            w.write(std::string());
+        }
+    }
+    void read(in_stream& in) override {
+        DataReader r(&in);
+        std::string anim_name = r.readStr();
+        anim = retrieve<Animation>(anim_name);
+    }
 };
 
 
@@ -98,13 +113,22 @@ public:
 
 class MotionParam : public JobNode<MotionParam, BlendTree> {
     float v = .0f;
-    std::string param_name = "<null>";
+    std::string param_name = "";
     int index = -1;
 public:
     void onInit(BlendTree* bt);
     void onInvoke();
 
     void onGui();
+
+    void write(out_stream& out) override {
+        DataWriter w(&out);
+        w.write(param_name);
+    }
+    void read(in_stream& in) override {
+        DataReader r(&in);
+        param_name = r.readStr();
+    }
 };
 
 

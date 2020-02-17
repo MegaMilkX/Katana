@@ -13,25 +13,32 @@
 #include <memory>
 #include <set>
 
+enum ANIM_FSM_STATE_TYPE {
+    ANIM_FSM_STATE_UNKNOWN,
+    ANIM_FSM_STATE_CLIP,
+    ANIM_FSM_STATE_FSM,
+    ANIM_FSM_STATE_BLEND_TREE
+};
+
+class AnimFSM;
+
 class AnimFSMState {
 protected:
-    std::string name = "Action";
-    gfxm::vec2 editor_pos;
-    std::set<AnimFSMTransition*> out_transitions;
+    AnimFSM*                        owner_fsm = 0;
+    std::string                     name = "Action";
+    gfxm::vec2                      editor_pos;
+    std::set<AnimFSMTransition*>    out_transitions;
 
-    float cursor = .0f; // normalized
-    std::shared_ptr<Skeleton> skeleton;
+    float                           cursor = .0f; // normalized
 
 public:
-    AnimFSMState();
+    AnimFSMState(AnimFSM* fsm);
     virtual ~AnimFSMState();
 
-    virtual rttr::type getType() const {
-        return rttr::type::get<AnimFSMState>();
+    virtual ANIM_FSM_STATE_TYPE getType() const {
+        return ANIM_FSM_STATE_UNKNOWN;
     }
     virtual void onGuiToolbox() = 0;
-
-    virtual void setSkeleton(std::shared_ptr<Skeleton> skel) = 0;
 
     const std::string& getName() const { return name; }
     void               setName(const std::string& value) { name = value; }
@@ -42,6 +49,8 @@ public:
         return out_transitions;
     }
 
+    virtual void       rebuild() = 0;
+
     virtual void       update(float dt, std::vector<AnimSample>& samples, float weight) = 0;
 
     virtual void       write(out_stream& out) = 0;
@@ -50,64 +59,35 @@ public:
 
 class AnimFSMStateClip : public AnimFSMState {
     std::shared_ptr<Animation> anim;
+    std::vector<int32_t> mapping;
 public:
-    AnimFSMStateClip(Motion* motion) {}
+    AnimFSMStateClip(AnimFSM* fsm);
 
-    void setSkeleton(std::shared_ptr<Skeleton> skel) override {
-        skeleton = skel;
-        if(!skel) {
-            return;
-        }
+    void setAnim(std::shared_ptr<Animation> anim);
 
-        //onSkeletonChanged();
-    }
+    void rebuild() override;
 
-    void update(float dt, std::vector<AnimSample>& samples, float weight) override {
-        if(!anim || !skeleton) return;
-        anim->sample_remapped(samples, cursor * anim->length, anim->getMapping(skeleton.get()));
-        cursor += dt * (anim->fps / anim->length);
-        if(cursor > 1.0f) {
-            cursor -= 1.0f;
-        }
-    }
+    void update(float dt, std::vector<AnimSample>& samples, float weight) override;
 
-    rttr::type getType() const override {
-        return rttr::type::get<AnimFSMStateClip>();
-    }
-    void onGuiToolbox() override {
-        imguiResourceTreeCombo("anim", anim, "anm", [](){
-            // TODO: Needs remapping?
-            // Or send a signal to recompile whole structure
-        });
-    }
+    ANIM_FSM_STATE_TYPE getType() const override;
+    void onGuiToolbox() override;
 
-    void write(out_stream& out) override {
-        DataWriter w(&out);
-        if(anim) {
-            w.write(anim->Name());
-        } else {
-            w.write(std::string());
-        }
-    }
-    void read(in_stream& in) override    {
-        DataReader r(&in);
-        std::string anim_name = r.readStr();
-        anim = retrieve<Animation>(anim_name);
-    }
+    void write(out_stream& out) override;
+    void read(in_stream& in) override;
 };
 
 class AnimFSMStateFSM : public AnimFSMState {
     std::shared_ptr<AnimFSM> fsm;
 public:
-    AnimFSMStateFSM(Motion* motion);
+    AnimFSMStateFSM(AnimFSM* fsm);
 
     AnimFSM* getFSM() { return fsm.get(); }
 
-    void setSkeleton(std::shared_ptr<Skeleton> skel) override;
+    void rebuild() override;
 
     void update(float dt, std::vector<AnimSample>& samples, float weight) override;
 
-    rttr::type getType() const override;
+    ANIM_FSM_STATE_TYPE getType() const override;
     void onGuiToolbox() override;
 
     void write(out_stream& out) override;
@@ -117,15 +97,15 @@ public:
 class AnimFSMStateBlendTree : public AnimFSMState {
     std::shared_ptr<BlendTree> blend_tree;
 public:
-    AnimFSMStateBlendTree(Motion* motion);
+    AnimFSMStateBlendTree(AnimFSM* fsm);
 
     BlendTree* getBlendTree() { return blend_tree.get(); }
 
-    void setSkeleton(std::shared_ptr<Skeleton> skel) override;
+    void rebuild() override;
 
     void update(float dt, std::vector<AnimSample>& samples, float weight) override;
 
-    rttr::type getType() const override;
+    ANIM_FSM_STATE_TYPE getType() const override;
     void onGuiToolbox() override;
 
     void write(out_stream& out) override;

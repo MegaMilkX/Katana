@@ -17,13 +17,12 @@ void ActionStateMachine::resizeSampleBuffer() {
     }
 }
 void ActionStateMachine::makeGraphLocalCopy() {
-    if(graph_ref) {
+    if(motion_ref) {
         dstream strm;
-        graph_ref->serialize(strm);
+        motion_ref->serialize(strm);
         strm.jump(0);
-        graph.deserialize(strm, strm.bytes_available());
-        graph.setSkeleton(skeleton);
-        //graph.setBlackboard(&blackboard);
+        motion.deserialize(strm, strm.bytes_available());
+        motion.rebuild(skeleton);
     }
 }
 
@@ -39,11 +38,11 @@ void ActionStateMachine::update(float dt) {
         }
         skeleton_nodes_dirty = true;
     }
-    if(!graph_ref) {
+    if(!motion_ref) {
         return;
     }
     
-    graph.update(dt, sample_buffer);
+    motion.update(dt, sample_buffer);
 
     assert(skeleton_nodes.size() == sample_buffer.size());
     for(size_t i = 0; i < skeleton_nodes.size(); ++i) {
@@ -59,27 +58,20 @@ void ActionStateMachine::onGui() {
     imguiResourceTreeCombo("skeleton", skeleton, "skl", [this](){
         skeleton_nodes_dirty = true;
         resizeSampleBuffer();
-        graph.setSkeleton(skeleton);
+        motion.rebuild(skeleton);
     });
-    imguiResourceTreeCombo("graph", graph_ref, "action_graph", [this](){
+    imguiResourceTreeCombo("graph", motion_ref, "action_graph", [this](){
         makeGraphLocalCopy();
     });
-
-    for(size_t i = 0; i < blackboard.count(); ++i) {
-        float f = blackboard.get_float(i);
-        if(ImGui::DragFloat(blackboard.getName(i), &f, 0.001f)) {
-            blackboard.set(i, f);
-        }
-    }
 }
 
 void ActionStateMachine::write(SceneWriteCtx& out) {
     out.write(skeleton);
-    out.write(graph_ref);
+    out.write(motion_ref);
 } 
 void ActionStateMachine::read(SceneReadCtx& in) {
     skeleton = in.readResource<Skeleton>();
-    graph_ref = in.readResource<AnimFSM>();
+    motion_ref = in.readResource<Motion>();
 
     resizeSampleBuffer();
     makeGraphLocalCopy();

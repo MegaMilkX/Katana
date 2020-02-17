@@ -18,6 +18,8 @@ class DocAnim : public EditorDocumentTyped<Animation> {
     ktNode* cam_pivot;
 
     float cursor = .0f;
+    bool playing = false;
+    float playback_speed = 1.0f;
 
 public:
     void onGui(Editor* ed, float dt) override;

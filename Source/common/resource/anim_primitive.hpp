@@ -18,11 +18,14 @@ public:
 
     virtual ANIMATOR_TYPE getType() const = 0;
 
-    virtual void    setMotion(Motion* motion) = 0;
     virtual Motion* getMotion() = 0;
-    virtual void setSkeleton(std::shared_ptr<Skeleton> skel) = 0;
-    virtual void update(float dt, std::vector<AnimSample>& samples) = 0;
 
+    virtual void rebuild() = 0;
+    virtual void update(float dt, std::vector<AnimSample>& samples) = 0;
+    virtual AnimSample getRootMotion() = 0;
+
+    virtual void write(out_stream& out) = 0;
+    virtual void read(in_stream& in) = 0;
 };
 
 #endif

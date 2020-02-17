@@ -142,6 +142,7 @@ void JobGraph::write(out_stream& out) {
         w.write(j->getDesc().name);
         w.write(j->getUid());
         w.write(j->getPos());
+        j->write(out);
     }
 
     w.write<uint32_t>(inputs.size());
@@ -168,6 +169,7 @@ void JobGraph::read(in_stream& in) {
         auto node = createJobNode(node_name);
         node->setUid(r.read<uint32_t>());
         node->setPos(r.read<gfxm::vec2>());
+        node->read(in);
         nodes_tmp.emplace_back(
             node
         );

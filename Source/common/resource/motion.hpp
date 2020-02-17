@@ -114,6 +114,15 @@ public:
     const std::string& getName(int id) {
         return params[id].name;
     }
+    int getIndex(const char* name) {
+        for(int i = 0; i < params.size(); ++i) {
+            auto& p = params[i];
+            if(p.name == name) {
+                return i;
+            }
+        }
+        return -1;
+    }
     float getValue(int id) {
         return params[id].value;
     }
@@ -138,21 +147,26 @@ public:
     std::shared_ptr<GameScene> reference;
     std::shared_ptr<Skeleton>  skeleton;
 
-    void setSkeleton(std::shared_ptr<Skeleton> skel) {
+    void rebuild(std::shared_ptr<Skeleton> skel) {
+        skeleton = skel;
+        rebuild();
+    }
+    void rebuild() {
         if(animator) {
-            animator->setSkeleton(skel);
+            animator->rebuild();
         }
+    }
+
+    std::shared_ptr<Skeleton> getSkeleton() {
+        return skeleton;
     }
 
     const char* getWriteExtension() const override { return "motion"; }
 
     template<typename ANIMATOR_T>
     void resetAnimator() {
-        animator.reset(new ANIMATOR_T());
-        animator->setMotion(this); // TODO: Move to constructor
-        if(skeleton) {
-            animator->setSkeleton(skeleton);
-        }
+        animator.reset(new ANIMATOR_T(this));
+        animator->rebuild();
     }
     AnimatorBase* getAnimator() {
         return animator.get();
@@ -161,15 +175,19 @@ public:
         return blackboard;
     }
 
-    void rebuild() {
-
-    }
-
     void update(float dt, std::vector<AnimSample>& samples) {
         if(animator) {
             animator->update(dt, samples);
         }
     }
+    AnimSample getRootMotion() {
+        if(animator) {
+            return animator->getRootMotion();
+        }
+    }
+
+    void serialize(out_stream& out) override;
+    bool deserialize(in_stream& in, size_t sz) override;
 };
 STATIC_RUN(Motion) {
     rttr::registration::class_<Motion>("Motion")

@@ -7,6 +7,11 @@
 
 #include "../../gfxm.hpp"
 
+#include "../../util/data_stream.hpp"
+#include "../../util/data_reader.hpp"
+#include "../../util/data_writer.hpp"
+
+
 class JobGraphNode;
 struct JobOutput;
 struct JobInput {
@@ -87,6 +92,9 @@ public:
     virtual void invoke() {}
 
     virtual void onGui() {}
+
+    virtual void write(out_stream& out) {}
+    virtual void read(in_stream& in) {}
 };
 
 #endif

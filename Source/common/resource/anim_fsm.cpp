@@ -184,7 +184,7 @@ void AnimFSM::update(
     }
 }
 
-void AnimFSM::serialize(out_stream& out) {
+void AnimFSM::write(out_stream& out) {
     DataWriter w(&out);
 
     std::map<AnimFSMState*, uint32_t> node_ids;
@@ -203,7 +203,8 @@ void AnimFSM::serialize(out_stream& out) {
         auto& a = actions[i];
         w.write(a->getName());
         w.write(a->getEditorPos());
-        w.write<uint8_t>((uint8_t)1); // TODO:
+        w.write<uint8_t>((uint8_t)a->getType());
+
         a->write(out);
     }
     for(size_t i = 0; i < transitions.size(); ++i) {
@@ -221,18 +222,10 @@ void AnimFSM::serialize(out_stream& out) {
         }
     }
 
-    if(reference_object) {
-        w.write(reference_object->Name());
-    } else {
-        w.write(std::string());
-    }
-    if(reference_skel) {
-        w.write(reference_skel->Name());
-    } else {
-        w.write(std::string());
-    }
+    w.write(std::string());
+    w.write(std::string());
 }
-bool AnimFSM::deserialize(in_stream& in, size_t sz) {
+void AnimFSM::read(in_stream& in) {
     DataReader r(&in);
 
     actions.resize(r.read<uint32_t>());
@@ -249,9 +242,12 @@ bool AnimFSM::deserialize(in_stream& in, size_t sz) {
         gfxm::vec2 ed_pos = r.read<gfxm::vec2>();
         uint8_t motion_type = r.read<uint8_t>();
         
-        // TODO: !
-        if(motion_type == 1) {
-            a = new AnimFSMStateClip(getMotion());
+        if(motion_type == ANIM_FSM_STATE_CLIP) {
+            a = new AnimFSMStateClip(this);
+        } else if(motion_type == ANIM_FSM_STATE_FSM) {
+            a = new AnimFSMStateFSM(this);
+        } else if(motion_type == ANIM_FSM_STATE_BLEND_TREE) {
+            a = new AnimFSMStateBlendTree(this);
         }
         if(a) {
             a->read(in);        
@@ -277,8 +273,4 @@ bool AnimFSM::deserialize(in_stream& in, size_t sz) {
 
     std::string ref_name = r.readStr();
     std::string skl_name = r.readStr();
-    reference_object = retrieve<GameScene>(ref_name);
-    reference_skel = retrieve<Skeleton>(skl_name);
-
-    return true;
 }
