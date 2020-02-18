@@ -51,6 +51,7 @@ void DocAnim::onGui(Editor* ed, float dt) {
         AnimSample rm_sample_b;
         
         gfxm::quat delta_rotation;
+        gfxm::quat zero_delta_rotation;
         gfxm::quat y_rotation_lcl;
         
         if(root_motion_bone_id >= 0 && root_motion_node) {
@@ -77,6 +78,8 @@ void DocAnim::onGui(Editor* ed, float dt) {
             extractYRotation(q_zero, q_zero, rm_zero);
             extractYRotation(q_end, q_end, rm_end);
 
+            zero_delta_rotation = q1 * gfxm::inverse(q_zero);
+
             y_rotation_lcl = q1 * gfxm::inverse(root_motion_node_parent->getTransform()->getWorldRotation());
 
             gfxm::vec3 dbg_q_forward_0 = gfxm::normalize(gfxm::to_mat4(rm0) * gfxm::vec4(root->getTransform()->back(), 0.0f)) * 2;
@@ -102,8 +105,9 @@ void DocAnim::onGui(Editor* ed, float dt) {
 
             gfxm::vec3 dbg_delta_fwd = gfxm::normalize(gfxm::to_mat4(gfxm::to_mat3(delta_rotation)) * gfxm::vec4(root->getTransform()->back(), 0.0f)) * 2;
             
-            gfxm::mat4 mat = gfxm::to_mat4(root->getTransform()->getWorldRotation());
-            delta_translation = gfxm::inverse(mat) * gfxm::vec4(delta_translation, .0f);
+            //gfxm::mat4 mat = gfxm::to_mat4(root->getTransform()->getWorldRotation());
+            delta_translation = gfxm::to_mat4(gfxm::inverse(zero_delta_rotation)) * gfxm::vec4(delta_translation, .0f);
+            delta_translation.y = .0f;
             root->getTransform()->translate(delta_translation);
             root->getTransform()->rotate(delta_rotation);
 
@@ -134,8 +138,9 @@ void DocAnim::onGui(Editor* ed, float dt) {
             }
         }
         if(root_motion_bone_id >= 0 && root_motion_node) {
-            
-            root_motion_node->getTransform()->setPosition(rm_zero_sample.t);
+            gfxm::vec3 t = rm_zero_sample.t;
+            t.y = pose[root_motion_bone_id].t.y;
+            root_motion_node->getTransform()->setPosition(t);
             
             root_motion_node->getTransform()->rotate(gfxm::inverse(y_rotation_lcl));
             //root_motion_node->getTransform()->setRotation(q);
