@@ -22,6 +22,7 @@ class DocAnim : public EditorDocumentTyped<Animation> {
     float playback_speed = 1.0f;
 
 public:
+    DocAnim();
     void onGui(Editor* ed, float dt) override;
     void onGuiToolbox(Editor* ed) override;
 

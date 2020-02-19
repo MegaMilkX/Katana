@@ -12,6 +12,10 @@ static void extractYRotation(const gfxm::quat q, gfxm::quat& out_q, gfxm::mat3& 
     out_q = gfxm::to_quat(out_m3);
 }
 
+DocAnim::DocAnim() {
+    
+}
+
 void DocAnim::onGui(Editor* ed, float dt) {
 
     std::vector<ktNode*> tgt_nodes;
