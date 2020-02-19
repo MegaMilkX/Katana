@@ -142,7 +142,7 @@ void DocAnim::onGui(Editor* ed, float dt) {
             t.y = pose[root_motion_bone_id].t.y;
             root_motion_node->getTransform()->setPosition(t);
             
-            root_motion_node->getTransform()->rotate(gfxm::inverse(y_rotation_lcl));
+            root_motion_node->getTransform()->rotate(gfxm::inverse(zero_delta_rotation));
             //root_motion_node->getTransform()->setRotation(q);
             //root_motion_node->getTransform()->setRotation(rm_zero_sample.r);
         }
