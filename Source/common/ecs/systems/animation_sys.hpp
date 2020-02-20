@@ -48,12 +48,13 @@ public:
     void onUpdate() {
         for(auto t : get_array<ecsTupleAnimatedSubScene>()) {
             auto animator = t->get<ecsSubSceneAnimator>();
-            if(!animator->motion) continue;
+            //if(!animator->motion) continue;
             if(!t->sysPose) continue;
-            animator->motion->update(1.0f/60.0f);
+            //animator->motion->update(1.0f/60.0f);
+            /*
             const auto& samples = animator->motion->getSamples();
             if(samples.size() == 0) continue;
-            t->sysPose->setPose(samples);
+            t->sysPose->setPose(samples);*/
         }
     }
 };
