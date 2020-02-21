@@ -15,7 +15,7 @@ class DocAnim : public EditorDocumentTyped<Animation> {
 
     std::shared_ptr<GameScene> ref_object;
     std::shared_ptr<Skeleton> ref_skel;
-    ktNode* cam_pivot;
+    ktNode* cam_pivot = 0;
 
     float cursor = .0f;
     bool playing = false;
