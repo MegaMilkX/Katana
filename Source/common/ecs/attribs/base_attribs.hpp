@@ -18,6 +18,11 @@ public:
     ecsSubScene(std::shared_ptr<ecsWorld> world)
     : world(world) {}
     ecsWorld* getWorld() const { return world.get(); }
+    void onGui(ecsWorld* world, entity_id ent) override {
+        if(ImGui::Button(ICON_MDI_PENCIL " Edit", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
+            // TODO:
+        }
+    }
 };
 
 class ecsTagSubSceneRender : public ecsAttrib<ecsTagSubSceneRender> {};
