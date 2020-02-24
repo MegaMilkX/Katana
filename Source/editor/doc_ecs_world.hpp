@@ -39,8 +39,7 @@
 
 #include "../common/util/filesystem.hpp"
 
-class DocEcsWorld : public EditorDocumentTyped<EcsWorld>, public InputListenerWrap {
-    ecsWorld root_world;
+class DocEcsWorld : public EditorDocumentTyped<ecsWorld>, public InputListenerWrap {
     std::vector<ecsWorld*> subscene_stack;
     ecsWorld* cur_world;
 
@@ -75,14 +74,14 @@ public:
         regEcsAttrib<ecsMeshes>("Meshes", "Rendering");
         regEcsAttrib<ecsSubSceneAnimator>("SubSceneAnimator");
 
-        sceneGraphSys = new ecsysSceneGraph();
+        //sceneGraphSys = new ecsysSceneGraph();
 
-        root_world.getSystem<ecsysAnimation>();
-        sceneGraphSys = root_world.getSystem<ecsysSceneGraph>();
-        root_world.getSystem<ecsDynamicsSys>()->setDebugDraw(&gvp.getDebugDraw());
-        renderSys = root_world.getSystem<ecsRenderSystem>();
+        _resource->getSystem<ecsysAnimation>();
+        //sceneGraphSys = root_world.getSystem<ecsysSceneGraph>();
+        _resource->getSystem<ecsDynamicsSys>()->setDebugDraw(&gvp.getDebugDraw());
+        renderSys = _resource->getSystem<ecsRenderSystem>();
 
-        auto ent = root_world.createEntity();
+        auto ent = _resource->createEntity();
         ent.getAttrib<ecsVelocity>();
 
         gvp.camMode(GuiViewport::CAM_PAN);
@@ -95,6 +94,10 @@ public:
             gvp.camMode(GuiViewport::CAM_ORBIT); 
         });
         bindActionRelease("ALT", [this](){ gvp.camMode(GuiViewport::CAM_PAN); });
+    }
+
+    void onResourceSet() override {
+
     }
 
     void onGui(Editor* ed, float dt) override {        
@@ -112,35 +115,17 @@ public:
                     selected_ent = 0;
                 }
             }
-
-            
         }
 
         if(!subscene_stack.empty()) {
             cur_world = subscene_stack.back();
         } else {
-            cur_world = &root_world;
+            cur_world = _resource.get();
         }
         
-        root_world.update();
-
-        /*
-        std::map<uint64_t, size_t> test_map;
-        for(int i = 0; i < 100000; ++i) {
-            test_map[i] = rand() % 100;
-        }
-        timer tmr;
-        tmr.start();
-        size_t value;
-        for(auto i = 0; i < 1000; ++i) {
-            auto it = test_map.find(rand() % 64);
-            value = it != test_map.end() ? it->second : 0;
-        }
-        LOG("lookup time: " << tmr.stop() << ", value: " << value);
-        */
+        _resource->update();
 
         auto renderSys = cur_world->getSystem<ecsRenderSystem>();
-
         DrawList dl;
         renderSys->fillDrawList(dl);
         DrawList dl_silhouette;
@@ -206,6 +191,11 @@ public:
             }
         }
         gvp.end();
+        if(ImGui::BeginPopupContextWindow()) {
+            ImGui::MenuItem("Create entity...");
+            ImGui::MenuItem("Instantiate");
+            ImGui::EndPopup();
+        }
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_RESOURCE")) {
                 ResourceNode* node = *(ResourceNode**)payload->Data;
@@ -234,7 +224,7 @@ public:
         if(!subscene_stack.empty()) {
             cur_world = subscene_stack.back();
         } else {
-            cur_world = &root_world;
+            cur_world = _resource.get();
         }
 
         if(ImGui::SmallButton(ICON_MDI_PLUS)) {

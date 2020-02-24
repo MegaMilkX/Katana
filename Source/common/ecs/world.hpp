@@ -1,6 +1,8 @@
 #ifndef ECS_WORLD__HPP
 #define ECS_WORLD__HPP
 
+#include "../resource/resource.h"
+
 #include "system.hpp"
 
 #include "../util/object_pool.hpp"
@@ -79,7 +81,7 @@ public:
 
 typedef uint64_t archetype_mask_t;
 
-class ecsWorld {
+class ecsWorld : public Resource {
     ObjectPool<ecsEntity>                       entities;
     std::vector<std::unique_ptr<ecsSystemBase>> systems;
     std::map<rttr::type, size_t>                sys_by_type;
@@ -135,8 +137,18 @@ public:
     void update();
 
 
-    void onGuiNodeTree();
+    void serialize(out_stream& out) override;
+    bool deserialize(in_stream& in, size_t sz) override;
+
+    const char* getWriteExtension() const override { return "ecsw"; }
+
 };
+STATIC_RUN(ecsWorld) {
+    rttr::registration::class_<ecsWorld>("ecsWorld")
+        .constructor<>()(
+            rttr::policy::ctor::as_raw_ptr
+        );
+}
 
 template<typename T>
 T* ecsWorld::findAttrib(entity_id ent) {

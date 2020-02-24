@@ -1,5 +1,8 @@
 #include "world.hpp"
 
+#include "../util/data_writer.hpp"
+#include "../util/data_reader.hpp"
+
 
 ecsEntityHandle ecsWorld::createEntity() {
     entity_id id = entities.acquire();
@@ -77,6 +80,29 @@ void ecsWorld::update() {
 }
 
 
-void ecsWorld::onGuiNodeTree() {
-    
+void ecsWorld::serialize(out_stream& out) {
+    DataWriter w(&out);
+
+    w.write<uint64_t>(live_entities.size());
+    for(auto& e : live_entities) {
+        auto ent = entities.deref(e);
+
+        w.write<uint64_t>(ent->getAttribBits());
+        for(int i = 0; i < 64; ++i) {
+            ecsAttribBase* a = ent->findAttrib(i);
+            if(a) {
+                
+            }
+        }
+        
+    }
+    // TODO
+}
+bool ecsWorld::deserialize(in_stream& in, size_t sz) {
+    DataReader r(&in);
+
+    uint64_t ent_count = r.read<uint64_t>();
+    // TODO
+
+    return true;
 }
