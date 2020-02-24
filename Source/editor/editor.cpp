@@ -326,6 +326,7 @@ void Editor::setFocusedWindow(const std::string& name) {
 }
 void Editor::setFocusedWindow(EditorWindow* w) {
     if(focused_document != w) {
+        if(focused_document) focused_document->onUnfocus();
         if(w) w->onFocus();
     }
     focused_document = w;

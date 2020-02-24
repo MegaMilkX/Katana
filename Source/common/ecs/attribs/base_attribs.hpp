@@ -11,6 +11,8 @@
 
 #include "../common/ecs/attribs/scene_graph_attribs.hpp"
 
+#include "kt_cmd.hpp"
+
 class ecsSubScene : public ecsAttrib<ecsSubScene> {
     std::shared_ptr<ecsWorld> world;
 public:
@@ -20,7 +22,7 @@ public:
     ecsWorld* getWorld() const { return world.get(); }
     void onGui(ecsWorld* world, entity_id ent) override {
         if(ImGui::Button(ICON_MDI_PENCIL " Edit", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
-            // TODO:
+            kt_cmd(MKSTR("ecs_world_subdoc " << (uint64_t)this->world.get()).c_str());
         }
     }
 };

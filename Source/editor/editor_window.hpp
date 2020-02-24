@@ -46,6 +46,7 @@ public:
     virtual void save() = 0;
 
     virtual void onFocus() {}
+    virtual void onUnfocus() {}
     virtual void onGui(Editor* ed, float dt) = 0;
     virtual void onGuiToolbox(Editor* ed) {}
 
