@@ -49,6 +49,9 @@ class DocEcsWorld : public EditorDocumentTyped<EcsWorld>, public InputListenerWr
     ecsysSceneGraph* sceneGraphSys;
 
     GuiViewport gvp;
+    gl::FrameBuffer fb_outline;
+    gl::FrameBuffer fb_blur;
+    gl::FrameBuffer fb_silhouette;
 
 public:
     DocEcsWorld() {
@@ -82,6 +85,10 @@ public:
         ent.getAttrib<ecsVelocity>();
 
         gvp.camMode(GuiViewport::CAM_PAN);
+        fb_silhouette.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
+        fb_outline.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
+        fb_blur.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
+
         bindActionPress("ALT", [this](){ 
             gvp.camMode(GuiViewport::CAM_ORBIT); 
         });
@@ -135,7 +142,7 @@ public:
         DrawList dl;
         renderSys->fillDrawList(dl);
         DrawList dl_silhouette;
-        renderSys->fillDrawList(dl, selected_ent);
+        renderSys->fillDrawList(dl_silhouette, selected_ent);
 
         ImGui::BeginChild(ImGui::GetID("Toolbar0"), ImVec2(0, 32));
         ImGui::Button("Btn0", ImVec2(32, 32));
@@ -160,7 +167,22 @@ public:
 
 
         // =================
-        gvp.draw(dl);
+        //gvp.draw(dl);
+        if(gvp.begin()) {
+            gvp.getRenderer()->draw(gvp.getViewport(), gvp.getProjection(), gvp.getView(), dl);
+            fb_silhouette.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
+            fb_outline.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
+            fb_blur.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
+
+            gvp.getRenderer()->drawSilhouettes(&fb_silhouette, dl_silhouette);
+            blur(&fb_outline, fb_silhouette.getTextureId(0), gfxm::vec2(1, 0));
+            blur(&fb_blur, fb_outline.getTextureId(0), gfxm::vec2(0, 1));
+            blur(&fb_outline, fb_blur.getTextureId(0), gfxm::vec2(1, 0));
+            blur(&fb_blur, fb_outline.getTextureId(0), gfxm::vec2(0, 1));
+            cutout(&fb_outline, fb_blur.getTextureId(0), fb_silhouette.getTextureId(0));
+            overlay(gvp.getViewport()->getFinalBuffer(), fb_outline.getTextureId(0));
+        }
+        gvp.end();
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_RESOURCE")) {
                 ResourceNode* node = *(ResourceNode**)payload->Data;

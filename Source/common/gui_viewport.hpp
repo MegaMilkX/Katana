@@ -58,9 +58,18 @@ private:
 
     gfxm::mat4 _proj;
     gfxm::mat4 _view;
+
+    bool gui_visible = false;
+    ImRect bb;
+    ImVec2 vp_sz;
+    
 public:
     GuiViewport();
     ~GuiViewport();
+
+    RendererPBR* getRenderer() { return &renderer; }
+    RenderViewport* getViewport() { return &rvp; }
+    DebugDraw& getDebugDraw();
 
     gfxm::ivec2 getPos() const;
     gfxm::ivec2 getSize() const;
@@ -68,9 +77,7 @@ public:
     gfxm::mat4 getView() const;
     bool isMouseClicked(int button);
     gfxm::ivec2 getMousePos();
-    gfxm::vec3 getMouseScreenToWorldPos(float height);
-
-    DebugDraw& getDebugDraw();
+    gfxm::vec3 getMouseScreenToWorldPos(float height);    
 
     bool debugDrawEnabled() const;
     void enableDebugDraw(bool v);
@@ -84,6 +91,13 @@ public:
 
     void draw(DrawList& dl, gfxm::ivec2 sz = gfxm::ivec2(0,0));
     void draw(GameScene* scn, ObjectSet* selected_objects = 0, gfxm::ivec2 sz = gfxm::ivec2(0,0));
+
+    bool begin(gfxm::ivec2 sz = gfxm::ivec2(0,0));
+    void end();
 };
+
+void blur(gl::FrameBuffer* fb, GLuint tex_0, const gfxm::vec2& dir);
+void cutout(gl::FrameBuffer* fb, GLuint tex_0, GLuint tex_1);
+void overlay(gl::FrameBuffer* fb, GLuint texId);
 
 #endif
