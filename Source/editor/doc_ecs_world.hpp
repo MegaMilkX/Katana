@@ -52,6 +52,7 @@ class DocEcsWorld : public EditorDocumentTyped<EcsWorld>, public InputListenerWr
     gl::FrameBuffer fb_outline;
     gl::FrameBuffer fb_blur;
     gl::FrameBuffer fb_silhouette;
+    gl::FrameBuffer fb_pick;
 
 public:
     DocEcsWorld() {
@@ -88,6 +89,7 @@ public:
         fb_silhouette.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
         fb_outline.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
         fb_blur.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
+        fb_pick.pushBuffer(GL_RGB, GL_UNSIGNED_INT);
 
         bindActionPress("ALT", [this](){ 
             gvp.camMode(GuiViewport::CAM_ORBIT); 
@@ -173,6 +175,7 @@ public:
             fb_silhouette.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
             fb_outline.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
             fb_blur.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
+            fb_pick.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
 
             gvp.getRenderer()->drawSilhouettes(&fb_silhouette, dl_silhouette);
             blur(&fb_outline, fb_silhouette.getTextureId(0), gfxm::vec2(1, 0));
@@ -181,6 +184,26 @@ public:
             blur(&fb_blur, fb_outline.getTextureId(0), gfxm::vec2(0, 1));
             cutout(&fb_outline, fb_blur.getTextureId(0), fb_silhouette.getTextureId(0));
             overlay(gvp.getViewport()->getFinalBuffer(), fb_outline.getTextureId(0));
+
+            if(gvp.isMouseClicked(0)) {
+                auto mpos = gvp.getMousePos();
+                gvp.getRenderer()->drawPickPuffer(&fb_pick, dl);
+                
+                uint32_t pix = 0;
+                uint32_t err_pix = 0xFFFFFF;
+                glReadPixels(mpos.x, mpos.y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &pix);
+                if(pix == err_pix) {
+                    selected_ent = 0;
+                } else if(pix < dl.solids.size()) {
+                    entity_id ent = (entity_id)dl.solids[pix].object_ptr;
+                    selected_ent = ent;
+                    LOG("PICKED_SOLID: " << pix);
+                } else {
+                    entity_id ent = (entity_id)dl.skins[pix - dl.solids.size()].object_ptr;
+                    selected_ent = ent;
+                    LOG("PICKED_SKIN: " << pix - dl.solids.size());
+                }
+            }
         }
         gvp.end();
         if (ImGui::BeginDragDropTarget()) {

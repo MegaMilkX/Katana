@@ -25,7 +25,7 @@ class ecsRenderSubSystem : public ecsSystem<
     ecsTupleSubSceneRenderable
 > {
 public:
-    void fillDrawList(DrawList& dl, const gfxm::mat4& root_transform) {
+    void fillDrawList(DrawList& dl, const gfxm::mat4& root_transform, entity_id subscene_owner) {
         for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsMeshes>>()) {
             for(auto& seg : a->get<ecsMeshes>()->segments) {
                 if(!seg.mesh) continue;
@@ -43,7 +43,7 @@ public:
                     s.indexCount = indexCount;
                     s.indexOffset = indexOffset;
                     s.transform = root_transform * transform;
-                    //s.object_ptr = getOwner();
+                    s.object_ptr = (void*)subscene_owner;
                     dl.solids.emplace_back(s);
                 } else {                // Skinned mesh
                     std::vector<gfxm::mat4> bone_transforms;
@@ -63,7 +63,7 @@ public:
                     s.transform = root_transform * transform;
                     s.bone_transforms = bone_transforms;
                     s.bind_transforms = seg.skin_data->bind_transforms;
-                    //s.object_ptr = getOwner();
+                    s.object_ptr = (void*)subscene_owner;
                     dl.skins.emplace_back(s);
                 }
             }
@@ -88,7 +88,7 @@ public:
 
     void fillDrawList(DrawList& dl) {
         for(auto& a : get_array<ecsTupleSubSceneRenderable>()) {
-            a->sub_system->fillDrawList(dl, a->get<ecsWorldTransform>()->transform);
+            a->sub_system->fillDrawList(dl, a->get<ecsWorldTransform>()->transform, a->getEntityUid());
         }
 
         for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsMeshes>>()) {
@@ -108,7 +108,7 @@ public:
                     s.indexCount = indexCount;
                     s.indexOffset = indexOffset;
                     s.transform = transform;
-                    //s.object_ptr = getOwner();
+                    s.object_ptr = (void*)a->getEntityUid();
                     dl.solids.emplace_back(s);
                 } else {                // Skinned mesh
                     std::vector<gfxm::mat4> bone_transforms;
@@ -128,7 +128,7 @@ public:
                     s.transform = transform;
                     s.bone_transforms = bone_transforms;
                     s.bind_transforms = seg.skin_data->bind_transforms;
-                    //s.object_ptr = getOwner();
+                    s.object_ptr = (void*)a->getEntityUid();
                     dl.skins.emplace_back(s);
                 }
             }
@@ -138,7 +138,7 @@ public:
     void fillDrawList(DrawList& dl, entity_id entity_filter) {
         for(auto& a : get_array<ecsTupleSubSceneRenderable>()) {
             if(a->getEntityUid() == entity_filter) {
-                a->sub_system->fillDrawList(dl, a->get<ecsWorldTransform>()->transform);
+                a->sub_system->fillDrawList(dl, a->get<ecsWorldTransform>()->transform, a->getEntityUid());
                 break;
             }
         }
