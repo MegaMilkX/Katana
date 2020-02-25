@@ -57,6 +57,8 @@ public:
     DocEcsWorld() {
         //foo_render();
 
+        setIconCode(ICON_MDI_ALPHA_W_BOX);
+
         regEcsAttrib<ecsName>("Name");
         regEcsAttrib<ecsSubScene>("SubScene");
         regEcsAttrib<ecsTagSubSceneRender>("TagSubSceneRender");

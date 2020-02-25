@@ -5,6 +5,8 @@
 #include "attrib_lib.hpp"
 #include "../gui_viewport.hpp"
 
+#include "../util/data_stream.hpp"
+
 #include <stdint.h>
 
 typedef size_t entity_id;
@@ -23,6 +25,9 @@ public:
     virtual uint64_t get_id() const = 0;
 
     virtual void onGui(ecsWorld* world, entity_id ent) {}
+
+    virtual void write(out_stream& out) {}
+    virtual void read(in_stream& in) {}
 };
 
 template<typename T>

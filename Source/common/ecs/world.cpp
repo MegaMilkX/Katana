@@ -91,7 +91,7 @@ void ecsWorld::serialize(out_stream& out) {
         for(int i = 0; i < 64; ++i) {
             ecsAttribBase* a = ent->findAttrib(i);
             if(a) {
-                
+                a->write(out);
             }
         }
         
