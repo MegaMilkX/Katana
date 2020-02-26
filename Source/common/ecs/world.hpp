@@ -29,7 +29,8 @@ public:
     : _elem_size(elem_size), _elem_per_block(elems_per_block) {
         _blocks = new char*[1];
         void* blockptr = malloc(_elem_size * _elem_per_block);
-
+        _blocks[0] = (char*)blockptr;
+        _block_count = 1;
     }
     
     size_t elem_size() const { return _elem_size; }
@@ -45,7 +46,26 @@ public:
     }
 
     void expand(size_t count) {
+        if(count < _count) {
+            return;
+        }
 
+        size_t blockid = 0;
+        size_t localid = 0;
+        deconstruct_id(count - 1, blockid, localid);
+        size_t new_block_count = blockid + 1;
+        char** new_block_ptrs = new char*[new_block_count];
+        for(size_t i = 0; i < _block_count; ++i) {
+            new_block_ptrs[i] = _blocks[i];
+        }
+        for(size_t i = _block_count; i < new_block_count; ++i) {
+            new_block_ptrs[i] = (char*)malloc(_elem_size * _elem_per_block);
+        }
+        delete[]_blocks;
+
+        _count = count;
+        _blocks = new_block_ptrs;
+        _block_count = new_block_count;
     }
 
     const void* operator[](size_t index) const {
@@ -64,7 +84,7 @@ public:
 
 inline size_t calcArchetypeSize(uint64_t attribmask) {
     size_t sz = 0;
-    for(size_t i = 0; i < 64; ++i) {
+    for(size_t i = 0; i < get_last_attrib_id() + 1; ++i) {
         if(attribmask & (1 << i) == 0) continue;
         auto info = getEcsAttribTypeLib().get_info(i);
         if(!info) break;
@@ -73,10 +93,21 @@ inline size_t calcArchetypeSize(uint64_t attribmask) {
     return sz;
 }
 
-class ArchetypeContainer {
-public:
-    
-};
+inline size_t archetypeSize(uint64_t attrib_mask) {
+    size_t sz = 0;
+    for(size_t i = 0; i < get_last_attrib_id() + 1; ++i) {
+        sz += getEcsAttribTypeLib().get_info(i)->size_of * ((attrib_mask & (1 << i)) >> i);
+    }
+    return sz;
+}
+
+inline int64_t archetypeOffset(uint64_t attrib_mask, uint64_t attrib_id) {
+    int64_t offset = -1;
+    for(size_t i = 0; i < attrib_id; ++i) {
+        offset += getEcsAttribTypeLib().get_info(i)->size_of * ((attrib_mask & (1 << i)) >> i);
+    }
+    return offset;
+}
 
 
 typedef uint64_t archetype_mask_t;

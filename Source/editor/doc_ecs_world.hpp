@@ -276,7 +276,7 @@ public:
         }
         ImGui::PopItemWidth();
 
-        for(uint8_t i = 0; i < 64; ++i) {
+        for(uint8_t i = 0; i < get_last_attrib_id() + 1; ++i) {
             auto attrib = cur_world->getAttribPtr(selected_ent, i);
             if(!attrib) {
                 continue;

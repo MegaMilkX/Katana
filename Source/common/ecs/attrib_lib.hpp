@@ -9,8 +9,10 @@ class ecsAttribBase;
 
 struct attrib_type_info {
     typedef ecsAttribBase*(*constructor_fn_t)(void);
+    typedef void          (*constructor_in_place_fn_t)(ecsAttribBase*);
     
     constructor_fn_t constructor;
+    constructor_in_place_fn_t constructor_in_place;
     std::string name;
     size_t size_of = 0;
 };
@@ -24,6 +26,9 @@ public:
         attrib_type_info inf;
         inf.constructor = []()->ecsAttribBase*{
             return new T();
+        };
+        inf.constructor_in_place = [](ecsAttribBase* ptr){
+            new ((T*)ptr) T();
         };
         inf.name = name;
         inf.size_of = sizeof(T);

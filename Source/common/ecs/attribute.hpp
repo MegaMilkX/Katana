@@ -11,9 +11,19 @@
 
 typedef size_t entity_id;
 
+inline uint64_t& get_last_attrib_id() {
+    static uint64_t id = 0;
+    return id;
+}
+
+inline void set_last_attrib_id(uint64_t last_id) {
+    get_last_attrib_id() = last_id;
+}
+
 inline uint64_t next_attrib_id() {
     static uint64_t id = 0;
-    return id++;
+    set_last_attrib_id(id++);
+    return get_last_attrib_id();
 }
 
 class ecsWorld;

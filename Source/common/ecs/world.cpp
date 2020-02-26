@@ -80,6 +80,15 @@ void ecsWorld::update() {
 }
 
 
+static int countSetBits(uint64_t i)
+{
+    int count = 0;
+    for(;i;i>>=1) {
+        count += (i & 1);
+    }
+    return count;
+}
+
 void ecsWorld::serialize(out_stream& out) {
     DataWriter w(&out);
 
@@ -87,10 +96,11 @@ void ecsWorld::serialize(out_stream& out) {
     for(auto& e : live_entities) {
         auto ent = entities.deref(e);
 
-        w.write<uint64_t>(ent->getAttribBits());
-        for(int i = 0; i < 64; ++i) {
+        w.write<uint32_t>(countSetBits(ent->getAttribBits()));
+        for(int i = 0; i < get_last_attrib_id() + 1; ++i) {
             ecsAttribBase* a = ent->findAttrib(i);
             if(a) {
+                w.write<uint32_t>(a->get_id());
                 a->write(out);
             }
         }
