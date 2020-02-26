@@ -30,6 +30,13 @@ public:
             dirty();
         }
     }
+
+    void write(out_stream& out) override {
+        out.write(position);
+    }
+    void read(in_stream& in) override {
+        position = in.read<gfxm::vec3>();
+    }
 };
 
 class ecsRotation : public ecsAttrib<ecsRotation> {
@@ -57,6 +64,13 @@ public:
             dirty();
         }
     }
+
+    void write(out_stream& out) override {
+        out.write(_rotation);
+    }
+    void read(in_stream& in) override {
+        _rotation = in.read<gfxm::quat>();
+    }
 };
 
 class ecsScale : public ecsAttrib<ecsScale> {
@@ -78,6 +92,13 @@ public:
         if(ImGui::DragFloat3("Scale", (float*)&_scale, 0.001f)) {
             dirty();
         }
+    }
+
+    void write(out_stream& out) override {
+        out.write(_scale);
+    }
+    void read(in_stream& in) override {
+        _scale = in.read<gfxm::vec3>();
     }
 };
 

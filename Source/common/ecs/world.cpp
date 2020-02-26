@@ -100,19 +100,31 @@ void ecsWorld::serialize(out_stream& out) {
         for(int i = 0; i < get_last_attrib_id() + 1; ++i) {
             ecsAttribBase* a = ent->findAttrib(i);
             if(a) {
-                w.write<uint32_t>(a->get_id());
+                auto inf = getEcsAttribTypeLib().get_info(a->get_id());
+                //w.write(inf->name);
+                w.write<uint64_t>(i);
                 a->write(out);
             }
         }
         
     }
-    // TODO
 }
 bool ecsWorld::deserialize(in_stream& in, size_t sz) {
     DataReader r(&in);
 
     uint64_t ent_count = r.read<uint64_t>();
-    // TODO
+    for(uint64_t i = 0; i < ent_count; ++i) {
+        auto hdl = createEntity();
+        
+        uint32_t attrib_count = r.read<uint32_t>();
+        for(uint32_t j = 0; j < attrib_count; ++j) {
+            //std::string attrib_name = r.readStr();
+            uint64_t attrib_id = r.read<uint64_t>();
+            createAttrib(hdl.getId(), attrib_id);
+            auto ptr = getAttribPtr(hdl.getId(), attrib_id);
+            ptr->read(in);
+        }
+    }
 
     return true;
 }
