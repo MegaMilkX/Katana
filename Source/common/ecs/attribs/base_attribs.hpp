@@ -26,12 +26,12 @@ public:
         }
     }
 
-    void write(out_stream& out) override {
-        world->serialize(out);
+    void write(ecsWorldWriteCtx& out) override {
+        world->serialize(*out.getStream());
     }
-    void read(in_stream& in) override {
+    void read(ecsWorldReadCtx& in) override {
         world.reset(new ecsWorld());
-        world->deserialize(in, in.bytes_available());
+        world->deserialize(*in.getStream(), in.getStream()->bytes_available());
     }
 };
 
@@ -49,13 +49,11 @@ public:
         }
     }
 
-    void write(out_stream& out) override {
-        DataWriter w(&out);
-        w.write(name);
+    void write(ecsWorldWriteCtx& out) override {
+        out.writeStr(name);
     }
-    void read(in_stream& in) override {
-        DataReader r(&in);
-        name = r.readStr();
+    void read(ecsWorldReadCtx& in) override {
+        name = in.readStr();
     }
 };
 
@@ -66,10 +64,10 @@ public:
         ImGui::DragFloat3("velo", (float*)&velo, 0.01f);
     }
 
-    void write(out_stream& out) override {
+    void write(ecsWorldWriteCtx& out) override {
         out.write(velo);
     }
-    void read(in_stream& in) override {
+    void read(ecsWorldReadCtx& in) override {
         velo = in.read<gfxm::vec3>();
     }
 };
@@ -82,10 +80,10 @@ public:
         }
     }
 
-    void write(out_stream& out) override {
+    void write(ecsWorldWriteCtx& out) override {
         out.write(mass);
     }
-    void read(in_stream& in) override {
+    void read(ecsWorldReadCtx& in) override {
         mass = in.read<float>();
     }
 };
@@ -99,10 +97,10 @@ public:
     }
     std::shared_ptr<btCollisionShape> shape;
 
-    void write(out_stream& out) override {
+    void write(ecsWorldWriteCtx& out) override {
         
     }
-    void read(in_stream& in) override {
+    void read(ecsWorldReadCtx& in) override {
         
     }
 };
@@ -167,8 +165,7 @@ public:
         }
     }
 
-    void write(out_stream& out) override {
-        DataWriter w(&out);
+    void write(ecsWorldWriteCtx& w) override {
 
         w.write<uint32_t>(segments.size());
         for(size_t i = 0; i < segments.size(); ++i) {
@@ -178,19 +175,15 @@ public:
             if(getSegment(i).mesh) mesh_name = getSegment(i).mesh->Name();
             if(getSegment(i).material) mat_name = getSegment(i).material->Name();
 
-            w.write(mesh_name);
+            w.writeResource(getSegment(i).mesh);
             w.write<uint8_t>(getSegment(i).submesh_index);
-            w.write<uint8_t>(0); // reserved
-            w.write<uint16_t>(0);
-            w.write<uint32_t>(0); // ~
-            w.write(mat_name);
+            w.writeResource(getSegment(i).material);
 
             if(getSegment(i).skin_data) {
                 auto& skin_data = getSegment(i).skin_data;
                 w.write<uint32_t>(skin_data->bone_nodes.size());
                 for(size_t j = 0; j < skin_data->bone_nodes.size(); ++j) {
-                    // TODO:
-                    //w.write(skin_data->bone_nodes[j]);
+                    w.writeAttribRef(skin_data->bone_nodes[j]);
                     w.write<gfxm::mat4>(skin_data->bind_transforms[j]);
                 }
             } else {
@@ -198,34 +191,20 @@ public:
             }
         }
     }
-    void read(in_stream& in) override {
-        DataReader r(&in);
-
+    void read(ecsWorldReadCtx& r) override {
         uint32_t seg_count = r.read<uint32_t>();
         for(uint32_t i = 0; i < seg_count; ++i) {
-            std::string mesh_name = "";
-            std::string mat_name = "";
-
-            mesh_name = r.readStr();
+            getSegment(i).mesh = r.readResource<Mesh>();
             getSegment(i).submesh_index = (uint8_t)r.read<uint8_t>();
-            r.read<uint8_t>(); // reserved
-            r.read<uint16_t>();
-            r.read<uint32_t>(); // ~
-            mat_name = r.readStr();
-
-            if(!mesh_name.empty()) {
-                getSegment(i).mesh = retrieve<Mesh>(mesh_name);
-            }
-            if(!mat_name.empty()) {
-                getSegment(i).material = retrieve<Material>(mat_name);
-            }
+            getSegment(i).material = r.readResource<Material>();
 
             uint32_t bone_count = r.read<uint32_t>();
             if(bone_count) {
                 getSegment(i).skin_data.reset(new SkinData());
                 for(uint32_t j = 0; j < bone_count; ++j) {
+                    ecsWorldTransform* attr = (ecsWorldTransform*)r.readAttribRef();
                     gfxm::mat4 m = r.read<gfxm::mat4>();
-                    getSegment(i).skin_data->bone_nodes.emplace_back((ecsWorldTransform*)0);
+                    getSegment(i).skin_data->bone_nodes.emplace_back(attr);
                     getSegment(i).skin_data->bind_transforms.emplace_back(m);
                 }
             }

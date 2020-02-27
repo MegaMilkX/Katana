@@ -31,10 +31,10 @@ public:
         }
     }
 
-    void write(out_stream& out) override {
+    void write(ecsWorldWriteCtx& out) override {
         out.write(position);
     }
-    void read(in_stream& in) override {
+    void read(ecsWorldReadCtx& in) override {
         position = in.read<gfxm::vec3>();
     }
 };
@@ -65,10 +65,10 @@ public:
         }
     }
 
-    void write(out_stream& out) override {
+    void write(ecsWorldWriteCtx& out) override {
         out.write(_rotation);
     }
-    void read(in_stream& in) override {
+    void read(ecsWorldReadCtx& in) override {
         _rotation = in.read<gfxm::quat>();
     }
 };
@@ -94,10 +94,10 @@ public:
         }
     }
 
-    void write(out_stream& out) override {
+    void write(ecsWorldWriteCtx& out) override {
         out.write(_scale);
     }
-    void read(in_stream& in) override {
+    void read(ecsWorldReadCtx& in) override {
         _scale = in.read<gfxm::vec3>();
     }
 };
@@ -167,6 +167,15 @@ class ecsParentTransform : public ecsAttrib<ecsParentTransform> {
 public:
     entity_id          parent_entity;
     ecsWorldTransform* parent_transform = 0;
+
+    void write(ecsWorldWriteCtx& out) override {
+        out.writeEntityRef(parent_entity);
+        out.writeAttribRef(parent_transform);
+    }
+    void read(ecsWorldReadCtx& in) override {
+        parent_entity = in.readEntityRef();
+        parent_transform = (ecsWorldTransform*)in.readAttribRef();
+    }
 };
 
 

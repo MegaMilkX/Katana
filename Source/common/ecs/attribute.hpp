@@ -9,7 +9,9 @@
 
 #include <stdint.h>
 
-typedef size_t entity_id;
+#include "types.hpp"
+#include "util/write_ctx.hpp"
+#include "util/read_ctx.hpp"
 
 inline uint64_t& get_last_attrib_id() {
     static uint64_t id = 0;
@@ -30,14 +32,20 @@ class ecsWorld;
 class ecsEntity;
 
 class ecsAttribBase {
+    friend ecsEntity;
+
+    entity_id entity = (entity_id)-1;
+
 public:
     virtual ~ecsAttribBase() {}
     virtual uint64_t get_id() const = 0;
 
+    entity_id getEntityId() { return entity; }
+
     virtual void onGui(ecsWorld* world, entity_id ent) {}
 
-    virtual void write(out_stream& out) {}
-    virtual void read(in_stream& in) {}
+    virtual void write(ecsWorldWriteCtx& out) {}
+    virtual void read(ecsWorldReadCtx& in) {}
 };
 
 template<typename T>

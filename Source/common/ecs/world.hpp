@@ -109,8 +109,7 @@ inline int64_t archetypeOffset(uint64_t attrib_mask, uint64_t attrib_id) {
     return offset;
 }
 
-
-typedef uint64_t archetype_mask_t;
+#include "types.hpp"
 
 class ecsWorld : public Resource {
     ObjectPool<ecsEntity>                       entities;

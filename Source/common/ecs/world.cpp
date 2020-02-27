@@ -6,6 +6,7 @@
 
 ecsEntityHandle ecsWorld::createEntity() {
     entity_id id = entities.acquire();
+    entities.deref(id)->entity_uid = id;
     live_entities.insert(id);
     return ecsEntityHandle(this, id);
 }
@@ -89,27 +90,57 @@ static int countSetBits(uint64_t i)
     return count;
 }
 
-void ecsWorld::serialize(out_stream& out) {
-    DataWriter w(&out);
+#include "util/write_ctx.hpp"
+#include "util/read_ctx.hpp"
 
-    w.write<uint64_t>(live_entities.size());
+void ecsWorld::serialize(out_stream& out) {
+    ecsWorldWriteCtx ctx(this, &out);
+
+    entity_id next_new_id = 0;
+    for(auto it = live_entities.begin(); it != live_entities.end(); ++it) {
+        ctx.remapEntityId((*it), next_new_id++);
+    }
+
+    ctx.write<uint64_t>(live_entities.size());
     for(auto& e : live_entities) {
         auto ent = entities.deref(e);
 
-        w.write<uint32_t>(countSetBits(ent->getAttribBits()));
-        for(int i = 0; i < get_last_attrib_id() + 1; ++i) {
+        ctx.write<uint32_t>(countSetBits(ent->getAttribBits()));
+        for(int i = 0; i <= get_last_attrib_id(); ++i) {
             ecsAttribBase* a = ent->findAttrib(i);
-            if(a) {
-                auto inf = getEcsAttribTypeLib().get_info(a->get_id());
-                //w.write(inf->name);
-                w.write<uint64_t>(i);
-                a->write(out);
+            if(!a) {
+                continue;
             }
+
+            ctx.write<uint16_t>(i);
+            a->write(ctx);
         }
-        
     }
 }
 bool ecsWorld::deserialize(in_stream& in, size_t sz) {
+    ecsWorldReadCtx ctx(this, &in);
+
+    uint64_t ent_count = ctx.read<uint64_t>();
+    for(int i = 0; i < ent_count; ++i) {
+        createEntity();
+    }
+
+    for(int i = 0; i < ent_count; ++i) {
+        uint32_t attrib_count = ctx.read<uint32_t>();
+        for(int j = 0; j < attrib_count; ++j) {
+            attrib_id attrib_index = (attrib_id)ctx.read<uint16_t>();
+            ecsAttribBase* a = getAttribPtr(i, attrib_index);
+            if(!a) {
+                createAttrib(i, attrib_index);
+                a = getAttribPtr(i, attrib_index);
+            }
+            if(a) {
+                a->read(ctx);
+            }
+        }
+    }
+
+    /*
     DataReader r(&in);
 
     uint64_t ent_count = r.read<uint64_t>();
@@ -124,7 +155,7 @@ bool ecsWorld::deserialize(in_stream& in, size_t sz) {
             auto ptr = getAttribPtr(hdl.getId(), attrib_id);
             ptr->read(in);
         }
-    }
+    }*/
 
     return true;
 }

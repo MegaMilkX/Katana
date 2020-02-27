@@ -9,6 +9,9 @@
 
 class ecsWorld;
 class ecsEntity {
+    friend ecsWorld;
+
+    entity_id entity_uid;
     uint64_t attrib_bits;
     std::map<uint8_t, std::shared_ptr<ecsAttribBase>> attribs;
 
@@ -24,6 +27,7 @@ class ecsEntity {
             LOG_WARN("Constructor for attrib " << inf->name << " failed");
             return 0;
         }
+        ptr->entity = entity_uid;
         return ptr;
     }
 

@@ -45,7 +45,7 @@ public:
     }
 
     void skip(size_t sz) {
-        strm->read<char>(sz);
+        strm->readArray<char>(sz);
     }
     
 private:

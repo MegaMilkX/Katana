@@ -20,7 +20,7 @@ public:
 
     }
     virtual bool deserialize(in_stream& in, size_t sz) {
-        auto vec = in.read<unsigned char>(sz);
+        auto vec = in.readArray<unsigned char>(sz);
         
         int channels = 2;
         int sampleRate = 44100;

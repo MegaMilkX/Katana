@@ -20,6 +20,7 @@ struct attrib_type_info {
 class EcsAttribTypeLib {
     std::unordered_map<std::string, std::vector<attrib_id>> table;
     std::unordered_map<attrib_id, attrib_type_info> attrib_infos;
+    std::unordered_map<std::string, attrib_id>      attrib_indices;
 public:
     template<typename T>
     void add(const char* category, const char* name) {
@@ -34,6 +35,7 @@ public:
         inf.size_of = sizeof(T);
         table[category].emplace_back(T::get_id_static());
         attrib_infos[T::get_id_static()] = inf;
+        attrib_indices[name] = T::get_id_static();
     }
     const attrib_type_info* get_info(attrib_id id) const {
         const auto it = attrib_infos.find(id);
@@ -41,6 +43,24 @@ public:
             return 0;
         }
         return &it->second;
+    }
+    const attrib_type_info* get_info(const char* name) const {
+        const auto it = attrib_indices.find(name);
+        if(it == attrib_indices.end()) {
+            return 0;
+        }
+        const auto it2 = attrib_infos.find(it->second);
+        if(it2 == attrib_infos.end()) {
+            return 0;
+        }
+        return &it2->second;
+    }
+    attrib_id get_attrib_id(const char* name) const {
+        const auto it = attrib_indices.find(name);
+        if(it == attrib_indices.end()) {
+            return -1;
+        }
+        return it->second;
     }
     std::unordered_map<std::string, std::vector<attrib_id>>& getTable() {
         return table;

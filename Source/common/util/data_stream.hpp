@@ -31,7 +31,7 @@ public:
         return v;
     }
     template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
-    std::vector<T> read(size_t sz) {
+    std::vector<T> readArray(size_t sz) {
         std::vector<T> v;
         read(v, sz);
         return v;
