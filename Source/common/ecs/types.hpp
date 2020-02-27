@@ -6,6 +6,7 @@
 
 
 typedef size_t entity_id;
+typedef int32_t attrib_id;
 typedef uint64_t archetype_mask_t;
 
 

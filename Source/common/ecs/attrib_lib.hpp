@@ -3,7 +3,7 @@
 
 #include <unordered_map>
 
-typedef int32_t attrib_id;
+#include "types.hpp"
 
 class ecsAttribBase;
 

@@ -9,17 +9,19 @@ ecsAttribBase* ecsWorldReadCtx::readAttribRef() {
     if(e == ENTITY_ERROR) {
         return 0;
     }
-    std::string attrib_name = readStr();
 
-    attrib_id attr = getEcsAttribTypeLib().get_attrib_id(attrib_name.c_str());
-    if(attr < 0) {
+    attrib_id attrib = read<uint16_t>();
+    std::string attrib_name = getAttribName(attrib);
+
+    attrib = getEcsAttribTypeLib().get_attrib_id(attrib_name.c_str());
+    if(attrib < 0) {
         return 0;
     }
 
-    ecsAttribBase* a = world->getAttribPtr(e, attr);
+    ecsAttribBase* a = world->getAttribPtr(e, attrib);
     if(!a) {
-        world->createAttrib(e, attr);
-        a = world->getAttribPtr(e, attr);
+        world->createAttrib(e, attrib);
+        a = world->getAttribPtr(e, attrib);
     }
 
     return a;

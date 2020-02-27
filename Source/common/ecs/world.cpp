@@ -96,6 +96,19 @@ static int countSetBits(uint64_t i)
 void ecsWorld::serialize(out_stream& out) {
     ecsWorldWriteCtx ctx(this, &out);
 
+    uint16_t known_attrib_count = get_last_attrib_id() + 1;
+    ctx.write<uint16_t>(known_attrib_count);
+    for(int i = 0; i <= get_last_attrib_id(); ++i) {
+        auto inf = getEcsAttribTypeLib().get_info(i);
+        std::string attrib_name;
+        if(inf) {
+            attrib_name = inf->name;
+        } else {
+            LOG_WARN("Failed to get inf for attrib " << i);
+        }
+        ctx.writeStr(attrib_name);
+    }
+
     entity_id next_new_id = 0;
     for(auto it = live_entities.begin(); it != live_entities.end(); ++it) {
         ctx.remapEntityId((*it), next_new_id++);
@@ -120,6 +133,12 @@ void ecsWorld::serialize(out_stream& out) {
 bool ecsWorld::deserialize(in_stream& in, size_t sz) {
     ecsWorldReadCtx ctx(this, &in);
 
+    uint16_t known_attrib_count = ctx.read<uint16_t>();
+    for(uint16_t i = 0; i < known_attrib_count; ++i) {
+        std::string attrib_name = ctx.readStr();
+        ctx.setAttribName(i, attrib_name.c_str());
+    }
+
     uint64_t ent_count = ctx.read<uint64_t>();
     for(int i = 0; i < ent_count; ++i) {
         createEntity();
@@ -129,6 +148,11 @@ bool ecsWorld::deserialize(in_stream& in, size_t sz) {
         uint32_t attrib_count = ctx.read<uint32_t>();
         for(int j = 0; j < attrib_count; ++j) {
             attrib_id attrib_index = (attrib_id)ctx.read<uint16_t>();
+            auto& attrib_name = ctx.getAttribName(attrib_index);
+            // TODO: if attrib name is "" or other error - skip bytes
+
+            attrib_index = getEcsAttribTypeLib().get_attrib_id(attrib_name.c_str());
+
             ecsAttribBase* a = getAttribPtr(i, attrib_index);
             if(!a) {
                 createAttrib(i, attrib_index);
@@ -139,23 +163,6 @@ bool ecsWorld::deserialize(in_stream& in, size_t sz) {
             }
         }
     }
-
-    /*
-    DataReader r(&in);
-
-    uint64_t ent_count = r.read<uint64_t>();
-    for(uint64_t i = 0; i < ent_count; ++i) {
-        auto hdl = createEntity();
-        
-        uint32_t attrib_count = r.read<uint32_t>();
-        for(uint32_t j = 0; j < attrib_count; ++j) {
-            //std::string attrib_name = r.readStr();
-            uint64_t attrib_id = r.read<uint64_t>();
-            createAttrib(hdl.getId(), attrib_id);
-            auto ptr = getAttribPtr(hdl.getId(), attrib_id);
-            ptr->read(in);
-        }
-    }*/
 
     return true;
 }

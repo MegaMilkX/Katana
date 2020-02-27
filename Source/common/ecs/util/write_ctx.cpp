@@ -11,9 +11,6 @@ void ecsWorldWriteCtx::writeAttribRef(ecsAttribBase* attrib) {
 
     write<uint64_t>(attrib->getEntityId());
     auto inf = getEcsAttribTypeLib().get_info(attrib->get_id());
-    if(!inf) {
-        writeStr("");
-    } else {
-        writeStr(inf->name);
-    }
+
+    write<uint16_t>(attrib->get_id());
 }

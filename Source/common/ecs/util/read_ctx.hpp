@@ -3,6 +3,7 @@
 
 #include "../../util/data_stream.hpp"
 #include "../types.hpp"
+#include <unordered_map>
 
 
 class ecsAttribBase;
@@ -10,12 +11,25 @@ class ecsWorld;
 class ecsWorldReadCtx {
     ecsWorld* world = 0;
     in_stream* strm = 0;
+    std::unordered_map<attrib_id, std::string> attrib_names;
+
 
 public:
     ecsWorldReadCtx(ecsWorld* world, in_stream* s)
     : world(world), strm(s) {}
 
     in_stream* getStream() { return strm; }
+
+    void setAttribName(attrib_id id, const char* name) {
+        attrib_names[id] = name;
+    }
+    const std::string& getAttribName(attrib_id id) {
+        auto it = attrib_names.find(id);
+        if(it == attrib_names.end()) {
+            return "";
+        }
+        return it->second;
+    }
 
     template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
     bool read(T& value) {
