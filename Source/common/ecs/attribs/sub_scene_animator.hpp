@@ -20,8 +20,13 @@ public:
 
     void setSkeleton(std::shared_ptr<Skeleton> skel);
     std::shared_ptr<Skeleton> getSkeleton();
+    void setMotion(std::shared_ptr<Motion> motion);
+    Motion* getLclMotion();
 
     void onGui(ecsWorld* world, entity_id ent);
+
+    void write(ecsWorldWriteCtx& out) override;
+    void read(ecsWorldReadCtx& in) override;
 };
 
 

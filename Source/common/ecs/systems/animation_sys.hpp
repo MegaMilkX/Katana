@@ -13,6 +13,7 @@
 class ecsTupleAnimatedSubScene : public ecsTuple<ecsSubSceneAnimator, ecsSubScene> {
 public:
     ecsysSubScenePose* sysPose = 0;
+    std::vector<AnimSample> samples;
 
     void onAttribUpdate(ecsSubScene* ss) override {
         assert(ss->getWorld());
@@ -28,6 +29,7 @@ public:
         auto animator = get<ecsSubSceneAnimator>();
         if(animator->getSkeleton()) {
             sysPose->setSkeleton(animator->getSkeleton());
+            samples = animator->getSkeleton()->makePoseArray();
         }
     }
 };
@@ -48,13 +50,15 @@ public:
     void onUpdate() {
         for(auto t : get_array<ecsTupleAnimatedSubScene>()) {
             auto animator = t->get<ecsSubSceneAnimator>();
-            //if(!animator->motion) continue;
-            if(!t->sysPose) continue;
-            //animator->motion->update(1.0f/60.0f);
-            /*
-            const auto& samples = animator->motion->getSamples();
-            if(samples.size() == 0) continue;
-            t->sysPose->setPose(samples);*/
+            if(!animator->motion_ref) {
+                continue;
+            }
+            if(!t->sysPose) {
+                continue;
+            }
+            animator->getLclMotion()->update(1.0f/60.0f, t->samples);
+            
+            t->sysPose->setPose(t->samples);
         }
     }
 };

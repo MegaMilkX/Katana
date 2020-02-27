@@ -99,7 +99,8 @@ public:
     }
 
     void onResourceSet() override {
-
+        _resource->getSystem<ecsysAnimation>();
+        _resource->getSystem<ecsDynamicsSys>()->setDebugDraw(&gvp.getDebugDraw());
     }
 
     void onGui(Editor* ed, float dt) override {        
