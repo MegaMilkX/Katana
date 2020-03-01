@@ -59,23 +59,6 @@ public:
 
         setIconCode(ICON_MDI_ALPHA_W_BOX);
 
-        regEcsAttrib<ecsName>("Name");
-        regEcsAttrib<ecsSubScene>("SubScene");
-        regEcsAttrib<ecsTagSubSceneRender>("TagSubSceneRender");
-        regEcsAttrib<ecsTRS>("TRS");
-        regEcsAttrib<ecsTranslation>("Translation");
-        regEcsAttrib<ecsRotation>("Rotation");
-        regEcsAttrib<ecsScale>("Scale");
-        regEcsAttrib<ecsWorldTransform>("WorldTransform");
-        regEcsAttrib<ecsParentTransform>("ParentTransform");
-        regEcsAttrib<ecsTransform>("Transform");
-        regEcsAttrib<ecsTransformTree>("TransformTree");
-        regEcsAttrib<ecsVelocity>("Velocity");
-        regEcsAttrib<ecsCollisionShape>("CollisionShape", "Collision");
-        regEcsAttrib<ecsMass>("Mass", "Physics");
-        regEcsAttrib<ecsMeshes>("Meshes", "Rendering");
-        regEcsAttrib<ecsSubSceneAnimator>("SubSceneAnimator");
-
         //sceneGraphSys = new ecsysSceneGraph();
 
         _resource->getSystem<ecsysAnimation>();

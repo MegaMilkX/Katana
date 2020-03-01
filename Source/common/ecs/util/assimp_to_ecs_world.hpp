@@ -3,7 +3,7 @@
 
 #include "../systems/scene_graph.hpp"
 
-bool assimpImportEcsScene(ecsysSceneGraph* world, const char* filename);
+entity_id assimpImportEcsScene(ecsysSceneGraph* world, const char* filename);
 
 
 #endif

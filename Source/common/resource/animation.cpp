@@ -55,6 +55,18 @@ AnimNode& Animation::getRootMotionNode() {
     return root_motion_node;
 }
 
+void Animation::setRootMotionSourceNode(const std::string& name) {
+    auto it = node_indices.find(name);
+    if(it == node_indices.end()) {
+        root_motion_node_name.clear();
+        root_motion_node_index = -1;
+        return;
+    }
+
+    root_motion_node_name = name;
+    root_motion_node_index = it->second;
+}
+
 bool Animation::curveExists(const std::string& name) {
     return extra_curves.count(name) != 0;
 }
@@ -131,6 +143,50 @@ void Animation::sample_one(int node_id, float cursor, AnimSample& sample) {
     sample.t = nodes[node_id].t.at(cursor);
     sample.r = nodes[node_id].r.at(cursor);
     sample.s = nodes[node_id].s.at(cursor);
+}
+
+static gfxm::mat4 getParentTransform(Skeleton* skeleton, const std::vector<AnimSample>& samples, int32_t bone_idx) {
+    auto bone = skeleton->getBone(bone_idx);
+    std::vector<int32_t> chain;
+    while(bone.parent >= 0) {
+        chain.push_back(bone.parent);
+        bone = skeleton->getBone(bone.parent);
+    }
+
+    gfxm::mat4 m(1.0f);
+    for(int i = chain.size() - 1; i >= 0; --i) {
+        gfxm::mat4 lcl = 
+            gfxm::translate(gfxm::mat4(1.0f), samples[chain[i]].t)
+            * gfxm::to_mat4(samples[chain[i]].r)
+            * gfxm::scale(gfxm::mat4(1.0f), samples[chain[i]].s);
+        m = m * lcl;
+    }
+    return m;
+}
+
+void Animation::sample_remapped(
+    std::vector<AnimSample>& samples,
+    float cursor,
+    Skeleton* skeleton,
+    const std::vector<int32_t>& mapping
+) {
+    sample_remapped(samples, cursor, mapping);
+
+    if(root_motion_node_index >= 0) {
+        if(enable_root_motion_t_xz) {
+            int32_t rm_bone_id = mapping[root_motion_node_index];
+
+            int root_of_rm_src_index = skeleton->getRootOf(rm_bone_id);
+            
+            gfxm::mat4 m_rm_parent = ::getParentTransform(skeleton, samples, rm_bone_id);
+            gfxm::vec3 rm_world_t = m_rm_parent * gfxm::vec4(samples[rm_bone_id].t, 1.0f);
+            gfxm::vec3 rm_parent_world_t = m_rm_parent * gfxm::vec4(.0f, .0f, .0f, 1.0f);
+
+            auto& t = samples[root_of_rm_src_index].t;
+            t.x -= rm_world_t.x;
+            t.z -= rm_world_t.z;
+        }
+    }
 }
 
 void Animation::sample_remapped(
@@ -327,6 +383,21 @@ void Animation::serialize(out_stream& out_) {
         }
         zipw.add("ex_curves", out.getBuffer());
     }
+    {
+        dstream out;
+        DataWriter w(&out);
+        uint8_t flags = 0;
+        std::string root_motion_node_name = "";
+
+        flags |= enable_root_motion_t_xz ? 1 : 0;
+        flags |= enable_root_motion_t_y ? (1 << 1) : 0;
+        flags |= enable_root_motion_r_y ? (1 << 2) : 0;
+        root_motion_node_name = this->root_motion_node_name;
+
+        w.write<uint8_t>(flags);
+        w.write(root_motion_node_name);
+        zipw.add("root_motion", out.getBuffer());
+    }
 
     auto buf = zipw.finalize();
     out_.write((char*)buf.data(), buf.size());
@@ -434,6 +505,20 @@ bool Animation::deserialize(in_stream& in_, size_t sz) {
             std::vector<keyframe<float>> kfs = r.readArray<keyframe<float>>();
             extra_curves[name].set_keyframes(kfs);
         }
+    }
+    buf = zipr.extractFile("root_motion");
+    if(!buf.empty()) {
+        dstream in;
+        in.setBuffer(buf);
+        DataReader r(&in);
+        
+        uint8_t flags = r.read<uint8_t>();
+        std::string root_motion_node_name = r.readStr();
+
+        if(flags & 1) enable_root_motion_t_xz = true;
+        if(flags & 2) enable_root_motion_t_y = true;
+        if(flags & 4) enable_root_motion_r_y = true;
+        setRootMotionSourceNode(root_motion_node_name);  
     }
     return true;
 }

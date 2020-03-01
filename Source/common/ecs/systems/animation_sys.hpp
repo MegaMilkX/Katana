@@ -10,7 +10,7 @@
 #include <assert.h>
 
 
-class ecsTupleAnimatedSubScene : public ecsTuple<ecsSubSceneAnimator, ecsSubScene> {
+class ecsTupleAnimatedSubScene : public ecsTuple<ecsSubSceneAnimator, ecsSubScene, ecsOptional<ecsTranslation>, ecsOptional<ecsWorldTransform>> {
 public:
     ecsysSubScenePose* sysPose = 0;
     std::vector<AnimSample> samples;
@@ -59,6 +59,12 @@ public:
             animator->getLclMotion()->update(1.0f/60.0f, t->samples);
             
             t->sysPose->setPose(t->samples);
+
+            ecsTranslation* translation = t->get_optional<ecsTranslation>();
+            ecsWorldTransform* world_trans = t->get_optional<ecsWorldTransform>();
+
+            //TODO: Root motion
+
         }
     }
 };

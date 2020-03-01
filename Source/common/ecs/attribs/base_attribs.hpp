@@ -16,7 +16,8 @@
 class ecsSubScene : public ecsAttrib<ecsSubScene> {
     std::shared_ptr<ecsWorld> world;
 public:
-    ecsSubScene() {}
+    ecsSubScene()
+    : world(new ecsWorld()) {}
     ecsSubScene(std::shared_ptr<ecsWorld> world)
     : world(world) {}
     ecsWorld* getWorld() const { return world.get(); }
@@ -24,6 +25,10 @@ public:
         if(ImGui::Button(ICON_MDI_PENCIL " Edit", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
             kt_cmd(MKSTR("ecs_world_subdoc " << (uint64_t)this->world.get()).c_str());
         }
+    }
+
+    ecsWorld* getWorld() {
+        return world.get();
     }
 
     void write(ecsWorldWriteCtx& out) override {

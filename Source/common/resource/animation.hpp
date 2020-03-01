@@ -17,16 +17,32 @@ struct AnimNode {
 
 class Animation : public Resource {
     RTTR_ENABLE(Resource)
+
 public:
     struct event {
         float time;
         float threshold;
     };
 
-    float length = 0.0f;
-    float fps = 60.0f;
-    std::string root_motion_node_name;
-    bool root_motion_enabled = false;
+private:
+    std::vector<AnimNode>                       nodes;
+    AnimNode                                    root_motion_node;
+    std::map<std::string, size_t>               node_indices;
+    std::vector<std::string>                    node_names;
+    std::map<std::string, curve<float>>         extra_curves;
+    std::map<std::string, event>                events;
+
+    std::map<Skeleton*, std::vector<int32_t>>   mappings;
+
+public:
+    float           length = 0.0f;
+    float           fps = 60.0f;
+    std::string     root_motion_node_name;
+    int             root_motion_node_index = -1;
+    bool            root_motion_enabled = false;
+    bool            enable_root_motion_t_xz = false;
+    bool            enable_root_motion_t_y = false;
+    bool            enable_root_motion_r_y = false;
 
     void                 clearNodes();
     size_t               nodeCount();
@@ -34,6 +50,7 @@ public:
     int32_t              getNodeIndex(const std::string& name);
     const std::string&   getNodeName(int i);
     AnimNode&            getRootMotionNode();
+    void                 setRootMotionSourceNode(const std::string& name);
 
     bool                 curveExists(const std::string& name);
     curve<float>&        getCurve(const std::string& name);
@@ -52,6 +69,13 @@ public:
     std::vector<int32_t>& getMapping(Skeleton* skel);
 
     void                 sample_one(int node_id, float cursor, AnimSample& sample);
+
+    void                 sample_remapped(
+        std::vector<AnimSample>& samples,
+        float cursor,
+        Skeleton* skeleton,
+        const std::vector<int32_t>& remap
+    );
 
     void                 sample_remapped(
         std::vector<AnimSample>& out,
@@ -92,15 +116,7 @@ public:
     virtual bool         deserialize(in_stream& in, size_t sz);
 
     virtual const char*  getWriteExtension() const { return "anm"; }
-private:
-    AnimNode root_motion_node;
-    std::vector<AnimNode> nodes;
-    std::map<std::string, size_t> node_indices;
-    std::vector<std::string>      node_names;
-    std::map<std::string, curve<float>> extra_curves;
-    std::map<std::string, event> events;
 
-    std::map<Skeleton*, std::vector<int32_t>> mappings;
 };
 
 class Skeleton;

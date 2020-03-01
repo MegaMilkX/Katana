@@ -16,6 +16,25 @@ DocAnim::DocAnim() {
     
 }
 
+static gfxm::mat4 getParentTransform(Skeleton* skeleton, const std::vector<AnimSample>& samples, int32_t bone_idx) {
+    auto bone = skeleton->getBone(bone_idx);
+    std::vector<int32_t> chain;
+    while(bone.parent >= 0) {
+        chain.push_back(bone.parent);
+        bone = skeleton->getBone(bone.parent);
+    }
+
+    gfxm::mat4 m(1.0f);
+    for(int i = chain.size() - 1; i >= 0; --i) {
+        gfxm::mat4 lcl = 
+            gfxm::translate(gfxm::mat4(1.0f), samples[chain[i]].t)
+            * gfxm::to_mat4(samples[chain[i]].r)
+            * gfxm::scale(gfxm::mat4(1.0f), samples[chain[i]].s);
+        m = m * lcl;
+    }
+    return m;
+}
+
 void DocAnim::onGui(Editor* ed, float dt) {
 
     std::vector<ktNode*> tgt_nodes;
@@ -36,19 +55,23 @@ void DocAnim::onGui(Editor* ed, float dt) {
         if(root_motion_anim_node_id >= 0) {
             root_motion_bone_id = mapping[root_motion_anim_node_id];
         }
+        
+        std::vector<AnimSample> pose = skel->makePoseArray();
+        //std::vector<AnimSample> zero_pose = skel->makePoseArray();
+        //_resource->sample_remapped(pose, .0f, mapping);
+        _resource->sample_remapped(pose, cursor, ref_skel.get(), mapping);
 
         ktNode* root = scn.getRoot();
+
+/*
+        // ROOT MOTION
         ktNode* root_motion_node = scn.findObject(_resource->root_motion_node_name);
 
         gfxm::vec3 t0;
         if (root_motion_bone_id >= 0) {
             t0 = root_motion_node->getTransform()->getWorldPosition();
         }
-        
-        std::vector<AnimSample> pose = skel->makePoseArray();
-        _resource->sample_remapped(pose, cursor, mapping);
 
-        // ROOT MOTION
         AnimSample rm_zero_sample;
         AnimSample rm_end_sample;
         AnimSample rm_sample_a;
@@ -122,8 +145,29 @@ void DocAnim::onGui(Editor* ed, float dt) {
             gvp.getDebugDraw().line(origin, origin + dbg_q_forward_1, gfxm::vec3(1, 0, 1));
             //gvp.getDebugDraw().line(origin, origin + dbg_delta_fwd, gfxm::vec3(0, 1, 1));
             gvp.getDebugDraw().circle(origin, 1.0f, gfxm::vec3(0,1,0));
-        }
+        }*/
 
+/*
+        if(_resource->root_motion_node_index >= 0) {
+            if(_resource->enable_root_motion_t_xz) {
+                int32_t rm_bone_id = mapping[_resource->root_motion_node_index];
+
+                int root_of_rm_src_index = ref_skel->getRootOf(rm_bone_id);
+                
+                gfxm::mat4 m_rm_parent = ::getParentTransform(ref_skel.get(), pose, rm_bone_id);
+                gfxm::vec3 rm_world_t = m_rm_parent * gfxm::vec4(pose[rm_bone_id].t, 1.0f);
+                gfxm::vec3 rm_parent_world_t = m_rm_parent * gfxm::vec4(.0f, .0f, .0f, 1.0f);
+
+                gvp.getDebugDraw().point(root->getTransform()->getWorldTransform() * gfxm::vec4(rm_world_t, 1.0f), gfxm::vec3(1,0,0));
+                gvp.getDebugDraw().point(root->getTransform()->getWorldTransform() * gfxm::vec4(rm_parent_world_t, 1.0f), gfxm::vec3(0,1,0));
+
+                auto& t = pose[root_of_rm_src_index].t;
+                t.x -= rm_world_t.x;
+                t.z -= rm_world_t.z;
+
+                gvp.getDebugDraw().point(root->getTransform()->getWorldTransform() * gfxm::vec4(t, 1.0f), gfxm::vec3(1,1,0));
+            }
+        }*/
 
         // ===
 
@@ -141,6 +185,8 @@ void DocAnim::onGui(Editor* ed, float dt) {
                 n->getTransform()->setScale(pose[i].s);
             }
         }
+
+        /*
         if(root_motion_bone_id >= 0 && root_motion_node) {
             gfxm::vec3 t = rm_zero_sample.t;
             t.y = pose[root_motion_bone_id].t.y;
@@ -149,7 +195,7 @@ void DocAnim::onGui(Editor* ed, float dt) {
             root_motion_node->getTransform()->rotate(gfxm::inverse(zero_delta_rotation));
             //root_motion_node->getTransform()->setRotation(q);
             //root_motion_node->getTransform()->setRotation(rm_zero_sample.r);
-        }
+        }*/
     }
 
     auto window = ImGui::GetCurrentWindow();
@@ -216,20 +262,23 @@ void DocAnim::onGuiToolbox(Editor* ed) {
 
     ImGui::Separator();
 
-    ImGui::Checkbox("enable root motion", &_resource->root_motion_enabled);
+    ImGui::Checkbox("Root motion translation XZ", &_resource->enable_root_motion_t_xz);
+    ImGui::Checkbox("Root motion translation Y", &_resource->enable_root_motion_t_y);
+    ImGui::Checkbox("Root motion rotation Y", &_resource->enable_root_motion_r_y);
+
     std::string root_motion_node_name = "<null>";
     if(!_resource->root_motion_node_name.empty()) {
         root_motion_node_name = _resource->root_motion_node_name;
     }
     if(ImGui::BeginCombo("root motion node", root_motion_node_name.c_str())) {
         if(ImGui::Selectable("<null>", _resource->root_motion_node_name.empty())) {
-            _resource->root_motion_node_name = "";
+            _resource->setRootMotionSourceNode("");
         }
 
         for(int i = 0; i < _resource->nodeCount(); ++i) {
             std::string name = _resource->getNodeName(i).c_str();
             if(ImGui::Selectable(name.c_str(), name == root_motion_node_name)) {
-                _resource->root_motion_node_name = name;
+                _resource->setRootMotionSourceNode(name);
             }
         }
 

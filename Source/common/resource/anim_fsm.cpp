@@ -169,7 +169,7 @@ void AnimFSM::update(
     }
 
     
-    act->update(dt, samples, trans_weight);
+    act->update(dt, samples, getMotion()->getSkeleton().get(), trans_weight);
     if(trans_weight < 1.0f) {
         for(size_t i = 0; i < samples.size(); ++i) {
             samples[i].t = gfxm::lerp(trans_samples[i].t, samples[i].t, trans_weight);

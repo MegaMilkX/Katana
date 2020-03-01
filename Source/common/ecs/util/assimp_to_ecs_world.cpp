@@ -220,7 +220,7 @@ void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, name_to_ent_map_t& node_m
     }
 }
 
-void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene) {
+entity_id assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene) {
     entity_id root_ent = graph->createNode();
     name_to_ent_map_t node_map;
     assimpImportEcsSceneGraph(graph, node_map, ai_scene, ai_scene->mRootNode, root_ent);
@@ -233,18 +233,19 @@ void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene) 
         }
     }
     graph->getWorld()->getAttrib<ecsScale>(root_ent)->setScale((float)scaleFactor);
+    return root_ent;
 }
 
-bool assimpImportEcsScene(ecsysSceneGraph* graph, AssimpScene* scn) {
+entity_id assimpImportEcsScene(ecsysSceneGraph* graph, AssimpScene* scn) {
     const aiScene* ai_scene = scn->getScene();
     if(!ai_scene) {
         LOG_WARN("Assimp import: failed to load scene '" << "TODO: PUT NAME HERE" << "'");
-        return false;
+        return -1;
     }
     aiNode* ai_rootNode = ai_scene->mRootNode;
     if(!ai_rootNode) {
         LOG_WARN("Assimp import: No root node '" << "TODO: PUT NAME HERE" << "'");
-        return false;
+        return -1;
     }
 
     //std::string scene_name;
@@ -252,7 +253,7 @@ bool assimpImportEcsScene(ecsysSceneGraph* graph, AssimpScene* scn) {
     //scene_name = scene_name.substr(0, scene_name.find_first_of('.')); 
 
     //loadResources(ai_scene);
-    assimpImportEcsSceneGraph(graph, ai_scene);
+    entity_id e = assimpImportEcsSceneGraph(graph, ai_scene);
     //scene->getRoot()->setName(scene_name);
 
 /*
@@ -265,11 +266,11 @@ bool assimpImportEcsScene(ecsysSceneGraph* graph, AssimpScene* scn) {
         anim_stack->addAnim(anims[i]);
     }
 */
-    return true;
+    return e;
 }
 
 
-bool assimpImportEcsScene(ecsysSceneGraph* graph, const char* filename) {
+entity_id assimpImportEcsScene(ecsysSceneGraph* graph, const char* filename) {
     std::ifstream f(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + std::string(filename), std::ios::binary | std::ios::ate);
     if(!f.is_open()) {
         LOG_WARN("Failed to open " << filename);

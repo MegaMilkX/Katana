@@ -12,8 +12,8 @@
 
 struct AnimSample {
     gfxm::vec3 t;
-    gfxm::quat r;
-    gfxm::vec3 s;
+    gfxm::quat r = gfxm::quat(0,0,0,1);
+    gfxm::vec3 s = gfxm::vec3(1,1,1);
 };
 
 class Skeleton : public Resource {
@@ -58,6 +58,16 @@ public:
         }
     }
 
+    int32_t getRootOf(int32_t bone_index) {
+        assert(bone_index >= 0 && bone_index < bones.size());
+        
+        int32_t idx = bone_index;
+        while (bones[idx].parent >= 0) {
+            idx = bones[idx].parent;
+        } 
+        return idx;
+    }
+
     gfxm::mat4 getParentTransform(const std::string& bone) {
         Bone* b = getBone(bone);
         if(!b) return gfxm::mat4(1.0f);
@@ -99,6 +109,15 @@ public:
     std::vector<AnimSample> makePoseArray() {
         std::vector<AnimSample> pose;
         pose.resize(bones.size());
+        for(int i = 0; i < bones.size(); ++i) {
+            pose[i].t = bones[i].bind_pose[3];
+            pose[i].r = gfxm::to_quat(gfxm::to_mat3(bones[i].bind_pose));
+            gfxm::vec3 scale;
+            scale.x = gfxm::length(bones[i].bind_pose[0]);
+            scale.y = gfxm::length(bones[i].bind_pose[1]);
+            scale.z = gfxm::length(bones[i].bind_pose[2]);
+            pose[i].s = scale;
+        }
         return pose;
     }
 

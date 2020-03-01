@@ -30,7 +30,9 @@ void KatanaImpl::update() {
     if(!_session) return;
 
     _session->_update(sFrameDelta);
-    
+
+    _session->_render();
+    /*
     unsigned w, h;
     platformGetViewportSize(w, h);
     vp.resize(w, h);
@@ -44,7 +46,7 @@ void KatanaImpl::update() {
         vp.getGBuffer()->getMetallicTexture(),
         vp.getGBuffer()->getDepthTexture()
     };
-    renderer.drawToScreen(buffers[dbg_renderBufferId]);
+    renderer.drawToScreen(buffers[dbg_renderBufferId]);*/
 }
 
 void KatanaImpl::update_time(float delta_time) {

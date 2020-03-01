@@ -46,7 +46,7 @@ void SingleAnimJob::onInit(BlendTree* bt) {
 void SingleAnimJob::onInvoke() {
     if(!ready) return;
 
-    anim->sample_remapped(pose.samples, graph->getCursor() * anim->length, mapping);
+    anim->sample_remapped(pose.samples, graph->getCursor() * anim->length, graph->getMotion()->getSkeleton().get(), mapping);
     pose.speed = anim->fps / anim->length;
 }
 

@@ -48,6 +48,9 @@ public:
 
         const Pose* _a = array[left_idx];
         const Pose* _b = array[right_idx];
+        if (_a->samples.empty() || _b->samples.empty()) {
+            return;
+        }
 
         pose.samples.resize(_a->samples.size());
         for(size_t i = 0; i < pose.samples.size(); ++i) {
