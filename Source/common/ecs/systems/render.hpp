@@ -22,10 +22,21 @@ public:
 
 class ecsRenderSubSystem : public ecsSystem<
     ecsTuple<ecsWorldTransform, ecsMeshes>,
+    ecsTuple<ecsWorldTransform, ecsLightOmni>,
     ecsTupleSubSceneRenderable
 > {
 public:
     void fillDrawList(DrawList& dl, const gfxm::mat4& root_transform, entity_id subscene_owner) {
+        for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsLightOmni>>()) {
+            dl.omnis.emplace_back(
+                DrawList::OmniLight {
+                    root_transform * gfxm::vec4(0,0,0,1),
+                    a->get<ecsLightOmni>()->color,
+                    a->get<ecsLightOmni>()->intensity,
+                    a->get<ecsLightOmni>()->radius
+                }
+            );
+        }
         for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsMeshes>>()) {
             for(auto& seg : a->get<ecsMeshes>()->segments) {
                 if(!seg.mesh) continue;
@@ -73,6 +84,7 @@ public:
 
 class ecsRenderSystem : public ecsSystem<
     ecsTuple<ecsWorldTransform, ecsMeshes>,
+    ecsTuple<ecsWorldTransform, ecsLightOmni>,
     ecsTupleSubSceneRenderable
 > {
     DrawList draw_list;
@@ -89,6 +101,17 @@ public:
     void fillDrawList(DrawList& dl) {
         for(auto& a : get_array<ecsTupleSubSceneRenderable>()) {
             a->sub_system->fillDrawList(dl, a->get<ecsWorldTransform>()->transform, a->getEntityUid());
+        }
+
+        for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsLightOmni>>()) {
+            dl.omnis.emplace_back(
+                DrawList::OmniLight {
+                    a->get<ecsWorldTransform>()->transform * gfxm::vec4(0,0,0,1),
+                    a->get<ecsLightOmni>()->color,
+                    a->get<ecsLightOmni>()->intensity,
+                    a->get<ecsLightOmni>()->radius
+                }
+            );
         }
 
         for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsMeshes>>()) {

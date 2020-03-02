@@ -69,6 +69,7 @@ static void initEcs() {
     regEcsAttrib<ecsCollisionShape>("CollisionShape", "Collision");
     regEcsAttrib<ecsMass>("Mass", "Physics");
     regEcsAttrib<ecsMeshes>("Meshes", "Rendering");
+    regEcsAttrib<ecsLightOmni>("LightOmni", "Rendering");
     regEcsAttrib<ecsSubSceneAnimator>("SubSceneAnimator");
 }
 

@@ -217,5 +217,29 @@ public:
     }
 };
 
+class ecsLightOmni : public ecsAttrib<ecsLightOmni> {
+public:
+    gfxm::vec3 color = gfxm::vec3(1,1,1);
+    float      radius = 1.0f;
+    float      intensity = 1.0f;
+
+    void onGui(ecsWorld* world, entity_id ent) override {
+        ImGui::ColorEdit3(MKSTR("color##" << this).c_str(), (float*)&color);
+        ImGui::DragFloat(MKSTR("radius##" << this).c_str(), &radius, 0.01f);
+        ImGui::DragFloat(MKSTR("intensity##" << this).c_str(), &intensity, 0.01f);
+    }
+
+    void write(ecsWorldWriteCtx& w) override {
+        w.write(color);
+        w.write(radius);
+        w.write(intensity);
+    }
+    void read(ecsWorldReadCtx& r) override {
+        color = r.read<gfxm::vec3>();
+        radius = r.read<float>();
+        intensity = r.read<float>();
+    }
+};
+
 
 #endif
