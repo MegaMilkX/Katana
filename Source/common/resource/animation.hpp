@@ -15,6 +15,33 @@ struct AnimNode {
     curve<gfxm::vec3> s;
 };
 
+class AnimSampleBuffer {
+    Skeleton* skeleton = 0;
+    std::vector<AnimSample> samples;
+    AnimSample root_motion_delta_sample;
+
+public:
+    AnimSampleBuffer(Skeleton* skeleton) {
+        this->skeleton = skeleton;
+        samples = skeleton->makePoseArray();
+    }
+    int sampleCount() const {
+        return samples.size();
+    }
+    AnimSample& operator[](int i) {
+        return samples[i];
+    }
+    const AnimSample& operator[](int i) const {
+        return samples[i];
+    }
+    AnimSample& getRootMotionDelta() {
+        return root_motion_delta_sample;
+    }
+    const AnimSample& getRootMotionDelta() const {
+        return root_motion_delta_sample;
+    }
+};
+
 class Animation : public Resource {
     RTTR_ENABLE(Resource)
 
