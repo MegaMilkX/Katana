@@ -31,9 +31,10 @@ void AnimFSMStateClip::rebuild() {
     mapping = anim->getMapping(owner_fsm->getMotion()->getSkeleton().get());
 }
 
-void AnimFSMStateClip::update(float dt, std::vector<AnimSample>& samples, Skeleton* skeleton, float weight) {
+void AnimFSMStateClip::update(float dt, AnimSampleBuffer& sample_buffer, Skeleton* skeleton, float weight) {
     if(!anim || mapping.empty()) return;
-    anim->sample_remapped(samples, cursor * anim->length, skeleton, mapping);
+    anim->sample_remapped(sample_buffer, prev_cursor * anim->length, cursor * anim->length, skeleton, mapping);
+    prev_cursor = cursor;
     cursor += dt * (anim->fps / anim->length);
     if(cursor > 1.0f) {
         cursor -= 1.0f;
@@ -75,8 +76,8 @@ void AnimFSMStateFSM::rebuild() {
     fsm->rebuild();
 }
 
-void AnimFSMStateFSM::update(float dt, std::vector<AnimSample>& samples, Skeleton* skeleton, float weight) {
-    fsm->update(dt, samples);
+void AnimFSMStateFSM::update(float dt, AnimSampleBuffer& sample_buffer, Skeleton* skeleton, float weight) {
+    fsm->update(dt, sample_buffer);
 }
 
 ANIM_FSM_STATE_TYPE AnimFSMStateFSM::getType() const {
@@ -106,8 +107,8 @@ void AnimFSMStateBlendTree::rebuild() {
     blend_tree->rebuild();
 }
 
-void AnimFSMStateBlendTree::update(float dt, std::vector<AnimSample>& samples, Skeleton* skeleton, float weight) {
-    blend_tree->update(dt, samples);
+void AnimFSMStateBlendTree::update(float dt, AnimSampleBuffer& sample_buffer, Skeleton* skeleton, float weight) {
+    blend_tree->update(dt, sample_buffer);
 }
 ANIM_FSM_STATE_TYPE AnimFSMStateBlendTree::getType() const {
     return ANIM_FSM_STATE_BLEND_TREE;

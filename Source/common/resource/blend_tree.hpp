@@ -16,6 +16,7 @@
 class BlendTree : public AnimatorBase, public JobGraphTpl<BlendTree> {    
     Motion*         owner_motion = 0;
     Pose            pose;
+    float           prev_cursor = .0f;
     float           cursor = .0f;
 
 public:
@@ -37,10 +38,14 @@ public:
     }
 
     void setCursor(float cur) {
+        prev_cursor = cursor;
         cursor = cur;
         if(cursor > 1.0f) {
             cursor -= (int)cursor;
         }
+    }
+    float getPrevCursor() const {
+        return prev_cursor;
     }
     float getCursor() const {
         return cursor;
@@ -58,16 +63,18 @@ public:
         return pose;
     }
 
-    void update(float dt, std::vector<AnimSample>& samples) override {
+    void update(float dt, AnimSampleBuffer& sample_buffer) override {
         run();
+        prev_cursor = cursor;
         cursor += dt * pose.speed;
         if(cursor > 1.0f) {
             cursor -= 1.0f;
         }
         
-        for(size_t i = 0; i < samples.size() && i < pose.samples.size(); ++i) {
-            samples[i] = pose.samples[i];
+        for(size_t i = 0; i < sample_buffer.sampleCount() && i < pose.sample_buffer.sampleCount(); ++i) {
+            sample_buffer[i] = pose.sample_buffer[i];
         }
+        sample_buffer.getRootMotionDelta() = pose.sample_buffer.getRootMotionDelta();
     }
     AnimSample   getRootMotion() override {
         AnimSample sample;

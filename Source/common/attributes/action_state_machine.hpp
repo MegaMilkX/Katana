@@ -15,7 +15,7 @@ class ActionStateMachine : public Attribute {
 
     bool skeleton_nodes_dirty = true;
     std::vector<ktNode*> skeleton_nodes;
-    std::vector<AnimSample> sample_buffer;
+    AnimSampleBuffer sample_buffer;
 
     Motion motion;
     int32_t current_action_id = -1;

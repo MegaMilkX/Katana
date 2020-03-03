@@ -9,7 +9,7 @@
 class DocMotion : public EditorDocumentTyped<Motion> {
     std::vector<std::unique_ptr<MotionGuiBase>> gui_stack;
 
-    std::vector<AnimSample> sample_buffer;
+    AnimSampleBuffer sample_buf;
 
     // Preview stuff
     GuiViewport viewport;

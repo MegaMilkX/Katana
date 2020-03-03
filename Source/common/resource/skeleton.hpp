@@ -26,6 +26,8 @@ public:
         gfxm::mat4 bind_pose;
     };
 
+    float scale_factor = 1.0f;
+
     ~Skeleton() {
     }
 
@@ -124,6 +126,7 @@ public:
     virtual void serialize(out_stream& out) {
         DataWriter w(&out);
 
+        w.write<float>(scale_factor);
         w.write<uint32_t>(bones.size());
         for(uint32_t i = 0; i < bones.size(); ++i) {
             w.write<int32_t>(bones[i].id);
@@ -139,6 +142,7 @@ public:
     virtual bool deserialize(in_stream& in, size_t sz) { 
         clearBones();
 
+        in.read(scale_factor);
         uint32_t bone_count;
         in.read(bone_count);
         for(uint32_t i = 0; i < bone_count; ++i) {

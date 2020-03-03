@@ -56,10 +56,10 @@ void DocAnim::onGui(Editor* ed, float dt) {
             root_motion_bone_id = mapping[root_motion_anim_node_id];
         }
         
-        std::vector<AnimSample> pose = skel->makePoseArray();
+        AnimSampleBuffer sample_buf(skel.get());
         //std::vector<AnimSample> zero_pose = skel->makePoseArray();
         //_resource->sample_remapped(pose, .0f, mapping);
-        _resource->sample_remapped(pose, cursor, ref_skel.get(), mapping);
+        _resource->sample_remapped(sample_buf, prev_cursor, cursor, ref_skel.get(), mapping);
 
         ktNode* root = scn.getRoot();
 
@@ -177,13 +177,19 @@ void DocAnim::onGui(Editor* ed, float dt) {
             ktNode* node = scn.findObject(bone.name);
             tgt_nodes[i] = node;
         }
-        for(size_t i = 0; i < pose.size(); ++i) {
+        for(size_t i = 0; i < sample_buf.sampleCount(); ++i) {
             auto n = tgt_nodes[i];
             if(n) {
-                n->getTransform()->setPosition(pose[i].t);
-                n->getTransform()->setRotation(pose[i].r);
-                n->getTransform()->setScale(pose[i].s);
+                n->getTransform()->setPosition(sample_buf[i].t);
+                n->getTransform()->setRotation(sample_buf[i].r);
+                n->getTransform()->setScale(sample_buf[i].s);
             }
+        }
+
+        if(_resource->enable_root_motion_t_xz && _resource->root_motion_node_index >= 0) {
+            gfxm::vec3 rm_t = sample_buf.getRootMotionDelta().t;
+            rm_t.y = .0f;
+            root->getTransform()->translate(rm_t);
         }
 
         /*

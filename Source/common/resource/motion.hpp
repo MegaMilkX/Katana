@@ -6,6 +6,7 @@
 
 #include "skeleton.hpp"
 #include "../scene/game_scene.hpp"
+#include "../resource/animation.hpp"
 
 #include <memory>
 
@@ -175,9 +176,9 @@ public:
         return blackboard;
     }
 
-    void update(float dt, std::vector<AnimSample>& samples) {
+    void update(float dt, AnimSampleBuffer& sample_buffer) {
         if(animator) {
-            animator->update(dt, samples);
+            animator->update(dt, sample_buffer);
         }
     }
     AnimSample getRootMotion() {

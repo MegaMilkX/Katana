@@ -35,6 +35,15 @@ STATIC_RUN(BLEND_TREE_NODES) {
 }
 
 
+void Blend3Job::onInit(BlendTree* bt) {
+    bind<Pose>(&pose);
+    if (!bt->getMotion()->getSkeleton()) {
+        return;
+    }
+    pose.sample_buffer = AnimSampleBuffer(bt->getMotion()->getSkeleton().get());
+}
+
+
 SingleAnimJob::SingleAnimJob() {
 }
 
@@ -46,7 +55,7 @@ void SingleAnimJob::onInit(BlendTree* bt) {
 void SingleAnimJob::onInvoke() {
     if(!ready) return;
 
-    anim->sample_remapped(pose.samples, graph->getCursor() * anim->length, graph->getMotion()->getSkeleton().get(), mapping);
+    anim->sample_remapped(pose.sample_buffer, graph->getPrevCursor() * anim->length, graph->getCursor() * anim->length, graph->getMotion()->getSkeleton().get(), mapping);
     pose.speed = anim->fps / anim->length;
 }
 
@@ -59,7 +68,7 @@ void SingleAnimJob::onGui() {
 void SingleAnimJob::tryInit() {
     auto skel = graph->getMotion()->getSkeleton();
     if(skel) {
-        pose.samples = skel->makePoseArray();
+        pose.sample_buffer = AnimSampleBuffer(skel.get());
     }
     if(skel && anim) {
         mapping = anim->getMapping(skel.get());

@@ -43,7 +43,7 @@ void DocMotion::setReferenceObject(ktNode* node) {
     auto skel_ref = scn.find<SkeletonRef>();
     if(skel_ref && skel_ref->skeleton) {
         _resource->rebuild(skel_ref->skeleton);
-        sample_buffer.resize(skel_ref->skeleton->boneCount());
+        sample_buf = AnimSampleBuffer(skel_ref->skeleton.get());
     }
 
     cam_pivot = 0;
@@ -94,34 +94,19 @@ void DocMotion::onGui(Editor* ed, float dt) {
 
         tgt_nodes.resize(skel->boneCount());
 
-        _resource->update(dt, sample_buffer);
+        _resource->update(dt, sample_buf);
 
         for(size_t i = 0; i < skel->boneCount(); ++i) {
             auto& bone = skel->getBone(i);
             ktNode* node = scn.findObject(bone.name);
             tgt_nodes[i] = node;
         }
-        for(size_t i = 0; i < sample_buffer.size(); ++i) {
+        for(size_t i = 0; i < sample_buf.sampleCount(); ++i) {
             auto n = tgt_nodes[i];
-            if(n == root_motion_node) {
-                ktNode* root = scn.getRoot();
-
-                gfxm::vec3 pos_diff = sample_buffer[i].t - root_motion_pos;
-                pos_diff = root->getTransform()->getWorldTransform() * gfxm::vec4(pos_diff, 0.0f);
-                //gfxm::quat rot_diff = gfxm::inverse(root_motion_rot) * sample_buffer[i].r;
-
-    
-                root->getTransform()->translate(pos_diff);
-                //root->getTransform()->rotate(rot_diff);
-
-                root_motion_pos = sample_buffer[i].t;
-                root_motion_rot = sample_buffer[i].r;
-                continue;
-            }
             if(n) {
-                n->getTransform()->setPosition(sample_buffer[i].t);
-                n->getTransform()->setRotation(sample_buffer[i].r);
-                n->getTransform()->setScale(sample_buffer[i].s);
+                n->getTransform()->setPosition(sample_buf[i].t);
+                n->getTransform()->setRotation(sample_buf[i].r);
+                n->getTransform()->setScale(sample_buf[i].s);
             }
         }
 
@@ -157,7 +142,7 @@ void DocMotion::onGuiToolbox(Editor* ed) {
     imguiResourceTreeCombo("skeleton", _resource->skeleton, "skl", [this](){
         _resource->rebuild(_resource->skeleton);
 
-        sample_buffer.resize(_resource->skeleton->boneCount());
+        sample_buf = AnimSampleBuffer(_resource->skeleton.get());
     });
     imguiObjectCombo("camera pivot", cam_pivot, &scn, [](){
 

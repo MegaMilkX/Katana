@@ -159,32 +159,55 @@ static gfxm::mat4 getParentTransform(Skeleton* skeleton, const std::vector<AnimS
             gfxm::translate(gfxm::mat4(1.0f), samples[chain[i]].t)
             * gfxm::to_mat4(samples[chain[i]].r)
             * gfxm::scale(gfxm::mat4(1.0f), samples[chain[i]].s);
-        m = m * lcl;
+        m = lcl * m;
     }
     return m;
 }
 
 void Animation::sample_remapped(
-    std::vector<AnimSample>& samples,
+    AnimSampleBuffer& sample_buffer,
+    float prev_cursor,
     float cursor,
     Skeleton* skeleton,
     const std::vector<int32_t>& mapping
 ) {
-    sample_remapped(samples, cursor, mapping);
+    sample_remapped(sample_buffer.getSamples(), cursor, mapping);
 
     if(root_motion_node_index >= 0) {
         if(enable_root_motion_t_xz) {
             int32_t rm_bone_id = mapping[root_motion_node_index];
 
+            AnimSampleBuffer zero_pose(skeleton);
+            AnimSampleBuffer last_pose(skeleton);
+            sample_remapped(zero_pose.getSamples(), .0f, mapping);
+            sample_remapped(last_pose.getSamples(), length, mapping);
+            gfxm::mat4 m_rm_zero_parent = ::getParentTransform(skeleton, zero_pose.getSamples(), rm_bone_id);
+            gfxm::mat4 m_rm_last_parent = ::getParentTransform(skeleton, last_pose.getSamples(), rm_bone_id);
+            gfxm::vec3 rm_zero_world_t = m_rm_zero_parent * gfxm::vec4(zero_pose[rm_bone_id].t, 1.0f);
+            gfxm::vec3 rm_last_world_t = m_rm_last_parent * gfxm::vec4(last_pose[rm_bone_id].t, 1.0f);
+
+            // Get prev pose
+            AnimSampleBuffer prev_pose(skeleton);
+            sample_remapped(prev_pose.getSamples(), prev_cursor, mapping);
+            gfxm::mat4 m_rm_prev_parent = ::getParentTransform(skeleton, prev_pose.getSamples(), rm_bone_id);
+            gfxm::vec3 rm_prev_world_t = m_rm_prev_parent * gfxm::vec4(prev_pose[rm_bone_id].t, 1.0f);
+
+            //
             int root_of_rm_src_index = skeleton->getRootOf(rm_bone_id);
             
-            gfxm::mat4 m_rm_parent = ::getParentTransform(skeleton, samples, rm_bone_id);
-            gfxm::vec3 rm_world_t = m_rm_parent * gfxm::vec4(samples[rm_bone_id].t, 1.0f);
-            gfxm::vec3 rm_parent_world_t = m_rm_parent * gfxm::vec4(.0f, .0f, .0f, 1.0f);
+            gfxm::mat4 m_rm_parent = ::getParentTransform(skeleton, sample_buffer.getSamples(), rm_bone_id);
+            gfxm::vec3 rm_world_t = m_rm_parent * gfxm::vec4(sample_buffer[rm_bone_id].t, 1.0f);
 
-            auto& t = samples[root_of_rm_src_index].t;
+            auto& t = sample_buffer[root_of_rm_src_index].t;
             t.x -= rm_world_t.x;
             t.z -= rm_world_t.z;
+
+            if(prev_cursor <= cursor) {
+                sample_buffer.getRootMotionDelta().t = (rm_world_t - rm_prev_world_t) * skeleton->scale_factor;
+            } else {
+                sample_buffer.getRootMotionDelta().t =
+                    ((rm_last_world_t - rm_prev_world_t) + (rm_world_t - rm_zero_world_t)) * skeleton->scale_factor;
+            }
         }
     }
 }

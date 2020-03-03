@@ -21,12 +21,19 @@ class AnimSampleBuffer {
     AnimSample root_motion_delta_sample;
 
 public:
+    AnimSampleBuffer() {
+        root_motion_delta_sample.s = gfxm::vec3(0,0,0);
+    }
     AnimSampleBuffer(Skeleton* skeleton) {
         this->skeleton = skeleton;
         samples = skeleton->makePoseArray();
+        root_motion_delta_sample.s = gfxm::vec3(0,0,0);
     }
     int sampleCount() const {
         return samples.size();
+    }
+    std::vector<AnimSample>& getSamples() {
+        return samples;
     }
     AnimSample& operator[](int i) {
         return samples[i];
@@ -98,7 +105,8 @@ public:
     void                 sample_one(int node_id, float cursor, AnimSample& sample);
 
     void                 sample_remapped(
-        std::vector<AnimSample>& samples,
+        AnimSampleBuffer& sample_buffer,
+        float prev_cursor,
         float cursor,
         Skeleton* skeleton,
         const std::vector<int32_t>& remap

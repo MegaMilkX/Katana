@@ -10,17 +10,14 @@
 class BlendTree;
 
 struct Pose {
-    std::vector<AnimSample> samples;
-    AnimSample              root_motion;
+    AnimSampleBuffer        sample_buffer;
     float                   speed = 1.0f;
 };
 
 class Blend3Job : public JobNode<Blend3Job, BlendTree> {
     Pose pose;
 public:
-    void onInit(BlendTree*) override {
-        bind<Pose>(&pose);
-    }
+    void onInit(BlendTree* bt) override;
     void onInvoke() override {
         Pose& a = get<Pose>(0);
         Pose& b = get<Pose>(1);
@@ -48,17 +45,18 @@ public:
 
         const Pose* _a = array[left_idx];
         const Pose* _b = array[right_idx];
-        if (_a->samples.empty() || _b->samples.empty()) {
+        if (_a->sample_buffer.sampleCount() == 0 || _b->sample_buffer.sampleCount() == 0) {
             return;
         }
 
-        pose.samples.resize(_a->samples.size());
-        for(size_t i = 0; i < pose.samples.size(); ++i) {
-            pose.samples[i].t = gfxm::lerp(_a->samples[i].t, _b->samples[i].t, lr_weight);
-            pose.samples[i].r = gfxm::slerp(_a->samples[i].r, _b->samples[i].r, lr_weight);
-            pose.samples[i].s = gfxm::lerp(_a->samples[i].s, _b->samples[i].s, lr_weight);
+        for(size_t i = 0; i < pose.sample_buffer.sampleCount(); ++i) {
+            pose.sample_buffer[i].t = gfxm::lerp(_a->sample_buffer[i].t, _b->sample_buffer[i].t, lr_weight);
+            pose.sample_buffer[i].r = gfxm::slerp(_a->sample_buffer[i].r, _b->sample_buffer[i].r, lr_weight);
+            pose.sample_buffer[i].s = gfxm::lerp(_a->sample_buffer[i].s, _b->sample_buffer[i].s, lr_weight);
         }
         pose.speed = gfxm::lerp(_a->speed, _b->speed, lr_weight);
+
+        pose.sample_buffer.getRootMotionDelta().t = gfxm::lerp(_a->sample_buffer.getRootMotionDelta().t, _b->sample_buffer.getRootMotionDelta().t, lr_weight);
     }
 };
 

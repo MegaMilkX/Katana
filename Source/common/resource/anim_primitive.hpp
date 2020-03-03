@@ -2,6 +2,7 @@
 #define ANIM_PRIMITIVE_HPP
 
 #include "skeleton.hpp"
+#include "animation.hpp"
 
 enum ANIMATOR_TYPE {
     ANIMATOR_UNKNOWN,
@@ -21,7 +22,7 @@ public:
     virtual Motion* getMotion() = 0;
 
     virtual void rebuild() = 0;
-    virtual void update(float dt, std::vector<AnimSample>& samples) = 0;
+    virtual void update(float dt, AnimSampleBuffer& sample_buffer) = 0;
     virtual AnimSample getRootMotion() = 0;
 
     virtual void write(out_stream& out) = 0;

@@ -29,6 +29,7 @@ protected:
     gfxm::vec2                      editor_pos;
     std::set<AnimFSMTransition*>    out_transitions;
 
+    float                           prev_cursor = .0f;
     float                           cursor = .0f; // normalized
 
 public:
@@ -51,7 +52,7 @@ public:
 
     virtual void       rebuild() = 0;
 
-    virtual void       update(float dt, std::vector<AnimSample>& samples, Skeleton* skeleton, float weight) = 0;
+    virtual void       update(float dt, AnimSampleBuffer& sample_buffer, Skeleton* skeleton, float weight) = 0;
 
     virtual void       write(out_stream& out) = 0;
     virtual void       read(in_stream& in)    = 0;
@@ -67,7 +68,7 @@ public:
 
     void rebuild() override;
 
-    void update(float dt, std::vector<AnimSample>& samples, Skeleton* skeleton, float weight) override;
+    void update(float dt, AnimSampleBuffer& sample_buffer, Skeleton* skeleton, float weight) override;
 
     ANIM_FSM_STATE_TYPE getType() const override;
     void onGuiToolbox() override;
@@ -85,7 +86,7 @@ public:
 
     void rebuild() override;
 
-    void update(float dt, std::vector<AnimSample>& samples, Skeleton* skeleton, float weight) override;
+    void update(float dt, AnimSampleBuffer& sample_buffer, Skeleton* skeleton, float weight) override;
 
     ANIM_FSM_STATE_TYPE getType() const override;
     void onGuiToolbox() override;
@@ -103,7 +104,7 @@ public:
 
     void rebuild() override;
 
-    void update(float dt, std::vector<AnimSample>& samples, Skeleton* skeleton, float weight) override;
+    void update(float dt, AnimSampleBuffer& sample_buffer, Skeleton* skeleton, float weight) override;
 
     ANIM_FSM_STATE_TYPE getType() const override;
     void onGuiToolbox() override;

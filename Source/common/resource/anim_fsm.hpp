@@ -83,7 +83,7 @@ public:
 
     AnimFSMState*                               getCurrentAction();
 
-    void update(float dt, std::vector<AnimSample>& samples) override;
+    void update(float dt, AnimSampleBuffer& sample_buffer) override;
     AnimSample getRootMotion() override { return AnimSample(); }
 
     void write(out_stream& out) override;

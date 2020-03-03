@@ -612,6 +612,7 @@ bool ModelSource::deserialize(in_stream& in, size_t sz) {
 
     scene->Name(scene_name + ".so");
     if(skeleton) {
+        skeleton->scale_factor = (float)scaleFactor;
         skeleton->Name(scene_name + ".skl");
         scene->getRoot()->get<SkeletonRef>()->skeleton = skeleton;
     }

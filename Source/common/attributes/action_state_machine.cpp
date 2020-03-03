@@ -7,11 +7,11 @@
 
 void ActionStateMachine::resizeSampleBuffer() {
     if(!skeleton) {
-        sample_buffer.clear();
+        sample_buffer = AnimSampleBuffer();
         return;
     }
-    sample_buffer.resize(skeleton->boneCount());
-    for(auto& s : sample_buffer) {
+    sample_buffer = AnimSampleBuffer(skeleton.get());
+    for(auto& s : sample_buffer.getSamples()) {
         s.r = gfxm::quat(.0f, .0f, .0f, 1.0f);
         s.s = gfxm::vec3(1.0f, 1.0f, 1.0f);
     }
@@ -44,7 +44,7 @@ void ActionStateMachine::update(float dt) {
     
     motion.update(dt, sample_buffer);
 
-    assert(skeleton_nodes.size() == sample_buffer.size());
+    assert(skeleton_nodes.size() == sample_buffer.sampleCount());
     for(size_t i = 0; i < skeleton_nodes.size(); ++i) {
         auto n = skeleton_nodes[i];
         if(!n) continue;
