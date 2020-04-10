@@ -4,6 +4,7 @@ R"(#version 450
 
 in vec3 Position;
 in vec2 UV;
+in vec4 ColorRGBA;
 in vec3 Normal;
 in vec3 Tangent;
 in vec3 Bitangent;
@@ -11,6 +12,7 @@ in vec4 BoneIndex4;
 in vec4 BoneWeight4;
 
 out vec2 uv_frag;
+out vec4 vertex_rgba;
 out vec3 normal_model;
 out vec3 frag_pos_screen;
 out vec4 base_color;

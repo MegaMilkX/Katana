@@ -1,5 +1,6 @@
 R"(#version 450
     in vec2 uv_frag;
+    in vec4 vertex_rgba;
     in vec3 normal_model;
     in vec3 frag_pos_screen;
     in vec4 base_color;
@@ -23,7 +24,7 @@ R"(#version 450
         vec4 t = texture(tex_albedo, uv_frag);
         t = t * base_color;
 
-        out_albedo = vec4(t.xyz * u_tint, t.w);
+        out_albedo = vec4(t.xyz * u_tint, t.w) * vertex_rgba;
         if (out_albedo.a < 0.8) {
             discard;
         }

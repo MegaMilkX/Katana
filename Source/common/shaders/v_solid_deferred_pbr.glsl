@@ -2,11 +2,13 @@ R"(#version 450
 
     in vec3 Position;
     in vec2 UV;
+    in vec4 ColorRGBA;
     in vec3 Normal;
     in vec3 Tangent;
     in vec3 Bitangent;
 
     out vec2 uv_frag;
+    out vec4 vertex_rgba;
     out vec3 normal_model;
     out vec3 frag_pos_screen;
     out vec4 base_color;
@@ -22,6 +24,8 @@ R"(#version 450
 
     void main()
     {
+        vertex_rgba = ColorRGBA;
+        
         view_pos = (inverse(uCommon3d.view) * vec4(0,0,0,1)).xyz;
 
         normal_model = normalize ((mat_model * vec4(Normal, 0.0)).xyz);

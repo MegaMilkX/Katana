@@ -19,7 +19,7 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
     std::vector<float> tangent;
     std::vector<float> bitangent;
     std::vector<std::vector<float>> uv_layers;
-    std::vector<std::vector<float>> rgb_layers;
+    std::vector<std::vector<uint8_t>> rgb_layers;
     std::vector<gfxm::vec4> boneIndices;
     std::vector<gfxm::vec4> boneWeights;
 
@@ -31,6 +31,15 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
         }
     }
     uv_layers.resize(uv_layer_count);
+
+    size_t rgb_layer_count = 0;
+    for(auto ai_m : ai_meshes) {
+        for(unsigned j = 0; j < AI_MAX_NUMBER_OF_COLOR_SETS; ++j) {
+            if(!ai_m->HasVertexColors(j)) break;
+            if(rgb_layer_count == j) rgb_layer_count++;
+        }
+    }
+    rgb_layers.resize(rgb_layer_count);
 
     uint32_t indexOffset = 0;
     uint32_t baseIndexValue = 0;
@@ -83,6 +92,25 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
                 dummy_uv.resize(vertexCount * 2);
                 uv_layers[j].insert(uv_layers[j].end(), dummy_uv.begin(), dummy_uv.end());
             }
+        }
+        for(unsigned j = 0; j < rgb_layer_count; ++j) {
+            if(ai_m->HasVertexColors(j)) {
+                std::vector<uint8_t> rgb_layer;
+                for(unsigned k = 0; k < vertexCount; ++k) {
+                    aiColor4D& rgb = ai_m->mColors[j][k];
+                    rgb_layer.emplace_back(255 * rgb.r);
+                    rgb_layer.emplace_back(255 * rgb.g);
+                    rgb_layer.emplace_back(255 * rgb.b);
+                    rgb_layer.emplace_back(255 * rgb.a);
+                }
+                rgb_layers[j].insert(rgb_layers[j].end(), rgb_layer.begin(), rgb_layer.end());
+            } else {
+                std::vector<uint8_t> dummy_rgb(vertexCount * 4, 255);
+                rgb_layers[j].insert(rgb_layers[j].end(), dummy_rgb.begin(), dummy_rgb.end());
+            }
+        }
+        if (rgb_layer_count == 0) {
+            rgb_layers.push_back(std::vector<uint8_t>(vertexCount * 4, 255));
         }
 
         if(ai_m->mNumBones) {
@@ -138,6 +166,9 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
     }
     if(uv_layers.size() > 0) {
         mesh->mesh.setAttribData(gl::UV, uv_layers[0].data(), uv_layers[0].size() * sizeof(float));
+    }
+    if(rgb_layers.size() > 0) {
+        mesh->mesh.setAttribData(gl::COLOR_RGBA, rgb_layers[0].data(), rgb_layers[0].size() * sizeof(uint8_t));
     }
     if(!boneIndices.empty() && !boneWeights.empty()) {
         mesh->mesh.setAttribData(gl::BONE_INDEX4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4));
