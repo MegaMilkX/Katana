@@ -23,6 +23,7 @@ public:
     CubeMap();
     ~CubeMap();
 
+    void resize(int width, int height);
     void data(void* data, int width, int height, int bpp);
 
     void makeIrradianceMap(std::shared_ptr<CubeMap> map);

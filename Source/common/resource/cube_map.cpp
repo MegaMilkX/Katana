@@ -15,6 +15,18 @@ CubeMap::~CubeMap() {
     glDeleteTextures(1, &glId);
 }
 
+void CubeMap::resize(int width, int height)
+{
+    glBindTexture(GL_TEXTURE_CUBE_MAP, glId);
+    for(unsigned i = 0; i < 6; ++i) {
+        glTexImage2D(
+            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+            0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0
+        );
+    }
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+}
+
 void CubeMap::data(void* data, int width, int height, int bpp) {
     const int side = 512;
 
@@ -54,20 +66,7 @@ void CubeMap::data(void* data, int width, int height, int bpp) {
 
     glActiveTexture(GL_TEXTURE0);
 
-    glBindTexture(GL_TEXTURE_CUBE_MAP, glId);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    for(unsigned i = 0; i < 6; ++i) {
-        glTexImage2D(
-            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-            0, GL_RGB, side, side, 0, GL_RGB, GL_UNSIGNED_BYTE, 0
-        );
-    }
-    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    resize(side, side);
 
     GLuint capFbo;
     glGenFramebuffers(1, &capFbo);
@@ -127,8 +126,8 @@ void CubeMap::data(void* data, int width, int height, int bpp) {
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
     glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 */
-    glDeleteFramebuffers(1, &capFbo);
     glDeleteRenderbuffers(1, &capRbo);
+    glDeleteFramebuffers(1, &capFbo);
 }
 
 void CubeMap::makeIrradianceMap(std::shared_ptr<CubeMap> map) {

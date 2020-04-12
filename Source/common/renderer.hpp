@@ -13,6 +13,7 @@
 #include "draw_list.hpp"
 
 #include "gl/uniform_buffers.hpp"
+#include "gl/cube_map.hpp"
 
 #include "util/animation/curve.h"
 
@@ -106,6 +107,8 @@ public:
 
             glBindVertexArray(e.vao);
             glDrawElements(GL_TRIANGLES, e.indexCount, GL_UNSIGNED_INT, (GLvoid*)e.indexOffset);
+            GLenum err = glGetError();
+            assert(err == GL_NO_ERROR);
         }
     }
     template<typename T>
@@ -124,6 +127,8 @@ public:
 
             glBindVertexArray(e.vao);
             glDrawElements(GL_TRIANGLES, e.indexCount, GL_UNSIGNED_INT, (GLvoid*)e.indexOffset);
+            GLenum err = glGetError();
+            assert(err == GL_NO_ERROR);
         }
     }
 
@@ -150,17 +155,27 @@ protected:
     std::shared_ptr<Texture2D> tex_ibl_brdf_lut;
     std::shared_ptr<CubeMap> env_map;
     std::shared_ptr<CubeMap> irradiance_map;
-};  
+};
+
+
+#define RENDERER_PBR_SHADOW_CUBEMAP_COUNT 4
+#define RENDERER_PBR_SHADOW_CUBEMAP_SIZE 512
 
 class RendererPBR : public Renderer {
     gl::ShaderProgram* prog_gbuf_solid;
     gl::ShaderProgram* prog_gbuf_skin;
     gl::ShaderProgram* prog_light_pass;
 
+    gl::ShaderProgram* prog_shadowmap_solid;
+    gl::ShaderProgram* prog_shadowmap_skin;
+
+    gl::CubeMap shadow_cubemaps[RENDERER_PBR_SHADOW_CUBEMAP_COUNT];
+
 public:
     RendererPBR();
 
     virtual void draw(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen = false, bool draw_skybox = true);
+    void drawShadowCubeMap(gl::CubeMap* cube_map, const gfxm::vec3& world_pos, const DrawList& draw_list);
 };
 
 #endif

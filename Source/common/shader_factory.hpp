@@ -4,6 +4,7 @@
 #include <string>
 #include <memory>
 #include <map>
+#include <assert.h>
 #include "gl/shader_program.h"
 #include "gl/indexed_mesh.hpp"
 #include "gl/texture.hpp"
@@ -47,10 +48,12 @@ public:
             fs.source(fsource);
             if(!vs.compile()) {
                 LOG_WARN("Failed to compile vertex shader for program '" << name << "'");
+                assert(false);
                 return 0;
             }
             if(!fs.compile()) {
                 LOG_WARN("Failed to compile fragment shader for program '" << name << "'");
+                assert(false);
                 return 0;
             }
 
@@ -67,6 +70,7 @@ public:
             prog->bindFragData(0, "out_frag");
             if(!prog->link()) {
                 LOG_WARN("Failed to link program '" << name << "'");
+                assert(false);
                 return 0;
             }
             prog->use();
@@ -83,6 +87,9 @@ public:
             if((u = prog->getUniform("tex_ext0"))) glUniform1i(u, gl::TEXTURE_EXT0);
             if((u = prog->getUniform("tex_ext1"))) glUniform1i(u, gl::TEXTURE_EXT1);
             if((u = prog->getUniform("tex_ext2"))) glUniform1i(u, gl::TEXTURE_EXT2);
+            if((u = prog->getUniform("tex_shadowmap_omni[0]"))) glUniform1i(u, gl::TEXTURE_SHADOW_CUBEMAP_0);
+            if((u = prog->getUniform("tex_shadowmap_omni[1]"))) glUniform1i(u, gl::TEXTURE_SHADOW_CUBEMAP_1);
+            if((u = prog->getUniform("tex_shadowmap_omni[2]"))) glUniform1i(u, gl::TEXTURE_SHADOW_CUBEMAP_2);
 
             if((u = prog->getUniform("tex_0"))) glUniform1i(u, gl::TEXTURE_0);
             if((u = prog->getUniform("tex_1"))) glUniform1i(u, gl::TEXTURE_1);
@@ -106,6 +113,7 @@ public:
 
             if(!prog->validate()) {
                 LOG_WARN("Failed to validate shader program '" << name << "'");
+                assert(false);
             }
             glUseProgram(0);
 

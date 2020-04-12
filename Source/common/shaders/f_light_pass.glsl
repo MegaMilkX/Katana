@@ -2,6 +2,8 @@ R"(#version 450
 #define MAX_OMNI_LIGHT 10
 #define MAX_DIR_LIGHT 3
 
+#define MAX_OMNI_SHADOWMAP 4
+
 in vec2 uv_frag;
 
 out vec4 fragOut;
@@ -15,18 +17,20 @@ uniform samplerCube tex_environment;
 uniform samplerCube tex_ext1;
 uniform sampler2D tex_ext0;
 
+uniform samplerCube tex_shadowmap_omni[MAX_OMNI_SHADOWMAP];
+
 uniform mat4 inverse_view_projection;
 uniform vec2 viewport_size;
 
 uniform vec3 view_pos;
 
-uniform int light_omni_count;
-uniform vec3 light_omni_pos[MAX_OMNI_LIGHT];
-uniform vec3 light_omni_col[MAX_OMNI_LIGHT];
+uniform int   light_omni_count;
+uniform vec3  light_omni_pos[MAX_OMNI_LIGHT];
+uniform vec3  light_omni_col[MAX_OMNI_LIGHT];
 uniform float light_omni_radius[MAX_OMNI_LIGHT];
-uniform int light_dir_count;
-uniform vec3 light_dir[MAX_DIR_LIGHT];
-uniform vec3 light_dir_col[MAX_DIR_LIGHT];
+uniform int   light_dir_count;
+uniform vec3  light_dir[MAX_DIR_LIGHT];
+uniform vec3  light_dir_col[MAX_DIR_LIGHT];
 
 const float PI = 3.14159265359;
 
@@ -141,6 +145,17 @@ vec3 calcLightSource(
     return (kD * albedo / PI + specular) * radiance * NdotL;
 }
 
+float VectorToDepthValue(vec3 Vec)
+{
+    vec3 AbsVec = abs(Vec);
+    float LocalZcomp = max(AbsVec.x, max(AbsVec.y, AbsVec.z));
+
+    const float f = 1000.0;
+    const float n = 0.1;
+    float NormZComp = (f+n) / (f-n) - (2*f*n)/(f-n)/LocalZcomp;
+    return (NormZComp + 1.0) * 0.5;
+}
+
 void main()
 {
     float depth = texture(tex_depth, uv_frag).x;
@@ -168,9 +183,21 @@ void main()
         );
     }
     for(int i = 0; i < light_omni_count; ++i) {
-        Lo += calcLightSource(
+        vec3 Lo_lcl = calcLightSource(
             light_omni_pos[i], light_omni_col[i], light_omni_radius[i], position, albedo, roughness, metallic, N, V, F0
         );
+
+        if(i < MAX_OMNI_SHADOWMAP) {
+            vec3 light_to_surface = position - light_omni_pos[i];
+            float distance = length(light_to_surface);
+            float sm_depth = texture(tex_shadowmap_omni[i], normalize(light_to_surface)).r;
+            float calc_depth = VectorToDepthValue(light_to_surface);
+            if(calc_depth < sm_depth + 0.0005) {
+                Lo += Lo_lcl;
+            }
+        } else {
+            Lo += Lo_lcl;
+        }
     }
     
     
