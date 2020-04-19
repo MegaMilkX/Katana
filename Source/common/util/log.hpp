@@ -71,6 +71,15 @@ private:
                     strftime(buffer, 32, "%H:%M:%S", &ptm); 
                     lines_copy.pop();
 
+                    HANDLE  hConsole;	
+                    hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+                    if(e.type == Log::Type::LOG_INFO) {
+                        SetConsoleTextAttribute(hConsole, 7);
+                    } else if(e.type == Log::Type::LOG_WARN) {
+                        SetConsoleTextAttribute(hConsole, 0xE);
+                    } else if(e.type == Log::Type::LOG_ERROR) {
+                        SetConsoleTextAttribute(hConsole, 0xC);
+                    }
                     std::string str = static_cast<std::ostringstream&>(
                         std::ostringstream() << _typeToString(e.type) 
                         << " | " << buffer 
