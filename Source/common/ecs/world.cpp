@@ -23,7 +23,7 @@ void ecsWorld::removeEntity(entity_id id) {
     for(auto& sys : systems) {
         // Signal this entity as an empty one
         auto e = entities.deref(id);
-        sys->attribsRemoved(this, id, e->getAttribBits(), 0);
+        sys->attribsRemoved(this, id, e->getAttribBits(), e->getAttribBits());
     }
 
     *entities.deref(id) = ecsEntity();

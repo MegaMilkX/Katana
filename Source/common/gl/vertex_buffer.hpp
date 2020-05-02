@@ -3,6 +3,7 @@
 
 #include "glextutil.h"
 #include "error.hpp"
+#include <assert.h>
 
 namespace gl {
 
@@ -32,6 +33,31 @@ public:
     void bind() {
         glBindBuffer(GL_ARRAY_BUFFER, id);
         GL_LOG_ERROR("glBindBuffer");
+    }
+
+    bool extractData(void* dest, int offset, int sz) {
+        assert(dest);
+        assert(sz + offset <= getDataSize());
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        GLuint copy_buf;
+        glGenBuffers(1, &copy_buf);
+
+        glBindBuffer(GL_COPY_WRITE_BUFFER, copy_buf);
+        glBufferData(GL_COPY_WRITE_BUFFER, sz, 0, GL_DYNAMIC_READ);
+
+        glBindBuffer(GL_COPY_READ_BUFFER, id);
+
+        glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, offset, 0, sz);
+
+        void* ptr = glMapBufferRange(GL_COPY_WRITE_BUFFER, 0, sz, GL_MAP_READ_BIT);
+        assert(ptr);
+
+        memcpy(dest, ptr, sz);
+
+        glDeleteBuffers(1, &copy_buf);
+        return true;
     }
 
     size_t getDataSize() {

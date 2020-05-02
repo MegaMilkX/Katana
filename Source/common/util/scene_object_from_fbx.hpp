@@ -181,19 +181,19 @@ inline void meshesFromAssimpScene(
 
         // TODO: Preload before building to retain extra data
         std::shared_ptr<Mesh> mesh_ref(new Mesh());
-        mesh_ref->mesh.setAttribData(gl::POSITION, vertices.data(), vertices.size() * sizeof(float));
+        mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Position, vertices.data(), vertices.size() * sizeof(float));
         if(normal_layers.size() > 0) {
-            mesh_ref->mesh.setAttribData(gl::NORMAL, normal_layers[0].data(), normal_layers[0].size() * sizeof(float));
+            mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Normal, normal_layers[0].data(), normal_layers[0].size() * sizeof(float));
         }
         if(uv_layers.size() > 0) {
-            mesh_ref->mesh.setAttribData(gl::UV, uv_layers[0].data(), uv_layers[0].size() * sizeof(float));
+            mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::UV, uv_layers[0].data(), uv_layers[0].size() * sizeof(float));
         }
         if(!boneIndices.empty() && !boneWeights.empty()) {
-            mesh_ref->mesh.setAttribData(gl::BONE_INDEX4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4));
-            mesh_ref->mesh.setAttribData(gl::BONE_WEIGHT4, boneWeights.data(), boneWeights.size() * sizeof(gfxm::vec4));
+            mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::BoneIndex4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4));
+            mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::BoneWeight4, boneWeights.data(), boneWeights.size() * sizeof(gfxm::vec4));
         }
-        mesh_ref->mesh.setAttribData(gl::TANGENT, tangent.data(), tangent.size() * sizeof(float));
-        mesh_ref->mesh.setAttribData(gl::BITANGENT, bitangent.data(), bitangent.size() * sizeof(float));
+        mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Tangent, tangent.data(), tangent.size() * sizeof(float));
+        mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Bitangent, bitangent.data(), bitangent.size() * sizeof(float));
 
         mesh_ref->mesh.setIndices(indices.data(), indices.size());
 

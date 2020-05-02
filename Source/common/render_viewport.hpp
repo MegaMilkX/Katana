@@ -11,7 +11,7 @@ public:
 
     }
     void init(unsigned w, unsigned h) {
-        fb_fin.pushBuffer(GL_RGB, GL_UNSIGNED_BYTE);
+        fb_fin.addBuffer(0, GL_RGB, GL_UNSIGNED_BYTE);
         resize(w, h);
         width = w;
         height = h;

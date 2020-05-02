@@ -48,7 +48,8 @@ public:
     }
     
     void onUpdate() {
-        for(auto t : get_array<ecsTupleAnimatedSubScene>()) {
+        auto& arr = get_array<ecsTupleAnimatedSubScene>();
+        for(auto t : arr) {
             auto animator = t->get<ecsSubSceneAnimator>();
             if(!animator->motion_ref) {
                 continue;

@@ -15,7 +15,7 @@
 static ImGuiContext* imGuiCtx;
 static GLuint imGuiVBuf;
 static GLuint imGuiIBuf;
-static std::shared_ptr<gl::ShaderProgram> imGuiProgram;
+static gl::ShaderProgram* imGuiProgram;
 static GLuint imGuiTexture2d;
 
 
@@ -95,7 +95,7 @@ void ImGuiInit() {
         "}\n");
     vs.compile();
     fs.compile();
-    imGuiProgram.reset(new gl::ShaderProgram());
+    imGuiProgram = new gl::ShaderProgram();
     imGuiProgram->attachShader(&vs);
     imGuiProgram->attachShader(&fs);
     imGuiProgram->bindAttrib(0, "Position");
@@ -129,10 +129,13 @@ void ImGuiDraw() {
     glActiveTexture(GL_TEXTURE0);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
     glEnable(GL_SCISSOR_TEST);
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     ImGuiIO& io = ImGui::GetIO();
     int fb_width = (int)(io.DisplaySize.x * io.DisplayFramebufferScale.x);

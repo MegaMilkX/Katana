@@ -4,6 +4,7 @@ R"(#version 450
 
 in vec3 Position;
 in vec2 UV;
+in vec2 UVLightmap;
 in vec4 ColorRGBA;
 in vec3 Normal;
 in vec3 Tangent;
@@ -12,6 +13,7 @@ in vec4 BoneIndex4;
 in vec4 BoneWeight4;
 
 out vec2 uv_frag;
+out vec2 uv_lightmap_frag;
 out vec4 vertex_rgba;
 out vec3 normal_model;
 out vec3 frag_pos_screen;
@@ -32,6 +34,8 @@ layout (std140) uniform uBones_t {
 
 void main()
 {
+    vertex_rgba = ColorRGBA;
+
     view_pos = (inverse(uCommon3d.view) * vec4(0,0,0,1)).xyz;
 
     ivec4 bi = ivec4(
@@ -86,7 +90,8 @@ void main()
     vec4 pos_screen = uCommon3d.projection * uCommon3d.view * pos_model; 
 
     frag_pos_screen = vec3(pos_screen);  
-    uv_frag = UV;  
+    uv_frag = UV;
+    uv_lightmap_frag = UVLightmap;
     
     base_color = vec4(1.0, 1.0, 1.0, 1.0);
     gl_Position = pos_screen ;

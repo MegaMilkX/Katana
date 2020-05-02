@@ -7,6 +7,8 @@
 #include "../attribs/transform.hpp"
 #include "../attribs/base_attribs.hpp"
 
+#include "../../lib/xatlas/xatlas.h"
+
 
 static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_meshes) {
     std::shared_ptr<Mesh> mesh;
@@ -160,22 +162,135 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
         baseIndexValue += vertexCount;
     }
 
-    mesh->mesh.setAttribData(gl::POSITION, vertices.data(), vertices.size() * sizeof(float));
+    
+    // Generate cool uv map TODO: Remove 
+    /*
+    {
+        xatlas::Atlas* atlas = xatlas::Create();
+
+        xatlas::MeshDecl meshDecl = { 0 };
+        meshDecl.vertexCount = vertices.size() / 3;
+        meshDecl.indexCount = indices.size();
+        meshDecl.vertexPositionData = vertices.data();
+        meshDecl.vertexPositionStride = sizeof(float) * 3;
+        meshDecl.indexData = indices.data();
+        meshDecl.indexFormat = xatlas::IndexFormat::UInt32;
+
+        auto ret = xatlas::AddMesh(atlas, meshDecl);
+        assert(ret == xatlas::AddMeshError::Success);
+
+        xatlas::ComputeCharts(atlas);
+        xatlas::ParameterizeCharts(atlas);
+        xatlas::PackCharts(atlas);
+
+        std::vector<float> new_verts;
+        std::vector<uint32_t> new_indices;
+        std::vector<std::vector<float>> new_normal_layers;
+        new_normal_layers.resize(normal_layers.size());
+        std::vector<float> new_tangent;
+        std::vector<float> new_bitangent;
+        std::vector<std::vector<float>> new_uv_layers;
+        new_uv_layers.resize(uv_layers.size());
+        std::vector<std::vector<uint8_t>> new_rgb_layers;
+        new_rgb_layers.resize(rgb_layers.size());
+        std::vector<gfxm::vec4> new_boneIndices;
+        std::vector<gfxm::vec4> new_boneWeights;
+        std::vector<float> xuv_layer;
+        int offset = 0;
+        for(int i = 0; i < atlas->meshCount; ++i) {
+            int xvertexCount = atlas->meshes[i].vertexCount;
+            int xindexCount = atlas->meshes[i].indexCount;
+            // Alloc buffer space
+            new_verts.resize(new_verts.size() + xvertexCount * 3);
+            for(int j = 0; j < new_normal_layers.size(); ++j) {
+                new_normal_layers[j].resize(new_normal_layers.size() + xvertexCount * 3);
+            }
+            new_tangent.resize(new_tangent.size() + xvertexCount * 3);
+            new_bitangent.resize(new_bitangent.size() + xvertexCount * 3);
+            for(int j = 0; j < new_uv_layers.size(); ++j) {
+                new_uv_layers[j].resize(new_uv_layers.size() + xvertexCount * 2);
+            }
+            for(int j = 0; j < new_rgb_layers.size(); ++j) {
+                new_rgb_layers[j].resize(new_rgb_layers.size() + xvertexCount * 4);
+            }
+            if (boneIndices.size() && boneWeights.size()) {
+                new_boneIndices.resize(new_boneIndices.size() + xvertexCount * 4);
+                new_boneWeights.resize(new_boneWeights.size() + xvertexCount * 4);
+            }
+            xuv_layer.resize(xuv_layer.size() + xvertexCount * 2);
+
+            // Copy data
+            for (int j = 0; j < xindexCount; ++j) {
+                new_indices.push_back(offset + atlas->meshes[i].indexArray[j]);
+            }
+            xatlas::Vertex* xvertices = atlas->meshes[i].vertexArray;
+            for(int j = 0; j < xvertexCount; ++j) {
+                xuv_layer[offset + 2 * j] = xvertices[j].uv[0] / atlas->width;
+                xuv_layer[offset + 2 * j + 1] = xvertices[j].uv[1] / atlas->height;
+
+                memcpy(&new_verts[offset + 3 * j], &vertices[xvertices[j].xref * 3], sizeof(float) * 3);
+                for(int k = 0; k < new_normal_layers.size(); ++k) {
+                    memcpy(&new_normal_layers[k][offset + 3 * j], &normal_layers[k][xvertices[j].xref * 3], sizeof(float) * 3);
+                }
+                memcpy(&new_tangent[offset + 3 * j], &tangent[xvertices[j].xref * 3], sizeof(float) * 3);
+                memcpy(&new_bitangent[offset + 3 * j], &bitangent[xvertices[j].xref * 3], sizeof(float) * 3);
+                for(int k = 0; k < new_uv_layers.size(); ++k) {
+                    memcpy(&new_uv_layers[k][offset + 2 * j], &uv_layers[k][xvertices[j].xref * 2], sizeof(float) * 2);
+                }
+                for(int k = 0; k < new_rgb_layers.size(); ++k) {
+                    memcpy(&new_rgb_layers[k][offset + 4 * j], &rgb_layers[k][xvertices[j].xref * 4], sizeof(uint8_t) * 4);
+                }
+                if (boneIndices.size() && boneWeights.size()) {
+                    memcpy(&new_boneIndices[offset + 4 * j], &boneIndices[xvertices[j].xref * 4], sizeof(float) * 4);
+                    memcpy(&new_boneWeights[offset + 4 * j], &boneWeights[xvertices[j].xref * 4], sizeof(float) * 4);
+                }
+            }
+
+            offset += atlas->meshes[i].vertexCount * 3;
+        }
+
+        xatlas::Destroy(atlas);
+
+        std::swap(indices, new_indices);
+        std::swap(vertices, new_verts);
+        for(int j = 0; j < new_normal_layers.size(); ++j) {
+            std::swap(normal_layers[j], new_normal_layers[j]);
+        }
+        std::swap(tangent, new_tangent);
+        std::swap(bitangent, new_bitangent);
+        for(int j = 0; j < new_uv_layers.size(); ++j) {
+            std::swap(uv_layers[j], new_uv_layers[j]);
+        }
+        for(int j = 0; j < new_rgb_layers.size(); ++j) {
+            std::swap(rgb_layers[j], new_rgb_layers[j]);
+        }
+        std::swap(boneIndices, new_boneIndices);
+        std::swap(boneWeights, new_boneWeights);
+
+        if (uv_layers.empty()) {
+            uv_layers.emplace_back(xuv_layer);
+        } else {
+            std::swap(uv_layers[0], xuv_layer);
+        }
+
+    }*/
+
+    mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Position, vertices.data(), vertices.size() * sizeof(float));
     if(normal_layers.size() > 0) {
-        mesh->mesh.setAttribData(gl::NORMAL, normal_layers[0].data(), normal_layers[0].size() * sizeof(float));
+        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Normal, normal_layers[0].data(), normal_layers[0].size() * sizeof(float));
     }
     if(uv_layers.size() > 0) {
-        mesh->mesh.setAttribData(gl::UV, uv_layers[0].data(), uv_layers[0].size() * sizeof(float));
+        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::UV, uv_layers[0].data(), uv_layers[0].size() * sizeof(float));
     }
     if(rgb_layers.size() > 0) {
-        mesh->mesh.setAttribData(gl::COLOR_RGBA, rgb_layers[0].data(), rgb_layers[0].size() * sizeof(uint8_t));
+        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::ColorRGBA, rgb_layers[0].data(), rgb_layers[0].size() * sizeof(uint8_t));
     }
     if(!boneIndices.empty() && !boneWeights.empty()) {
-        mesh->mesh.setAttribData(gl::BONE_INDEX4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4));
-        mesh->mesh.setAttribData(gl::BONE_WEIGHT4, boneWeights.data(), boneWeights.size() * sizeof(gfxm::vec4));
+        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::BoneIndex4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4));
+        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::BoneWeight4, boneWeights.data(), boneWeights.size() * sizeof(gfxm::vec4));
     }
-    mesh->mesh.setAttribData(gl::TANGENT, tangent.data(), tangent.size() * sizeof(float));
-    mesh->mesh.setAttribData(gl::BITANGENT, bitangent.data(), bitangent.size() * sizeof(float));
+    mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Tangent, tangent.data(), tangent.size() * sizeof(float));
+    mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Bitangent, bitangent.data(), bitangent.size() * sizeof(float));
 
     mesh->mesh.setIndices(indices.data(), indices.size());
 

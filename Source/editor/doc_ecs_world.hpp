@@ -39,6 +39,60 @@
 
 #include "../common/util/filesystem.hpp"
 
+#include "../util/lightmap/gen_lightmaps.hpp"
+
+
+struct CursorData {
+    gfxm::vec2 posScreen;
+    gfxm::vec3 pos;
+    gfxm::vec3 xy_plane_pos;
+    gfxm::vec3 normal;
+};
+
+struct SpawnTweakData {
+    CursorData cursor;
+    CursorData cursor_start;
+
+    gfxm::vec2 screen_delta;
+    gfxm::vec3 world_delta;
+    gfxm::vec3 plane_xy_delta;
+};
+
+
+typedef CursorData(*spawn_tweak_cb_t)(ecsEntityHandle, const SpawnTweakData&);
+
+class SpawnTweakStage {
+    ecsEntityHandle e;
+    SpawnTweakData spawn_tweak_data;
+    spawn_tweak_cb_t cb;
+
+public:
+    SpawnTweakStage(ecsEntityHandle e, const CursorData& base_cursor, spawn_tweak_cb_t cb)
+    : e(e), cb(cb) {
+        spawn_tweak_data.cursor_start = base_cursor;
+    }
+
+    void updateCursorData(const CursorData& cursor_data) {
+        spawn_tweak_data.cursor = cursor_data;
+        spawn_tweak_data.world_delta = cursor_data.pos - spawn_tweak_data.cursor_start.pos;
+        spawn_tweak_data.screen_delta = cursor_data.posScreen - spawn_tweak_data.cursor_start.posScreen;
+        spawn_tweak_data.plane_xy_delta = cursor_data.xy_plane_pos - spawn_tweak_data.cursor_start.xy_plane_pos;
+    }
+
+    void setBaseCursor(const CursorData& cd) {
+        spawn_tweak_data.cursor_start = cd;
+    }
+
+    CursorData update(const CursorData& cursor_data) {
+        updateCursorData(cursor_data);
+        return update();
+    }
+
+    CursorData update() {
+        return cb(e, spawn_tweak_data);
+    }
+};
+
 class DocEcsWorld : public EditorDocumentTyped<ecsWorld>, public InputListenerWrap {
     std::vector<ecsWorld*> subscene_stack;
     ecsWorld* cur_world;
@@ -52,6 +106,10 @@ class DocEcsWorld : public EditorDocumentTyped<ecsWorld>, public InputListenerWr
     gl::FrameBuffer fb_blur;
     gl::FrameBuffer fb_silhouette;
     gl::FrameBuffer fb_pick;
+
+    CursorData                        cursor_data;
+    std::vector<SpawnTweakStage>      spawn_tweak_stage_stack;
+    int                               cur_tweak_stage_id = 0;
 
 public:
     DocEcsWorld() {
@@ -70,10 +128,10 @@ public:
         ent.getAttrib<ecsVelocity>();
 
         gvp.camMode(GuiViewport::CAM_PAN);
-        fb_silhouette.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
-        fb_outline.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
-        fb_blur.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
-        fb_pick.pushBuffer(GL_RGB, GL_UNSIGNED_INT);
+        fb_silhouette.addBuffer(0, GL_RED, GL_UNSIGNED_BYTE);
+        fb_outline.addBuffer(0, GL_RED, GL_UNSIGNED_BYTE);
+        fb_blur.addBuffer(0, GL_RED, GL_UNSIGNED_BYTE);
+        fb_pick.addBuffer(0, GL_RGB, GL_UNSIGNED_INT);
 
         bindActionPress("ALT", [this](){ 
             gvp.camMode(GuiViewport::CAM_ORBIT); 
@@ -117,8 +175,77 @@ public:
         DrawList dl_silhouette;
         renderSys->fillDrawList(dl_silhouette, selected_ent);
 
+        ImGuiID createPopupId = ImGui::GetID("CreatePopupMenu");
+
         ImGui::BeginChild(ImGui::GetID("Toolbar0"), ImVec2(0, 32));
-        ImGui::Button("Btn0", ImVec2(32, 32));
+        
+        if(ImGui::Button("Create", ImVec2(0, 32))) {
+            if(!ImGui::IsPopupOpen(createPopupId)) {
+                ImGui::OpenPopupEx(createPopupId);
+            }
+        }
+        ImGui::SameLine();
+        if(ImGui::Button("Bake Lightmaps", ImVec2(0, 32))) {
+            auto entities = renderSys->get_array<ecsTuple<ecsWorldTransform, ecsMeshes>>();
+            std::vector<LightmapMeshData> mesh_data;
+            for(auto& e : entities) {
+                auto m = e->get<ecsMeshes>();
+                for(auto& seg : m->segments) {
+                    if(!seg.mesh) {
+                        continue;
+                    }
+                    if(!seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)
+                        || !seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::Normal)
+                        || !seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::Position)
+                    ) {
+                        continue;
+                    }
+
+                    mesh_data.resize(mesh_data.size() + 1);
+                    auto& md = mesh_data.back();
+
+                    md.transform = e->get<ecsWorldTransform>()->transform;
+                    md.tex_width = 256;
+                    md.tex_height = 256;
+                    md.position.resize(seg.mesh->vertexCount() * 3);
+                    seg.mesh->mesh.copyAttribData(VERTEX_FMT::ENUM_GENERIC::Position, md.position.data());
+                    md.normal.resize(seg.mesh->vertexCount() * 3);
+                    seg.mesh->mesh.copyAttribData(VERTEX_FMT::ENUM_GENERIC::Normal, md.normal.data());
+                    md.uv_lightmap.resize(seg.mesh->vertexCount() * 2);
+                    seg.mesh->mesh.copyAttribData(VERTEX_FMT::ENUM_GENERIC::UVLightmap, md.uv_lightmap.data());
+                    md.indices.resize(seg.mesh->indexCount());
+                    seg.mesh->mesh.copyIndexData(md.indices.data());
+                    md.segment = &seg;
+                }
+            }
+
+            // TODO: USE SEPARATE GBUFFER WTF
+            GenLightmaps(mesh_data, gvp.getRenderer(), gvp.getViewport()->getGBuffer(), dl);
+
+            int i = 0;
+            for(auto& e : entities) {
+                auto m = e->get<ecsMeshes>();
+                for(auto& seg : m->segments) {
+                    if(!seg.mesh) {
+                        continue;
+                    }
+                    if(!seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)
+                        || !seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::Normal)
+                        || !seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::Position)
+                    ) {
+                        continue;
+                    }
+
+                    seg.lightmap = mesh_data[i].lightmap;
+                    
+                    ++i;
+                }
+            }
+        }
+        ImGui::SameLine();
+        if(ImGui::Button("Reload Shaders", ImVec2(0, 32))) {
+            shaderLoader().reloadAll();
+        }
         ImGui::SameLine();
         ImGui::Button("Btn1", ImVec2(32, 32));
         ImGui::SameLine();
@@ -128,6 +255,42 @@ public:
         ImGui::SameLine();
         ImGui::Button("Btn4", ImVec2(32, 32));
         ImGui::EndChild();
+
+        {
+            ImGuiWindowFlags window_flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_Popup | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings;
+            
+            if(ImGui::BeginPopupEx(createPopupId, window_flags)) {
+                if (ImGui::MenuItem("Omni Light")) {
+                    ecsEntityHandle hdl = _resource->createEntity();
+                    hdl.getAttrib<ecsTranslation>();
+                    hdl.getAttrib<ecsWorldTransform>();
+                    hdl.getAttrib<ecsLightOmni>();
+                    selected_ent = hdl.getId();
+
+                    spawn_tweak_stage_stack.push_back(SpawnTweakStage(
+                        hdl, cursor_data, [](ecsEntityHandle e, const SpawnTweakData& c){
+                            e.getAttrib<ecsTranslation>()->setPosition(c.cursor.pos + c.cursor.normal * 0.5f);
+                            CursorData cd = c.cursor_start;
+                            cd.pos = e.getAttrib<ecsTranslation>()->getPosition();
+                            return cd;
+                        }
+                    ));
+                    spawn_tweak_stage_stack.push_back(SpawnTweakStage(
+                        hdl, cursor_data, [](ecsEntityHandle e, const SpawnTweakData& c){
+                            e.getAttrib<ecsLightOmni>()->radius = gfxm::length(c.world_delta);
+                            return c.cursor_start;
+                        }
+                    ));
+                    spawn_tweak_stage_stack.push_back(SpawnTweakStage(
+                        hdl, cursor_data, [](ecsEntityHandle e, const SpawnTweakData& c){
+                            e.getAttrib<ecsLightOmni>()->intensity = gfxm::length(c.world_delta) * 10.0f;
+                            return c.cursor_start;
+                        }
+                    ));
+                }
+                ImGui::EndPopup();
+            }            
+        }
 
         // === RENDERING ===
 
@@ -148,7 +311,7 @@ public:
             fb_blur.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
             fb_pick.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
 
-            gvp.getRenderer()->drawSilhouettes(&fb_silhouette, dl_silhouette);
+            gvp.getRenderer()->drawSilhouettes(&fb_silhouette, gvp.getProjection(), gvp.getView(), dl_silhouette);
             blur(&fb_outline, fb_silhouette.getTextureId(0), gfxm::vec2(1, 0));
             blur(&fb_blur, fb_outline.getTextureId(0), gfxm::vec2(0, 1));
             blur(&fb_outline, fb_blur.getTextureId(0), gfxm::vec2(1, 0));
@@ -156,27 +319,47 @@ public:
             cutout(&fb_outline, fb_blur.getTextureId(0), fb_silhouette.getTextureId(0));
             overlay(gvp.getViewport()->getFinalBuffer(), fb_outline.getTextureId(0));
 
+            auto mpos = gvp.getMousePos();
             if(gvp.isMouseClicked(0)) {
-                auto mpos = gvp.getMousePos();
-                gvp.getRenderer()->drawPickPuffer(&fb_pick, dl);
-                
-                uint32_t pix = 0;
-                uint32_t err_pix = 0xFFFFFF;
-                glReadPixels(mpos.x, mpos.y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &pix);
-                if(pix == err_pix) {
-                    selected_ent = 0;
-                } else if(pix < dl.solids.size()) {
-                    entity_id ent = (entity_id)dl.solids[pix].object_ptr;
-                    selected_ent = ent;
-                    LOG("PICKED_SOLID: " << pix);
+                if(cur_tweak_stage_id < spawn_tweak_stage_stack.size()) {
+                    ++cur_tweak_stage_id;
+                    if(cur_tweak_stage_id == spawn_tweak_stage_stack.size()) {
+                        cur_tweak_stage_id = 0;
+                        spawn_tweak_stage_stack.clear();
+                    }
                 } else {
-                    entity_id ent = (entity_id)dl.skins[pix - dl.solids.size()].object_ptr;
-                    selected_ent = ent;
-                    LOG("PICKED_SKIN: " << pix - dl.solids.size());
+                    gvp.getRenderer()->drawPickPuffer(&fb_pick, gvp.getProjection(), gvp.getView(), dl);
+                    
+                    uint32_t pix = 0;
+                    uint32_t err_pix = 0xFFFFFF;
+                    glReadPixels(mpos.x, mpos.y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &pix);
+                    if(pix == err_pix) {
+                        selected_ent = 0;
+                    } else if(pix < dl.solids.size()) {
+                        entity_id ent = (entity_id)dl.solids[pix].object_ptr;
+                        selected_ent = ent;
+                        LOG("PICKED_SOLID: " << pix);
+                    } else {
+                        entity_id ent = (entity_id)dl.skins[pix - dl.solids.size()].object_ptr;
+                        selected_ent = ent;
+                        LOG("PICKED_SKIN: " << pix - dl.solids.size());
+                    }
                 }
             }
         }
         gvp.end();
+
+        cursor_data.normal = gvp.getCursor3dNormal();
+        cursor_data.pos = gvp.getCursor3d();
+        cursor_data.xy_plane_pos = gvp.getCursorXYPlane();
+        if(cur_tweak_stage_id < spawn_tweak_stage_stack.size()) {
+            // TODO:
+            CursorData cd = spawn_tweak_stage_stack[cur_tweak_stage_id].update(cursor_data);
+            if(cur_tweak_stage_id + 1 < spawn_tweak_stage_stack.size()) {
+                spawn_tweak_stage_stack[cur_tweak_stage_id + 1].setBaseCursor(cd);
+            }
+        }
+
         if(ImGui::BeginPopupContextWindow()) {
             ImGui::MenuItem("Create entity...");
             ImGui::MenuItem("Instantiate");
@@ -201,6 +384,13 @@ public:
                     cur_world->createAttrib<ecsName>(ent);
                     cur_world->getAttrib<ecsName>(ent)->name = node->getName();
                     selected_ent = ent;
+
+                    spawn_tweak_stage_stack.push_back(SpawnTweakStage(
+                        ecsEntityHandle(cur_world, selected_ent), cursor_data, [](ecsEntityHandle e, const SpawnTweakData& c){
+                            e.getAttrib<ecsTranslation>()->setPosition(c.cursor.pos + c.cursor.normal * 0.5f);
+                            return c.cursor_start;
+                        }
+                    ));
                 }
             }
             ImGui::EndDragDropTarget();

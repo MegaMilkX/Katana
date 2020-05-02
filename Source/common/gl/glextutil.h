@@ -32,9 +32,16 @@ extern PFNGLBINDBUFFERPROC glBindBuffer;
 extern PFNGLBUFFERDATAPROC glBufferData;
 extern PFNGLBUFFERSUBDATAPROC glBufferSubData;
 extern PFNGLGETBUFFERSUBDATAPROC glGetBufferSubData;
+extern PFNGLCOPYBUFFERSUBDATAPROC glCopyBufferSubData;
+extern PFNGLMAPBUFFERRANGEPROC glMapBufferRange;
+extern PFNGLUNMAPBUFFERPROC glUnmapBuffer;
 
 extern PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
 extern PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray;
+
+extern PFNGLGENTRANSFORMFEEDBACKSPROC glGenTransformFeedbacks;
+extern PFNGLDELETETRANSFORMFEEDBACKSPROC glDeleteTransformFeedbacks;
+extern PFNGLBINDTRANSFORMFEEDBACKPROC glBindTransformFeedback;
 
 extern PFNGLCREATESHADERPROC glCreateShader;
 extern PFNGLSHADERSOURCEPROC glShaderSource;
@@ -52,6 +59,7 @@ extern PFNGLLINKPROGRAMPROC glLinkProgram;
 extern PFNGLUSEPROGRAMPROC glUseProgram;
 extern PFNGLDELETEPROGRAMPROC glDeleteProgram;
 extern PFNGLVALIDATEPROGRAMPROC glValidateProgram;
+extern PFNGLGETATTACHEDSHADERSPROC glGetAttachedShaders;
 
 extern PFNGLUNIFORM1FPROC glUniform1f;
 extern PFNGLUNIFORM2FPROC glUniform2f;
@@ -133,6 +141,19 @@ extern PFNGLFRAMEBUFFERTEXTURE2DPROC glFramebufferTexture2D;
 extern PFNGLGETUNIFORMBLOCKINDEXPROC glGetUniformBlockIndex;
 extern PFNGLBINDBUFFERBASEPROC glBindBufferBase;
 extern PFNGLUNIFORMBLOCKBINDINGPROC glUniformBlockBinding;
+
+//========================
+// Transform feedback
+//========================
+extern PFNGLBEGINTRANSFORMFEEDBACKPROC glBeginTransformFeedback;
+extern PFNGLENDTRANSFORMFEEDBACKPROC   glEndTransformFeedback;
+
+extern PFNGLTRANSFORMFEEDBACKVARYINGSPROC glTransformFeedbackVaryings;
+
+extern PFNGLDISPATCHCOMPUTEPROC glDispatchCompute;
+extern PFNGLDISPATCHCOMPUTEGROUPSIZEARBPROC glDispatchComputeGroupSizeARB;
+
+extern PFNGLMEMORYBARRIERPROC glMemoryBarrier;
 
 void WGLEXTLoadFunctions();
 void GLEXTLoadFunctions();

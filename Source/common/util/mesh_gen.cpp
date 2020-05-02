@@ -49,7 +49,7 @@ void makeSphere(gl::IndexedMesh* mesh, float radius, int segments) {
         }
     }
 
-    mesh->setAttribData(gl::POSITION, vertices.data(), vertices.size() * sizeof(gfxm::vec3));
+    mesh->setAttribData(VERTEX_FMT::ENUM_GENERIC::Position, vertices.data(), vertices.size() * sizeof(gfxm::vec3));
     mesh->setIndices(indices.data(), indices.size());
 }
 

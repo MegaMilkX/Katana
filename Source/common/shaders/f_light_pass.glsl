@@ -13,6 +13,7 @@ uniform sampler2D tex_depth;
 uniform sampler2D tex_normal;
 uniform sampler2D tex_metallic;
 uniform sampler2D tex_roughness;
+uniform sampler2D tex_lightness;
 uniform samplerCube tex_environment;
 uniform samplerCube tex_ext1;
 uniform sampler2D tex_ext0;
@@ -177,6 +178,8 @@ void main()
     F0 = mix(F0, albedo, metallic);
 
     vec3 Lo = vec3(0.0);
+    Lo += texture(tex_lightness, uv_frag).xyz;
+    
     for(int i = 0; i < light_dir_count; ++i) {
         Lo += calcLightDir(
             light_dir[i], light_dir_col[i], position, albedo, roughness, metallic, N, V, F0

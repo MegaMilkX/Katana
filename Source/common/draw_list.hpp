@@ -20,6 +20,7 @@ public:
     size_t indexOffset = 0;
     size_t indexCount = 0;
     void* object_ptr = 0;
+    Texture2D* lightmap = 0;
 };
 
 class DrawCmdSolid : public DrawCmd {

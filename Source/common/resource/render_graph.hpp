@@ -28,7 +28,7 @@ class RenderJobFrameBuffer : public JobNode<RenderJobFrameBuffer, JobGraph> {
     gl::FrameBuffer* fb_ptr = &fb;
 public:
     void onInit(JobGraph*) {
-        fb.pushBuffer(GL_RGB, GL_UNSIGNED_BYTE);
+        fb.addBuffer(0, GL_RGB, GL_UNSIGNED_BYTE);
         fb.reinitBuffers(640, 480);
         bind<gl::FrameBuffer*>(&fb_ptr);
     }

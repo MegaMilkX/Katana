@@ -109,6 +109,8 @@ public:
         
     }
 };
+
+#include "../../util/geom/gen_lightmap_uv.hpp"
 class ecsMeshes : public ecsAttrib<ecsMeshes> {
 public:
     struct SkinData {
@@ -120,6 +122,7 @@ public:
         uint8_t               submesh_index;
         std::shared_ptr<Material> material;
         std::shared_ptr<SkinData> skin_data;
+        std::shared_ptr<Texture2D> lightmap;
     };
 
     std::vector<Segment> segments;
@@ -138,6 +141,17 @@ public:
     }
 
     virtual void onGui(ecsWorld* world, entity_id ent) {
+        if(ImGui::Button("Gen Lightmap UV Layer", ImVec2(ImGui::GetWindowContentRegionWidth(), .0f))) {
+            std::set<Mesh*> unique_meshes;
+            for(auto& seg : segments) {
+                unique_meshes.insert(seg.mesh.get());
+            }
+
+            for(auto& m : unique_meshes) {
+                GenLightmapUV(m);
+            }
+        }
+        
         for(size_t i = 0; i < segmentCount(); ++i) {
             auto& seg = getSegment(i);
 
@@ -160,6 +174,23 @@ public:
                 imguiResourceTreeCombo(MKSTR("material##" << i).c_str(), seg.material, "mat", [this](){
                     LOG("Material changed");
                 });
+                if(seg.lightmap) {
+                    ImGui::Image(
+                        (ImTextureID)seg.lightmap->GetGlName(), ImVec2(100, 100), 
+                        ImVec2(0, 1), ImVec2(1, 0)
+                    );
+                }
+                imguiResourceTreeCombo(MKSTR("lightmap##" << i).c_str(), seg.lightmap, "png", [this](){
+                    LOG("lightmap changed");
+                });
+                if(seg.mesh) {
+                    ImGui::Text("Attributes:");
+                    for(int j = 0; j < VERTEX_FMT::GENERIC::attribCount(); ++j) {
+                        if(seg.mesh->mesh.getAttribBuffer(j)) {
+                            ImGui::Text(MKSTR(VERTEX_FMT::GENERIC::getAttribDesc(j).name).c_str());
+                        }
+                    }
+                }
                 if(seg_removed) {
                     removeSegment(i);
                 }

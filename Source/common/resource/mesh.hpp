@@ -23,8 +23,9 @@ public:
 
     void makeAabb() {
        std::vector<gfxm::vec3> vertices;
-       vertices.resize(mesh.getAttribDataSize(gl::POSITION) / sizeof(gfxm::vec3));
-       mesh.copyAttribData(gl::POSITION, vertices.data());
+       auto& desc = VERTEX_FMT::GENERIC::getAttribDesc(VERTEX_FMT::ENUM_GENERIC::Position);
+       vertices.resize(mesh.getAttribDataSize(VERTEX_FMT::ENUM_GENERIC::Position) / (desc.elem_size * desc.count));
+       mesh.copyAttribData(VERTEX_FMT::ENUM_GENERIC::Position, vertices.data());
 
        if (!vertices.empty()) {
           aabb.from = vertices[0];

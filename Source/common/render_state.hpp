@@ -81,22 +81,13 @@ public:
             if(m->roughness) textures[3] = m->roughness->GetGlName();
             tint = m->tint;
         }
-        glActiveTexture(GL_TEXTURE0 + 0);
-        glBindTexture(GL_TEXTURE_2D, textures[0]);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glActiveTexture(GL_TEXTURE0 + 1);
-        glBindTexture(GL_TEXTURE_2D, textures[1]);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glActiveTexture(GL_TEXTURE0 + 2);
-        glBindTexture(GL_TEXTURE_2D, textures[2]);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glActiveTexture(GL_TEXTURE0 + 3);
-        glBindTexture(GL_TEXTURE_2D, textures[3]);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        gl::bindTexture2d(gl::TEXTURE_ALBEDO, textures[0]);
+        gl::bindTexture2d(gl::TEXTURE_NORMAL, textures[1]);
+        gl::bindTexture2d(gl::TEXTURE_METALLIC, textures[2]);
+        gl::bindTexture2d(gl::TEXTURE_ROUGHNESS, textures[3]);
+
+        //glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        //glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         
         glUniform3f(prog->getUniform("u_tint"), tint.x, tint.y, tint.z);
     }

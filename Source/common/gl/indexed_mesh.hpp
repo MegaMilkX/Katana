@@ -10,12 +10,15 @@
 
 #include "../util/data_stream.hpp"
 
-namespace gl {
+#include "../render/vertex_format.hpp"
 
+namespace gl {
+/*
 enum ATTRIB_INDEX {
     VERTEX_ATTRIB_FIRST = 0,
     POSITION = VERTEX_ATTRIB_FIRST,
     UV,
+    UV_LIGHTMAP,
     NORMAL,
     TANGENT,
     BITANGENT,
@@ -32,10 +35,46 @@ struct AttribDesc {
     GLboolean normalized;
 };
 
+inline const size_t getAttribElemTypeSize(GLenum type) {
+    size_t sz = 0;
+    switch(type) {
+    case GL_BYTE:
+    case GL_UNSIGNED_BYTE:
+        sz = 1;
+        break;
+    case GL_SHORT:
+    case GL_UNSIGNED_SHORT:
+        sz = 2;
+        break;
+    case GL_INT:
+    case GL_UNSIGNED_INT:
+        sz = 4;
+        break;
+    case GL_HALF_FLOAT:
+        sz = 2;
+        break;
+    case GL_FLOAT:
+        sz = 4;
+        break;
+    case GL_DOUBLE:
+        sz = 8;
+        break;
+    case GL_FIXED:
+    case GL_INT_2_10_10_10_REV:
+    case GL_UNSIGNED_INT_2_10_10_10_REV:
+    case GL_UNSIGNED_INT_10F_11F_11F_REV:
+    default:
+        assert(false);
+        break;
+    }
+    return sz;
+}
+
 inline const AttribDesc& getAttribDesc(ATTRIB_INDEX index) {
     static AttribDesc table[] = {
         { "Position", 3, GL_FLOAT, GL_FALSE },
         { "UV", 2, GL_FLOAT, GL_FALSE },
+        { "UVLightmap", 2, GL_FLOAT, GL_FALSE },
         { "Normal", 3, GL_FLOAT, GL_FALSE },
         { "Tangent", 3, GL_FLOAT, GL_FALSE },
         { "Bitangent", 3, GL_FLOAT, GL_FALSE },
@@ -44,7 +83,7 @@ inline const AttribDesc& getAttribDesc(ATTRIB_INDEX index) {
         { "ColorRGBA", 4, GL_UNSIGNED_BYTE, GL_TRUE }
     };
     return table[index];
-}
+}*/
 
 class IndexedMesh {
 public:
@@ -54,11 +93,12 @@ public:
     ~IndexedMesh() {
         glDeleteVertexArrays(1, &id);
     }
-    void setAttribData(ATTRIB_INDEX index, void* data, size_t size) {
-        auto& inf = getAttribDesc(index);
-        setAttribData(index, data, size, inf.size, inf.type, inf.normalized);
+    void setAttribData(int index, void* data, size_t size) {
+        auto& inf = VERTEX_FMT::GENERIC::getAttribDesc(index);
+        setAttribData(index, data, size, inf.count, inf.gl_type, inf.normalized ? GL_TRUE : GL_FALSE);
     }
-    void setAttribData(ATTRIB_INDEX index, void* data, size_t size, GLint attrib_size, GLenum type, GLboolean normalized) {
+    void setAttribData(int index, void* data, size_t size, GLint attrib_size, GLenum type, GLboolean normalized) {
+        assert(size);
         attribs[index].reset(new gl::VertexAttribBuffer());
         attribs[index]->data(data, size);
         glBindVertexArray(id);
@@ -74,13 +114,20 @@ public:
         indices.bind();
     }
 
-    size_t getAttribDataSize(ATTRIB_INDEX index) {
+    gl::VertexAttribBuffer* getAttribBuffer(int index) {
+        auto it = attribs.find(index);
+        if(it == attribs.end()) {
+            return 0;
+        }
+        return it->second.get();
+    }
+    size_t getAttribDataSize(int index) {
         if(attribs.count(index)) {
             return attribs[index]->getDataSize();
         }
         return 0;
     }
-    bool copyAttribData(ATTRIB_INDEX index, void* dest) {
+    bool copyAttribData(int index, void* dest) {
         if(attribs.count(index)) {
             return attribs[index]->copyData(dest, attribs[index]->getDataSize());
         }
@@ -144,13 +191,13 @@ public:
             buf.resize(data_size);
             in.read((char*)buf.data(), buf.size());
 
-            auto& attrDesc = getAttribDesc((ATTRIB_INDEX)attrib_id_ui8);
+            auto& desc = VERTEX_FMT::GENERIC::getAttribDesc(attrib_id_ui8);
             setAttribData(
-                (ATTRIB_INDEX)attrib_id_ui8, 
+                (int)attrib_id_ui8, 
                 buf.data(), buf.size(),
-                attrDesc.size,
-                attrDesc.type,
-                attrDesc.normalized
+                desc.count,
+                desc.gl_type,
+                desc.normalized ? GL_TRUE : GL_FALSE
             );
         }
 
@@ -163,7 +210,7 @@ public:
     }
 private:
     GLuint id;
-    std::map<ATTRIB_INDEX, std::shared_ptr<gl::VertexAttribBuffer>> attribs;
+    std::map<int, std::shared_ptr<gl::VertexAttribBuffer>> attribs;
     gl::IndexBuffer indices;
     size_t index_count = 0;
 };

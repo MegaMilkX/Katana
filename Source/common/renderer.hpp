@@ -4,7 +4,7 @@
 #include "render_viewport.hpp"
 #include "gfxm.hpp"
 #include "gl/indexed_mesh.hpp"
-#include "shader_factory.hpp"
+#include "render/shader_loader.hpp"
 #include "resource/texture2d.h"
 #include "resource/cube_map.hpp"
 
@@ -27,6 +27,10 @@ extern int dbg_renderBufferId;
 
 class ktWorld;
 class Renderer {
+protected:
+    std::shared_ptr<Texture2D> texture_white_px;
+    std::shared_ptr<Texture2D> texture_black_px;
+
 public:
     Renderer() {
         {
@@ -48,60 +52,54 @@ public:
         dstrm.setBuffer(std::vector<char>(ibl_brdf_lut_png, ibl_brdf_lut_png + sizeof(ibl_brdf_lut_png)));
         tex_ibl_brdf_lut->deserialize(dstrm, sizeof(ibl_brdf_lut_png));
 
-        prog_quad = ShaderFactory::getOrCreate(
-            "screen_quad",
-            #include "../common/shaders/v_screen_quad.glsl"
-            ,
-            #include "../common/shaders/f_plain_texture.glsl"
-        );
-        prog_skybox = ShaderFactory::getOrCreate(
-            "skybox",
-            #include "../common/shaders/v_skybox.glsl"
-            ,
-            #include "../common/shaders/f_skybox.glsl"
-        );
+        prog_quad = shaderLoader().loadShaderProgram("shaders/screen_quad.glsl");
+        prog_skybox = shaderLoader().loadShaderProgram("shaders/skybox.glsl");
 
-        prog_silhouette_solid = ShaderFactory::getOrCreate(
-            "silhouette_solid",
-            #include "../common/shaders/v_solid_deferred_pbr.glsl"
-            ,
-            #include "../common/shaders/debug_draw/triangle.frag"
-        );
-        prog_silhouette_skin = ShaderFactory::getOrCreate(
-            "silhouette_skin",
-            #include "../common/shaders/v_skin_deferred_pbr.glsl"
-            ,
-            #include "../common/shaders/debug_draw/triangle.frag"
-        );
+        prog_silhouette_solid = shaderLoader().loadShaderProgram("shaders/silhouette_solid.glsl");
+        prog_silhouette_skin = shaderLoader().loadShaderProgram("shaders/silhouette_skin.glsl");
 
-        prog_pick_solid = ShaderFactory::getOrCreate(
-            "pick_solid",
-            #include "../common/shaders/v_solid_deferred_pbr.glsl"
-            ,
-            #include "../common/shaders/pick.frag"
-        );
-        prog_pick_skin = ShaderFactory::getOrCreate(
-            "pick_skin",
-            #include "../common/shaders/v_skin_deferred_pbr.glsl"
-            ,
-            #include "../common/shaders/pick.frag"
-        );
+        prog_pick_solid = shaderLoader().loadShaderProgram("shaders/pick_solid.glsl");
+        prog_pick_skin = shaderLoader().loadShaderProgram("shaders/pick_skin.glsl");
+
+        texture_white_px.reset(new Texture2D());
+        unsigned char wht[3] = { 255, 255, 255 };
+        texture_white_px->Data(wht, 1, 1, 3);
+
+        texture_black_px.reset(new Texture2D());
+        unsigned char blk[3] = { 0, 0, 0 };
+        texture_black_px->Data(blk, 1, 1, 3);
     }
     virtual ~Renderer() {}
 
     RenderState& getState() { return state; }
 
-    void beginFrame(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view);
+    void setGlStates();
+    void setupUniformBuffers(const gfxm::mat4& proj, const gfxm::mat4& view);
+    void clear();
 
-    void endFrame(RenderViewport* vp, bool draw_final_on_screen, bool draw_skybox);
+    void beginFrame(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view);
+    void endFrame(GLint final_fb, const gfxm::mat4& view, const gfxm::mat4& proj, bool draw_skybox);
 
     template<typename T>
-    void drawMultiple(gl::ShaderProgram* p, const T* elements, size_t count) {
+    void drawMultiple(gl::ShaderProgram* p, const T* elements, size_t count, Texture2D* default_lightmap = 0) {
         getState().setProgram(p);
         for(size_t i = 0; i < count; ++i) {
             auto& e = elements[i];
 
             getState().setMaterial(e.material);
+
+            if(e.lightmap) {
+                gl::bindTexture2d(gl::TEXTURE_LIGHTMAP, e.lightmap->GetGlName());
+            } else {
+                if(default_lightmap) {
+                    gl::bindTexture2d(gl::TEXTURE_LIGHTMAP, default_lightmap->GetGlName());
+                } else {
+                    gl::bindTexture2d(gl::TEXTURE_LIGHTMAP, texture_white_px->GetGlName());
+                }
+            }
+
+            gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, irradiance_map->getId());
+            gl::bindCubeMap(gl::TEXTURE_EXT1, env_map->getId());
 
             e.bind(getState());
 
@@ -132,12 +130,12 @@ public:
         }
     }
 
-    void drawSilhouettes(gl::FrameBuffer* fb, const DrawList& dl);
-    void drawPickPuffer(gl::FrameBuffer* fb, const DrawList& dl);
+    void drawSilhouettes(gl::FrameBuffer* fb, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& dl);
+    void drawPickPuffer(gl::FrameBuffer* fb, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& dl);
     void drawWorld(RenderViewport* vp, ktWorld* world);
     void drawToScreen(GLuint textureId);
 
-    virtual void draw(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen = false, bool draw_skybox = true) = 0;
+    virtual void draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen = false, bool draw_skybox = true) = 0;
 
     void setSkyGradient(curve<gfxm::vec3> grad);
 protected:
@@ -164,18 +162,23 @@ protected:
 class RendererPBR : public Renderer {
     gl::ShaderProgram* prog_gbuf_solid;
     gl::ShaderProgram* prog_gbuf_skin;
-    gl::ShaderProgram* prog_light_pass;
+    gl::ShaderProgram* prog_light_omni;
+    gl::ShaderProgram* prog_deferred_final;
+    gl::ShaderProgram* prog_lightmap_sample;
 
     gl::ShaderProgram* prog_shadowmap_solid;
     gl::ShaderProgram* prog_shadowmap_skin;
 
-    gl::CubeMap shadow_cubemaps[RENDERER_PBR_SHADOW_CUBEMAP_COUNT];
+    gl::CubeMap shadowmap_cube;
 
 public:
     RendererPBR();
 
-    virtual void draw(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen = false, bool draw_skybox = true);
+    virtual void draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen = false, bool draw_skybox = true);
+    void draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& draw_list, GLint final_framebuffer_id, bool draw_skybox = true);
+    void sampleLightmap(const gfxm::ivec4& vp, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& dl);
     void drawShadowCubeMap(gl::CubeMap* cube_map, const gfxm::vec3& world_pos, const DrawList& draw_list);
+    
 };
 
 #endif

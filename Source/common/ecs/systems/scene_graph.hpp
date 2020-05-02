@@ -104,11 +104,18 @@ class ecsysSceneGraph : public ecsSystem<
         o->dirty_index = dirty_vec.size();
         dirty_vec.emplace_back(o); 
     }
-    void onUnfit(tupleTransform* o) {
+    void onUnfit(tupleTransform* o) {/*
         uint64_t current_index = o->dirty_index;
-        dirty_vec.back()->dirty_index = current_index;
+        dirty_vec.back()->setDirtyIndex(current_index);
         dirty_vec[current_index] = dirty_vec.back();
-        dirty_vec.resize(dirty_vec.size() - 1);
+        dirty_vec.resize(dirty_vec.size() - 1);*/
+        if (o->dirty_index < first_dirty_index) {
+            --first_dirty_index;
+        }
+        dirty_vec.erase(dirty_vec.begin() + o->dirty_index);
+        for (int i = o->dirty_index; i < dirty_vec.size(); ++i) {
+            dirty_vec[i]->setDirtyIndex(dirty_vec[i]->dirty_index - 1);
+        }
     }
 
     void onFit(ecsTuple<ecsParentTransform>* o) {
@@ -217,7 +224,7 @@ class ecsysSceneGraph : public ecsSystem<
 
         //first_dirty_index = o->;
         uint64_t current_index = o->dirty_index;
-        uint64_t new_index = first_dirty_index - 1;
+        uint64_t new_index = std::max((size_t)0, std::min(first_dirty_index - 1, dirty_vec.size() - 1));
         if(current_index >= first_dirty_index) {
             return;
         }

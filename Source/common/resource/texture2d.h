@@ -33,7 +33,18 @@ public:
     
     void Data(unsigned char* data, int width, int height, int bpp)
     {
+        elem_type = GL_UNSIGNED_BYTE;
         _data = std::vector<unsigned char>(data, data + bpp * width * height);
+        this->width = width;
+        this->height = height;
+        this->bpp = bpp;
+        dirty = true;
+    }
+
+    void Data(float* data, int width, int height, int bpp)
+    {
+        elem_type = GL_FLOAT;
+        _data = std::vector<unsigned char>((unsigned char*)data, (unsigned char*)(data + bpp * width * height));
         this->width = width;
         this->height = height;
         this->bpp = bpp;
@@ -81,6 +92,7 @@ private:
     int width, height;
     int bpp;
     GLuint glTexName;
+    GLenum elem_type = GL_UNSIGNED_BYTE;
     
     void _initGlData()
     {
@@ -116,7 +128,7 @@ private:
         GL_LOG_ERROR("glBindTexture");
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         GL_LOG_ERROR("glPixelStorei");
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, format, GL_UNSIGNED_BYTE, (const GLvoid*)_data.data());
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, format, elem_type, (const GLvoid*)_data.data());
         GL_LOG_ERROR("glTexImage2D");
         glGenerateMipmap(GL_TEXTURE_2D);
         GL_LOG_ERROR("glGenerateMipmap");

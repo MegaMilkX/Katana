@@ -8,16 +8,13 @@
 
 #include "../common/attributes/render_environment.hpp"
 
+#include "../common/render/shader_loader.hpp"
 
 static void drawOutline(gl::FrameBuffer* fb, GLuint texId) {
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    static gl::ShaderProgram* prog = ShaderFactory::getOrCreate(
-        "outline",
-        #include "shaders/v_quad.glsl"
-        ,
-        #include "shaders/f_outline.glsl"
-    );
+    glViewport(0, 0, fb->getWidth(), fb->getHeight());
+    static gl::ShaderProgram* prog = shaderLoader().loadShaderProgram("shaders/outline.glsl");
 
     fb->bind();
     glClear(GL_COLOR_BUFFER_BIT);
@@ -30,12 +27,8 @@ static void drawOutline(gl::FrameBuffer* fb, GLuint texId) {
 void blur(gl::FrameBuffer* fb, GLuint tex_0, const gfxm::vec2& dir) {
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    static gl::ShaderProgram* prog = ShaderFactory::getOrCreate(
-        "blur",
-        #include "shaders/v_quad.glsl"
-        ,
-        #include "shaders/f_blur.glsl"
-    );
+    glViewport(0, 0, fb->getWidth(), fb->getHeight());
+    static gl::ShaderProgram* prog = shaderLoader().loadShaderProgram("shaders/blur.glsl");
 
     fb->bind();
     glClear(GL_COLOR_BUFFER_BIT);
@@ -48,12 +41,8 @@ void blur(gl::FrameBuffer* fb, GLuint tex_0, const gfxm::vec2& dir) {
 void cutout(gl::FrameBuffer* fb, GLuint tex_0, GLuint tex_1) {
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    static gl::ShaderProgram* prog = ShaderFactory::getOrCreate(
-        "cutout",
-        #include "shaders/v_quad.glsl"
-        ,
-        #include "shaders/f_cutout.glsl"
-    );
+    glViewport(0, 0, fb->getWidth(), fb->getHeight());
+    static gl::ShaderProgram* prog = shaderLoader().loadShaderProgram("shaders/cutout.glsl");
 
     fb->bind();
     glClear(GL_COLOR_BUFFER_BIT);
@@ -68,12 +57,8 @@ void cutout(gl::FrameBuffer* fb, GLuint tex_0, GLuint tex_1) {
 void overlay(gl::FrameBuffer* fb, GLuint texId) {
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    static gl::ShaderProgram* prog = ShaderFactory::getOrCreate(
-        "overlay",
-        #include "shaders/v_quad.glsl"
-        ,
-        #include "shaders/f_overlay.glsl"
-    );
+    glViewport(0, 0, fb->getWidth(), fb->getHeight());
+    static gl::ShaderProgram* prog = shaderLoader().loadShaderProgram("shaders/overlay.glsl");
 
     fb->bind();
     prog->use();
@@ -87,12 +72,14 @@ GuiViewport::GuiViewport() {
     rvp.init(640, 480);
     dd.init();
 
-    fb_silhouette.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
-    fb_outline.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
-    fb_blur.pushBuffer(GL_RED, GL_UNSIGNED_BYTE);
-    fb_pick.pushBuffer(GL_RGB, GL_UNSIGNED_INT);
+    fb_silhouette.addBuffer(0, GL_RED, GL_UNSIGNED_BYTE);
+    fb_outline.addBuffer(0, GL_RED, GL_UNSIGNED_BYTE);
+    fb_blur.addBuffer(0, GL_RED, GL_UNSIGNED_BYTE);
+    fb_pick.addBuffer(0, GL_RGB, GL_UNSIGNED_INT);
 
     memset(mouse_clicked, 0, sizeof(mouse_clicked));
+
+    readback_buffer.resize(640 * 480 * 4);
 }
 GuiViewport::~GuiViewport() {
     dd.cleanup();
@@ -138,6 +125,16 @@ gfxm::vec3 GuiViewport::getMouseScreenToWorldPos(float height) {
         viewport_sz,
         proj, view
     );
+}
+
+gfxm::vec3 GuiViewport::getCursorXYPlane() {
+    return cursor_xy_plane;
+}
+gfxm::vec3 GuiViewport::getCursor3d() {
+    return cursor_3d;
+}
+gfxm::vec3 GuiViewport::getCursor3dNormal() {
+    return cursor_3d_normal;
 }
 
 DebugDraw& GuiViewport::getDebugDraw() {
@@ -260,6 +257,7 @@ void GuiViewport::draw(DrawList& dl, gfxm::ivec2 sz) {
             rvp.getGBuffer()->getNormalTexture(),
             rvp.getGBuffer()->getRoughnessTexture(),
             rvp.getGBuffer()->getMetallicTexture(),
+            rvp.getGBuffer()->getLightnessTexture(),
             rvp.getGBuffer()->getDepthTexture()
         };
         ImGui::GetWindowDrawList()->AddImage((void*)buffers[dbg_renderBufferId],
@@ -370,6 +368,7 @@ void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 
         }
         renderer.draw(&rvp, _proj, _view, dl);
 
+        /*
         if(selected_objects) {
             for(auto n : selected_objects->getAll()) {
                 std::list<Model*> list;
@@ -378,11 +377,13 @@ void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 
                     m->addToDrawList(dl_silhouettes);
                 }
             }
-        }
+        }*/
 
+        // TODO: REMOVE
+        /*
         if(is_mouse_over && ImGui::IsMouseClicked(0) && !using_gizmo) {
             if(selected_objects) {
-                renderer.drawPickPuffer(&fb_pick, dl);
+                renderer.drawPickPuffer(&fb_pick, _proj, _view, dl);
                 uint32_t pix = 0;
                 uint32_t err_pix = 0xFFFFFF;
                 glReadPixels(mouse_pos.x, mouse_pos.y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &pix);
@@ -404,9 +405,11 @@ void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 
                     LOG("PICKED_SKIN: " << pix - dl.solids.size());
                 }
             }
-        }
+        }*/
 
-        renderer.drawSilhouettes(&fb_silhouette, dl_silhouettes);
+        // TODO: REMOVE
+        /*
+        renderer.drawSilhouettes(&fb_silhouette, _proj, _view, dl_silhouettes);
         blur(&fb_outline, fb_silhouette.getTextureId(0), gfxm::vec2(1, 0));
         blur(&fb_blur, fb_outline.getTextureId(0), gfxm::vec2(0, 1));
         blur(&fb_outline, fb_blur.getTextureId(0), gfxm::vec2(1, 0));
@@ -414,7 +417,7 @@ void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 
         cutout(&fb_outline, fb_blur.getTextureId(0), fb_silhouette.getTextureId(0));
         //drawOutline(&fb_outline, fb_silhouette.getTextureId(0));
         overlay(rvp.getFinalBuffer(), fb_outline.getTextureId(0));
-        
+        */
         rvp.getFinalBuffer()->bind();
         glViewport(0, 0, (GLsizei)vp_sz.x, (GLsizei)vp_sz.y);
         if(debug_draw_enabled) {
@@ -428,6 +431,7 @@ void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 
             rvp.getGBuffer()->getNormalTexture(),
             rvp.getGBuffer()->getRoughnessTexture(),
             rvp.getGBuffer()->getMetallicTexture(),
+            rvp.getGBuffer()->getLightnessTexture(),
             rvp.getGBuffer()->getDepthTexture()
         };
         ImGui::GetWindowDrawList()->AddImage((void*)buffers[dbg_renderBufferId],
@@ -489,6 +493,10 @@ bool GuiViewport::begin(gfxm::ivec2 sz) {
         pos.y = cursor_pos.y;
         vp_sz = ImVec2(bb.Max.x - bb.Min.x, bb.Max.y - bb.Min.y);
 
+        if(viewport_sz.x != vp_sz.x || viewport_sz.y != vp_sz.y) {
+            readback_buffer.resize(vp_sz.x * vp_sz.y * 4);
+        }
+
         viewport_sz = gfxm::vec2(
             vp_sz.x, vp_sz.y
         );
@@ -540,6 +548,7 @@ void GuiViewport::end() {
             rvp.getGBuffer()->getNormalTexture(),
             rvp.getGBuffer()->getRoughnessTexture(),
             rvp.getGBuffer()->getMetallicTexture(),
+            rvp.getGBuffer()->getLightnessTexture(),
             rvp.getGBuffer()->getDepthTexture()
         };
         ImGui::GetWindowDrawList()->AddImage((void*)buffers[dbg_renderBufferId],
@@ -548,6 +557,64 @@ void GuiViewport::end() {
             ImVec2(0, 1),
             ImVec2(1, 0)
         );
+
+        // Figure out 3d cursor pos
+        float depth_pix = .0f;
+        {
+            auto mpos = this->getMousePos();
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, rvp.getGBuffer()->getDepthTexture());
+            glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, readback_buffer.data());
+            glBindTexture(GL_TEXTURE_2D, 0);
+            int ret = glGetError();
+            assert(ret == GL_NO_ERROR);
+
+            if(mpos.x < 0 || mpos.y < 0 || mpos.x >= rvp.getGBuffer()->getWidth() || mpos.y >= rvp.getGBuffer()->getHeight()) {
+                depth_pix = .0f;
+            } else {
+                depth_pix = readback_buffer[mpos.x + mpos.y * rvp.getGBuffer()->getWidth()];
+            }
+
+            glBindTexture(GL_TEXTURE_2D, rvp.getGBuffer()->getNormalTexture());
+            glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_FLOAT, readback_buffer.data());
+            glBindTexture(GL_TEXTURE_2D, 0);
+            ret = glGetError();
+            assert(ret == GL_NO_ERROR);
+
+            cursor_xy_plane = gfxm::screenToWorldPlaneXY(gfxm::vec2(mpos.x, mpos.y), viewport_sz, _proj, _view);
+
+            if(depth_pix == 1.0f) {
+                cursor_3d_normal = gfxm::vec3(.0f, 1.0f, .0f);
+                cursor_3d = cursor_xy_plane;
+            } else {
+                if (mpos.x < 0 || mpos.y < 0 || mpos.x >= rvp.getGBuffer()->getWidth() || mpos.y >= rvp.getGBuffer()->getHeight()) {
+                    cursor_3d_normal = gfxm::vec3(.0f, 1.0f, .0f);
+                }
+                else {
+                    memcpy(&cursor_3d_normal, &readback_buffer[(mpos.x + mpos.y * rvp.getGBuffer()->getWidth()) * 3], sizeof(float) * 3);
+                    cursor_3d_normal = gfxm::normalize(cursor_3d_normal * 2.0 - gfxm::vec3(1,1,1));
+                }
+
+                depth_pix = depth_pix * 2.0 - 1.0;
+                gfxm::vec3 position = 
+                    gfxm::vec3((gfxm::vec2(mpos.x, mpos.y) / viewport_sz) * 2.0 - gfxm::vec2(1.0f, 1.0f), depth_pix);
+                gfxm::mat4 inverse_view_projection = gfxm::inverse(_proj * _view);
+                gfxm::vec4 wpos4 = inverse_view_projection * gfxm::vec4(position, 1.0);
+                position = gfxm::vec3(wpos4.x, wpos4.y, wpos4.z) / wpos4.w;
+                cursor_3d = position;
+            }
+        }
+
+        ImGui::RenderText(bb.Min, MKSTR("GBuffer layer: " << dbg_renderBufferId).c_str());
+        ImGui::RenderText(bb.Min + ImVec2(0, ImGui::GetTextLineHeight()), MKSTR("Pixel depth: " << depth_pix).c_str());
+        ImGui::RenderText(
+            bb.Min + ImVec2(0, ImGui::GetTextLineHeight() * 2), 
+            MKSTR("3d cursor: [" << cursor_3d.x << ", " << cursor_3d.y << ", " << cursor_3d.z << "]").c_str()
+        );
+        dd.line(cursor_3d, cursor_3d + cursor_3d_normal, gfxm::vec3(1, 0, 0));
+        dd.sphere(cursor_3d, .01f * this->cam_zoom_actual, gfxm::vec3(1,1,0));
 
         auto& io = ImGui::GetIO();
         if(ImGui::IsMouseClicked(2) && is_mouse_over) {

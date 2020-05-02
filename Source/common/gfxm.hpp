@@ -40,6 +40,7 @@ struct tvec3
     
     tvec3() : x(0), y(0), z(0) {}
     tvec3(T x, T y, T z) : x(x), y(y), z(z) {}
+    tvec3(tvec2<T> xy, T z) : x(xy.x), y(xy.y), z(z) {}
 
     T operator[](const int &i) const {
         return *((&x) + i);
@@ -347,6 +348,10 @@ inline tvec4<T> operator*=(tvec4<T>& a, const M& f){
 template<typename T, typename M>
 inline tvec2<T> operator/(const tvec2<T>& a, const M& f){
     return tvec2<T>(a.x / f, a.y / f);
+}
+template<typename T, typename M>
+inline tvec2<T> operator/(const tvec2<T>& a, const tvec2<M>& b){
+    return tvec2<T>(a.x / b.x, a.y / b.y);
 }
 template<typename T, typename M>
 inline tvec3<T> operator/(const tvec3<T>& a, const M& f){

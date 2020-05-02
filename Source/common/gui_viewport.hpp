@@ -26,6 +26,7 @@ private:
     gl::FrameBuffer fb_blur;
     gl::FrameBuffer fb_silhouette;
     gl::FrameBuffer fb_pick;
+    std::vector<float> readback_buffer;
 
     CAM_MODE cam_mode = CAM_PAN;
     bool debug_draw_enabled = true;
@@ -51,6 +52,9 @@ private:
     // Input
     bool mouse_clicked[5];
     gfxm::ivec2 mouse_pos;
+    gfxm::vec3  cursor_3d;
+    gfxm::vec3  cursor_3d_normal;
+    gfxm::vec3  cursor_xy_plane;
 
     //
     gfxm::ivec2 pos;
@@ -77,7 +81,11 @@ public:
     gfxm::mat4 getView() const;
     bool isMouseClicked(int button);
     gfxm::ivec2 getMousePos();
-    gfxm::vec3 getMouseScreenToWorldPos(float height);    
+    gfxm::vec3 getMouseScreenToWorldPos(float height);
+
+    gfxm::vec3 getCursorXYPlane();
+    gfxm::vec3 getCursor3d();
+    gfxm::vec3 getCursor3dNormal();
 
     bool debugDrawEnabled() const;
     void enableDebugDraw(bool v);

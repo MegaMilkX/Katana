@@ -55,6 +55,7 @@ public:
                     s.indexOffset = indexOffset;
                     s.transform = root_transform * transform;
                     s.object_ptr = (void*)subscene_owner;
+                    s.lightmap = seg.lightmap.get();
                     dl.solids.emplace_back(s);
                 } else {                // Skinned mesh
                     std::vector<gfxm::mat4> bone_transforms;
@@ -132,6 +133,7 @@ public:
                     s.indexOffset = indexOffset;
                     s.transform = transform;
                     s.object_ptr = (void*)a->getEntityUid();
+                    s.lightmap = seg.lightmap.get();
                     dl.solids.emplace_back(s);
                 } else {                // Skinned mesh
                     std::vector<gfxm::mat4> bone_transforms;

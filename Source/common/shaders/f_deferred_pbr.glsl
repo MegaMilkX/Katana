@@ -1,5 +1,6 @@
 R"(#version 450
     in vec2 uv_frag;
+    in vec2 uv_lightmap_frag;
     in vec4 vertex_rgba;
     in vec3 normal_model;
     in vec3 frag_pos_screen;
@@ -11,11 +12,13 @@ R"(#version 450
     out vec4 out_normal;
     out vec4 out_metallic;
     out vec4 out_roughness;
+    out vec4 out_lightness;
 
     uniform sampler2D tex_albedo;
 	uniform sampler2D tex_normal;
 	uniform sampler2D tex_metallic;
 	uniform sampler2D tex_roughness;
+    uniform sampler2D tex_lightmap;
 
     uniform vec3 u_tint;
 
@@ -37,5 +40,6 @@ R"(#version 450
         out_normal = vec4(t_normal * 0.5 + 0.5, 1.0);
         out_metallic = vec4(texture(tex_metallic, uv_frag).xxx, 1.0);
         out_roughness = vec4(texture(tex_roughness, uv_frag).xxx, 1.0);
+        out_lightness = vec4(texture(tex_lightmap, uv_lightmap_frag).xyz, 1.0);
     }
 )"

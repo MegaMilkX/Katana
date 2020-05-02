@@ -333,11 +333,11 @@ class VoxelField : public RenderableBase {
             bitangents.emplace_back(bitangent.x); bitangents.emplace_back(bitangent.y); bitangents.emplace_back(bitangent.z);
         }*/
 
-        mesh.setAttribData(gl::POSITION, edge_vertex_grid.data(), edge_vertex_grid.size() * sizeof(gfxm::vec3));
-        mesh.setAttribData(gl::NORMAL, edge_vertex_normal_grid.data(), edge_vertex_normal_grid.size() * sizeof(gfxm::vec3));
-        mesh.setAttribData(gl::TANGENT, tangents.data(), tangents.size() * sizeof(gfxm::vec3));
-        mesh.setAttribData(gl::BITANGENT, bitangents.data(), bitangents.size() * sizeof(gfxm::vec3));
-        mesh.setAttribData(gl::UV, edge_vertex_uv_grid.data(), edge_vertex_uv_grid.size() * sizeof(gfxm::vec2));
+        mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Position, edge_vertex_grid.data(), edge_vertex_grid.size() * sizeof(gfxm::vec3));
+        mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Normal, edge_vertex_normal_grid.data(), edge_vertex_normal_grid.size() * sizeof(gfxm::vec3));
+        mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Tangent, tangents.data(), tangents.size() * sizeof(gfxm::vec3));
+        mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Bitangent, bitangents.data(), bitangents.size() * sizeof(gfxm::vec3));
+        mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::UV, edge_vertex_uv_grid.data(), edge_vertex_uv_grid.size() * sizeof(gfxm::vec2));
         mesh.setIndices(indices.data(), indices.size());
     }
 public:

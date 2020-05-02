@@ -1,4 +1,4 @@
-#include "../common/engine.hpp"
+﻿#include "../common/engine.hpp"
 
 #include "editor.hpp"
 #include "game_state.hpp"
@@ -27,6 +27,7 @@ public:
     }
 };
 
+#include "../common/render/vertex_format.hpp"
 
 int main(int argc, char* argv[]) {
     if(!katanaInit()) {
@@ -39,6 +40,18 @@ int main(int argc, char* argv[]) {
     if(!ThumbBuilder::get()->init()) {
         LOG_ERR("Failed to init thumb builder");
         return 0;
+    }
+
+    VERTEX_FMT::GENERIC::vertexSize();
+    for(int i = 0; i < VERTEX_FMT::GENERIC::attribCount(); ++i) {
+        auto& dsc = VERTEX_FMT::GENERIC::getAttribDesc(i);
+        LOG_WARN(dsc.name << ": " << dsc.count << ", " << dsc.gl_type << ", " << dsc.normalized);
+    }
+    
+    std::vector<const char*> array(VERTEX_FMT::GENERIC::attribCount());
+    VERTEX_FMT::GENERIC::makeOutAttribNameArray(array.data());
+    for(int i = 0; i < VERTEX_FMT::GENERIC::attribCount(); ++i) {
+        LOG_WARN(array[i]);
     }
 
     // TODO : 

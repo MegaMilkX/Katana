@@ -83,6 +83,7 @@ void Editor::onInit() {
     input().getTable().addActionKey("F4", "KB_F4");
     input().getTable().addActionKey("F5", "KB_F5");
     input().getTable().addActionKey("F6", "KB_F6");
+    input().getTable().addActionKey("F7", "KB_F7");
 
     input_lis = input().createListener();
     input_lis->bindActionPress("MouseLeft", [this](){
@@ -144,6 +145,7 @@ void Editor::onInit() {
     input_lis->bindActionPress("F4", [](){ dbg_renderBufferId = 3; });
     input_lis->bindActionPress("F5", [](){ dbg_renderBufferId = 4; });
     input_lis->bindActionPress("F6", [](){ dbg_renderBufferId = 5; });
+    input_lis->bindActionPress("F7", [](){ dbg_renderBufferId = 6; });
 
     LOG("Editor initialized");
 }

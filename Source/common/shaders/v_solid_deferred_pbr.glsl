@@ -2,12 +2,14 @@ R"(#version 450
 
     in vec3 Position;
     in vec2 UV;
+    in vec2 UVLightmap;
     in vec4 ColorRGBA;
     in vec3 Normal;
     in vec3 Tangent;
     in vec3 Bitangent;
 
     out vec2 uv_frag;
+    out vec2 uv_lightmap_frag;
     out vec4 vertex_rgba;
     out vec3 normal_model;
     out vec3 frag_pos_screen;
@@ -41,6 +43,7 @@ R"(#version 450
 
         frag_pos_screen = vec3(pos_screen);  
         uv_frag = UV;  
+        uv_lightmap_frag = UVLightmap;
         
         base_color = vec4(1.0, 1.0, 1.0, 1.0);
         gl_Position = pos_screen ; 
