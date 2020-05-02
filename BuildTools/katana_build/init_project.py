@@ -55,6 +55,7 @@ else:
 	srcDir = projDir + "/" + srcDir
 	assetDir = config.get("General", "asset_dir")
 	assetDir = projDir + "/" + assetDir
+	shaderDir = assetDir + "/shaders"
 	
 	if not os.path.isdir(srcDir):
 		os.mkdir(srcDir)
@@ -64,6 +65,8 @@ else:
 		os.mkdir(srcDir + '/../cmake')
 	if not os.path.isdir(srcDir + '/../.vscode'):
 		os.mkdir(srcDir + '/../.vscode')
+	if not os.path.isdir(shaderDir):
+		os.mkdir(shaderDir)
 	
 	# === CPP starter files ====
 	replaceList = {
@@ -73,6 +76,9 @@ else:
 		kt_config.MAIN_CPP_TPL,
 		srcDir, 'main.cpp', replaceList, False
 	)
+	
+	# === GLSL starters ========
+	kt_util.copyDirNoReplace(kt_config.BASE_SHADERS_DIR, shaderDir)
 
 	# === VSCODE ====
 	replaceList = {

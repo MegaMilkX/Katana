@@ -18,11 +18,13 @@ BUILD_SCRIPTS_PATH = BUILD_TOOLS_PATH + '/katana_build'
 ENGINE_SOURCE_PATH = ENGINE_PATH + '/' + 'Source'
 
 # Misc.
-PROJECT_EXT="katana"
-PROJECT_TEMPLATE = BUILD_SCRIPTS_PATH + "/template/project.tpl"
-CMAKELISTS_TEMPLATE = BUILD_SCRIPTS_PATH + "/template/CMakeLists.tpl"
-REFRESH_PROJECT_PY_TPL = BUILD_SCRIPTS_PATH + "/template/script/refresh_project.py.tpl"
-MAIN_CPP_TPL = BUILD_SCRIPTS_PATH + "/template/cpp/main.cpp.tpl"
+PROJECT_EXT                                     ="katana"
+PROJECT_TEMPLATE                                = BUILD_SCRIPTS_PATH + "/template/project.tpl"
+CMAKELISTS_TEMPLATE                             = BUILD_SCRIPTS_PATH + "/template/CMakeLists.tpl"
+REFRESH_PROJECT_PY_TPL                          = BUILD_SCRIPTS_PATH + "/template/script/refresh_project.py.tpl"
+MAIN_CPP_TPL                                    = BUILD_SCRIPTS_PATH + "/template/cpp/main.cpp.tpl"
 
-VSCODE_TASKS_JSON_TPL = BUILD_SCRIPTS_PATH + "/template/vscode/tasks.json.tpl"
-VSCODE_C_CPP_PROPERTIES_JSON_TPL = BUILD_SCRIPTS_PATH + "/template/vscode/c_cpp_properties.json.tpl"
+VSCODE_TASKS_JSON_TPL                           = BUILD_SCRIPTS_PATH + "/template/vscode/tasks.json.tpl"
+VSCODE_C_CPP_PROPERTIES_JSON_TPL                = BUILD_SCRIPTS_PATH + "/template/vscode/c_cpp_properties.json.tpl"
+
+BASE_SHADERS_DIR                                = BUILD_SCRIPTS_PATH + "/template/shaders"
