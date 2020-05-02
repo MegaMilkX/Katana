@@ -45,6 +45,8 @@ public:
 
     void point(const gfxm::vec3& pt, const gfxm::vec3& color);
 
+    void sphere(const gfxm::vec3& pt, float radius, const gfxm::vec3& color);
+
     void circle(const gfxm::vec3& center, float radius, const gfxm::vec3& color, const gfxm::mat3& transform = gfxm::mat3(1.0f));
 
     void frustum(const gfxm::mat4& proj, const gfxm::mat4& view, float znear, float zfar, const gfxm::vec3& color);

@@ -1,28 +1,20 @@
 #include "debug_draw.hpp"
 
+#include "render/shader_loader.hpp"
+
 void DebugDraw::init() {
     glGenVertexArrays(1, &vao_handle);
     glGenBuffers(1, &vbuf);
 
     glBindVertexArray(vao_handle);
     glBindBuffer(GL_ARRAY_BUFFER, vbuf);
-    glEnableVertexAttribArray(gl::POSITION); // VERTEX
-    glEnableVertexAttribArray(gl::COLOR_RGBA); // COLOR
-    glVertexAttribPointer(gl::POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-    glVertexAttribPointer(gl::COLOR_RGBA, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)sizeof(gfxm::vec3));
+    glEnableVertexAttribArray(VERTEX_FMT::ENUM_GENERIC::Position); // VERTEX
+    glEnableVertexAttribArray(VERTEX_FMT::ENUM_GENERIC::ColorRGBA); // COLOR
+    glVertexAttribPointer(VERTEX_FMT::ENUM_GENERIC::Position, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+    glVertexAttribPointer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)sizeof(gfxm::vec3));
 
-    line_prog = ShaderFactory::getOrCreate(
-        "bullet_debug_line",
-        #include "shaders/v_debug_line.glsl"
-        ,
-        #include "shaders/f_debug_line.glsl"
-    );
-    tri_prog = ShaderFactory::getOrCreate(
-        "debug_triangle",
-        #include "shaders/debug_draw/triangle.vert"
-        ,
-        #include "shaders/debug_draw/triangle.frag"
-    );
+    line_prog = shaderLoader().loadShaderProgram("shaders/debug_draw/bullet_debug_line.glsl");
+    tri_prog = shaderLoader().loadShaderProgram("shaders/debug_draw/triangle.glsl");
 }
 void DebugDraw::cleanup() {
     glDeleteBuffers(1, &vbuf);
@@ -135,6 +127,15 @@ void DebugDraw::point(const gfxm::vec3& pt, const gfxm::vec3& color) {
     line(gfxm::vec3(-0.5f,0,0) + pt, gfxm::vec3(0.5f,0,0) + pt, color);
     line(gfxm::vec3(0,-0.5f,0) + pt, gfxm::vec3(0,0.5f,0) + pt, color);
     line(gfxm::vec3(0,0,-0.5f) + pt, gfxm::vec3(0,0,0.5f) + pt, color);
+}
+
+void DebugDraw::sphere(const gfxm::vec3& pt, float radius, const gfxm::vec3& color) {
+    gfxm::mat3 m = gfxm::to_mat3(gfxm::angle_axis(0, gfxm::vec3(0,1,0)));
+    circle(pt, radius, color, m);
+    m = gfxm::to_mat3(gfxm::angle_axis(gfxm::radian(90.0f), gfxm::vec3(1,0,0)));
+    circle(pt, radius, color, m);
+    m = gfxm::to_mat3(gfxm::angle_axis(gfxm::radian(90.0f), gfxm::vec3(0,0,1)));
+    circle(pt, radius, color, m);
 }
 
 void DebugDraw::circle(const gfxm::vec3& center, float radius, const gfxm::vec3& color, const gfxm::mat3& transform) {
