@@ -6,6 +6,9 @@
 #include "../attribs/base_attribs.hpp"
 
 
+void computeSkinCache(ecsMeshes::Segment* seg, const gfxm::mat4& root_m4 = gfxm::mat4(1.0f));
+
+
 class ecsRenderSubSystem;
 class ecsTupleSubSceneRenderable : public ecsTuple<ecsWorldTransform, ecsSubScene, ecsTagSubSceneRender> {
 public:
@@ -58,6 +61,15 @@ public:
                     s.lightmap = seg.lightmap.get();
                     dl.solids.emplace_back(s);
                 } else {                // Skinned mesh
+                    computeSkinCache(&seg, root_transform);
+                    DrawCmdSolid s;
+                    s.vao = seg.skin_data->vao_cache->getId();
+                    s.material = mat;
+                    s.indexCount = indexCount;
+                    s.indexOffset = indexOffset;
+                    s.transform = gfxm::mat4(1.0f);//transform;
+                    s.object_ptr = (void*)subscene_owner;
+                    /*
                     std::vector<gfxm::mat4> bone_transforms;
                     for(auto t : seg.skin_data->bone_nodes) {
                         if(t) {
@@ -74,9 +86,8 @@ public:
                     s.indexOffset = indexOffset;
                     s.transform = root_transform * transform;
                     s.bone_transforms = bone_transforms;
-                    s.bind_transforms = seg.skin_data->bind_transforms;
-                    s.object_ptr = (void*)subscene_owner;
-                    dl.skins.emplace_back(s);
+                    s.bind_transforms = seg.skin_data->bind_transforms;*/
+                    dl.solids.emplace_back(s);
                 }
             }
         }
@@ -136,6 +147,15 @@ public:
                     s.lightmap = seg.lightmap.get();
                     dl.solids.emplace_back(s);
                 } else {                // Skinned mesh
+                    computeSkinCache(&seg);
+                    DrawCmdSolid s;
+                    s.vao = seg.skin_data->vao_cache->getId();
+                    s.material = mat;
+                    s.indexCount = indexCount;
+                    s.indexOffset = indexOffset;
+                    s.transform = gfxm::mat4(1.0f);//transform;
+                    s.object_ptr = (void*)a->getEntityUid();
+                    /*
                     std::vector<gfxm::mat4> bone_transforms;
                     for(auto t : seg.skin_data->bone_nodes) {
                         if(t) {
@@ -153,8 +173,8 @@ public:
                     s.transform = transform;
                     s.bone_transforms = bone_transforms;
                     s.bind_transforms = seg.skin_data->bind_transforms;
-                    s.object_ptr = (void*)a->getEntityUid();
-                    dl.skins.emplace_back(s);
+                    s.object_ptr = (void*)a->getEntityUid();*/
+                    dl.solids.emplace_back(s);
                 }
             }
         }
@@ -191,6 +211,14 @@ public:
                     //s.object_ptr = getOwner();
                     dl.solids.emplace_back(s);
                 } else {                // Skinned mesh
+                    computeSkinCache(&seg);
+                    DrawCmdSolid s;
+                    s.vao = seg.skin_data->vao_cache->getId();
+                    s.material = mat;
+                    s.indexCount = indexCount;
+                    s.indexOffset = indexOffset;
+                    s.transform = gfxm::mat4(1.0f);//transform;
+                    /*
                     std::vector<gfxm::mat4> bone_transforms;
                     for(auto t : seg.skin_data->bone_nodes) {
                         if(t) {
@@ -207,9 +235,9 @@ public:
                     s.indexOffset = indexOffset;
                     s.transform = transform;
                     s.bone_transforms = bone_transforms;
-                    s.bind_transforms = seg.skin_data->bind_transforms;
+                    s.bind_transforms = seg.skin_data->bind_transforms;*/
                     //s.object_ptr = getOwner();
-                    dl.skins.emplace_back(s);
+                    dl.solids.emplace_back(s);
                 }
             }
         }

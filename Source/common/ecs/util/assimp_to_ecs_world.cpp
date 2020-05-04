@@ -349,6 +349,55 @@ void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, name_to_ent_map_t& node_m
             aiMesh* ai_mesh = ai_scene->mMeshes[ai_node->mMeshes[i]];
             if(ai_mesh->mNumBones) {
                 seg.skin_data.reset(new ecsMeshes::SkinData());
+                
+                size_t vertexCount = seg.mesh->vertexCount();
+                seg.skin_data->vao_cache.reset(new gl::VertexArrayObject);
+                seg.skin_data->position_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
+                seg.skin_data->normal_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
+                seg.skin_data->tangent_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
+                seg.skin_data->bitangent_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
+                seg.skin_data->vao_cache->attach(seg.skin_data->position_cache->getId(), 
+                    VERTEX_FMT::ENUM_GENERIC::Position, VERTEX_FMT::Position::count, 
+                    VERTEX_FMT::Position::gl_type, VERTEX_FMT::Position::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                );
+                seg.skin_data->vao_cache->attach(seg.skin_data->normal_cache->getId(), 
+                    VERTEX_FMT::ENUM_GENERIC::Normal, VERTEX_FMT::Normal::count, 
+                    VERTEX_FMT::Normal::gl_type, VERTEX_FMT::Normal::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                );
+                seg.skin_data->vao_cache->attach(seg.skin_data->tangent_cache->getId(), 
+                    VERTEX_FMT::ENUM_GENERIC::Tangent, VERTEX_FMT::Tangent::count, 
+                    VERTEX_FMT::Tangent::gl_type, VERTEX_FMT::Tangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                );
+                seg.skin_data->vao_cache->attach(seg.skin_data->bitangent_cache->getId(), 
+                    VERTEX_FMT::ENUM_GENERIC::Bitangent, VERTEX_FMT::Bitangent::count, 
+                    VERTEX_FMT::Bitangent::gl_type, VERTEX_FMT::Bitangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                );
+                seg.skin_data->pose_cache.reset(new gl::Buffer(GL_STREAM_DRAW, sizeof(float) * 16 * ai_mesh->mNumBones));
+
+                if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UV)) {
+                    GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UV)->getId();
+                    seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::UV, 
+                        VERTEX_FMT::UV::count, VERTEX_FMT::UV::gl_type, 
+                        VERTEX_FMT::UV::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                    );
+                }
+                if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)) {
+                    GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)->getId();
+                    seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::UVLightmap, 
+                        VERTEX_FMT::UVLightmap::count, VERTEX_FMT::UVLightmap::gl_type, 
+                        VERTEX_FMT::UVLightmap::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                    );
+                }
+                if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA)) {
+                    GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA)->getId();
+                    seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::ColorRGBA, 
+                        VERTEX_FMT::ColorRGBA::count, VERTEX_FMT::ColorRGBA::gl_type, 
+                        VERTEX_FMT::ColorRGBA::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                    );
+                }
+                GLuint index_buf_id = seg.mesh->mesh.getIndexBuffer()->getId();
+                seg.skin_data->vao_cache->attachIndexBuffer(index_buf_id);
+
                 for(unsigned j = 0; j < ai_mesh->mNumBones; ++j) {
                     aiBone* ai_bone = ai_mesh->mBones[j];
                     std::string name(ai_bone->mName.data, ai_bone->mName.length);

@@ -56,13 +56,13 @@ void Renderer::drawPickPuffer(gl::FrameBuffer* fb, const gfxm::mat4& proj, const
         dl.solids.data(),
         dl.solids.size(),
         0
-    );
+    );/*
     drawMultiplePick(
         prog_pick_skin,
         dl.skins.data(),
         dl.skins.size(),
         dl.solids.size()
-    );
+    );*/
 }
 
 void Renderer::drawWorld(RenderViewport* vp, ktWorld* world) {
@@ -214,15 +214,6 @@ void RendererPBR::draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::m
 }
 
 void RendererPBR::draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& draw_list, GLint final_framebuffer_id, bool draw_skybox) {
-    /*
-    {
-        int count = std::min((int)draw_list.omnis.size(), MAX_OMNI_LIGHT);
-        for(size_t i = 0; i < std::min(count, RENDERER_PBR_SHADOW_CUBEMAP_COUNT); ++i) {
-            auto& l = draw_list.omnis[i];
-            drawShadowCubeMap(&shadow_cubemaps[i], l.translation, draw_list);
-        }
-    }*/
-
     setGlStates();
     setupUniformBuffers(proj, view);
     
@@ -243,12 +234,15 @@ void RendererPBR::draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4
         prog_gbuf_solid,
         draw_list.solids.data(),
         draw_list.solids.size()
-    );
+    );/*
     drawMultiple(
         prog_gbuf_skin,
         draw_list.skins.data(),
         draw_list.skins.size()
-    );
+    );*/
+
+    // ==== Skinned meshes ===========
+    drawSkinnedMeshes(draw_list);
 
     // ==== Lightness ================
     for(size_t i = 0; i < draw_list.omnis.size(); ++i) {
@@ -315,7 +309,7 @@ void RendererPBR::draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4
 
     drawQuad();
 
-    gl::foo(view, proj);
+    //gl::foo(view, proj);
 
     // ==== Light pass ===============
     /*
@@ -414,7 +408,7 @@ void RendererPBR::drawShadowCubeMap(gl::CubeMap* cube_map, const gfxm::vec3& eye
         gfxm::lookAt(eye, eye+gfxm::vec3( 0.0f,  0.0f, -1.0f), gfxm::vec3(0.0f, -1.0f,  0.0f))
     };
 
-    const int side = 512;
+    const int side = RENDERER_PBR_SHADOW_CUBEMAP_SIZE;
 
     GLuint capFbo;
     glGenFramebuffers(1, &capFbo);
@@ -457,15 +451,25 @@ void RendererPBR::drawShadowCubeMap(gl::CubeMap* cube_map, const gfxm::vec3& eye
             prog_shadowmap_solid,
             draw_list.solids.data(),
             draw_list.solids.size()
-        );
+        );/*
         drawMultiple(
             prog_shadowmap_skin,
             draw_list.skins.data(),
             draw_list.skins.size()
-        );
+        );*/
     }
 
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
     glDeleteFramebuffers(1, &capFbo);
+}
+
+void RendererPBR::drawSkinnedMeshes(const DrawList& dl) {
+    for(int i = 0; i < dl.skins.size(); ++i) {
+        // TODO: Apply skinning through compute shader
+    }
+
+    for(int i = 0; i < dl.skins.size(); ++i) {
+        // TODO: Draw?
+    }
 }

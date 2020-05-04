@@ -162,7 +162,9 @@ public:
     void updateAttrib(entity_id ent, const T& value);
 
     template<typename T>
-    T* getSystem();
+    T*              getSystem();
+    int             systemCount();
+    ecsSystemBase*  getSystem(int i);
 
     void update();
 

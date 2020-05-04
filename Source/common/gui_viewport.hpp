@@ -104,6 +104,7 @@ public:
     void end();
 };
 
+void outline(gl::FrameBuffer* fb, GLuint tex_0);
 void blur(gl::FrameBuffer* fb, GLuint tex_0, const gfxm::vec2& dir);
 void cutout(gl::FrameBuffer* fb, GLuint tex_0, GLuint tex_1);
 void overlay(gl::FrameBuffer* fb, GLuint texId);

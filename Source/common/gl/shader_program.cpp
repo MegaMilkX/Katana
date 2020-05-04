@@ -9,6 +9,8 @@
 
 #include "../render/shader_loader.hpp"
 
+#include "buffer.hpp"
+
 namespace gl {
 
 ShaderProgram::ShaderProgram() {
@@ -138,48 +140,13 @@ void ShaderProgram::detachAll() {
 }
 
 
-class glBuffer {
-    GLuint id = 0;
-    GLenum usage = 0;
-public:
-    glBuffer(GLenum usage, size_t size = 0)
-    : usage(usage) {
-        glGenBuffers(1, &id);
-        if(size > 0) {
-            glBindBuffer(GL_ARRAY_BUFFER, id);
-            glBufferData(GL_ARRAY_BUFFER, size, 0, usage);
-        }
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
-    ~glBuffer() {
-        glDeleteBuffers(1, &id);
-    }
 
-    void upload(void* data, size_t size, GLenum new_usage) {
-        glBindBuffer(GL_ARRAY_BUFFER, id);
-        glBufferData(GL_ARRAY_BUFFER, size, data, usage);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
-
-    void upload(void* data, size_t size) {
-        upload(data, size, usage);
-    }
-
-    void bind(GLenum target) {
-        glBindBuffer(target, id);
-    }
-
-    void bindBase(GLenum target, int index) {
-        glBindBufferBase(target, index, id);
-    }
-
-};
 
 struct DoubleVertexBuffer {
     GLuint vao;
-    std::shared_ptr<glBuffer> pos_buffer;
-    std::shared_ptr<glBuffer> col_buffer;
-    std::shared_ptr<glBuffer> vel_buffer;
+    std::shared_ptr<Buffer> pos_buffer;
+    std::shared_ptr<Buffer> col_buffer;
+    std::shared_ptr<Buffer> vel_buffer;
     gl::ShaderProgram* draw_prog;
     std::shared_ptr< gl::ShaderProgram> compute_prog;
 };
@@ -187,7 +154,7 @@ struct DoubleVertexBuffer {
 static std::vector<gfxm::vec3> generateVertices(int count) {
   std::vector<gfxm::vec3> vertices(count);
   for (int i = 0; i < count; ++i) {
-    vertices[i] = gfxm::vec3((rand() % 4000 - 2000) * 0.01f, (rand() % 4000 - 2000) * 0.01f, (rand() % 4000 - 2000) * 0.01f);
+    vertices[i] = gfxm::vec3((rand() % 6000 - 3000) * 0.01f, (rand() % 6000 - 3000) * 0.01f, (rand() % 6000 - 3000) * 0.01f);
   }
   return vertices;
 }
@@ -252,7 +219,7 @@ static DoubleVertexBuffer initBuffers() {
 
             
             vec3 gravity_centers[3];
-            gravity_centers[0] = vec3(0,0,cos(time * 0.1) * 50);
+            gravity_centers[0] = vec3(0,0,cos(time * 0.1) * 1000);
             gravity_centers[1] = vec3(cos(time) * 20, sin(time) * 20 + 20, 0);
             gravity_centers[2] = vec3(cos(time * 0.2) * 20, sin(time * 0.2) * 20 + 20, -20);
             
@@ -261,10 +228,10 @@ static DoubleVertexBuffer initBuffers() {
                 vec3 dir = gravity_centers[i] - vec3(Positions[gid].x, Positions[gid].y, Positions[gid].z);
                 float len = length(dir);
                 float grav = (1000.0 - min(1000.0, len)) * 0.001;
-                Velocities[gid].xyz += normalize(dir) * 9.8 * grav * 1.0/60.0 * 1.0;
+                Velocities[gid].xyz += normalize(dir) * 9.8 * grav * 1.0/60.0 * 1.5;
             }
 
-            Colors[gid] = vec4(hsv2rgb(vec3(length(Velocities[gid].xyz) * 0.005 + 0.3, 1, 1)), Colors[gid].a + 1.0/60.0 * 0.2);
+            Colors[gid] = vec4(hsv2rgb(vec3(length(Velocities[gid].xyz) * 0.005 + 0.0, 1, 1)), Colors[gid].a + 1.0/60.0 * 0.2);
         }
     )");
     if(!compute.compile()) {
@@ -277,11 +244,11 @@ static DoubleVertexBuffer initBuffers() {
         return data;
     }
 
-    data.pos_buffer.reset(new glBuffer(GL_STATIC_DRAW));
+    data.pos_buffer.reset(new Buffer(GL_STATIC_DRAW));
     data.pos_buffer->upload(vertices.data(), sizeof(gfxm::vec3) * VERTEX_COUNT);
-    data.col_buffer.reset(new glBuffer(GL_STATIC_DRAW));
+    data.col_buffer.reset(new Buffer(GL_STATIC_DRAW));
     data.col_buffer->upload(colors.data(), sizeof(gfxm::vec4) * VERTEX_COUNT);
-    data.vel_buffer.reset(new glBuffer(GL_STATIC_DRAW));
+    data.vel_buffer.reset(new Buffer(GL_STATIC_DRAW));
     data.vel_buffer->upload(0, sizeof(gfxm::vec4) * VERTEX_COUNT);
 
     data.draw_prog = shaderLoader().loadShaderProgram("shaders/test/point.glsl");

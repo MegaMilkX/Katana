@@ -121,6 +121,9 @@ public:
         }
         return it->second.get();
     }
+    gl::IndexBuffer* getIndexBuffer() {
+        return &indices;
+    }
     size_t getAttribDataSize(int index) {
         if(attribs.count(index)) {
             return attribs[index]->getDataSize();

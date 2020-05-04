@@ -35,6 +35,10 @@ public:
         GL_LOG_ERROR("glBindBuffer");
     }
 
+    GLuint getId() const {
+        return id;
+    }
+
     bool extractData(void* dest, int offset, int sz) {
         assert(dest);
         assert(sz + offset <= getDataSize());
@@ -102,6 +106,10 @@ public:
     void bind() {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
         GL_LOG_ERROR("glBindBuffer");
+    }
+
+    GLuint getId() const {
+        return id;
     }
 
     size_t getDataSize() {

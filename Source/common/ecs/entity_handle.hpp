@@ -21,7 +21,7 @@ public:
 
     // Get existing attribute
     template<typename T>
-    T*          findAttrib();
+    T*          findAttrib() const;
     // Get attribute or create one if it doesn't exist
     template<typename T>
     T*          getAttrib();
@@ -38,7 +38,7 @@ public:
 
 
 template<typename T>
-T* ecsEntityHandle::findAttrib() {
+T* ecsEntityHandle::findAttrib() const {
     return world->findAttrib<T>(id);
 }
 template<typename T>

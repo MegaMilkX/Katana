@@ -157,7 +157,7 @@ protected:
 
 
 #define RENDERER_PBR_SHADOW_CUBEMAP_COUNT 4
-#define RENDERER_PBR_SHADOW_CUBEMAP_SIZE 512
+#define RENDERER_PBR_SHADOW_CUBEMAP_SIZE 256
 
 class RendererPBR : public Renderer {
     gl::ShaderProgram* prog_gbuf_solid;
@@ -179,6 +179,7 @@ public:
     void sampleLightmap(const gfxm::ivec4& vp, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& dl);
     void drawShadowCubeMap(gl::CubeMap* cube_map, const gfxm::vec3& world_pos, const DrawList& draw_list);
     
+    void drawSkinnedMeshes(const DrawList& dl);
 };
 
 #endif

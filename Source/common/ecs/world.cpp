@@ -70,6 +70,12 @@ void ecsWorld::signalAttribUpdate(entity_id ent, attrib_id attrib) {
     }
 }
 
+int ecsWorld::systemCount() {
+    return (int)systems.size();
+}
+ecsSystemBase*  ecsWorld::getSystem(int i) {
+    return systems[i].get();
+}
 
 void ecsWorld::update() {
     timer t;

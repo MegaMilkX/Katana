@@ -10,7 +10,7 @@
 
 #include "../common/render/shader_loader.hpp"
 
-static void drawOutline(gl::FrameBuffer* fb, GLuint texId) {
+void outline(gl::FrameBuffer* fb, GLuint texId) {
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glViewport(0, 0, fb->getWidth(), fb->getHeight());
@@ -559,7 +559,7 @@ void GuiViewport::end() {
         );
 
         // Figure out 3d cursor pos
-        float depth_pix = .0f;
+        float depth_pix = .0f;/*
         {
             auto mpos = this->getMousePos();
 
@@ -605,7 +605,7 @@ void GuiViewport::end() {
                 position = gfxm::vec3(wpos4.x, wpos4.y, wpos4.z) / wpos4.w;
                 cursor_3d = position;
             }
-        }
+        }*/
 
         ImGui::RenderText(bb.Min, MKSTR("GBuffer layer: " << dbg_renderBufferId).c_str());
         ImGui::RenderText(bb.Min + ImVec2(0, ImGui::GetTextLineHeight()), MKSTR("Pixel depth: " << depth_pix).c_str());

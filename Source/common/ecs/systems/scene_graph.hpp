@@ -138,6 +138,25 @@ class ecsysSceneGraph : public ecsSystem<
 
 
     void onUpdate() {
+        if(hierarchy_dirty) {
+            root_nodes.clear();
+            nodes.clear();
+            for(auto e : world->getEntities()) {
+                nodes[e].id = e;
+            }
+            for(auto e : world->getEntities()) {
+                ecsParentTransform* parent = world->findAttrib<ecsParentTransform>(e);
+                if(parent == 0) {
+                    root_nodes.insert(&nodes[e]);
+                } else {
+                    nodes[e].parent = &nodes[parent->parent_entity];
+                    nodes[parent->parent_entity].children.insert(&nodes[e]);
+                }
+            }
+
+            hierarchy_dirty = false;
+        }
+
         for(auto& a : get_array<ecsTupleSubGraph>()) {
             if(!a->sub_system) continue;
             a->sub_system->onUpdate();
@@ -183,12 +202,12 @@ class ecsysSceneGraph : public ecsSystem<
 
     void imguiTreeNode(ecsWorld* world, Node* node, entity_id* selected) {
         ecsName* name_attrib = getWorld()->findAttrib<ecsName>(node->id);
-        std::string entity_name = "[anonymous]";
+        std::string entity_name = "[ANONYMOUS]";
         if(name_attrib) {
             if(name_attrib->name.size()) {
                 entity_name = name_attrib->name;
             } else {
-                entity_name = "[empty_name]";
+                entity_name = "[EMPTY_NAME]";
             }
         }
         if(node->children.size()) {

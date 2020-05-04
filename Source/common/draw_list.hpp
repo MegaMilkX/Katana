@@ -70,6 +70,8 @@ public:
     std::vector<DrawCmdSkin> skins;
     std::vector<OmniLight> omnis;
     std::vector<DirLight> dir_lights;
+
+    
 private:
     
 };
