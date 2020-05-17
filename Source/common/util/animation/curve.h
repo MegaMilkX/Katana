@@ -83,24 +83,31 @@ public:
     T at(float time, T def = T()) {
         if(keyframes.empty())
             return def;
-        keyframe<T>* k0 = 0, *k1 = 0;
-        for(int i = keyframes.size() - 1; i >= 0; --i)
-        {
-            k0 = &keyframes[i];
-            if(i == keyframes.size() - 1)
-                k1 = k0;
-            else
-                k1 = &keyframes[i + 1];
-            if(k0->time <= time)
-                break;
+
+        int left = 0;
+        int right = keyframes.size() - 1;
+        float t = .0f;
+        if(time > keyframes.back().time) {
+            left = keyframes.size() - 1;
+            right = left;
+        } else if(time < 0) {
+            left = 0;
+            right = 0;
+        } else {
+            while(right - left > 1) {
+                int center = left + (right - left) / 2;
+                if(time < keyframes[center].time) {
+                    right = center;
+                } else {
+                    left = center;
+                }
+            }
+            t = (time - keyframes[left].time) / (keyframes[right].time - keyframes[left].time);
         }
-        if(k0 == 0)
-            return def;
-        if(k0 == k1)
-            return k0->value;
-        T a = k0->value;
-        T b = k1->value;
-        float t = (time - k0->time) / (k1->time - k0->time);
+
+        T a = keyframes[left].value;
+        T b = keyframes[right].value;
+        
         return curve_value_interp(a, b, t);
     }
     T delta(float from, float to) {
@@ -148,153 +155,5 @@ private:
     std::vector<keyframe<T>> keyframes;
 };
 
-/*
-class curve
-{
-public:
-    float at(float time, float def = 0.0f)
-    {
-        if(keyframes.empty())
-            return def;
-        keyframe<float>* k0 = 0, *k1 = 0;
-        for(int i = keyframes.size() - 1; i >= 0; --i)
-        {
-            k0 = &keyframes[i];
-            if(i == keyframes.size() - 1)
-                k1 = k0;
-            else
-                k1 = &keyframes[i + 1];
-            if(k0->time <= time)
-                break;
-        }
-        if(k0 == 0)
-            return def;
-        if(k0 == k1)
-            return k0->value;
-        float a = k0->value;
-        float b = k1->value;
-        float t = (time - k0->time) / (k1->time - k0->time);
-        return a + t * (b - a);
-    }
 
-    float delta(float from, float to)
-    {
-        if(keyframes.empty())
-            return 0.0f;
-        float d = 0.0f;
-        float prevValue = at(from);
-        float value = at(to);
-
-        if(to < from)
-        {
-            float d0 = keyframes.back().value - prevValue;
-            float d1 = value - keyframes.front().value;
-            d = d0 + d1;
-        }
-        else
-        {
-            d = value - prevValue;
-        }
-        return d;
-    }
-
-    keyframe<float>& operator[](float time)
-    {
-        for(unsigned i = 0; i < keyframes.size(); ++i)
-        {
-            if(fabsf(keyframes[i].time - time) < FLT_EPSILON)
-            {
-                return keyframes[i];
-            }
-        }
-        
-        keyframes.push_back(keyframe<float>(time));
-        std::sort(keyframes.begin(), keyframes.end());
-        return operator[](time);
-    }
-
-    bool empty() { return keyframes.empty(); }
-private:
-    std::vector<keyframe<float>> keyframes;
-};
-
-struct curve2
-{
-    gfxm::vec2 at(float t, const gfxm::vec2& def)
-    {
-        return gfxm::vec2(x.at(t, def.x), y.at(t, def.y));
-    }
-    gfxm::vec2 delta(float from, float to)
-    {
-        return gfxm::vec2(
-            x.delta(from, to), 
-            y.delta(from, to)
-        );
-    }
-    bool empty() { return x.empty() || y.empty(); }
-    curve x, y;
-};
-
-struct curve3
-{
-    gfxm::vec3 at(float t, const gfxm::vec3& def)
-    {
-        return gfxm::vec3(
-            x.at(t, def.x), 
-            y.at(t, def.y), 
-            z.at(t, def.z));
-    }
-    gfxm::vec3 delta(float from, float to)
-    {
-        return gfxm::vec3(
-            x.delta(from, to),
-            y.delta(from, to),
-            z.delta(from, to)
-        );
-    }
-    bool empty() { return x.empty() || y.empty() || x.empty(); }
-    curve x, y, z;
-};
-
-struct curve4
-{
-    gfxm::vec4 at(float t, const gfxm::vec4& def)
-    {
-        return gfxm::vec4(
-            x.at(t, def.x), 
-            y.at(t, def.y), 
-            z.at(t, def.z), 
-            w.at(t, def.w));
-    }
-    gfxm::vec4 delta(float from, float to)
-    {
-        return gfxm::vec4(
-            x.delta(from, to),
-            y.delta(from, to),
-            z.delta(from, to),
-            w.delta(from, to)
-        );
-    }
-    bool empty() { return x.empty() || y.empty() || x.empty() || w.empty(); }
-    curve x, y, z, w;
-};
-
-struct curveq
-{
-public:
-    gfxm::quat at(float t, const gfxm::quat& def)
-    {
-        return gfxm::normalize(
-            gfxm::quat(
-                x.at(t, def.x), 
-                y.at(t, def.y), 
-                z.at(t, def.z), 
-                w.at(t, def.w)
-            )
-        );
-    }
-    bool empty() { return x.empty() || y.empty() || x.empty() || w.empty(); }
-    curve x, y, z, w;
-};
-*/
 #endif
