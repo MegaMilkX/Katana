@@ -400,7 +400,7 @@ void DocEcsWorld::onGuiToolbox(Editor* ed) {
         }
     }
 
-    if(ImGui::SmallButton(ICON_MDI_PLUS)) {
+    if(ImGui::SmallButton(ICON_MDI_PLUS " Create")) {
         selected_ent = cur_world->createEntity().getId();
         ecsEntityHandle h(cur_world, selected_ent);
         h.getAttrib<ecsName>()->name = "New object";
@@ -410,7 +410,7 @@ void DocEcsWorld::onGuiToolbox(Editor* ed) {
         h.getAttrib<ecsScale>();
     }
     ImGui::SameLine();
-    if(ImGui::SmallButton(ICON_MDI_MINUS)) {
+    if(ImGui::SmallButton(ICON_MDI_MINUS " Remove")) {
         cur_world->removeEntity(selected_ent);
     }
 
