@@ -5,30 +5,36 @@
 #include "error.hpp"
 #include <assert.h>
 
+#include "../util/threading/delegated_call.hpp"
+
 namespace gl {
 
 class VertexAttribBuffer {
 public:
     VertexAttribBuffer() {
-        glGenBuffers(1, &id);
+        delegatedCall([this](){ glGenBuffers(1, &id); });
     }
     ~VertexAttribBuffer() {
-        glDeleteBuffers(1, &id);
+        delegatedCall([this](){ glDeleteBuffers(1, &id); });
     }
     void data(void* data, size_t sz) {
-        glBindBuffer(GL_ARRAY_BUFFER, id);
-        GL_LOG_ERROR("glBindBuffer");
-        glBufferData(GL_ARRAY_BUFFER, sz, data, GL_STATIC_DRAW);
-        GL_LOG_ERROR("glBufferData");
-        size = sz;
+        delegatedCall([this, data, sz](){
+            glBindBuffer(GL_ARRAY_BUFFER, id);
+            GL_LOG_ERROR("glBindBuffer");
+            glBufferData(GL_ARRAY_BUFFER, sz, data, GL_STATIC_DRAW);
+            GL_LOG_ERROR("glBufferData");
+            size = sz;
+        });
     }
     void enableAttrib(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride) {
-        glBindBuffer(GL_ARRAY_BUFFER, id);
-        GL_LOG_ERROR("glBindBuffer");
-        glEnableVertexAttribArray(index);
-        GL_LOG_ERROR("glEnableVertexAttribArray");
-        glVertexAttribPointer(index, size, type, normalized, stride, 0);
-        GL_LOG_ERROR("glVertexAttribPointer");
+        delegatedCall([this, index, size, type, normalized, stride](){
+            glBindBuffer(GL_ARRAY_BUFFER, id);
+            GL_LOG_ERROR("glBindBuffer");
+            glEnableVertexAttribArray(index);
+            GL_LOG_ERROR("glEnableVertexAttribArray");
+            glVertexAttribPointer(index, size, type, normalized, stride, 0);
+            GL_LOG_ERROR("glVertexAttribPointer");
+        });
     }
     void bind() {
         glBindBuffer(GL_ARRAY_BUFFER, id);
@@ -43,24 +49,26 @@ public:
         assert(dest);
         assert(sz + offset <= getDataSize());
 
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        delegatedCall([this, dest, offset, sz](){
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        GLuint copy_buf;
-        glGenBuffers(1, &copy_buf);
+            GLuint copy_buf;
+            glGenBuffers(1, &copy_buf);
 
-        glBindBuffer(GL_COPY_WRITE_BUFFER, copy_buf);
-        glBufferData(GL_COPY_WRITE_BUFFER, sz, 0, GL_DYNAMIC_READ);
+            glBindBuffer(GL_COPY_WRITE_BUFFER, copy_buf);
+            glBufferData(GL_COPY_WRITE_BUFFER, sz, 0, GL_DYNAMIC_READ);
 
-        glBindBuffer(GL_COPY_READ_BUFFER, id);
+            glBindBuffer(GL_COPY_READ_BUFFER, id);
 
-        glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, offset, 0, sz);
+            glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, offset, 0, sz);
 
-        void* ptr = glMapBufferRange(GL_COPY_WRITE_BUFFER, 0, sz, GL_MAP_READ_BIT);
-        assert(ptr);
+            void* ptr = glMapBufferRange(GL_COPY_WRITE_BUFFER, 0, sz, GL_MAP_READ_BIT);
+            assert(ptr);
 
-        memcpy(dest, ptr, sz);
+            memcpy(dest, ptr, sz);
 
-        glDeleteBuffers(1, &copy_buf);
+            glDeleteBuffers(1, &copy_buf);
+        });
         return true;
     }
 
@@ -71,13 +79,13 @@ public:
         if(!sz) {
             return false;
         }
-
-        glBindVertexArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindBuffer(GL_COPY_READ_BUFFER, id);
-        glGetBufferSubData(GL_COPY_READ_BUFFER, 0, sz, dest);
-        glBindBuffer(GL_COPY_READ_BUFFER, 0);
-        
+        delegatedCall([this, dest, sz](){
+            glBindVertexArray(0);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glBindBuffer(GL_COPY_READ_BUFFER, id);
+            glGetBufferSubData(GL_COPY_READ_BUFFER, 0, sz, dest);
+            glBindBuffer(GL_COPY_READ_BUFFER, 0);
+        });
         return true;
     }
 private:
@@ -91,17 +99,19 @@ private:
 class IndexBuffer {
 public:
     IndexBuffer() {
-        glGenBuffers(1, &id);
+        delegatedCall([this](){ glGenBuffers(1, &id); });
     }
     ~IndexBuffer() {
-        glDeleteBuffers(1, &id);
+        delegatedCall([this](){ glDeleteBuffers(1, &id); });
     }
     void data(void* data, size_t sz) {
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
-        GL_LOG_ERROR("glBindBuffer");
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sz, data, GL_STATIC_DRAW);
-        GL_LOG_ERROR("glBufferData");
-        size = sz;
+        delegatedCall([this, data, sz]() {
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
+            GL_LOG_ERROR("glBindBuffer");
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sz, data, GL_STATIC_DRAW);
+            GL_LOG_ERROR("glBufferData");
+            size = sz;
+        });
     }
     void bind() {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
@@ -119,13 +129,13 @@ public:
         if(!size) {
             return false;
         }
-
-        glBindVertexArray(0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        glBindBuffer(GL_COPY_READ_BUFFER, id);
-        glGetBufferSubData(GL_COPY_READ_BUFFER, 0, sz, dest);
-        glBindBuffer(GL_COPY_READ_BUFFER, 0);
-        
+        delegatedCall([this, dest, sz]() {
+            glBindVertexArray(0);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+            glBindBuffer(GL_COPY_READ_BUFFER, id);
+            glGetBufferSubData(GL_COPY_READ_BUFFER, 0, sz, dest);
+            glBindBuffer(GL_COPY_READ_BUFFER, 0);
+        });
         return true;
     }
 private:

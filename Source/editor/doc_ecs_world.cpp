@@ -1,5 +1,6 @@
 #include "doc_ecs_world.hpp"
 
+
 DocEcsWorld::DocEcsWorld() {
     //foo_render();
 
@@ -53,6 +54,25 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
     } else {
         cur_world = _resource.get();
     }
+
+    // Check if any async tasks finished
+    for(auto& t : model_dnd_tasks) {
+        if(t->isDone()) {
+            auto sceneGraphSys = t->target_world->getSystem<ecsysSceneGraph>();
+            entity_id ent = sceneGraphSys->createNode();
+            t->target_world->setAttrib(ent, t->subscene);            
+            
+            t->target_world->createAttrib<ecsTagSubSceneRender>(ent);
+            t->target_world->createAttrib<ecsWorldTransform>(ent);
+
+            t->target_world->createAttrib<ecsName>(ent);
+            t->target_world->getAttrib<ecsName>(ent)->name = t->entity_name;
+            selected_ent = ent;
+
+            model_dnd_tasks.erase(t);
+            break;
+        }
+    }
     
     _resource->update();
 
@@ -73,61 +93,11 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
     }
     ImGui::SameLine();
     if(ImGui::Button("Bake Lightmaps", ImVec2(0, 32))) {
-        auto entities = renderSys->get_array<ecsTuple<ecsWorldTransform, ecsMeshes>>();
-        std::vector<LightmapMeshData> mesh_data;
-        for(auto& e : entities) {
-            auto m = e->get<ecsMeshes>();
-            for(auto& seg : m->segments) {
-                if(!seg.mesh) {
-                    continue;
-                }
-                if(!seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)
-                    || !seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::Normal)
-                    || !seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::Position)
-                ) {
-                    continue;
-                }
-
-                mesh_data.resize(mesh_data.size() + 1);
-                auto& md = mesh_data.back();
-
-                md.transform = e->get<ecsWorldTransform>()->transform;
-                md.tex_width = 256;
-                md.tex_height = 256;
-                md.position.resize(seg.mesh->vertexCount() * 3);
-                seg.mesh->mesh.copyAttribData(VERTEX_FMT::ENUM_GENERIC::Position, md.position.data());
-                md.normal.resize(seg.mesh->vertexCount() * 3);
-                seg.mesh->mesh.copyAttribData(VERTEX_FMT::ENUM_GENERIC::Normal, md.normal.data());
-                md.uv_lightmap.resize(seg.mesh->vertexCount() * 2);
-                seg.mesh->mesh.copyAttribData(VERTEX_FMT::ENUM_GENERIC::UVLightmap, md.uv_lightmap.data());
-                md.indices.resize(seg.mesh->indexCount());
-                seg.mesh->mesh.copyIndexData(md.indices.data());
-                md.segment = &seg;
-            }
-        }
-
-        // TODO: USE SEPARATE GBUFFER WTF
-        GenLightmaps(mesh_data, gvp.getRenderer(), gvp.getViewport()->getGBuffer(), dl);
-
-        int i = 0;
-        for(auto& e : entities) {
-            auto m = e->get<ecsMeshes>();
-            for(auto& seg : m->segments) {
-                if(!seg.mesh) {
-                    continue;
-                }
-                if(!seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)
-                    || !seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::Normal)
-                    || !seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::Position)
-                ) {
-                    continue;
-                }
-
-                seg.lightmap = mesh_data[i].lightmap;
-                
-                ++i;
-            }
-        }
+        lightmap_task = std::make_unique<edTaskEcsWorldCalcLightmaps>("Calculating lightmaps");
+        lightmap_task->dl = dl;
+        lightmap_task->gvp = &gvp;
+        lightmap_task->renderSys = renderSys;
+        edTaskPost(lightmap_task.get());
     }
     ImGui::SameLine();
     if(ImGui::Button("Reload Shaders", ImVec2(0, 32))) {
@@ -247,6 +217,15 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
             ResourceNode* node = *(ResourceNode**)payload->Data;
             LOG("Payload received: " << node->getFullName());
             if(has_suffix(node->getName(), ".fbx")) {
+                edTaskEcsWorldModelDragNDrop* task = new edTaskEcsWorldModelDragNDrop(
+                    MKSTR("Importing " << node->getFullName()).c_str(),
+                    node->getFullName().c_str(),
+                    node->getName().c_str(),
+                    cur_world
+                );
+                model_dnd_tasks.insert(std::unique_ptr<edTaskEcsWorldModelDragNDrop>(task));
+                edTaskPost(task);
+                /*
                 auto sceneGraphSys = cur_world->getSystem<ecsysSceneGraph>();
                 entity_id ent = sceneGraphSys->createNode();
                 ecsSubScene sub_scene(std::shared_ptr<ecsWorld>(new ecsWorld()));
@@ -267,7 +246,7 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
                         e.getAttrib<ecsTranslation>()->setPosition(c.cursor.pos + c.cursor.normal * 0.5f);
                         return c.cursor_start;
                     }
-                ));
+                ));*/
             }
         }
         ImGui::EndDragDropTarget();

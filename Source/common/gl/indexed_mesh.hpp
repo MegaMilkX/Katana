@@ -13,85 +13,14 @@
 #include "../render/vertex_format.hpp"
 
 namespace gl {
-/*
-enum ATTRIB_INDEX {
-    VERTEX_ATTRIB_FIRST = 0,
-    POSITION = VERTEX_ATTRIB_FIRST,
-    UV,
-    UV_LIGHTMAP,
-    NORMAL,
-    TANGENT,
-    BITANGENT,
-    BONE_INDEX4,
-    BONE_WEIGHT4,
-    COLOR_RGBA,
-    VERTEX_ATTRIB_COUNT
-};
-
-struct AttribDesc {
-    std::string name;
-    GLint size;
-    GLenum type;
-    GLboolean normalized;
-};
-
-inline const size_t getAttribElemTypeSize(GLenum type) {
-    size_t sz = 0;
-    switch(type) {
-    case GL_BYTE:
-    case GL_UNSIGNED_BYTE:
-        sz = 1;
-        break;
-    case GL_SHORT:
-    case GL_UNSIGNED_SHORT:
-        sz = 2;
-        break;
-    case GL_INT:
-    case GL_UNSIGNED_INT:
-        sz = 4;
-        break;
-    case GL_HALF_FLOAT:
-        sz = 2;
-        break;
-    case GL_FLOAT:
-        sz = 4;
-        break;
-    case GL_DOUBLE:
-        sz = 8;
-        break;
-    case GL_FIXED:
-    case GL_INT_2_10_10_10_REV:
-    case GL_UNSIGNED_INT_2_10_10_10_REV:
-    case GL_UNSIGNED_INT_10F_11F_11F_REV:
-    default:
-        assert(false);
-        break;
-    }
-    return sz;
-}
-
-inline const AttribDesc& getAttribDesc(ATTRIB_INDEX index) {
-    static AttribDesc table[] = {
-        { "Position", 3, GL_FLOAT, GL_FALSE },
-        { "UV", 2, GL_FLOAT, GL_FALSE },
-        { "UVLightmap", 2, GL_FLOAT, GL_FALSE },
-        { "Normal", 3, GL_FLOAT, GL_FALSE },
-        { "Tangent", 3, GL_FLOAT, GL_FALSE },
-        { "Bitangent", 3, GL_FLOAT, GL_FALSE },
-        { "BoneIndex4", 4, GL_FLOAT, GL_FALSE },
-        { "BoneWeight4", 4, GL_FLOAT, GL_FALSE },
-        { "ColorRGBA", 4, GL_UNSIGNED_BYTE, GL_TRUE }
-    };
-    return table[index];
-}*/
 
 class IndexedMesh {
 public:
     IndexedMesh() {
-        glGenVertexArrays(1, &id);
+        delegatedCall([this]() { glGenVertexArrays(1, &id); });
     }
     ~IndexedMesh() {
-        glDeleteVertexArrays(1, &id);
+        delegatedCall([this]() { glDeleteVertexArrays(1, &id); });
     }
     void setAttribData(int index, void* data, size_t size) {
         auto& inf = VERTEX_FMT::GENERIC::getAttribDesc(index);
@@ -99,19 +28,23 @@ public:
     }
     void setAttribData(int index, void* data, size_t size, GLint attrib_size, GLenum type, GLboolean normalized) {
         assert(size);
-        attribs[index].reset(new gl::VertexAttribBuffer());
-        attribs[index]->data(data, size);
-        glBindVertexArray(id);
-        glEnableVertexAttribArray((GLuint)index);
-        //glVertexAttribPointer((GLuint)index, getAttribDesc(index).size, getAttribDesc(index).type, getAttribDesc(index).normalized, 0/*stride*/, 0);
-        glVertexAttribPointer((GLuint)index, attrib_size, type, normalized, 0/*stride*/, 0);
-        glBindVertexArray(0);
+        delegatedCall([this, index, data, size, attrib_size, type, normalized]() { 
+            attribs[index].reset(new gl::VertexAttribBuffer());
+            attribs[index]->data(data, size);
+            glBindVertexArray(id);
+            glEnableVertexAttribArray((GLuint)index);
+            //glVertexAttribPointer((GLuint)index, getAttribDesc(index).size, getAttribDesc(index).type, getAttribDesc(index).normalized, 0/*stride*/, 0);
+            glVertexAttribPointer((GLuint)index, attrib_size, type, normalized, 0/*stride*/, 0);
+            glBindVertexArray(0);
+        });
     }
     void setIndices(const uint32_t* data, size_t count) {
-        indices.data((uint32_t*)data, sizeof(uint32_t) * count);
-        index_count = count;
-        glBindVertexArray(id);
-        indices.bind();
+        delegatedCall([this, data, count]() { 
+            indices.data((uint32_t*)data, sizeof(uint32_t) * count);
+            index_count = count;
+            glBindVertexArray(id);
+            indices.bind();
+        });
     }
 
     gl::VertexAttribBuffer* getAttribBuffer(int index) {

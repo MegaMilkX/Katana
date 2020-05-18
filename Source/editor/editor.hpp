@@ -82,6 +82,8 @@ private:
 
     std::string currentSceneFile;
 
+    std::shared_ptr<Texture2D> processing_sprite;
+
     bool ctrl = false;
     bool shift = false;
 

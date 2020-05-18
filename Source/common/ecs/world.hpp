@@ -85,7 +85,7 @@ public:
 inline size_t calcArchetypeSize(uint64_t attribmask) {
     size_t sz = 0;
     for(size_t i = 0; i < get_last_attrib_id() + 1; ++i) {
-        if(attribmask & (1 << i) == 0) continue;
+        if((attribmask & (1 << i)) == 0) continue;
         auto info = getEcsAttribTypeLib().get_info(i);
         if(!info) break;
         sz += info->size_of;

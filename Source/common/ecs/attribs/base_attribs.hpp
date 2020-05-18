@@ -13,6 +13,8 @@
 
 #include "kt_cmd.hpp"
 
+#include "../../util/threading/delegated_call.hpp"
+
 class ecsSubScene : public ecsAttrib<ecsSubScene> {
     std::shared_ptr<ecsWorld> world;
 public:
@@ -248,58 +250,62 @@ public:
             seg.material = r.readResource<Material>();
 
             uint32_t bone_count = r.read<uint32_t>();
+            delegatedCall([this, bone_count, &seg](){
+                if(bone_count && seg.mesh) {
+                    seg.skin_data.reset(new SkinData());
+
+                    // TODO: Move this to a separate function
+                    size_t vertexCount = seg.mesh->vertexCount();
+                    seg.skin_data->vao_cache.reset(new gl::VertexArrayObject);
+                    seg.skin_data->position_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
+                    seg.skin_data->normal_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
+                    seg.skin_data->tangent_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
+                    seg.skin_data->bitangent_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
+                    seg.skin_data->vao_cache->attach(seg.skin_data->position_cache->getId(), 
+                        VERTEX_FMT::ENUM_GENERIC::Position, VERTEX_FMT::Position::count, 
+                        VERTEX_FMT::Position::gl_type, VERTEX_FMT::Position::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                    );
+                    seg.skin_data->vao_cache->attach(seg.skin_data->normal_cache->getId(), 
+                        VERTEX_FMT::ENUM_GENERIC::Normal, VERTEX_FMT::Normal::count, 
+                        VERTEX_FMT::Normal::gl_type, VERTEX_FMT::Normal::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                    );
+                    seg.skin_data->vao_cache->attach(seg.skin_data->tangent_cache->getId(), 
+                        VERTEX_FMT::ENUM_GENERIC::Tangent, VERTEX_FMT::Tangent::count, 
+                        VERTEX_FMT::Tangent::gl_type, VERTEX_FMT::Tangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                    );
+                    seg.skin_data->vao_cache->attach(seg.skin_data->bitangent_cache->getId(), 
+                        VERTEX_FMT::ENUM_GENERIC::Bitangent, VERTEX_FMT::Bitangent::count, 
+                        VERTEX_FMT::Bitangent::gl_type, VERTEX_FMT::Bitangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                    );
+                    seg.skin_data->pose_cache.reset(new gl::Buffer(GL_STREAM_DRAW, sizeof(float) * 16 * bone_count));
+
+                    if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UV)) {
+                        GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UV)->getId();
+                        seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::UV, 
+                            VERTEX_FMT::UV::count, VERTEX_FMT::UV::gl_type, 
+                            VERTEX_FMT::UV::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                        );
+                    }
+                    if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)) {
+                        GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)->getId();
+                        seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::UVLightmap, 
+                            VERTEX_FMT::UVLightmap::count, VERTEX_FMT::UVLightmap::gl_type, 
+                            VERTEX_FMT::UVLightmap::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                        );
+                    }
+                    if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA)) {
+                        GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA)->getId();
+                        seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::ColorRGBA, 
+                            VERTEX_FMT::ColorRGBA::count, VERTEX_FMT::ColorRGBA::gl_type, 
+                            VERTEX_FMT::ColorRGBA::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                        );
+                    }
+                    GLuint index_buf_id = seg.mesh->mesh.getIndexBuffer()->getId();
+                    seg.skin_data->vao_cache->attachIndexBuffer(index_buf_id);
+                }
+            });
+
             if(bone_count && seg.mesh) {
-                seg.skin_data.reset(new SkinData());
-
-                // TODO: Move this to a separate function
-                size_t vertexCount = seg.mesh->vertexCount();
-                seg.skin_data->vao_cache.reset(new gl::VertexArrayObject);
-                seg.skin_data->position_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
-                seg.skin_data->normal_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
-                seg.skin_data->tangent_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
-                seg.skin_data->bitangent_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
-                seg.skin_data->vao_cache->attach(seg.skin_data->position_cache->getId(), 
-                    VERTEX_FMT::ENUM_GENERIC::Position, VERTEX_FMT::Position::count, 
-                    VERTEX_FMT::Position::gl_type, VERTEX_FMT::Position::normalized ? GL_TRUE : GL_FALSE, 0, 0
-                );
-                seg.skin_data->vao_cache->attach(seg.skin_data->normal_cache->getId(), 
-                    VERTEX_FMT::ENUM_GENERIC::Normal, VERTEX_FMT::Normal::count, 
-                    VERTEX_FMT::Normal::gl_type, VERTEX_FMT::Normal::normalized ? GL_TRUE : GL_FALSE, 0, 0
-                );
-                seg.skin_data->vao_cache->attach(seg.skin_data->tangent_cache->getId(), 
-                    VERTEX_FMT::ENUM_GENERIC::Tangent, VERTEX_FMT::Tangent::count, 
-                    VERTEX_FMT::Tangent::gl_type, VERTEX_FMT::Tangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
-                );
-                seg.skin_data->vao_cache->attach(seg.skin_data->bitangent_cache->getId(), 
-                    VERTEX_FMT::ENUM_GENERIC::Bitangent, VERTEX_FMT::Bitangent::count, 
-                    VERTEX_FMT::Bitangent::gl_type, VERTEX_FMT::Bitangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
-                );
-                seg.skin_data->pose_cache.reset(new gl::Buffer(GL_STREAM_DRAW, sizeof(float) * 16 * bone_count));
-
-                if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UV)) {
-                    GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UV)->getId();
-                    seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::UV, 
-                        VERTEX_FMT::UV::count, VERTEX_FMT::UV::gl_type, 
-                        VERTEX_FMT::UV::normalized ? GL_TRUE : GL_FALSE, 0, 0
-                    );
-                }
-                if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)) {
-                    GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)->getId();
-                    seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::UVLightmap, 
-                        VERTEX_FMT::UVLightmap::count, VERTEX_FMT::UVLightmap::gl_type, 
-                        VERTEX_FMT::UVLightmap::normalized ? GL_TRUE : GL_FALSE, 0, 0
-                    );
-                }
-                if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA)) {
-                    GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA)->getId();
-                    seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::ColorRGBA, 
-                        VERTEX_FMT::ColorRGBA::count, VERTEX_FMT::ColorRGBA::gl_type, 
-                        VERTEX_FMT::ColorRGBA::normalized ? GL_TRUE : GL_FALSE, 0, 0
-                    );
-                }
-                GLuint index_buf_id = seg.mesh->mesh.getIndexBuffer()->getId();
-                seg.skin_data->vao_cache->attachIndexBuffer(index_buf_id);
-
                 for(uint32_t j = 0; j < bone_count; ++j) {
                     ecsWorldTransform* attr = (ecsWorldTransform*)r.readAttribRef();
                     gfxm::mat4 m = r.read<gfxm::mat4>();

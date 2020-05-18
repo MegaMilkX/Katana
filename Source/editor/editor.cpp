@@ -27,6 +27,9 @@
 #include "doc_render_graph.hpp"
 #include "doc_ecs_world.hpp"
 
+#include "util/editor_task_mgr.hpp"
+#include "../common/util/progress_counter.hpp"
+
 int setupImguiLayout();
 
 static void tryOpenDocument(const std::string& res_path) {
@@ -53,13 +56,23 @@ static void tryOpenDocumentFromPtr(std::shared_ptr<Resource> res) {
     Editor::get()->tryOpenDocumentFromPtr(res);
 }
 
+#include "../common/gen/editor_processing_sprite.png.h"
 
 Editor::Editor() {
     gTryOpenDocumentFn = &::tryOpenNestedDocument;
     gTryOpenDocumentFromPtrFn = &::tryOpenDocumentFromPtr;
+
+    // Replace with own sprite
+    processing_sprite.reset(new Texture2D());
+    dstream strm;
+    std::vector<char> buf((char*)editor_processing_sprite_png, (char*)editor_processing_sprite_png + sizeof(editor_processing_sprite_png));
+    strm.setBuffer(buf);
+    processing_sprite->deserialize(strm, sizeof(editor_processing_sprite_png));
+
+    edTaskMgrStart();
 }
 Editor::~Editor() {
-    
+    edTaskMgrStop();
 }
 
 void Editor::onInit() {
@@ -245,6 +258,12 @@ void Editor::onGui(float dt) {
             }
             ImGui::EndMenu();
         }
+        if(ImGui::BeginMenu("Test")) {
+            if(ImGui::Button("test")) {
+                //edTaskPost();
+            }
+            ImGui::EndMenu();
+        }
         ImGui::EndMenuBar();
     }
 
@@ -302,6 +321,53 @@ void Editor::onGui(float dt) {
         ImGui::EndPopup();
     }
     ImGui::PopID();
+
+    if (edTaskMgrGetTaskCount()) {
+        if(!ImGui::IsPopupOpen("Processing...")) {
+            ImGui::OpenPopup("Processing...");
+        }
+    }
+    
+
+    ImGui::SetNextWindowSize(ImVec2(250, 0));
+    if(ImGui::BeginPopupModal("Processing...", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+        static gfxm::vec4 frames[] = {
+            gfxm::vec4(0, 0, 99, 123),
+            gfxm::vec4(100, 0, 99, 123),
+            gfxm::vec4(201, 0, 99, 123),
+            gfxm::vec4(302, 0, 99, 123),
+            gfxm::vec4(403, 0, 99, 123),
+            gfxm::vec4(504, 0, 99, 123)
+        };
+        static float frame = 0;
+        int f = (int)frame;
+        ImVec2 uv0 = ImVec2(frames[f].x / 603.0f, (frames[f].y + frames[f].w) / 123.0f);
+        ImVec2 uv1 = ImVec2((frames[f].x + frames[f].z) / 603.0f, frames[f].y / 123.0f);
+        ImGui::Image(
+            (ImTextureID)processing_sprite->GetGlName(), 
+            ImVec2(frames[f].z, frames[f].w), 
+            uv0, 
+            uv1
+        );
+        ImGui::Text(getProgressDesc().c_str());
+        ImGui::ProgressBar(getProgressCount() / (float)getMaxProgressCount());
+        frame += 6.0f * dt;
+        if(frame >= 6.0f) {
+            frame -= (float)f;
+        }
+        
+        std::vector<std::string> task_names;
+        edTaskMgrGetTaskNameList(task_names);
+        for(int i = 0; i < task_names.size(); ++i) {
+            ImGui::Text(task_names[i].c_str());
+        }
+
+        if(edTaskMgrGetTaskCount() == 0) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
 
     //bool demo = true;
     //ImGui::ShowDemoWindow(&demo);

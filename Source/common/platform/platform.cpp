@@ -11,8 +11,10 @@
 #include "../input/input_glfw.hpp"
 #include "../audio.hpp"
 #include "../lib/imgui_wrap.hpp"
+#include "../util/threading/utils.hpp"
 
 static GLFWwindow* window = 0;
+static GLFWwindow* async_context = 0;
 
 bool initWindow(PlatformStartupParams* params);
 void cleanupWindow();
@@ -25,6 +27,8 @@ Config& platformGetConfig() {
 }
 
 bool platformInit(PlatformStartupParams* params) {
+    setMainThread(std::this_thread::get_id());
+    
     gResourceTree.scanFilesystem(get_module_dir() + "/" + platformGetConfig().data_dir);
     
     if(!initWindow(params)) {
@@ -123,6 +127,10 @@ void* platformGetGlfwWindow() {
     return (void*)window;
 }
 
+void platformMakeAsyncRenderContextCurrent() {
+    glfwMakeContextCurrent(async_context);
+}
+
 void platformMouseSetEnabled(bool v) {
     glfwSetInputMode(window, GLFW_CURSOR, v ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
 }
@@ -144,7 +152,9 @@ bool initWindow(PlatformStartupParams* params) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-    
+#ifdef _DEBUG
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+#endif
     if(params) {
         if(params->hide_window) {
             glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
@@ -191,12 +201,17 @@ bool initWindow(PlatformStartupParams* params) {
 
     glDisable(GL_LINE_SMOOTH);
 
-    GL_LOG_ERROR("");
+    // Second context for multithreading
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    async_context = glfwCreateWindow(640, 480, "", NULL, window);
+
+    glfwMakeContextCurrent(window);
 
     return true;
 }
 
 void cleanupWindow() {
+    glfwDestroyWindow(async_context);
     glfwDestroyWindow(window);
     glfwTerminate();
 }

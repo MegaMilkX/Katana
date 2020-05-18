@@ -16,6 +16,8 @@
 #include "../common/input/hid/hid.hpp"
 #include "../common/audio.hpp"
 
+#include "../common/util/threading/delegated_call.hpp"
+
 std::unique_ptr<KatanaImpl> kt_play_mode;
 
 class EscInputListener : public InputListenerWrap {
@@ -151,6 +153,13 @@ int main(int argc, char* argv[]) {
         app_state->onInit();
         while(!platformIsShuttingDown()) {
             frameTimer.start();
+
+            // Delegated calls
+            auto call = popDelegatedCall();
+            while(call) {
+                call->execute();
+                call = popDelegatedCall();
+            }
 
             //hidUpdateDevices();
             getInputMgr().update(dt);

@@ -37,13 +37,17 @@ public:
             env_map.reset(new CubeMap());
             irradiance_map.reset(new CubeMap());
 
-            curve<gfxm::vec3> curv;
+            curve<gfxm::vec3> curv;/*
             curv[0.0f] = gfxm::vec3(0 / 255.0f, 0 / 255.0f, 0 / 255.0f);
             curv[.5f] = gfxm::vec3(3 / 255.0f, 3 / 255.0f, 5 / 255.0f);
-            curv[.55f] = gfxm::vec3(255 / 255.0f, 74 / 255.0f, 5 / 255.0f);
+            curv[.55f] = gfxm::vec3(255 / 255.0f, 74 / 255.0f, 5 / 255.0f); 
             curv[.60f] = gfxm::vec3(160 / 255.0f, 137 / 255.0f, 129 / 255.0f);
             curv[.7f] = gfxm::vec3(1 / 255.0f, 44 / 255.0f, 95 / 255.0f);
-            curv[1.0f] = gfxm::vec3(1 / 255.0f, 11 / 255.0f, 36 / 255.0f);
+            curv[1.0f] = gfxm::vec3(1 / 255.0f, 11 / 255.0f, 36 / 255.0f);*/
+            curv[0.0f] = gfxm::vec3(70 / 255.0f, 70 / 255.0f, 70 / 255.0f); 
+            curv[0.5f] = gfxm::vec3(70 / 255.0f, 70 / 255.0f, 70 / 255.0f);
+            curv[0.55f] = gfxm::vec3(140 / 255.0f, 140 / 255.0f, 140 / 255.0f);
+            curv[1.0f] = gfxm::vec3(100 / 255.0f, 100 / 255.0f, 100 / 255.0f);
             setSkyGradient(curv);
         }
         
