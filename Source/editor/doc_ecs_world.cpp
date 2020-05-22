@@ -1,5 +1,7 @@
 #include "doc_ecs_world.hpp"
 
+#include "../common/util/filesystem.hpp"
+
 
 DocEcsWorld::DocEcsWorld() {
     //foo_render();
@@ -155,16 +157,6 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
         fb_outline.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
         fb_blur.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
         fb_pick.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
-
-        gvp.getRenderer()->drawSilhouettes(&fb_silhouette, gvp.getProjection(), gvp.getView(), dl_silhouette);
-        outline(&fb_outline, fb_silhouette.getTextureId(0));
-        cutout(&fb_blur, fb_outline.getTextureId(0), fb_silhouette.getTextureId(0));/*
-        blur(&fb_outline, fb_silhouette.getTextureId(0), gfxm::vec2(1, 0));
-        blur(&fb_blur, fb_outline.getTextureId(0), gfxm::vec2(0, 1));
-        blur(&fb_outline, fb_blur.getTextureId(0), gfxm::vec2(1, 0));
-        blur(&fb_blur, fb_outline.getTextureId(0), gfxm::vec2(0, 1));
-        cutout(&fb_outline, fb_blur.getTextureId(0), fb_silhouette.getTextureId(0));*/
-        overlay(gvp.getViewport()->getFinalBuffer(), fb_blur.getTextureId(0));
         
         auto mpos = gvp.getMousePos();
         if(gvp.isMouseClicked(0)) {
@@ -195,6 +187,16 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
         }
     }
     gvp.end();
+    gvp.getRenderer()->drawSilhouettes(&fb_silhouette, gvp.getProjection(), gvp.getView(), dl_silhouette);
+    outline(&fb_outline, fb_silhouette.getTextureId(0));
+    cutout(&fb_blur, fb_outline.getTextureId(0), fb_silhouette.getTextureId(0));/*
+    blur(&fb_outline, fb_silhouette.getTextureId(0), gfxm::vec2(1, 0));
+    blur(&fb_blur, fb_outline.getTextureId(0), gfxm::vec2(0, 1));
+    blur(&fb_outline, fb_blur.getTextureId(0), gfxm::vec2(1, 0));
+    blur(&fb_blur, fb_outline.getTextureId(0), gfxm::vec2(0, 1));
+    cutout(&fb_outline, fb_blur.getTextureId(0), fb_silhouette.getTextureId(0));*/
+    overlay(gvp.getViewport()->getFinalBuffer(), fb_blur.getTextureId(0));
+
 
     cursor_data.normal = gvp.getCursor3dNormal();
     cursor_data.pos = gvp.getCursor3d();
@@ -216,7 +218,16 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_RESOURCE")) {
             ResourceNode* node = *(ResourceNode**)payload->Data;
             LOG("Payload received: " << node->getFullName());
-            if(has_suffix(node->getName(), ".fbx")) {
+            if(has_suffix(node->getName(), ".entity")) {
+                std::string fname = node->getFullName();
+                file_stream f(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + fname, file_stream::F_IN);
+                if(f.is_open()) {
+                    auto ehdl = cur_world->createEntityFromTemplate(node->getFullName().c_str());
+                    if(ehdl.isValid()) {
+                        selected_ent = ehdl.getId();
+                    }
+                }
+            } else if(has_suffix(node->getName(), ".fbx")) {
                 edTaskEcsWorldModelDragNDrop* task = new edTaskEcsWorldModelDragNDrop(
                     MKSTR("Importing " << node->getFullName()).c_str(),
                     node->getFullName().c_str(),
@@ -261,15 +272,35 @@ void imguiEntityList(
     entity_id& selected_ent
 );
 
+void saveTemplate(ecsEntityHandle hdl) {
+    std::string save_name;
+    save_name = dialogSave("entity");
+    if(!save_name.empty()) {
+        fs_path p(get_module_dir() + "/" + platformGetConfig().data_dir);
+        fs_path res_p(save_name);
+        fs_path relative_path = p.relative(res_p);
+        
+        auto tpl = getResource<EntityTemplate>(relative_path.string(), true);
+        tpl->getEntity().getWorld()->copyAttribs(tpl->getEntity().getId(), hdl);
+        tpl->Name(relative_path.string());
+        overwriteResourceFile(tpl);
+
+        tpl->updateDerivedEntities();
+        hdl.getWorld()->linkToTemplate(hdl.getId(), tpl);
+    }
+}
+
 void imguiEntityListItemContextMenu(const char* string_id, ecsEntityHandle hdl, entity_id& selected_ent) {
     if(ImGui::BeginPopupContextItem(string_id)) {
         ImGui::Text(string_id);
         ImGui::Separator();
-        if(ImGui::MenuItem("Edit template...")) {
-
+        if(hdl.getInheritedAttribBitmask()) {
+            if(ImGui::MenuItem("Update template")) {
+                hdl.getWorld()->updateTemplate(hdl.getId());
+            }
         }
         if(ImGui::MenuItem("Save as template...")) {
-            // TODO:
+            saveTemplate(hdl);
         }
         ImGui::Separator();
         if(ImGui::MenuItem("Delete")) {
@@ -289,20 +320,29 @@ static void imguiEntityListItem(
     const std::map<entity_id, std::vector<entity_id>>& child_map
 ) {
     bool selected = selected_ent == hdl.getId();
-    
+
+    ImVec4 text_color = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+    if(hdl.getInheritedAttribBitmask()) {
+        text_color = ImVec4(0.8f, 0.7f, 0.5f, 1.0f);
+    }
+
     auto it = child_map.find(hdl.getId());
     std::string string_id = MKSTR(name << "###" << hdl.getId());
     if(it == child_map.end()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, text_color);
         if(ImGui::Selectable(string_id.c_str(), selected_ent == hdl.getId())) {
             selected_ent = hdl.getId();
         }
+        ImGui::PopStyleColor();
         imguiEntityListItemContextMenu(string_id.c_str(), hdl, selected_ent);
     } else { 
         ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow;
         if(selected) {
             tree_node_flags |= ImGuiTreeNodeFlags_Selected;
         }
+        ImGui::PushStyleColor(ImGuiCol_Text, text_color);
         bool open = ImGui::TreeNodeEx(MKSTR(name << "###" << hdl.getId()).c_str(), tree_node_flags);
+        ImGui::PopStyleColor();
         imguiEntityListItemContextMenu(string_id.c_str(), hdl, selected_ent);
         if(ImGui::IsItemClicked(0)) {
             selected_ent = hdl.getId();
@@ -441,7 +481,26 @@ void DocEcsWorld::onGuiToolbox(Editor* ed) {
     ImGui::PopItemWidth();
 
     // TODO: Check selected entity validity
+    auto bitmaskInheritedAttribs = cur_world->getInheritedAttribBitmask(selected_ent);
     ImGui::Text(MKSTR("UID: " << selected_ent).c_str());
+    if(bitmaskInheritedAttribs) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Derived from template");
+
+        if(ImGui::SmallButton("Reset")) {
+            cur_world->resetToTemplate(selected_ent);
+        } ImGui::SameLine();
+        if(ImGui::SmallButton("Update template")) {
+            auto tpl = cur_world->updateTemplate(selected_ent);
+            if(tpl) {
+                tpl->write_to_file(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + tpl->Name());
+            }
+        }
+    } else {
+        if(ImGui::SmallButton("Make template")) {
+            saveTemplate(ecsEntityHandle(cur_world, selected_ent));
+        }
+    }
 
     ImGui::PushItemWidth(-1);
     if(ImGui::BeginCombo("###ADD_ATTRIBUTE", ICON_MDI_PLUS " Add attribute...")) {
@@ -450,7 +509,14 @@ void DocEcsWorld::onGuiToolbox(Editor* ed) {
                 for(auto& attr_id : it.second) {
                     auto inf = getEcsAttribTypeLib().get_info(attr_id);
                     if(ImGui::Selectable(inf->name.c_str())) {
-                        cur_world->createAttrib(selected_ent, attr_id);
+                        if(bitmaskInheritedAttribs & (1 << attr_id)) {
+                            // Don't create attribute, just break inheritance
+                            cur_world->clearAttribInheritance(selected_ent, attr_id);
+                        } else {
+                            if(!cur_world->getAttribPtr(selected_ent, attr_id)) {
+                                cur_world->createAttrib(selected_ent, attr_id);
+                            }
+                        }
                     }
                 }
             } else {
@@ -459,7 +525,14 @@ void DocEcsWorld::onGuiToolbox(Editor* ed) {
                     for(auto& attr_id : it.second) {
                         auto inf = getEcsAttribTypeLib().get_info(attr_id);
                         if(ImGui::Selectable(inf->name.c_str())) {
-                            cur_world->createAttrib(selected_ent, attr_id);
+                            if(bitmaskInheritedAttribs & (1 << attr_id)) {
+                                // Don't create attribute, just break inheritance
+                                cur_world->clearAttribInheritance(selected_ent, attr_id);
+                            } else {
+                                if(!cur_world->getAttribPtr(selected_ent, attr_id)) {
+                                    cur_world->createAttrib(selected_ent, attr_id);
+                                }
+                            }
                         }
                     }
 
@@ -479,9 +552,24 @@ void DocEcsWorld::onGuiToolbox(Editor* ed) {
         auto inf = getEcsAttribTypeLib().get_info(attrib->get_id());
         const std::string& name = inf->name;
         bool exists = true;
-        if(ImGui::CollapsingHeader(MKSTR( name ).c_str(), &exists, ImGuiTreeNodeFlags_DefaultOpen)) {
-            attrib->onGui(cur_world, selected_ent);
+        if(bitmaskInheritedAttribs & (1 << i)) {
+            //ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+            ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+
+            if(ImGui::CollapsingHeader(MKSTR( name ).c_str(), &exists, ImGuiTreeNodeFlags_DefaultOpen)) {
+                attrib->onGui(cur_world, selected_ent);
+            }
+
+            ImGui::PopStyleVar();
+            ImGui::PopItemFlag();
+            //ImGui::PopStyleColor();
+        } else {
+            if(ImGui::CollapsingHeader(MKSTR( name ).c_str(), &exists, ImGuiTreeNodeFlags_DefaultOpen)) {
+                attrib->onGui(cur_world, selected_ent);
+            }
         }
+
         if(!exists) {
             cur_world->removeAttrib(selected_ent, i);
         }

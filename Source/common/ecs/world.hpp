@@ -110,6 +110,7 @@ inline int64_t archetypeOffset(uint64_t attrib_mask, uint64_t attrib_id) {
 }
 
 #include "types.hpp"
+#include "../resource/entity_template.hpp"
 
 class ecsWorld : public Resource {
     ObjectPool<ecsEntity>                       entities;
@@ -117,6 +118,12 @@ class ecsWorld : public Resource {
     std::map<rttr::type, size_t>                sys_by_type;
 
     std::set<entity_id>                         live_entities;
+
+    std::unordered_map<entity_id, std::shared_ptr<EntityTemplate>> entity_to_template;
+    std::unordered_map<std::shared_ptr<EntityTemplate>, std::set<entity_id>> template_to_entities;
+    void setTemplateLink(entity_id e, std::shared_ptr<EntityTemplate> tpl);
+    void clearTemplateLink(entity_id e);
+    void tryClearTemplateLink(entity_id e);
 
     template<typename T>
     T* addSystem() {
@@ -132,47 +139,69 @@ class ecsWorld : public Resource {
     }
 
 public:
-    ecsEntityHandle     createEntity();
-    ecsEntityHandle     createEntity(archetype_mask_t attrib_signature);
-    void                removeEntity(entity_id id);
+    ~ecsWorld();
+
+    ecsEntityHandle             createEntity                ();
+    ecsEntityHandle             createEntity                (archetype_mask_t attrib_signature);
+    ecsEntityHandle             createEntityFromTemplate    (const char* tplPath);
+    void                        removeEntity                (entity_id id);
 
     const std::set<entity_id>&  getEntities() const;
 
     template<typename T>
-    T* findAttrib(entity_id ent);
+    T*                          findAttrib(entity_id ent);
     template<typename T>
-    T* getAttrib(entity_id ent);
+    T*                          getAttrib(entity_id ent);
     template<typename T>
-    T* setAttrib(entity_id ent, const T& value);
+    T*                          setAttrib(entity_id ent, const T& value);
     template<typename T>
-    void createAttrib(entity_id ent);
-    void createAttrib(entity_id ent, attrib_id attrib);
+    void                        createAttrib(entity_id ent);
+    void                        createAttrib(entity_id ent, attrib_id attrib);
+    void                        setAttribInheritanceMask(entity_id ent, uint64_t mask);
+    void                        clearAttribInheritance(entity_id e, attrib_id attrib);
+    void                        clearAllAttribInheritance(entity_id e);
     template<typename T>
-    void removeAttrib(entity_id ent);
-    void removeAttrib(entity_id ent, attrib_id attrib);
+    void                        removeAttrib(entity_id ent);
+    void                        removeAttrib(entity_id ent, attrib_id attrib);
+    void                        removeAttribs(entity_id ent, uint64_t mask);
 
-    ecsAttribBase* getAttribPtr(entity_id ent, attrib_id id);
+    ecsAttribBase*              getAttribPtr(entity_id ent, attrib_id id);
 
-    template<typename T>
-    void signalAttribUpdate(entity_id ent);
+    void                        copyAttribs                 (entity_id dst, ecsEntityHandle src, uint64_t ignore_mask = 0);
 
-    void signalAttribUpdate(entity_id ent, attrib_id attrib);
-
-    template<typename T>
-    void updateAttrib(entity_id ent, const T& value);
+    uint64_t                    getAttribBitmask(entity_id e);
+    uint64_t                    getInheritedAttribBitmask(entity_id e);
 
     template<typename T>
-    T*              getSystem();
-    int             systemCount();
-    ecsSystemBase*  getSystem(int i);
+    void                        signalAttribUpdate(entity_id ent);
 
-    void update();
+    void                        signalAttribUpdate(entity_id ent, attrib_id attrib);
+
+    template<typename T>
+    void                        updateAttrib(entity_id ent, const T& value);
+
+    EntityTemplate*             updateTemplate(entity_id ent);
+    void                        updateDerived(std::shared_ptr<EntityTemplate> tpl);
+    void                        linkToTemplate(entity_id ent, std::shared_ptr<EntityTemplate> tpl);
+    void                        resetToTemplate(entity_id ent);
+
+    template<typename T>
+    T*                          getSystem();
+    int                         systemCount();
+    ecsSystemBase*              getSystem(int i);
+
+    void                        update();
 
 
-    void serialize(out_stream& out) override;
-    bool deserialize(in_stream& in, size_t sz) override;
+    void                        serialize(out_stream& out) override;
+    bool                        deserialize(in_stream& in, size_t sz) override;
 
-    const char* getWriteExtension() const override { return "ecsw"; }
+    static void                 serializeAttribDesc     (ecsWorldWriteCtx& ctx);
+    static void                 deserializeAttribDesc   (ecsWorldReadCtx& ctx);
+    static void                 serializeEntity         (ecsWorldWriteCtx& ctx, entity_id e, bool keep_template_link = false);
+    static void                 deserializeEntity       (ecsWorldReadCtx& ctx, entity_id e, uint64_t attrib_ignore_mask = 0);
+
+    const char*                 getWriteExtension() const override { return "ecsw"; }
 
 };
 STATIC_RUN(ecsWorld) {

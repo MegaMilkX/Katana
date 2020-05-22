@@ -18,6 +18,7 @@ public:
     ecsWorldReadCtx(ecsWorld* world, in_stream* s)
     : world(world), strm(s) {}
 
+    ecsWorld*  getWorld() { return world; }
     in_stream* getStream() { return strm; }
 
     void setAttribName(attrib_id id, const char* name) {
@@ -29,6 +30,10 @@ public:
             return "";
         }
         return it->second;
+    }
+
+    void skipBytes(uint64_t count) {
+        strm->readArray<char>(count);
     }
 
     template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>

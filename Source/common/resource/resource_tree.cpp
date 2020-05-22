@@ -2,6 +2,10 @@
 
 #include <cctype>
 
+#include "data_source.h"
+
+#include "../platform/platform.hpp"
+
 
 ResourceTree gResourceTree;
 
@@ -26,6 +30,10 @@ ResourceNode::ResourceNode(const std::string& name) {
 
 void ResourceNode::setDataSource(DataSource* src) {
     data_src.reset(src);
+}
+
+void ResourceNode::setPointer(std::shared_ptr<Resource> r) {
+    resource = r;
 }
 
 size_t ResourceNode::childCount() const {
@@ -70,6 +78,10 @@ std::string ResourceNode::getFullName() const {
 
 std::shared_ptr<DataSource> ResourceNode::getSource() {
     return data_src;
+}
+
+Resource* ResourceNode::getPointer() {
+    return resource.get();
 }
 
 bool ResourceNode::isLoaded() const {
@@ -146,13 +158,14 @@ void ResourceTree::mapType(const std::string& mask, rttr::type type) {
     //type_map[mask] = type;
 }
 
-void ResourceTree::insert(const std::string& path, DataSource* data_src) {
+ResourceNode* ResourceTree::insert(const std::string& path, DataSource* data_src) {
     std::vector<std::string> tokens = split(path, '/');
     ResourceNode* cur_node = root.get();
     for(int i = 0; i < tokens.size(); ++i) {
         cur_node = cur_node->getChild(tokens[i]).get();
     }
     cur_node->setDataSource(data_src);
+    return cur_node;
 }
 ResourceNode* ResourceTree::get(const std::string& p) {
     return get_weak(p).lock().get();
@@ -217,4 +230,9 @@ void ResourceTree::scanFilesystem(const std::string& rootDir) {
     }
 
     resTree.update(new_tree);
+}
+
+
+bool overwriteResourceFile(std::shared_ptr<Resource> r) {
+    return r->write_to_file(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + r->Name());
 }

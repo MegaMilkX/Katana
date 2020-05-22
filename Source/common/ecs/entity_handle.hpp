@@ -28,12 +28,16 @@ public:
     // Set attribute's value. Create it from that value if it doesn't exist
     template<typename T>
     void        setAttrib(const T& value);
-    // Upldate attribute's value and send update notification to systems. Do nothing if attrib doesn't exist
+    // Update attribute's value and send update notification to systems. Do nothing if attrib doesn't exist
     template<typename T>
     void        updateAttrib(const T& value);
     // Send an update notification to systems as if component T was changed
     template<typename T>
     void        signalUpdate();
+    // Get attribute bitmask
+    uint64_t    getAttribBitmask();
+    // Get bitmask of attributes that are considered inherited from a template
+    uint64_t    getInheritedAttribBitmask();
 };
 
 

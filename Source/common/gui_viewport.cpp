@@ -278,10 +278,10 @@ void GuiViewport::draw(GameScene* scn, ObjectSet* selected_objects, gfxm::ivec2 
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, 1.0f, -11.0f), gfxm::vec3(.0f, 1.0f, .0f));
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, .0f, -10.0f), gfxm::vec3(.0f, .0f, 1.0f));
         dd.gridxz(
-            gfxm::vec3(-10.0f, .0f, -10.0f),
-            gfxm::vec3(10.0f, .0f, 10.0f),
+            gfxm::vec3(-20.0f, .0f, -20.0f),
+            gfxm::vec3(20.0f, .0f, 20.0f),
             1,
-            gfxm::vec3(0.2f, 0.2f, 0.2f)
+            gfxm::vec3(0.04f, 0.04f, 0.04f)
         );
 
         scn->getController<RenderController>()->debugDraw(getDebugDraw());
@@ -473,10 +473,10 @@ bool GuiViewport::begin(gfxm::ivec2 sz) {
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, 1.0f, -11.0f), gfxm::vec3(.0f, 1.0f, .0f));
         dd.line(gfxm::vec3(-11.0f, .0f, -11.0f), gfxm::vec3(-11.0, .0f, -10.0f), gfxm::vec3(.0f, .0f, 1.0f));
         dd.gridxz(
-            gfxm::vec3(-10.0f, .0f, -10.0f),
-            gfxm::vec3(10.0f, .0f, 10.0f),
+            gfxm::vec3(-20.0f, .0f, -20.0f),
+            gfxm::vec3(20.0f, .0f, 20.0f),
             1,
-            gfxm::vec3(0.2f, 0.2f, 0.2f)
+            gfxm::vec3(0.04f, 0.04f, 0.04f)
         );
 
         auto window = ImGui::GetCurrentWindow();

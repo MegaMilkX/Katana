@@ -14,6 +14,22 @@
 #include <iterator>
 #include <cctype>
 
+class fs_path {
+    std::vector<std::string> stack;
+    std::string str;
+public:
+    fs_path();
+    fs_path(const char* path);
+    fs_path(const std::string& path);
+
+    // Get path relative to this (other must be absolute)
+    fs_path relative(const fs_path& other);
+
+    const std::string& string() const;
+    const char*        c_str() const;
+
+};
+
 inline std::string get_extension(const std::string& path) {
     size_t dot_pos = path.find_last_of(".");
     if(dot_pos == std::string::npos) {
@@ -116,5 +132,10 @@ inline std::vector<std::string> find_all_files(const std::string& dir, const std
 }
 
 void createDirRecursive(const std::string& p);
+
+inline std::string fs_to_relative_path(const std::string& path, const std::string& relative_to) {
+    //static_assert(false, "TODO");
+    return "";
+}
 
 #endif

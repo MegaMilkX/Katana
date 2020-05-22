@@ -7,6 +7,23 @@
 
 #include "attribute.hpp"
 
+inline ecsAttribBase* allocAttrib(attrib_id id) {
+    ecsAttribBase* ptr = 0;
+    auto inf = getEcsAttribTypeLib().get_info(id);
+    if(!inf) {
+        LOG_WARN("Attribute info for id " << id << " doesn't exist");
+        assert(false);
+        return 0;
+    }
+    ptr = inf->constructor();
+    if(!ptr) {
+        LOG_WARN("Constructor for attrib " << inf->name << " failed");
+        assert(false);
+        return 0;
+    }
+    return ptr;
+}
+
 class ecsWorld;
 class ecsEntity {
     friend ecsWorld;
@@ -14,19 +31,10 @@ class ecsEntity {
     entity_id entity_uid;
     uint64_t attrib_bits;
     std::map<uint8_t, std::shared_ptr<ecsAttribBase>> attribs;
+    uint64_t bitmaskInheritedAttribs = 0;
 
-    ecsAttribBase* allocAttrib(attrib_id id) {
-        ecsAttribBase* ptr = 0;
-        auto inf = getEcsAttribTypeLib().get_info(id);
-        if(!inf) {
-            LOG_WARN("Attribute info for id " << id << " doesn't exist");
-            return 0;
-        }
-        ptr = inf->constructor();
-        if(!ptr) {
-            LOG_WARN("Constructor for attrib " << inf->name << " failed");
-            return 0;
-        }
+    ecsAttribBase* allocAttribOwned(attrib_id id) {
+        auto ptr = allocAttrib(id);
         ptr->entity = entity_uid;
         return ptr;
     }
@@ -38,8 +46,8 @@ public:
     }
 
     ecsAttribBase* getAttrib(attrib_id id) {
-        ecsAttribBase* ptr = findAttrib(id);
-        ptr = allocAttrib(id);
+        ecsAttribBase* ptr = findAttrib(id); // TODO: ???
+        ptr = allocAttribOwned(id);
         attribs[(uint8_t)id].reset(ptr);
         setBit(id);
         return ptr;
@@ -48,7 +56,7 @@ public:
     T* setAttrib(const T& value) {
         T* ptr = findAttrib<T>();
         if(!ptr) {
-            ptr = (T*)allocAttrib(T::get_id_static());
+            ptr = (T*)allocAttribOwned(T::get_id_static());
             if(!ptr) {
                 return 0;
             }

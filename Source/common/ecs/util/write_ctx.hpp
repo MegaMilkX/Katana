@@ -13,11 +13,15 @@ class ecsWorldWriteCtx {
     ecsWorld* world = 0;
     out_stream* strm = 0;
     std::unordered_map<entity_id, entity_id> old_to_new_id;
+    dstream subblock_stream;
+    bool is_in_subblock = false;
+    out_stream* current_stream = 0;
 public:
     ecsWorldWriteCtx(ecsWorld* world, out_stream* s)
-    : world(world), strm(s) {}
+    : world(world), strm(s), current_stream(s) {}
 
-    out_stream* getStream() { return strm; }
+    ecsWorld*   getWorld() { return world; }
+    out_stream* getStream() { return current_stream; }
 
     void remapEntityId(entity_id oldId, entity_id newId) {
         old_to_new_id[oldId] = newId;
@@ -31,18 +35,21 @@ public:
         }
     }
 
+    void beginSubBlock();
+    void endSubBlock();
+
     template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
     void write(const T& value) {
-        strm->write(value);
+        current_stream->write(value);
     }
     template<typename T, typename = typename std::enable_if<std::is_trivially_copyable<T>::value>::type>
     void writeArray(const std::vector<T>& values) {
-        strm->write<uint64_t>((uint64_t)values.size());
-        strm->write(values);
+        current_stream->write<uint64_t>((uint64_t)values.size());
+        current_stream->write(values);
     }
     void writeStr(const std::string& value) {
-        strm->write<uint64_t>((uint64_t)value.size());
-        strm->write(value);
+        current_stream->write<uint64_t>((uint64_t)value.size());
+        current_stream->write(value);
     }
     template<typename T>
     void writeResource(const std::shared_ptr<T>& resource) {
@@ -54,7 +61,7 @@ public:
         res_name = resource->Name();
         if(res_name.empty()) {
             write<uint8_t>(ECS_RESOURCE_EMBEDDED);
-            resource->serialize(*strm);
+            resource->serialize(*current_stream);
         } else {
             write<uint8_t>(ECS_RESOURCE_REFERENCE);
             writeStr(res_name);

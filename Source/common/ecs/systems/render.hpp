@@ -33,7 +33,7 @@ public:
         for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsLightOmni>>()) {
             dl.omnis.emplace_back(
                 DrawList::OmniLight {
-                    root_transform * gfxm::vec4(0,0,0,1),
+                    root_transform * a->get<ecsWorldTransform>()->transform * gfxm::vec4(0,0,0,1),
                     a->get<ecsLightOmni>()->color,
                     a->get<ecsLightOmni>()->intensity,
                     a->get<ecsLightOmni>()->radius

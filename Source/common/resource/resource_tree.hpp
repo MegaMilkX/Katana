@@ -14,6 +14,7 @@
 
 #include "data_source.h"
 #include "resource.h"
+#include "../platform/platform.hpp"
 
 class ResourceNode {
     ResourceNode* parent = 0;
@@ -26,6 +27,7 @@ public:
     ResourceNode(const std::string& name);
     // ResourceNode claims ownership of the DataSource ptr
     void                            setDataSource(DataSource* src);
+    void                            setPointer(std::shared_ptr<Resource> r);
     size_t                          childCount() const;
     std::shared_ptr<ResourceNode>   getChild(const std::string& name);
     std::shared_ptr<ResourceNode>   findChild(const std::string& name);
@@ -34,6 +36,9 @@ public:
     std::string                     getName() const;
     std::string                     getFullName() const;
     std::shared_ptr<DataSource>     getSource();
+    Resource*                       getPointer();
+    template<typename T>
+    std::shared_ptr<T>              createResource();
     template<typename T>
     std::shared_ptr<T>              getResource();
     template<typename T>
@@ -51,6 +56,12 @@ public:
     void                            print();
 };
 
+template<typename T>
+std::shared_ptr<T> ResourceNode::createResource() {
+    assert(!resource);
+    resource = std::shared_ptr<T>(new T);
+    return std::dynamic_pointer_cast<T>(resource);
+}
 template<typename T>
 std::shared_ptr<T> ResourceNode::getResource() {
     if(resource) return std::dynamic_pointer_cast<T>(resource);
@@ -80,7 +91,7 @@ public:
 
     void                            clear();
     void                            mapType(const std::string& mask, rttr::type type);
-    void                            insert(const std::string& path, DataSource* data_src);
+    ResourceNode*                   insert(const std::string& path, DataSource* data_src);
     ResourceNode*                   get(const std::string& path);
     std::weak_ptr<ResourceNode>     get_weak(const std::string& path);
     std::shared_ptr<ResourceNode>&  getRoot();
@@ -100,11 +111,30 @@ private:
 extern ResourceTree gResourceTree;
 
 template<typename T>
-std::shared_ptr<T> retrieve(const std::string& path) {
+std::shared_ptr<T> retrieve(const std::string& path, bool create_empty_if_doesnt_exist = false) {
     ResourceNode* n = gResourceTree.get(path);
-    if(!n) return 0;
+    if(!n) {
+        if(create_empty_if_doesnt_exist) {
+            n = gResourceTree.insert(path, new DataSourceFilesystem(get_module_dir()+"/"+platformGetConfig().data_dir+"/"+path));
+            if(!n->getPointer()) {
+                return n->createResource<T>();
+            } else {
+                return n->getResource<T>();
+            }
+            
+        }
+        return 0;
+    }
     return n->getResource<T>();
 }
+
+template<typename T>
+std::shared_ptr<T> getResource(const std::string& path, bool create_empty_if_doesnt_exist = false) {
+    return retrieve<T>(path, create_empty_if_doesnt_exist);
+}
+
+// Only for tools
+bool overwriteResourceFile(std::shared_ptr<Resource> r);
 
 
 #endif

@@ -18,3 +18,11 @@ void ecsEntityHandle::remove() {
     world->removeEntity(id);
     world = 0;
 }
+
+uint64_t ecsEntityHandle::getAttribBitmask() {
+    return world->getAttribBitmask(id);
+}
+
+uint64_t ecsEntityHandle::getInheritedAttribBitmask() {
+    return world->getInheritedAttribBitmask(id);
+}
