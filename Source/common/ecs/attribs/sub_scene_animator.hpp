@@ -16,11 +16,14 @@ class ecsSubSceneAnimator : public ecsAttrib<ecsSubSceneAnimator> {
 public:
     ecsTupleAnimatedSubScene* tuple = 0;
     std::shared_ptr<Motion> motion_ref;
-    Motion motion_lcl;
+    Motion motion_lcl_;
+    Motion* motion_ptr = 0;
+
+    ecsSubSceneAnimator();
 
     void setSkeleton(std::shared_ptr<Skeleton> skel);
     std::shared_ptr<Skeleton> getSkeleton();
-    void setMotion(std::shared_ptr<Motion> motion);
+    void setMotion(std::shared_ptr<Motion> motion, bool dont_use_local_motion_object = false /* only for tools */);
     Motion* getLclMotion();
 
     void onGui(ecsWorld* world, entity_id ent);

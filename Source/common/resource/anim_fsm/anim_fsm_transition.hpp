@@ -17,7 +17,7 @@ struct AnimFSMTransition {
         NOT_EQUAL
     };
     struct Condition {
-        size_t param_hdl;
+        int param_hdl;
         std::string param_name;
         CONDITION type;
         float ref_value;

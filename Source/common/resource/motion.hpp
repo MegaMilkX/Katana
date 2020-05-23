@@ -5,7 +5,7 @@
 #include "anim_primitive.hpp"
 
 #include "skeleton.hpp"
-#include "../scene/game_scene.hpp"
+#include "../resource/entity_template.hpp"
 #include "../resource/animation.hpp"
 
 #include <memory>
@@ -107,9 +107,11 @@ public:
     }
 
     void setName(int id, const char* name) {
+        assert(id >= 0);
         params[id].name = name;
     }
     void setValue(int id, float val) {
+        if (id < 0) return;
         params[id].value = val;
     }
     const std::string& getName(int id) {
@@ -126,6 +128,46 @@ public:
     }
     float getValue(int id) {
         return params[id].value;
+    }
+    int getOrCreate(const char* name) {
+        for(int i = 0; i < params.size(); ++i) {
+            auto& p = params[i];
+            if(p.name == name) {
+                return i;
+            }
+        }
+        int id = allocValue();
+        setName(id, name);
+        return id;
+    }
+
+    void serialize(out_stream& out) {
+        std::vector<MotionParamData*> actual_params;
+        for(int i = 0; i < params.size(); ++i) {
+            if(free_slots.count(i)) {
+                continue;
+            }
+            actual_params.push_back(&params[i]);
+        }
+
+        out.write<uint32_t>(actual_params.size());
+        for(int i = 0; i < actual_params.size(); ++i) {
+            auto p = actual_params[i];
+            out.write<uint32_t>(p->name.size());
+            out.write(p->name.data(), p->name.size());
+            out.write<float>(p->value);
+        }
+    }
+    void deserialize(in_stream& in) {
+        auto param_count = in.read<uint32_t>();
+
+        for(int i = 0; i < param_count; ++i) {
+            params.push_back(MotionParamData());
+            auto name_len = in.read<uint32_t>();
+            params.back().name.resize(name_len);
+            in.read((void*)params.back().name.data(), name_len);
+            params.back().value = in.read<float>();
+        }
     }
 
 };
@@ -145,8 +187,8 @@ class Motion : public Resource {
     MotionBlackboard              blackboard;
 
 public:
-    std::shared_ptr<GameScene> reference;
-    std::shared_ptr<Skeleton>  skeleton;
+    std::string                     reference_path;
+    std::shared_ptr<Skeleton>       skeleton;
 
     void rebuild(std::shared_ptr<Skeleton> skel) {
         skeleton = skel;

@@ -3,6 +3,11 @@
 #include "../systems/animation_sys.hpp"
 
 
+ecsSubSceneAnimator::ecsSubSceneAnimator()
+: motion_ptr(&motion_lcl_) {
+
+}
+
 void ecsSubSceneAnimator::setSkeleton(std::shared_ptr<Skeleton> skel) {
     skeleton = skel;
     if(motion_ref) {
@@ -15,21 +20,27 @@ void ecsSubSceneAnimator::setSkeleton(std::shared_ptr<Skeleton> skel) {
 std::shared_ptr<Skeleton> ecsSubSceneAnimator::getSkeleton() {
     return skeleton;
 }
-void ecsSubSceneAnimator::setMotion(std::shared_ptr<Motion> motion) {
+void ecsSubSceneAnimator::setMotion(std::shared_ptr<Motion> motion, bool dont_use_local_motion_object) {
     motion_ref = motion;
-    motion_lcl = Motion();
+    motion_lcl_ = Motion();
     if(!motion_ref) {
         return;
+    }
+
+    if(dont_use_local_motion_object) {
+        motion_ptr = motion_ref.get();
+    } else {
+        motion_ptr = &motion_lcl_;
     }
 
     dstream strm;
     motion_ref->serialize(strm);
     strm.jump(0);
-    motion_lcl.deserialize(strm, strm.bytes_available());
+    motion_lcl_.deserialize(strm, strm.bytes_available());
 
     if(skeleton) {
-        motion_lcl.skeleton = skeleton;
-        motion_lcl.rebuild();
+        motion_ptr->skeleton = skeleton;
+        motion_ptr->rebuild();
     }
 
     if(tuple) {
@@ -37,8 +48,9 @@ void ecsSubSceneAnimator::setMotion(std::shared_ptr<Motion> motion) {
     }
 }
 Motion* ecsSubSceneAnimator::getLclMotion() {
-    return &motion_lcl;
+    return motion_ptr;
 }
+
 
 void ecsSubSceneAnimator::onGui(ecsWorld* world, entity_id ent) {
     imguiResourceTreeCombo("skeleton", skeleton, "skl", [this](){

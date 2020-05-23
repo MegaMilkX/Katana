@@ -122,14 +122,8 @@ public:
 
     void onGui();
 
-    void write(out_stream& out) override {
-        DataWriter w(&out);
-        w.write(param_name);
-    }
-    void read(in_stream& in) override {
-        DataReader r(&in);
-        param_name = r.readStr();
-    }
+    void write(out_stream& out) override;
+    void read(in_stream& in) override;
 };
 
 

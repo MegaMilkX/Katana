@@ -180,7 +180,7 @@ void MotionGuiFSM::drawToolbox(Editor* ed) {
             if(ImGui::SmallButton(ICON_MDI_PLUS "###cond_add")) {
                 selected_transition->conditions.emplace_back(
                     AnimFSMTransition::Condition{
-                        0, "Param", AnimFSMTransition::CONDITION::LARGER, .0f
+                        -1, "Param", AnimFSMTransition::CONDITION::LARGER, .0f
                     }
                 );
             }

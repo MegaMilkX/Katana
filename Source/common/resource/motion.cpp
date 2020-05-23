@@ -6,6 +6,11 @@
 
 void Motion::serialize(out_stream& out) {
     DataWriter dw(&out);
+
+    dw.write(reference_path);
+
+    getBlackboard().serialize(out);
+    
     if(!animator) {
         dw.write<int8_t>(ANIMATOR_UNKNOWN);
         return;
@@ -18,6 +23,10 @@ void Motion::serialize(out_stream& out) {
 }
 bool Motion::deserialize(in_stream& in, size_t sz) {
     DataReader dr(&in);
+
+    reference_path = dr.readStr();
+
+    getBlackboard().deserialize(in);
     
     ANIMATOR_TYPE animator_type = (ANIMATOR_TYPE)dr.read<int8_t>();
     if(animator_type == ANIMATOR_FSM) {

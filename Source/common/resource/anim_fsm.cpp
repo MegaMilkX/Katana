@@ -141,6 +141,9 @@ void AnimFSM::update(
     for(auto& t : act->getTransitions()) {
         bool res = false;
         for(auto& cond : t->conditions) {
+            if (cond.param_hdl == -1) {
+                continue;
+            }
             float val = getMotion()->getBlackboard().getValue(cond.param_hdl);
             float ref_val = cond.ref_value;
             switch(cond.type) {
@@ -265,9 +268,13 @@ void AnimFSM::read(in_stream& in) {
         t->conditions.resize(r.read<uint32_t>());
         for(size_t j = 0; j < t->conditions.size(); ++j) {
             auto& cond = t->conditions[j];
+            cond.param_hdl = -1;
             cond.param_name = r.readStr();
             cond.type = (AnimFSMTransition::CONDITION)r.read<uint8_t>();
             cond.ref_value = r.read<float>();
+            if (!cond.param_name.empty()) {
+                cond.param_hdl = getMotion()->getBlackboard().getOrCreate(cond.param_name.c_str());
+            }
         }
     }
 

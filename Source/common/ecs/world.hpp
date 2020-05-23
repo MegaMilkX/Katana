@@ -141,6 +141,8 @@ class ecsWorld : public Resource {
 public:
     ~ecsWorld();
 
+    void                        clearEntities               (void);
+
     ecsEntityHandle             createEntity                ();
     ecsEntityHandle             createEntity                (archetype_mask_t attrib_signature);
     ecsEntityHandle             createEntityFromTemplate    (const char* tplPath);

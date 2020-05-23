@@ -38,6 +38,13 @@ ecsWorld::~ecsWorld() {
     }
 }
 
+void ecsWorld::clearEntities (void) {
+    auto le_copy = live_entities;
+    for(auto e : le_copy) {
+        removeEntity(e);
+    }
+}
+
 ecsEntityHandle ecsWorld::createEntity() {
     entity_id id = entities.acquire();
     entities.deref(id)->entity_uid = id;

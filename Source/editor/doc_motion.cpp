@@ -3,6 +3,10 @@
 #include "../common/util/imgui_helpers.hpp"
 #include "../common/util/imgui_ext.hpp"
 
+#include "../common/ecs/systems/render.hpp"
+#include "../common/ecs/systems/animation_sys.hpp"
+#include "../common/ecs/systems/scene_graph.hpp"
+
 
 void DocMotion::resetGui() {
     AnimatorBase* animator = _resource->getAnimator();
@@ -25,30 +29,30 @@ void DocMotion::resetGui() {
     }    
 }
 
-void DocMotion::setReferenceObject(ktNode* node) {
-    scn.clear();
+void DocMotion::setReferenceObject(std::shared_ptr<EntityTemplate> tpl) {
+    world.clearEntities();
                     
-    scn.copy(node);
-    scn.getTransform()->setScale(
-        node->getTransform()->getScale()
-    );
-    gfxm::aabb box;
-    scn.makeAabb(box);
+    auto hdl = world.createEntityFromTemplate(tpl->Name().c_str());
+    //gfxm::aabb box;
+    //scn.makeAabb(box);
 
-    cam_light = scn.createChild()->get<DirLight>().get();
-    cam_light->intensity = 500.0f;
+    //cam_light = scn.createChild()->get<DirLight>().get();
+    //cam_light->intensity = 500.0f;
 
-    viewport.resetCamera((box.from + box.to) * 0.5f, gfxm::length(box.to - box.from));
+    //viewport.resetCamera((box.from + box.to) * 0.5f, gfxm::length(box.to - box.from));
 
-    auto skel_ref = scn.find<SkeletonRef>();
-    if(skel_ref && skel_ref->skeleton) {
-        _resource->rebuild(skel_ref->skeleton);
-        sample_buf = AnimSampleBuffer(skel_ref->skeleton.get());
-    }
+    auto animator =  hdl.getAttrib<ecsSubSceneAnimator>();
+    animator->setMotion(_resource, true);
 
-    cam_pivot = 0;
+    //cam_pivot = 0;
 }
 
+
+DocMotion::DocMotion() {
+    world.getSystem<ecsRenderSystem>();
+    world.getSystem<ecsysAnimation>();
+    world.getSystem<ecsysSceneGraph>();
+}
 
 void DocMotion::pushGuiLayer(MotionGuiBase* gui) {
     gui_stack.push_back(std::unique_ptr<MotionGuiBase>(gui));
@@ -87,7 +91,7 @@ void DocMotion::onGui(Editor* ed, float dt) {
     // === PREVIEW ===
     bool is_open = true;
     ImGui::Begin("Motion preview", &is_open, ImVec2(300, 200));
-
+/*
     std::vector<ktNode*> tgt_nodes;
     if(_resource->skeleton) {
         auto& skel = _resource->skeleton;
@@ -115,38 +119,45 @@ void DocMotion::onGui(Editor* ed, float dt) {
 
 
         }
-    }
-
+    }*/
+/*
     if(cam_pivot) {
         viewport.camSetPivot(cam_pivot->getTransform()->getWorldPosition());
     }
     if(cam_light) {
         cam_light->getOwner()->getTransform()->setTransform(gfxm::inverse(viewport.getView()));
-    }
+    }*//*
     auto skel_ref = scn.find<SkeletonRef>();
     if(skel_ref) {
         //skel_ref->debugDraw(&viewport.getDebugDraw());
-    }
+    }*/
 
-    viewport.draw(&scn);
+    world.update();
+    DrawList dl;
+    world.getSystem<ecsRenderSystem>()->fillDrawList(dl);
+    if(viewport.begin()) {
+        viewport.getRenderer()->draw(
+            viewport.getViewport(), 
+            viewport.getProjection(), 
+            viewport.getView(), 
+            dl
+        );
+    }
+    viewport.end();
 
     ImGui::End();
 }
 
 void DocMotion::onGuiToolbox(Editor* ed) {
-    imguiResourceTreeCombo("reference", _resource->reference, "so", [this](){
-        if(_resource->reference) {
-            setReferenceObject(_resource->reference.get());
+    imguiResourceTreeCombo("reference", reference, "entity", [this](){
+        if(reference) {
+            _resource->reference_path = reference->Name();
+            setReferenceObject(reference);
         }
-    });
-    imguiResourceTreeCombo("skeleton", _resource->skeleton, "skl", [this](){
-        _resource->rebuild(_resource->skeleton);
-
-        sample_buf = AnimSampleBuffer(_resource->skeleton.get());
-    });
+    });/*
     imguiObjectCombo("camera pivot", cam_pivot, &scn, [](){
 
-    });
+    });*/
 
     ImGui::Separator();
 
@@ -207,5 +218,9 @@ void DocMotion::onGuiToolbox(Editor* ed) {
 }
 
 void DocMotion::onResourceSet() {
+    if(!_resource->reference_path.empty()) {
+        reference = getResource<EntityTemplate>(_resource->reference_path);
+        setReferenceObject(reference);
+    }
     resetGui();
 }

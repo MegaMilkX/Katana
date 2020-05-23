@@ -130,3 +130,12 @@ void MotionParam::onGui() {
         ImGui::EndCombo();
     } 
 }
+
+void MotionParam::write(out_stream& out) {
+    DataWriter w(&out);
+    w.write(param_name);
+}
+void MotionParam::read(in_stream& in) {
+    DataReader r(&in);
+    param_name = r.readStr();
+}
