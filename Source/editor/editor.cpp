@@ -277,9 +277,9 @@ void Editor::onGui(float dt) {
                 doc_to_be_closed = d;
                 break;
             } else {
+                setFocusedWindow(0);
                 delete d;
                 open_documents.erase(d);
-                setFocusedWindow(0);
             }
         }
     }
@@ -287,9 +287,9 @@ void Editor::onGui(float dt) {
     if(ImGui::BeginPopupModal("Unsaved document")) {
         ImGui::Text(MKSTR("Close without saving?").c_str());
         if(ImGui::Button("Close")) {
+            setFocusedWindow(0);
             delete doc_to_be_closed;
             open_documents.erase(doc_to_be_closed);
-            setFocusedWindow(0);
             ImGui::CloseCurrentPopup();
         } ImGui::SameLine();
         if(ImGui::Button("Cancel")) {
