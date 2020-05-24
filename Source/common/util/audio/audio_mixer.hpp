@@ -25,6 +25,8 @@ extern "C" {
 
 #include "audio_buffer.hpp"
 
+static const int SHORT_MAX = std::numeric_limits<short>().max();
+
 struct AudioChannel {
     size_t cursor = 0;
     AudioBuffer* buf = 0;
@@ -224,8 +226,9 @@ public:
             lis_trans_copy = lis_transform;
         }
 
+        memset(buffer_f, 0, sizeof(buffer_f));
         memset(back, 0, sizeof(buffer));
-        size_t buf_len = sizeof(buffer_back) / sizeof(buffer_back[0]);
+        size_t buf_len = sizeof(buffer_f) / sizeof(buffer_f[0]);
         for(auto& it = emitters.begin(); it != emitters.end();) {
             size_t ei = (*it);
             ++it;
@@ -240,7 +243,7 @@ public:
             size_t src_len = em->buf->sampleCount();
             
             size_t advance = mix(
-                back, buf_len, data, src_len, 
+                buffer_f, buf_len, data, src_len, 
                 src_cur, em->volume, em->panning
             );
             
@@ -267,7 +270,7 @@ public:
                 p_ = em->pos;
             }
             size_t advance = mix3d(
-                back, buf_len,
+                buffer_f, buf_len,
                 em->buf->getPtr(),
                 em->buf->sampleCount(),
                 em->cursor, em->buf->channelCount(), em->volume,
@@ -282,6 +285,11 @@ public:
                 }
             }
             em->cursor = em->cursor % em->buf->sampleCount();
+        }
+
+        for(int i = 0; i < AUDIO_BUFFER_SZ; ++i) {
+            //samplef = pow(samplef, pow_) * sign;
+            back[i] = SHORT_MAX * gfxm::_min(1.0f, (buffer_f[i] * 0.5f));
         }
 
         short* tmp = front;
@@ -303,7 +311,7 @@ public:
      }
 private:
     size_t mix(
-        short* dest, 
+        float* dest, 
         size_t dest_len, 
         short* src, 
         size_t src_len,
@@ -319,22 +327,24 @@ private:
         short* tgt0 = src + cur;
         short* tgt1 = src;
 
+        float mul = 1.0f / (float)SHORT_MAX;
+
         for(size_t i = 0; i < tgt0sz; ++i) {
             int lr = (i % 2) * 2 - 1;
             float pan = std::min(fabs(lr + panning), 1.0f);
             
-            back[i] += tgt0[i] * vol * pan;
+            dest[i] += tgt0[i] * mul * vol * pan;
         }
         for(size_t i = 0; i < tgt1sz; ++i) {
             int lr = (i % 2) * 2 - 1;
             float pan = std::min(fabs(lr + panning), 1.0f);
-            (back + tgt0sz)[i] += tgt1[i] * vol * pan;
+            (dest + tgt0sz)[i] += tgt1[i] * mul * vol * pan;
         }
 
         return sample_len;
     }
     size_t mix3d(
-        short* dest, 
+        float* dest, 
         size_t dest_len, 
         short* src, 
         size_t src_len,
@@ -363,13 +373,15 @@ private:
             std::min(1.0f / pow(gfxm::length(ears[1] - pos), 2.0f), 1.0f)
         };
 
+        float mul = 1.0f / (float)SHORT_MAX;
+
         for(size_t i = 0; i < tgt0sz; ++i) {
             int lr = (i % 2);            
-            back[i] += tgt0[i] * vol * falloff[lr];
+            dest[i] += tgt0[i] * mul * vol * falloff[lr];
         }
         for(size_t i = 0; i < tgt1sz; ++i) {
             int lr = (i % 2);
-            (back + tgt0sz)[i] += tgt1[i] * vol * falloff[lr];
+            (dest + tgt0sz)[i] += tgt1[i] * mul * vol * falloff[lr];
         }
 
         return sample_len;
@@ -382,6 +394,7 @@ private:
     short* front;
     short* back;
     
+    float buffer_f[AUDIO_BUFFER_SZ];
     short buffer[AUDIO_BUFFER_SZ];
     short buffer_back[AUDIO_BUFFER_SZ];
 
