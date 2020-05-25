@@ -3,6 +3,8 @@
 
 #include "../../util/data_stream.hpp"
 #include "../types.hpp"
+#include "../attrib_lib.hpp"
+#include "../../util/log.hpp"
 #include <unordered_map>
 
 
@@ -20,6 +22,22 @@ public:
 
     ecsWorld*  getWorld() { return world; }
     in_stream* getStream() { return strm; }
+
+    uint64_t convertMask(uint64_t mask) {
+        uint64_t converted = 0;
+        for (int i = 0; i < (int)attrib_names.size(); ++i) {
+            if (mask & (1 << i)) {
+                auto& name = getAttribName(i);
+                attrib_id attrib_index = getEcsAttribTypeLib().get_attrib_id(name.c_str());
+                if (attrib_index == -1) {
+                    LOG_ERR("Unknown attribute: " << name);
+                    continue;
+                }
+                converted |= (1 << attrib_index);
+            }
+        }
+        return converted;
+    }
 
     void setAttribName(attrib_id id, const char* name) {
         attrib_names[id] = name;

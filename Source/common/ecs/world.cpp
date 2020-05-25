@@ -395,7 +395,8 @@ void ecsWorld::serializeEntity (ecsWorldWriteCtx& ctx, entity_id e, bool keep_te
     }
 }
 void ecsWorld::deserializeEntity (ecsWorldReadCtx& ctx, entity_id e, uint64_t attrib_ignore_mask) {
-    uint32_t inheritedBitmask = ctx.read<uint64_t>();
+    uint64_t inheritedBitmask = ctx.read<uint64_t>();
+    inheritedBitmask = ctx.convertMask(inheritedBitmask);
     uint32_t attrib_count = ctx.read<uint32_t>();
 
     if(inheritedBitmask) {
