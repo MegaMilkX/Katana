@@ -32,6 +32,10 @@ void ecsWorld::tryClearTemplateLink(entity_id e) {
 }
 
 
+ecsWorld::ecsWorld() {
+    global_attrib_counters.resize(get_last_attrib_id() + 1);
+}
+
 ecsWorld::~ecsWorld() {
     for(auto& kv : template_to_entities) {
         kv.first->eraseReferencingWorld(this);
@@ -102,6 +106,15 @@ void ecsWorld::removeEntity(entity_id id) {
     }
     clearTemplateLink(id);
 
+    for (int i = 0; i < get_last_attrib_id() + 1; ++i) {
+        if ((1 << i) & e->getAttribBits()) {
+            global_attrib_counters[i]--;
+            if (global_attrib_counters[i] == 0) {
+                global_attrib_mask &= ~(1 << i);
+            }
+        }
+    }
+
     *e = ecsEntity();
     entities.free(id);
     live_entities.erase(id);
@@ -116,6 +129,10 @@ const std::set<entity_id>& ecsWorld::getEntities() const {
 void ecsWorld::createAttrib(entity_id ent, attrib_id attrib) {
     auto e = entities.deref(ent);
     auto a = e->getAttrib(attrib);
+
+    global_attrib_counters[attrib]++;
+    global_attrib_mask |= (1 << attrib);
+
     for(auto& sys : systems) {
         sys->attribsCreated(this, ent, e->getAttribBits(), 1 << attrib);
     }
@@ -144,6 +161,12 @@ void ecsWorld::removeAttrib(entity_id ent, attrib_id attrib) {
     for(auto& sys : systems) {
         sys->attribsRemoved(this, ent, e->getAttribBits(), 1 << attrib);
     }
+
+    global_attrib_counters[attrib]--;
+    if(global_attrib_counters[attrib] == 0) {
+        global_attrib_mask &= ~(1 << attrib);
+    }
+
     e->removeAttrib(attrib);
 }
 void ecsWorld::removeAttribs(entity_id ent, uint64_t mask) {

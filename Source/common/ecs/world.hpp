@@ -113,17 +113,28 @@ inline int64_t archetypeOffset(uint64_t attrib_mask, uint64_t attrib_id) {
 #include "../resource/entity_template.hpp"
 
 class ecsWorld : public Resource {
+    uint64_t                                    global_attrib_mask;
+    std::vector<int>                            global_attrib_counters;
+
     ObjectPool<ecsEntity>                       entities;
+    std::set<entity_id>                         live_entities;
+    
     std::vector<std::unique_ptr<ecsSystemBase>> systems;
     std::map<rttr::type, size_t>                sys_by_type;
 
-    std::set<entity_id>                         live_entities;
+    // TODO: Not functional
+    std::vector<std::unique_ptr<ecsTupleMapBase>> tuple_storage;
+    void onAttribsCreated(entity_id ent, uint64_t entity_sig, uint64_t diff_sig);
+    void onAttribsRemoved(entity_id ent, uint64_t entity_sig, uint64_t diff_sig);
+    // ==
 
     std::unordered_map<entity_id, std::shared_ptr<EntityTemplate>> entity_to_template;
     std::unordered_map<std::shared_ptr<EntityTemplate>, std::set<entity_id>> template_to_entities;
     void setTemplateLink(entity_id e, std::shared_ptr<EntityTemplate> tpl);
     void clearTemplateLink(entity_id e);
     void tryClearTemplateLink(entity_id e);
+
+    std::unordered_map<rttr::type, std::unique_ptr<ecsWorldStorage>> storages;
 
     template<typename T>
     T* addSystem() {
@@ -139,6 +150,7 @@ class ecsWorld : public Resource {
     }
 
 public:
+    ecsWorld();
     ~ecsWorld();
 
     void                        clearEntities               (void);
@@ -236,6 +248,10 @@ T* ecsWorld::setAttrib(entity_id ent, const T& value) {
     if(!a) {
         e->setAttrib<T>(value);
         a = e->findAttrib<T>();
+        
+        global_attrib_counters[attrib]++;
+        global_attrib_mask |= (1 << attrib);
+        
         for(auto& sys : systems) {
             sys->attribsCreated(this, ent, e->getAttribBits(), 1 << T::get_id_static());
         }
