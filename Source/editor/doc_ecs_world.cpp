@@ -1,6 +1,38 @@
 #include "doc_ecs_world.hpp"
 
 #include "../common/util/filesystem.hpp"
+#include "../common/ecs/storage/storage_transform.hpp"
+
+static const int UNDO_STACK_MAX = 35;
+
+void DocEcsWorld::backupState() {
+    assert(undo_stack);
+    if(undo_stack->size() == UNDO_STACK_MAX) {
+        undo_stack->erase(undo_stack->begin());
+    }
+
+    undo_stack->push_back(std::shared_ptr<ecsWorld>(new ecsWorld()));
+    dstream strm;
+    cur_world->serialize(strm);
+    strm.jump(0);
+    undo_stack->back()->deserialize(strm, strm.bytes_available());
+}
+
+void DocEcsWorld::restoreState() {
+    assert(undo_stack);
+    if(undo_stack->empty()) {
+        return;
+    }
+
+    dstream strm;
+    undo_stack->back()->serialize(strm);
+    undo_stack->pop_back();
+    strm.jump(0);
+    cur_world->clearEntities();
+    cur_world->deserialize(strm, strm.bytes_available());
+
+    selected_ent = 0; // TODO: Grab selected entity from world's editor payload (when it's done)
+}
 
 
 DocEcsWorld::DocEcsWorld() {
@@ -26,6 +58,9 @@ DocEcsWorld::DocEcsWorld() {
         gvp.camMode(GuiViewport::CAM_ORBIT); 
     });
     bindActionRelease("ALT", [this](){ gvp.camMode(GuiViewport::CAM_PAN); });
+    bindActionPress("CTRL", [this](){ inp_mod_ctrl = true; });
+    bindActionRelease("CTRL", [this](){ inp_mod_ctrl = false; });
+    bindActionPress("Z", [this](){ if(inp_mod_ctrl){ restoreState(); } });
 }
 
 void DocEcsWorld::onResourceSet() {
@@ -52,10 +87,13 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
     }
 
     if(!subscene_stack.empty()) {
-        cur_world = subscene_stack.back();
+        cur_world = subscene_stack.back()->world;
+        undo_stack = &subscene_stack.back()->undo_stack;
     } else {
         cur_world = _resource.get();
+        undo_stack = &root_world_undo_stack;
     }
+
 
     // Check if any async tasks finished
     for(auto& t : model_dnd_tasks) {
@@ -152,39 +190,14 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
     }
 
     if(gvp.begin()) {
+
         gvp.getRenderer()->draw(gvp.getViewport(), gvp.getProjection(), gvp.getView(), dl);
         fb_silhouette.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
         fb_outline.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
         fb_blur.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
         fb_pick.reinitBuffers(gvp.getViewport()->getWidth(), gvp.getViewport()->getHeight());
         
-        auto mpos = gvp.getMousePos();
-        if(gvp.isMouseClicked(0)) {
-            if(cur_tweak_stage_id < spawn_tweak_stage_stack.size()) {
-                ++cur_tweak_stage_id;
-                if(cur_tweak_stage_id == spawn_tweak_stage_stack.size()) {
-                    cur_tweak_stage_id = 0;
-                    spawn_tweak_stage_stack.clear();
-                }
-            } else {
-                gvp.getRenderer()->drawPickPuffer(&fb_pick, gvp.getProjection(), gvp.getView(), dl);
-                
-                uint32_t pix = 0;
-                uint32_t err_pix = 0xFFFFFF;
-                glReadPixels(mpos.x, mpos.y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &pix);
-                if(pix == err_pix) {
-                    selected_ent = 0;
-                } else if(pix < dl.solids.size()) {
-                    entity_id ent = (entity_id)dl.solids[pix].object_ptr;
-                    selected_ent = ent;
-                    LOG("PICKED_SOLID: " << pix);
-                } else {
-                    entity_id ent = (entity_id)dl.skins[pix - dl.solids.size()].object_ptr;
-                    selected_ent = ent;
-                    LOG("PICKED_SKIN: " << pix - dl.solids.size());
-                }
-            }
-        }
+        
     }
     gvp.end();
     gvp.getRenderer()->drawSilhouettes(&fb_silhouette, gvp.getProjection(), gvp.getView(), dl_silhouette);
@@ -196,6 +209,61 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
     blur(&fb_blur, fb_outline.getTextureId(0), gfxm::vec2(0, 1));
     cutout(&fb_outline, fb_blur.getTextureId(0), fb_silhouette.getTextureId(0));*/
     overlay(gvp.getViewport()->getFinalBuffer(), fb_blur.getTextureId(0));
+
+    if (!cur_world->getEntities().empty()) {
+        auto tr = cur_world->findAttrib<ecsTranslation>(selected_ent);
+        auto rot = cur_world->findAttrib<ecsRotation>(selected_ent);
+        auto wt = cur_world->findAttrib<ecsWorldTransform>(selected_ent);
+        gfxm::mat4 m(1.0f);
+        if(tr) {
+            m = gfxm::translate(m, tr->getPosition());
+        }
+        if(rot) {
+            m = m * gfxm::to_mat4(rot->getRotation());
+        }
+        if(tr) {
+            gfxm::mat4 dm(1.0f);
+            float snap = 0.1f;
+            ImGuizmo::Manipulate(
+                (float*)&gvp.getView(), 
+                (float*)&gvp.getProjection(),
+                ImGuizmo::TRANSLATE, ImGuizmo::MODE::LOCAL,
+                (float*)&m, (float*)&dm, 0 /* snap */
+            );
+            if(ImGuizmo::IsUsing()) {
+                if(tr) {
+                    tr->translate(dm[3]);
+                }
+            }
+        }
+    }
+    auto mpos = gvp.getMousePos();
+    if(gvp.isMouseClicked(0) && !ImGuizmo::IsUsing()) {
+        if(cur_tweak_stage_id < spawn_tweak_stage_stack.size()) {
+            ++cur_tweak_stage_id;
+            if(cur_tweak_stage_id == spawn_tweak_stage_stack.size()) {
+                cur_tweak_stage_id = 0;
+                spawn_tweak_stage_stack.clear();
+            }
+        } else {
+            gvp.getRenderer()->drawPickPuffer(&fb_pick, gvp.getProjection(), gvp.getView(), dl);
+            
+            uint32_t pix = 0;
+            uint32_t err_pix = 0xFFFFFF;
+            glReadPixels(mpos.x, mpos.y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &pix);
+            if(pix == err_pix) {
+                selected_ent = 0;
+            } else if(pix < dl.solids.size()) {
+                entity_id ent = (entity_id)dl.solids[pix].object_ptr;
+                selected_ent = ent;
+                LOG("PICKED_SOLID: " << pix);
+            } else {
+                entity_id ent = (entity_id)dl.skins[pix - dl.solids.size()].object_ptr;
+                selected_ent = ent;
+                LOG("PICKED_SKIN: " << pix - dl.solids.size());
+            }
+        }
+    }
 
 
     cursor_data.normal = gvp.getCursor3dNormal();
@@ -219,6 +287,7 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
             ResourceNode* node = *(ResourceNode**)payload->Data;
             LOG("Payload received: " << node->getFullName());
             if(has_suffix(node->getName(), ".entity")) {
+                backupState();
                 std::string fname = node->getFullName();
                 file_stream f(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + fname, file_stream::F_IN);
                 if(f.is_open()) {
@@ -228,6 +297,7 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
                     }
                 }
             } else if(has_suffix(node->getName(), ".fbx")) {
+                backupState();
                 edTaskEcsWorldModelDragNDrop* task = new edTaskEcsWorldModelDragNDrop(
                     MKSTR("Importing " << node->getFullName()).c_str(),
                     node->getFullName().c_str(),
@@ -294,6 +364,11 @@ void imguiEntityListItemContextMenu(const char* string_id, ecsEntityHandle hdl, 
     if(ImGui::BeginPopupContextItem(string_id)) {
         ImGui::Text(string_id);
         ImGui::Separator();
+        if(ImGui::MenuItem("Duplicate")) {
+            auto nhdl = hdl.getWorld()->createEntity();
+            hdl.getWorld()->copyAttribs(nhdl.getId(), hdl);
+            selected_ent = nhdl.getId();
+        }
         if(hdl.getInheritedAttribBitmask()) {
             if(ImGui::MenuItem("Update template")) {
                 hdl.getWorld()->updateTemplate(hdl.getId());
@@ -406,9 +481,11 @@ static void imguiEntityList(
 
 void DocEcsWorld::onGuiToolbox(Editor* ed) {
     if(!subscene_stack.empty()) {
-        cur_world = subscene_stack.back();
+        cur_world = subscene_stack.back()->world;
+        undo_stack = &subscene_stack.back()->undo_stack;
     } else {
         cur_world = _resource.get();
+        undo_stack = &root_world_undo_stack;
     }
 
     for(int i = 0; i < cur_world->systemCount(); ++i) {
@@ -420,6 +497,7 @@ void DocEcsWorld::onGuiToolbox(Editor* ed) {
     }
 
     if(ImGui::SmallButton(ICON_MDI_PLUS " Create")) {
+        backupState();
         selected_ent = cur_world->createEntity().getId();
         ecsEntityHandle h(cur_world, selected_ent);
         h.getAttrib<ecsName>()->name = "New object";
@@ -430,6 +508,7 @@ void DocEcsWorld::onGuiToolbox(Editor* ed) {
     }
     ImGui::SameLine();
     if(ImGui::SmallButton(ICON_MDI_MINUS " Remove")) {
+        backupState();
         cur_world->removeEntity(selected_ent);
     }
 
@@ -481,6 +560,9 @@ void DocEcsWorld::onGuiToolbox(Editor* ed) {
     ImGui::PopItemWidth();
 
     // TODO: Check selected entity validity
+    if (cur_world->getEntities().empty()) {
+        return;
+    }
     auto bitmaskInheritedAttribs = cur_world->getInheritedAttribBitmask(selected_ent);
     ImGui::Text(MKSTR("UID: " << selected_ent).c_str());
     if(bitmaskInheritedAttribs) {
@@ -488,6 +570,7 @@ void DocEcsWorld::onGuiToolbox(Editor* ed) {
         ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Derived from template");
 
         if(ImGui::SmallButton("Reset")) {
+            backupState();
             cur_world->resetToTemplate(selected_ent);
         } ImGui::SameLine();
         if(ImGui::SmallButton("Update template")) {
@@ -509,6 +592,7 @@ void DocEcsWorld::onGuiToolbox(Editor* ed) {
                 for(auto& attr_id : it.second) {
                     auto inf = getEcsAttribTypeLib().get_info(attr_id);
                     if(ImGui::Selectable(inf->name.c_str())) {
+                        backupState();
                         if(bitmaskInheritedAttribs & (1 << attr_id)) {
                             // Don't create attribute, just break inheritance
                             cur_world->clearAttribInheritance(selected_ent, attr_id);
@@ -525,6 +609,7 @@ void DocEcsWorld::onGuiToolbox(Editor* ed) {
                     for(auto& attr_id : it.second) {
                         auto inf = getEcsAttribTypeLib().get_info(attr_id);
                         if(ImGui::Selectable(inf->name.c_str())) {
+                            backupState();
                             if(bitmaskInheritedAttribs & (1 << attr_id)) {
                                 // Don't create attribute, just break inheritance
                                 cur_world->clearAttribInheritance(selected_ent, attr_id);
@@ -597,6 +682,9 @@ void DocEcsWorld::onCmdSubdoc(int argc, const char* argv[]) {
         return;
     }
 
-    subscene_stack.push_back(ptr);
+    std::shared_ptr<SubWorldContext> sptr(new SubWorldContext);
+    sptr->world = ptr;
+    
+    subscene_stack.push_back(sptr);
     selected_ent = 0;
 }

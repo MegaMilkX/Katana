@@ -13,6 +13,8 @@
 
 #include "entity_handle.hpp"
 
+#include "storage/world_storage.hpp"
+
 class byte_block_vector {
     char** _blocks = 0;
     size_t _elem_size = 0;
@@ -113,7 +115,9 @@ inline int64_t archetypeOffset(uint64_t attrib_mask, uint64_t attrib_id) {
 #include "../resource/entity_template.hpp"
 
 class ecsWorld : public Resource {
-    uint64_t                                    global_attrib_mask;
+    ecsWorld*                                   parent_world            = 0;
+
+    uint64_t                                    global_attrib_mask      = 0;
     std::vector<int>                            global_attrib_counters;
 
     ObjectPool<ecsEntity>                       entities;
@@ -122,11 +126,8 @@ class ecsWorld : public Resource {
     std::vector<std::unique_ptr<ecsSystemBase>> systems;
     std::map<rttr::type, size_t>                sys_by_type;
 
-    // TODO: Not functional
-    std::vector<std::unique_ptr<ecsTupleMapBase>> tuple_storage;
     void onAttribsCreated(entity_id ent, uint64_t entity_sig, uint64_t diff_sig);
     void onAttribsRemoved(entity_id ent, uint64_t entity_sig, uint64_t diff_sig);
-    // ==
 
     std::unordered_map<entity_id, std::shared_ptr<EntityTemplate>> entity_to_template;
     std::unordered_map<std::shared_ptr<EntityTemplate>, std::set<entity_id>> template_to_entities;
@@ -148,19 +149,32 @@ class ecsWorld : public Resource {
         }
         return sys;
     }
+    template<typename T, typename... Args>
+    T* addSystem(Args... arg) {
+        sys_by_type[rttr::type::get<T>()] = systems.size();
+        T* sys = new T(std::forward<Args>(arg)...);
+        systems.push_back(std::unique_ptr<ecsSystemBase>(sys));
+        ((ecsSystemBase*)sys)->world = this;
+        for(auto e : live_entities) {
+            ecsEntity* ent = entities.deref(e);
+            sys->attribsCreated(this, e, ent->getAttribBits(), ent->getAttribBits());
+        }
+        return sys;
+    }
 
 public:
     ecsWorld();
     ~ecsWorld();
 
     void                        clearEntities               (void);
+    void                        clearSystems                (void);
 
     ecsEntityHandle             createEntity                ();
     ecsEntityHandle             createEntity                (archetype_mask_t attrib_signature);
     ecsEntityHandle             createEntityFromTemplate    (const char* tplPath);
     void                        removeEntity                (entity_id id);
-
     const std::set<entity_id>&  getEntities() const;
+    ecsEntityHandle             findEntity                  (const char* name);
 
     template<typename T>
     T*                          findAttrib(entity_id ent);
@@ -200,7 +214,12 @@ public:
     void                        resetToTemplate(entity_id ent);
 
     template<typename T>
+    T*                          getStorage();
+
+    template<typename T>
     T*                          getSystem();
+    template<typename T, typename... Args>
+    T*                          getSystem(Args... arg);
     int                         systemCount();
     ecsSystemBase*              getSystem(int i);
 
@@ -249,9 +268,10 @@ T* ecsWorld::setAttrib(entity_id ent, const T& value) {
         e->setAttrib<T>(value);
         a = e->findAttrib<T>();
         
-        global_attrib_counters[attrib]++;
-        global_attrib_mask |= (1 << attrib);
+        global_attrib_counters[T::get_id_static()]++;
+        global_attrib_mask |= (1 << T::get_id_static());
         
+        onAttribsCreated(ent, e->getAttribBits(), 1 << T::get_id_static());
         for(auto& sys : systems) {
             sys->attribsCreated(this, ent, e->getAttribBits(), 1 << T::get_id_static());
         }
@@ -285,12 +305,31 @@ void ecsWorld::updateAttrib(entity_id ent, const T& value) {
 }
 
 template<typename T>
+T* ecsWorld::getStorage() {
+    auto it = storages.find(rttr::type::get<T>());
+    if(it == storages.end()) {
+        T* storage = new T;
+        storages[rttr::type::get<T>()] = std::unique_ptr<T>(storage);
+        return storage;
+    }
+    return (T*)it->second.get();
+}
+
+template<typename T>
 T* ecsWorld::getSystem() {
     auto it = sys_by_type.find(rttr::type::get<T>());
     if(it != sys_by_type.end()) {
         return (T*)systems[it->second].get();
     }
     return addSystem<T>();
+}
+template<typename T, typename... Args>
+T* ecsWorld::getSystem(Args... arg) {
+    auto it = sys_by_type.find(rttr::type::get<T>());
+    if(it != sys_by_type.end()) {
+        return (T*)systems[it->second].get();
+    }
+    return addSystem<T, Args...>(std::forward<Args>(arg)...);
 }
 
 #endif

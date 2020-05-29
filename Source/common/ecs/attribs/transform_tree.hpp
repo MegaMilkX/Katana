@@ -72,38 +72,5 @@ public:
 };
 
 
-class ecsTransformTree : public ecsAttrib<ecsTransformTree> {
-    void imguiNode(TransformTreeNode* node) {
-        if(node->childCount()) {
-            bool open = ImGui::TreeNode(node->getName().c_str());
-            if(open) {
-                for(size_t i = 0; i < node->childCount(); ++i) {
-                    imguiNode(node->getChild(i));
-                }
-
-                ImGui::TreePop();
-            }
-        } else {
-            ImGui::Selectable(node->getName().c_str());
-        }
-    }
-public:
-    TransformTreeNode root_node;
-
-    TransformTreeNode* getRoot() {
-        return &root_node;
-    }
-
-    void onGui(ecsWorld* world, entity_id ent) {
-        ImGui::PushItemWidth(-1);
-        if(ImGui::ListBoxHeader("###OBJECT_LIST", ImVec2(0, 300))) {
-            imguiNode(&root_node);
-                
-            ImGui::ListBoxFooter();
-        }
-        ImGui::PopItemWidth();
-    }
-};
-
 
 #endif

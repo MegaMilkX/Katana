@@ -87,9 +87,3 @@ const gfxm::vec3& ecsScale::getScale() const {
     return _scale;
 }
 
-
-void ecsTRS::dirty() {
-    if(system) {
-        system->setDirtyIndex(dirty_index);
-    }
-}

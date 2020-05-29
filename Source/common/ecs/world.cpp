@@ -7,6 +7,14 @@
 #include "attribs/base_attribs.hpp"
 
 
+void ecsWorld::onAttribsCreated(entity_id ent, uint64_t entity_sig, uint64_t diff_sig) {
+    // TODO ?
+}
+void ecsWorld::onAttribsRemoved(entity_id ent, uint64_t entity_sig, uint64_t diff_sig) {
+    // TODO ?
+}
+
+
 void ecsWorld::setTemplateLink(entity_id e, std::shared_ptr<EntityTemplate> tpl) {
     clearTemplateLink(e);
     entity_to_template[e] = tpl;
@@ -37,6 +45,11 @@ ecsWorld::ecsWorld() {
 }
 
 ecsWorld::~ecsWorld() {
+    auto entity_set_copy = live_entities;
+    for(auto& e : entity_set_copy) {
+        removeEntity(e);
+    }
+
     for(auto& kv : template_to_entities) {
         kv.first->eraseReferencingWorld(this);
     }
@@ -47,6 +60,10 @@ void ecsWorld::clearEntities (void) {
     for(auto e : le_copy) {
         removeEntity(e);
     }
+}
+void ecsWorld::clearSystems (void) {
+    sys_by_type.clear();
+    systems.clear();
 }
 
 ecsEntityHandle ecsWorld::createEntity() {
@@ -104,7 +121,7 @@ void ecsWorld::removeEntity(entity_id id) {
         // Signal this entity as an empty one
         sys->attribsRemoved(this, id, e->getAttribBits(), e->getAttribBits());
     }
-    clearTemplateLink(id);
+    
 
     for (int i = 0; i < get_last_attrib_id() + 1; ++i) {
         if ((1 << i) & e->getAttribBits()) {
@@ -115,14 +132,24 @@ void ecsWorld::removeEntity(entity_id id) {
         }
     }
 
-    *e = ecsEntity();
+    clearTemplateLink(id);
+
+    *e = ecsEntity(); // This removes attributes
     entities.free(id);
     live_entities.erase(id);
 }
-
-
 const std::set<entity_id>& ecsWorld::getEntities() const {
     return live_entities;
+}
+ecsEntityHandle ecsWorld::findEntity (const char* name) {
+    for(auto e : live_entities) {
+        auto n = findAttrib<ecsName>(e);
+        if(!n) continue;
+        if(n->name.compare(name) == 0) {
+            return ecsEntityHandle(this, e);
+        }
+    }
+    return ecsEntityHandle(0, -1);
 }
 
 
@@ -294,9 +321,19 @@ ecsSystemBase*  ecsWorld::getSystem(int i) {
 void ecsWorld::update() {
     timer t;
     t.start();
+
+    for(auto& kv : storages) {
+        kv.second->onUpdateBegin();
+    }
+
     for(auto& sys : systems) {
         sys->onUpdate();
     }
+
+    for(auto& kv : storages) {
+        kv.second->onUpdateEnd();
+    }
+
     //LOG("ELAPSED: " << t.stop());
 }
 
@@ -437,6 +474,9 @@ void ecsWorld::deserializeEntity (ecsWorldReadCtx& ctx, entity_id e, uint64_t at
         
         auto& attrib_name = ctx.getAttribName(attrib_index);
         // TODO: if attrib name is "" or other error - skip bytes
+        if (attrib_name == "WorldTransform") {
+          //__debugbreak();
+        }
 
         attrib_index = getEcsAttribTypeLib().get_attrib_id(attrib_name.c_str());
 

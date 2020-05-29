@@ -5,54 +5,15 @@
 #include "../system.hpp"
 #include "../attribs/base_attribs.hpp"
 
-#include "../../util/bullet_debug_draw.hpp"
-
-
-class ecsArchCollider : public ecsTuple<ecsWorldTransform, ecsCollisionShape, ecsExclude<ecsMass>> {
-public:
-    void onAttribUpdate(ecsCollisionShape* shape) override {
-        world->removeCollisionObject(collision_object.get());
-        collision_object->setCollisionShape(shape->shape.get());
-        world->addCollisionObject(collision_object.get());
-        //LOG("Collider shape changed");
-    }
-
-    btCollisionWorld* world = 0;
-    std::shared_ptr<btCollisionObject> collision_object;
-};
-class ecsArchRigidBody : public ecsTuple<ecsWorldTransform, ecsCollisionShape, ecsMass> {
-public:
-    void onAttribUpdate(ecsWorldTransform* t) override {
-        //auto& transform = rigid_body->getWorldTransform();        
-        btTransform transform;
-        const gfxm::mat4& world_transform = t->transform;
-        transform.setFromOpenGLMatrix((float*)&world_transform);
-        
-        //LOG(world_transform);
-        rigid_body->setWorldTransform(transform);
-        world->updateSingleAabb(rigid_body.get());
-    }
-
-    void onAttribUpdate(ecsMass* m) override {
-        rigid_body->setMassProps(m->mass, btVector3(.0f, .0f, .0f));
-    }
-
-    void onAttribUpdate(ecsCollisionShape* shape) override {
-        world->removeRigidBody(rigid_body.get());
-        rigid_body->setCollisionShape(shape->shape.get());
-        world->addRigidBody(rigid_body.get());
-        //LOG("RigidBody shape changed");
-    }
-
-    btDiscreteDynamicsWorld* world = 0;
-    std::shared_ptr<btRigidBody> rigid_body;
-    btDefaultMotionState motion_state;
-};
+#include "subscene_systems/sub_dynamics.hpp"
 
 
 class ecsDynamicsSys : public ecsSystem<
+    ecsTupleCollisionSubScene,
     ecsArchCollider,
-    ecsArchRigidBody
+    ecsTupleCollisionPlane,
+    ecsArchRigidBody,
+    ecsTupleCollisionCache
 > {
     btDefaultCollisionConfiguration* collisionConf;
     btCollisionDispatcher* dispatcher;
@@ -60,7 +21,19 @@ class ecsDynamicsSys : public ecsSystem<
     btSequentialImpulseConstraintSolver* constraintSolver;
     btDiscreteDynamicsWorld* world;
 
+    using collision_pair_t = std::pair<const btCollisionObject*, const btCollisionObject*>;
+    using collision_pair_set_t = std::set<collision_pair_t>;
+    collision_pair_set_t pair_cache;
+
     BulletDebugDrawer2_OpenGL debugDrawer;
+
+    void addColObj(btCollisionObject* c) {
+
+    }
+    void removeColObj(btCollisionObject* c) {
+        
+    }
+
 public:
     ecsDynamicsSys() {
         collisionConf = new btDefaultCollisionConfiguration();
@@ -77,31 +50,78 @@ public:
 
         broadphase->getOverlappingPairCache()->setInternalGhostPairCallback(new btGhostPairCallback());
 
-        world->setGravity(btVector3(0.0f, -10.0f, 0.0f));
+        world->setGravity(btVector3(0.0f, -9.8f, 0.0f));
 
         world->setDebugDrawer(&debugDrawer);
+    }
+
+    btDiscreteDynamicsWorld* getBtWorld() {
+        return world;
     }
 
     void setDebugDraw(DebugDraw* dd) {
         debugDrawer.setDD(dd);
     }
 
+    void onFit(ecsTupleCollisionSubScene* subscene) {
+        subscene->reinit(world);
+    }
+    void onUnfit(ecsTupleCollisionSubScene* subscene) {}
+
     void onFit(ecsArchCollider* collider) {
         collider->world = world;
         collider->collision_object.reset(new btCollisionObject());
+        collider->collision_object->setUserIndex((int)collider->getEntityUid()); // TODO: Bad, entity_id is 64 bit FIX THIS
         collider->collision_object->setCollisionShape(
             collider->get<ecsCollisionShape>()->shape.get()
         );
+        if(collider->get_optional<ecsCollisionCache>()) {
+            collider->collision_object->setUserPointer(collider->get_optional<ecsCollisionCache>());
+        }
 
         btTransform btt;
         btt.setFromOpenGLMatrix((float*)&collider->get<ecsWorldTransform>()->transform);
         collider->collision_object->setWorldTransform(btt);
 
-        world->addCollisionObject(collider->collision_object.get());
+        ecsCollisionFilter* filter = collider->get_optional<ecsCollisionFilter>();
+        uint64_t group = 1;
+        uint64_t mask = 1;
+        if(filter) {
+            group = filter->group;
+            mask = filter->mask;
+        }
+
+        world->addCollisionObject(collider->collision_object.get(), (int)group, (int)mask);
     }
     void onUnfit(ecsArchCollider* collider) {
         world->removeCollisionObject(
             collider->collision_object.get()
+        );
+    }
+    void onFit(ecsTupleCollisionPlane* p) {
+        p->world = world;
+        p->collision_object.reset(new btCollisionObject());
+        p->collision_object->setUserIndex((int)p->getEntityUid()); // TODO: Bad, entity_id is 64 bit FIX THIS
+        p->collision_object->setCollisionShape(
+            p->get<ecsCollisionPlane>()->shape.get()
+        );
+        if(p->get_optional<ecsCollisionCache>()) {
+            p->collision_object->setUserPointer(p->get_optional<ecsCollisionCache>());
+        }
+
+        ecsCollisionFilter* filter = p->get_optional<ecsCollisionFilter>();
+        uint64_t group = 1;
+        uint64_t mask = 1;
+        if(filter) {
+            group = filter->group;
+            mask = filter->mask;
+        }
+
+        world->addCollisionObject(p->collision_object.get(), (int)group, (int)mask);
+    }
+    void onUnfit(ecsTupleCollisionPlane* p) {
+        world->removeCollisionObject(
+            p->collision_object.get()
         );
     }
     void onFit(ecsArchRigidBody* rb) {
@@ -124,9 +144,21 @@ public:
             rb->get<ecsCollisionShape>()->shape.get(),
             local_inertia
         ));
+        rb->rigid_body->setUserIndex((int)rb->getEntityUid()); // TODO: Bad, entity_id is 64 bit FIX THIS
+        if(rb->get_optional<ecsCollisionCache>()) {
+            rb->rigid_body->setUserPointer(rb->get_optional<ecsCollisionCache>());
+        }
+
+        ecsCollisionFilter* filter = rb->get_optional<ecsCollisionFilter>();
+        uint64_t group = 1;
+        uint64_t mask = 1;
+        if(filter) {
+            group = filter->group;
+            mask = filter->mask;
+        }
 
         world->addRigidBody(
-            rb->rigid_body.get()
+            rb->rigid_body.get(), (int)group, (int)mask
         );
     }
     void onUnfit(ecsArchRigidBody* rb) {
@@ -136,10 +168,24 @@ public:
     }
 
     void onUpdate() {
+        for(auto& a : get_array<ecsTupleCollisionSubScene>()) {
+            // TODO: Optimize?
+            a->sub_dynamics->updateRootTransform(a->get<ecsWorldTransform>()->transform);
+            a->sub_dynamics->updateColliders();
+            // TODO
+        }
+
         for(auto& a : get_array<ecsArchCollider>()) {
             auto& matrix = a->get<ecsWorldTransform>()->transform;
-            a->collision_object->getWorldTransform().setFromOpenGLMatrix((float*)&matrix);
+            btTransform btt;
+            btt.setFromOpenGLMatrix((float*)&matrix);
+            a->collision_object->setWorldTransform(btt);
             world->updateSingleAabb(a->collision_object.get());
+        }
+
+        // Clear collision caches
+        for(auto& a : get_array<ecsTupleCollisionCache>()) {
+            a->get<ecsCollisionCache>()->entities.clear();
         }
 
         world->stepSimulation(1.0f/60.0f);
@@ -150,6 +196,64 @@ public:
             btQuaternion btq = t.getRotation();
             auto& transform = a->get<ecsWorldTransform>()->transform;
             t.getOpenGLMatrix((float*)&transform);
+        }
+
+        collision_pair_set_t pairs;
+        int numManifolds = world->getDispatcher()->getNumManifolds();
+        for(int i = 0; i < numManifolds; ++i) {
+            btPersistentManifold* contactManifold = world->getDispatcher()->getManifoldByIndexInternal(i);
+            const btCollisionObject* A = contactManifold->getBody0();
+            const btCollisionObject* B = contactManifold->getBody1();
+            ecsCollisionCache* cacheA = 0;
+            ecsCollisionCache* cacheB = 0;
+
+            collision_pair_t p(A, B);
+            pairs.insert(p);
+            if(pair_cache.count(p) == 0) {
+                // TODO: New collision, report
+                //LOG_WARN("Collided");
+            }
+
+            ecsCollisionCache::Other* cacheEntityA = 0;
+            ecsCollisionCache::Other* cacheEntityB = 0;
+            if(A->getUserPointer()) {
+                cacheA = (ecsCollisionCache*)A->getUserPointer();
+                cacheA->entities.push_back(ecsCollisionCache::Other());
+                cacheEntityA = &cacheA->entities.back();
+                cacheEntityA->entity = ecsEntityHandle(getWorld(), (entity_id)B->getUserIndex()); // TODO: FIX THIS, NEED TO GET SUBSCENE WORLD INSTEAD OF THIS
+            }
+            if(B->getUserPointer()) {
+                cacheB = (ecsCollisionCache*)B->getUserPointer();
+                cacheB->entities.push_back(ecsCollisionCache::Other());
+                cacheEntityB = &cacheB->entities.back();
+                cacheEntityB->entity = ecsEntityHandle(getWorld(), (entity_id)A->getUserIndex()); // TODO: FIX THIS, NEED TO GET SUBSCENE WORLD INSTEAD OF THIS
+            }
+
+            int numContacts = contactManifold->getNumContacts();
+            for(int j = 0; j < numContacts; ++j) {
+                btManifoldPoint& pt = contactManifold->getContactPoint(j);
+                if(pt.getDistance() < .0f) {
+                    const btVector3& ptA = pt.getPositionWorldOnA();
+                    const btVector3& ptB = pt.getPositionWorldOnB();
+                    const btVector3& normalOnB = pt.m_normalWorldOnB;
+
+                    if(cacheEntityA) {
+                        cacheEntityA->points.push_back(pt);
+                    }
+                    if(cacheEntityB) {
+                        cacheEntityB->points.push_back(pt);
+                    }
+
+                    // TODO: ?
+                }
+            }
+        }
+        collision_pair_set_t missing_pairs;
+        std::set_difference(pair_cache.begin(), pair_cache.end(), pairs.begin(), pairs.end(), std::inserter(missing_pairs, missing_pairs.begin()));
+        pair_cache = pairs;
+        for(auto& p : missing_pairs) {
+            // TODO: Collision ended, report
+            //LOG_WARN("CollisionEnded");
         }
 
         world->debugDrawWorld();

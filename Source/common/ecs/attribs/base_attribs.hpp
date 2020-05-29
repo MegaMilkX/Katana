@@ -96,20 +96,277 @@ public:
 };
 
 
-#include "../../attributes/collision_shapes.hpp"
+#include <btBulletDynamicsCommon.h>
 class ecsCollisionShape : public ecsAttrib<ecsCollisionShape> {
+    enum SHAPE {
+        SPHERE, BOX, CAPSULE, CONE, CYLINDER
+    };
+    SHAPE type = SPHERE;
+
 public:
-    ecsCollisionShape() {
-        shape.reset(new btSphereShape(.5f));
-    }
     std::shared_ptr<btCollisionShape> shape;
+    uint64_t                          collision_mask = 0;
+    uint64_t                          collision_group = 0;
+
+    ecsCollisionShape() {
+        shape.reset(new btSphereShape(.5f));    
+    }
 
     void write(ecsWorldWriteCtx& out) override {
-        
+        out.write<uint8_t>(type);
+        gfxm::vec3 buf;
+        btVector3 btvec;
+        switch(type) {
+        case SPHERE:
+            buf.x = ((btSphereShape*)shape.get())->getRadius();
+            break;
+        case BOX:
+            btvec = ((btBoxShape*)shape.get())->getHalfExtentsWithMargin();
+            buf = gfxm::vec3(btvec.getX(), btvec.getY(), btvec.getZ());
+            break;
+        case CAPSULE:
+            buf.x = ((btCapsuleShape*)shape.get())->getRadius();
+            buf.y = ((btCapsuleShape*)shape.get())->getHalfHeight() * 2.0f;
+        break;
+        case CONE:
+            buf.x = ((btConeShape*)shape.get())->getRadius();
+            buf.y = ((btConeShape*)shape.get())->getHeight();
+        break;
+        case CYLINDER:
+            btvec = ((btCylinderShape*)shape.get())->getHalfExtentsWithMargin();
+            buf = gfxm::vec3(btvec.getX(), btvec.getY(), btvec.getZ());
+        break;
+        default: assert(false);
+        };
+        out.write(buf);
+        out.write(collision_mask);
+        out.write(collision_group);
     }
     void read(ecsWorldReadCtx& in) override {
-        
+        type = (SHAPE)in.read<uint8_t>();
+        gfxm::vec3 buf = in.read<gfxm::vec3>();
+        collision_mask = in.read<uint64_t>();
+        collision_group = in.read<uint64_t>();
+        switch(type) {
+        case SPHERE:    shape.reset(new btSphereShape(buf.x)); break;
+        case BOX:       shape.reset(new btBoxShape(btVector3(buf.x, buf.y, buf.z)));   break;
+        case CAPSULE:   shape.reset(new btCapsuleShape(buf.x, buf.y));; break;
+        case CONE:      shape.reset(new btConeShape(buf.x, buf.y));; break;
+        case CYLINDER:  shape.reset(new btCylinderShape(btVector3(buf.x, buf.y, buf.z))); break;
+        default: assert(false);
+        };
     }
+
+    void onGui(ecsWorld* world, entity_id ent) override {
+        const char* current_name = "UNKNOWN";
+        switch(type) {
+        case SPHERE:    current_name = "Sphere";  break;
+        case BOX:       current_name = "Box";   break;
+        case CAPSULE:   current_name = "Capsule"; break;
+        case CONE:      current_name = "Cone"; break;
+        case CYLINDER:  current_name = "Cylinder"; break;
+        default: assert(false);
+        };
+        if(ImGui::BeginCombo("type###CollisionShapeType", current_name)) {
+            if(ImGui::Selectable("Sphere")) {
+                type = SPHERE;
+                shape.reset(new btSphereShape(0.5f));
+                world->signalAttribUpdate(ent, this->get_id());
+            }
+            if(ImGui::Selectable("Box")) {
+                type = BOX;
+                shape.reset(new btBoxShape(btVector3(0.5f, 0.5f, 0.5f)));
+                world->signalAttribUpdate(ent, this->get_id());
+            }
+            if(ImGui::Selectable("Capsule")) {
+                type = CAPSULE;
+                shape.reset(new btCapsuleShape(0.5f, 1.0f));
+                world->signalAttribUpdate(ent, this->get_id());
+            }
+            if(ImGui::Selectable("Cone")) {
+                type = CONE;
+                shape.reset(new btConeShape(0.5f, 1.0f));
+                world->signalAttribUpdate(ent, this->get_id());
+            }
+            if(ImGui::Selectable("Cylinder")) {
+                type = CYLINDER;
+                shape.reset(new btCylinderShape(btVector3(0.5f, 0.5f, 0.5f)));
+                world->signalAttribUpdate(ent, this->get_id());
+            }
+            ImGui::EndCombo();
+        }
+
+        switch(type) {
+        case SPHERE: {
+            btSphereShape* s = (btSphereShape*)shape.get();
+            float r = s->getRadius();
+            if(ImGui::DragFloat("radius###CollisionShape", &r, 0.01f)) {
+                *s = btSphereShape(r);
+                world->signalAttribUpdate(ent, this->get_id());
+            }
+        }   break;
+        case BOX: {
+            btBoxShape* b = (btBoxShape*)shape.get();
+            btVector3 vec = b->getHalfExtentsWithMargin();
+            if(ImGui::DragFloat3("extents###CollisionShape", (float*)&vec, 0.01f)) {
+                *b = btBoxShape(vec);
+                world->signalAttribUpdate(ent, this->get_id());
+            }
+        }   break;
+        case CAPSULE: {
+            btCapsuleShape* c = (btCapsuleShape*)shape.get();
+            float h = c->getHalfHeight() * 2.0f;
+            float r = c->getRadius();
+            if(ImGui::DragFloat("height###CollisionShape1", &h, 0.01f)) {
+                *c = btCapsuleShape(r, h);
+                world->signalAttribUpdate(ent, this->get_id());
+            }
+            if(ImGui::DragFloat("radius###CollisionShape2", &r, 0.01f)) {
+                *c = btCapsuleShape(r, h);
+                world->signalAttribUpdate(ent, this->get_id());
+            }
+        }    break;
+        case CONE: {
+            btConeShape* c = (btConeShape*)shape.get();
+            float r = c->getRadius();
+            float h = c->getHeight();
+            if(ImGui::DragFloat("height###CollisionShape1", &h, 0.01f)) {
+                *c = btConeShape(r, h);
+                world->signalAttribUpdate(ent, this->get_id());
+            }
+            if(ImGui::DragFloat("radius###CollisionShape2", &r, 0.01f)) {
+                *c = btConeShape(r, h);
+                world->signalAttribUpdate(ent, this->get_id());
+            }
+        }   break;
+        case CYLINDER: {
+            btCylinderShape* c = (btCylinderShape*)shape.get();
+            btVector3 vec = c->getHalfExtentsWithMargin();
+            if(ImGui::DragFloat3("extents###CollisionShape", (float*)&vec, 0.01f)) {
+                *c = btCylinderShape(vec);
+                world->signalAttribUpdate(ent, this->get_id());
+            }
+        }   break;
+        default:
+            assert(false);
+            break;
+        };
+    }
+};
+class ecsCollisionPlane : public ecsAttrib<ecsCollisionPlane> {
+    gfxm::vec3 euler;
+
+    gfxm::vec3 eulerToNormal(const gfxm::vec3& euler) {
+        gfxm::vec3 N = gfxm::to_mat4(gfxm::euler_to_quat(euler)) * gfxm::vec4(0, 1, 0, 0);
+        N = gfxm::normalize(N);
+        return N;
+    }
+public:
+    std::shared_ptr<btCollisionShape> shape;
+
+    ecsCollisionPlane() {
+        gfxm::vec3 N = eulerToNormal(euler);
+        shape.reset(new btStaticPlaneShape(btVector3(N.x, N.y, N.z), 0));
+    }
+
+    void write(ecsWorldWriteCtx& out) override {
+        btStaticPlaneShape* p = ((btStaticPlaneShape*)shape.get());
+        float c = p->getPlaneConstant();
+        out.write(euler);
+        out.write(c);
+    }
+    void read(ecsWorldReadCtx& in) override {
+        gfxm::vec3 euler = in.read<gfxm::vec3>();
+        float offset = in.read<float>();
+        
+        gfxm::vec3 N = eulerToNormal(euler);
+        shape.reset(new btStaticPlaneShape(btVector3(N.x, N.y, N.z), offset));
+    }
+
+    void onGui(ecsWorld* world, entity_id ent) override {
+        btStaticPlaneShape* p = ((btStaticPlaneShape*)shape.get());
+        float c = p->getPlaneConstant();
+        if(ImGui::DragFloat3("euler###PlaneNormal", (float*)&euler, 0.01f)) {
+            gfxm::vec3 N = eulerToNormal(euler);
+            shape.reset(new btStaticPlaneShape(btVector3(N.x, N.y, N.z), c));
+            world->signalAttribUpdate(ent, this->get_id());
+        }
+        if(ImGui::DragFloat("offset###PlaneConstant", &c, 0.01f)) {
+            gfxm::vec3 N = eulerToNormal(euler);
+            shape.reset(new btStaticPlaneShape(btVector3(N.x, N.y, N.z), c));
+            world->signalAttribUpdate(ent, this->get_id());
+        }
+    }
+};
+#include "generic/collision_groups.hpp"
+class ecsCollisionFilter : public ecsAttrib<ecsCollisionFilter> {
+public:
+    uint64_t group = 1;
+    uint64_t mask = 1;
+
+    void write(ecsWorldWriteCtx& out) override {
+        out.write(group);
+        out.write(mask);
+    }
+    void read(ecsWorldReadCtx& in) override {
+        in.read(group);
+        in.read(mask);
+    }
+
+    void onGui(ecsWorld* world, entity_id ent) override {
+        int grp_count = sizeof(s_collision_group_names) / sizeof(s_collision_group_names[0]);
+        std::string groups_str;
+        std::string mask_str;
+        for(int i = 0; i < grp_count; ++i) {
+            if(group & (1 << i)) {
+                if(i > 0) {
+                    groups_str += ", ";
+                }
+                groups_str += s_collision_group_names[i];
+            }
+        }
+        for(int i = 0; i < grp_count; ++i) {
+            if(mask & (1 << i)) {
+                if(i > 0) {
+                    mask_str += ", ";
+                }
+                mask_str += s_collision_group_names[i];
+            }
+        }
+
+        if(ImGui::BeginCombo("groups", groups_str.c_str())) {
+            for(int i = 0; i < grp_count; ++i) {
+                std::string label;
+                label += (group & (1 << i)) ? ICON_MDI_CHECKBOX_MARKED : ICON_MDI_CHECKBOX_BLANK;
+                label = MKSTR(label << " " << s_collision_group_names[i]);
+                if(ImGui::Selectable(label.c_str())) {
+                    group ^= (1 << i);
+                    world->signalAttribUpdate(ent, this->get_id());
+                }
+            }
+            ImGui::EndCombo();
+        }
+        if(ImGui::BeginCombo("mask", mask_str.c_str())) {
+            for(int i = 0; i < grp_count; ++i) {
+                std::string label;
+                label += (mask & (1 << i)) ? ICON_MDI_CHECKBOX_MARKED : ICON_MDI_CHECKBOX_BLANK;
+                label = MKSTR(label << " " << s_collision_group_names[i]);
+                if(ImGui::Selectable(label.c_str())) {
+                    mask ^= (1 << i);
+                    world->signalAttribUpdate(ent, this->get_id());
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+};
+class ecsCollisionCache : public ecsAttrib<ecsCollisionCache> {
+public:
+    struct Other {
+        ecsEntityHandle entity;
+        std::vector<btManifoldPoint> points;
+    };
+    std::vector<Other> entities;
 };
 
 #include "../../util/geom/gen_lightmap_uv.hpp"
@@ -338,6 +595,108 @@ public:
         color = r.read<gfxm::vec3>();
         radius = r.read<float>();
         intensity = r.read<float>();
+    }
+};
+
+
+class ecsAudioListener : public ecsAttrib<ecsAudioListener> {
+public:
+    void write(ecsWorldWriteCtx& out) override {
+        out.write<uint64_t>(0); // reserved
+        out.write<uint64_t>(0); // reserved
+        out.write<uint64_t>(0); // reserved
+        out.write<uint64_t>(0); // reserved
+    }
+    void read(ecsWorldReadCtx& in) override {
+        in.read<uint64_t>(); // reserved
+        in.read<uint64_t>(); // reserved
+        in.read<uint64_t>(); // reserved
+        in.read<uint64_t>(); // reserved
+    }
+
+    void onGui(ecsWorld* world, entity_id e) override {
+
+    }
+};
+#include "../../resource/audio_clip.hpp"
+class ecsAudioSource : public ecsAttrib<ecsAudioSource> {
+public:
+    enum CMD {
+        NONE,
+        PLAY,
+        PAUSE,
+        STOP 
+    };
+
+private:
+    std::shared_ptr<AudioClip> clip;
+    bool autoplay = false;
+    bool looping = false;
+    float volume = 1.0f;
+    uint8_t layer = 0; // Music, sfx, etc.
+
+    CMD cmd = NONE;
+    bool playing = false;
+
+public:
+    AudioClip* getClip() {
+        return clip.get();
+    }
+    bool isAutoplay() const {
+        return autoplay;
+    }
+    bool isLooping() const {
+        return looping;
+    }
+    bool isPlaying() const {
+        return playing;
+    }
+
+    void _setPlaying(bool val) {
+        playing = val;
+    }
+    CMD _getCmd() const {
+        return cmd;
+    }
+    void _clearCmd() {
+        cmd = NONE;
+    }
+
+    void Play() {
+        cmd = PLAY;
+    }
+    void Pause() {
+        cmd = PAUSE;
+    }
+    void Stop() {
+        cmd = STOP;
+    }
+
+    void write(ecsWorldWriteCtx& out) override {
+        out.writeResource(clip);
+        out.write<uint8_t>(autoplay ? 1 : 0);
+        out.write<uint8_t>(looping ? 1 : 0);
+        out.write(volume);
+        out.write(layer);
+    }
+    void read(ecsWorldReadCtx& in) override {
+        clip = in.readResource<AudioClip>();
+        autoplay = in.read<uint8_t>() ? true : false;
+        looping = in.read<uint8_t>() ? true : false;
+        in.read(volume);
+        in.read(layer);
+    }
+
+    void onGui(ecsWorld* world, entity_id e) override {
+        imguiResourceTreeCombo("clip###AudioSourceClip", clip, "ogg", [this, world, e](){
+            world->signalAttribUpdate(e, this->get_id());
+        });
+        if(ImGui::Checkbox("autoplay###AudioSourceAutoplay", &autoplay)) {
+            world->signalAttribUpdate(e, this->get_id());
+        }
+        if(ImGui::Checkbox("looping###AudioSourceLooping", &looping)) {
+            world->signalAttribUpdate(e, this->get_id());
+        }
     }
 };
 
