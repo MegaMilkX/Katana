@@ -44,6 +44,7 @@ public:
 template<typename T>
 class ecsTupleMap : public ecsTupleMapBase {
 protected:
+    uint32_t                                dirty_index = 0;
     std::vector<std::shared_ptr<T>>         array;
     std::unordered_map<entity_id, size_t>   map;
 
@@ -51,6 +52,10 @@ protected:
     std::unordered_map<entity_id, size_t>   sub_world_tuples_map;
 
 public:
+    void clear_dirty_index() {
+        dirty_index = array.size();
+    }
+
     uint64_t get_mask() const override {
         return T::get_signature_static();
     }
@@ -65,6 +70,7 @@ public:
         //LOG(this << ": create " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         T* arch_ptr = new T();
         arch_ptr->init(world, ent);
+        arch_ptr->array_index = array.size();
         map[ent] = array.size();
         array.resize(array.size() + 1);
         array[array.size() - 1].reset(arch_ptr);
@@ -74,6 +80,7 @@ public:
     T* insert(entity_id ent, const T& arch) {
         //LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         T* arch_ptr = new T(arch);
+        arch_ptr->array_index = array.size();
         map[ent] = array.size();
         array.resize(array.size() + 1);
         array[array.size() - 1].reset(arch_ptr);
@@ -196,6 +203,17 @@ public:
             auto map = ecsTupleMap<Arg>::map;
             auto it = map.find(ent);
             if(it != map.end()) {
+                auto& idx = ecsTupleMap<Arg>::array[it->second]->array_index;
+                auto& didx = ecsTupleMap<Arg>::dirty_index;
+                if(idx < didx) {
+                    --didx;
+                    auto last = ecsTupleMap<Arg>::array[didx];
+                    auto moved = ecsTupleMap<Arg>::array[it->second];
+                    last->array_index = idx;
+                    moved->array_index = didx;
+                    ecsTupleMap<Arg>::array[didx] = moved;
+                    ecsTupleMap<Arg>::array[idx] = last;
+                }
                 ecsTupleMap<Arg>::array[it->second]->signalAttribUpdate(attrib_sig);
             }
         }
@@ -286,6 +304,17 @@ public:
             auto map = ecsTupleMap<Arg>::map;
             auto it = map.find(ent);
             if(it != map.end()) {
+                auto& idx = ecsTupleMap<Arg>::array[it->second]->array_index;
+                auto& didx = ecsTupleMap<Arg>::dirty_index;
+                if(idx < didx) {
+                    --didx;
+                    auto last = ecsTupleMap<Arg>::array[didx];
+                    auto moved = ecsTupleMap<Arg>::array[it->second];
+                    last->array_index = idx;
+                    moved->array_index = didx;
+                    ecsTupleMap<Arg>::array[didx] = moved;
+                    ecsTupleMap<Arg>::array[idx] = last;
+                }
                 ecsTupleMap<Arg>::array[it->second]->signalAttribUpdate(attrib_sig);
             }
         }
@@ -301,6 +330,23 @@ public:
     std::vector<std::shared_ptr<ARCH_T>>& get_array() {
         return ecsTupleMap<ARCH_T>::array;
     }
+    template<typename ARCH_T>
+    int count() const {
+        return ecsTupleMap<ARCH_T>::array.size();
+    }
+    template<typename ARCH_T>
+    ARCH_T* get(int i) {
+        return ecsTupleMap<ARCH_T>::array[i].get();
+    }
+    template<typename ARCH_T>
+    int get_dirty_index() const {
+        return ecsTupleMap<ARCH_T>::dirty_index;
+    }
+    template<typename ARCH_T>
+    void clear_dirty() {
+        return ecsTupleMap<ARCH_T>::clear_dirty_index();
+    }
+
     template<typename ARCH_T>
     ARCH_T* get_tuple(entity_id ent) {
         auto it = ecsTupleMap<ARCH_T>::map.find(ent);

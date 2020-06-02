@@ -175,6 +175,7 @@ public:
     void                        removeEntity                (entity_id id);
     const std::set<entity_id>&  getEntities() const;
     ecsEntityHandle             findEntity                  (const char* name);
+    void                        setParent                   (entity_id parent, entity_id child);
 
     template<typename T>
     T*                          findAttrib(entity_id ent);

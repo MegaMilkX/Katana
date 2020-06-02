@@ -168,6 +168,11 @@ public:
     }
 
     void onUpdate() {
+        for(int i = get_dirty_index<ecsArchCollider>(); i < count<ecsArchCollider>(); ++i) {
+            LOG_WARN("Collider updated: " << get<ecsArchCollider>(i)->getEntityUid());
+        }
+        clear_dirty<ecsArchCollider>();
+
         for(auto& a : get_array<ecsTupleCollisionSubScene>()) {
             // TODO: Optimize?
             a->sub_dynamics->updateRootTransform(a->get<ecsWorldTransform>()->transform);

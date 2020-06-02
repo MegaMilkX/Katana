@@ -151,6 +151,11 @@ ecsEntityHandle ecsWorld::findEntity (const char* name) {
     }
     return ecsEntityHandle(0, -1);
 }
+void ecsWorld::setParent (entity_id parent, entity_id child) {
+    auto e = entities.deref(child);
+    e->parent_uid = parent;
+    // TODO: Signal systems
+}
 
 
 void ecsWorld::createAttrib(entity_id ent, attrib_id attrib) {

@@ -7,6 +7,10 @@
 
 #include "attribute.hpp"
 
+
+static const entity_id NULL_ENTITY = -1;
+
+
 inline ecsAttribBase* allocAttrib(attrib_id id) {
     ecsAttribBase* ptr = 0;
     auto inf = getEcsAttribTypeLib().get_info(id);
@@ -28,6 +32,7 @@ class ecsWorld;
 class ecsEntity {
     friend ecsWorld;
 
+    entity_id parent_uid = NULL_ENTITY;
     entity_id entity_uid;
     uint64_t attrib_bits;
     std::map<uint8_t, std::shared_ptr<ecsAttribBase>> attribs;
