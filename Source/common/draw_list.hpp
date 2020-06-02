@@ -71,7 +71,12 @@ public:
     std::vector<OmniLight> omnis;
     std::vector<DirLight> dir_lights;
 
-    
+    void clear() {
+        solids.clear();
+        skins.clear();
+        omnis.clear();
+        dir_lights.clear();
+    }
 private:
     
 };

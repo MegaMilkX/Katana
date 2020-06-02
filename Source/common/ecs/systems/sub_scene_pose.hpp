@@ -20,6 +20,9 @@ public:
     void onFit(ecsTupleAnimNode* node) {
         if(!skeleton) return;
         Skeleton::Bone* bone = skeleton->getBone(node->get<ecsName>()->name);
+        if (!bone) {
+          return;
+        }
         nodes[bone->id] = node;
     }
     void onUnfit(ecsTupleAnimNode* node) {

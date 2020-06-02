@@ -1,7 +1,7 @@
 #ifndef ECS_SYSTEM_HPP
 #define ECS_SYSTEM_HPP
 
-#include "archetype.hpp"
+#include "tuple.hpp"
 
 #include <map>
 
@@ -44,8 +44,12 @@ public:
 template<typename T>
 class ecsTupleMap : public ecsTupleMapBase {
 protected:
-    std::vector<std::shared_ptr<T>> array;
-    std::unordered_map<entity_id, size_t> map;
+    std::vector<std::shared_ptr<T>>         array;
+    std::unordered_map<entity_id, size_t>   map;
+
+    std::vector<ecsTupleMap<T>>             sub_world_tuples_array;
+    std::unordered_map<entity_id, size_t>   sub_world_tuples_map;
+
 public:
     uint64_t get_mask() const override {
         return T::get_signature_static();
@@ -58,7 +62,7 @@ public:
     }
 
     T* create(ecsWorld* world, entity_id ent) {
-        LOG(this << ": create " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        //LOG(this << ": create " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         T* arch_ptr = new T();
         arch_ptr->init(world, ent);
         map[ent] = array.size();
@@ -68,7 +72,7 @@ public:
     }
 
     T* insert(entity_id ent, const T& arch) {
-        LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        //LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         T* arch_ptr = new T(arch);
         map[ent] = array.size();
         array.resize(array.size() + 1);
@@ -80,7 +84,7 @@ public:
         T* value = get(ent);
         if(!value) return;
         value->updateOptionals(world, ent);
-        LOG(this << ": optional updated " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        //LOG(this << ": optional updated " << ent << ": " << rttr::type::get<T>().get_name().to_string());
     }
 
     T* get(entity_id ent) {
@@ -92,7 +96,7 @@ public:
     }
 
     void erase(entity_id ent) {
-        LOG(this << ": erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
+        //LOG(this << ": erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
         auto it = map.find(ent);
         if(it == map.end()) {
             return;

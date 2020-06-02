@@ -23,10 +23,11 @@ public:
         const std::string& name,
         const std::string& vsource,
         const std::string& fsource,
-        bool force_reload = false
+        bool force_reload = false,
+        const VERTEX_FMT::VERTEX_DESC* vtx_desc = 0
     ) {
         return instance->_getOrCreate(
-            name, vsource, fsource, force_reload
+            name, vsource, fsource, force_reload, vtx_desc
         );
     }
 
@@ -34,7 +35,8 @@ public:
         const std::string& name, 
         const std::string& vsource, 
         const std::string& fsource,
-        bool force_reload = false
+        bool force_reload = false,
+        const VERTEX_FMT::VERTEX_DESC* vtx_desc = 0
     ) {
         auto it = programs.find(name);
         if(it != programs.end() && !force_reload) {
@@ -65,8 +67,14 @@ public:
             prog->attachShader(&vs);
             prog->attachShader(&fs);
 
-            for(int i = 0; i < VERTEX_FMT::GENERIC::attribCount(); ++i) {
-                prog->bindAttrib(i, VERTEX_FMT::GENERIC::getAttribDesc(i).name);
+            if(!vtx_desc) {
+                for(int i = 0; i < VERTEX_FMT::GENERIC::attribCount(); ++i) {
+                    prog->bindAttrib(i, VERTEX_FMT::GENERIC::getAttribDesc(i).name);
+                }
+            } else {
+                for(int i = 0; i < vtx_desc->attribCount; ++i) {
+                    prog->bindAttrib(i, vtx_desc->attribs[i].name);
+                }
             }
             prog->bindFragData(GBuffer::ALBEDO, "out_albedo");
             prog->bindFragData(GBuffer::NORMAL, "out_normal");

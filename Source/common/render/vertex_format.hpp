@@ -51,6 +51,7 @@ TYPEDEF_ATTRIB(FLOAT, 4, false, BoneIndex4);
 TYPEDEF_ATTRIB(FLOAT, 4, false, BoneWeight4);
 TYPEDEF_ATTRIB(UBYTE, 4, true,  ColorRGBA);
 TYPEDEF_ATTRIB(FLOAT, 3, false, Velocity);
+TYPEDEF_ATTRIB(FLOAT, 1, false, TextUVLookup);
 
 struct ATTRIB_DESC {
     const char* name;
@@ -172,9 +173,14 @@ DECL_VERTEX_FMT(GENERIC,
     BoneIndex4, BoneWeight4,
     ColorRGBA
 );
-
 DECL_VERTEX_FMT(PARTICLE,
     Position, Velocity, ColorRGBA
+);
+DECL_VERTEX_FMT(TEXT,
+    Position, UV, TextUVLookup
+);
+DECL_VERTEX_FMT(QUAD_2D,
+    Position, UV
 );
 
 }

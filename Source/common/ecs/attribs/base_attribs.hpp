@@ -598,6 +598,88 @@ public:
     }
 };
 
+enum GUI_ALIGNMENT {
+    GUI_ALIGN_LEFT      = 0,
+    GUI_ALIGN_RIGHT     = 1,
+    GUI_ALIGN_TOP       = 2,
+    GUI_ALIGN_BOTTOM    = 3,
+    GUI_ALIGN_CENTER    = 4
+};
+class ecsGuiElement : public ecsAttrib<ecsGuiElement> {
+public:
+    entity_id       parent              = -1;
+    int             order_index         = 0;
+    gfxm::vec2      position;
+    gfxm::vec2      size                = gfxm::vec2(300.0f, 200.0f);
+    GUI_ALIGNMENT   align_h             = GUI_ALIGN_LEFT;
+    GUI_ALIGNMENT   align_v             = GUI_ALIGN_TOP;
+
+    void onGui(ecsWorld* w, entity_id e) override {
+        if(ImGui::DragInt("order index###guielemorder", &order_index)) {
+
+        }
+        if(ImGui::DragFloat2("position###guielempos", (float*)&position)) {
+
+        }
+        if(ImGui::DragFloat2("size###guielemsz", (float*)&size)) {
+            
+        }
+
+        ImGui::RadioButton("left###guielemleft", (int*)&align_h, (int)GUI_ALIGN_LEFT);
+        ImGui::SameLine();
+        ImGui::RadioButton("center###guielemcenterh", (int*)&align_h, (int)GUI_ALIGN_CENTER);
+        ImGui::SameLine();
+        ImGui::RadioButton("right###guielemright", (int*)&align_h, (int)GUI_ALIGN_RIGHT);
+        
+        ImGui::RadioButton("top###guielemtop", (int*)&align_v, (int)GUI_ALIGN_TOP);
+        ImGui::SameLine();
+        ImGui::RadioButton("center###guielemcenterv", (int*)&align_v, (int)GUI_ALIGN_CENTER);
+        ImGui::SameLine();
+        ImGui::RadioButton("bottom###guielembottom", (int*)&align_v, (int)GUI_ALIGN_BOTTOM);
+    }
+};
+class ecsGuiImage : public ecsAttrib<ecsGuiImage> {
+public:
+    std::shared_ptr<Texture2D> image;
+    float image_scale = 1.0f;
+    float u_offset = .0f;
+    float v_offset = .0f;
+
+    gfxm::vec4 color = gfxm::vec4(1, 1, 1, 1);
+
+    float width = 100.0f;
+    float height = 100.0f;
+
+    GUI_ALIGNMENT align_h = GUI_ALIGN_LEFT;
+    GUI_ALIGNMENT align_v = GUI_ALIGN_TOP;
+
+    void onGui(ecsWorld* world, entity_id e) override {
+        imguiResourceTreeCombo("image###quadimage", image, "png", [this](){
+            if(image) {
+                width = image->Width();
+                height = image->Height();
+            }
+        });
+
+        ImGui::RadioButton("left###quadleft", (int*)&align_h, (int)GUI_ALIGN_LEFT);
+        ImGui::SameLine();
+        ImGui::RadioButton("center###quadcenterh", (int*)&align_h, (int)GUI_ALIGN_CENTER);
+        ImGui::SameLine();
+        ImGui::RadioButton("right###quadright", (int*)&align_h, (int)GUI_ALIGN_RIGHT);
+        
+        ImGui::RadioButton("top###quadtop", (int*)&align_v, (int)GUI_ALIGN_TOP);
+        ImGui::SameLine();
+        ImGui::RadioButton("center###quadcenterv", (int*)&align_v, (int)GUI_ALIGN_CENTER);
+        ImGui::SameLine();
+        ImGui::RadioButton("bottom###quadbottom", (int*)&align_v, (int)GUI_ALIGN_BOTTOM);
+
+        ImGui::DragFloat("width###quadwidth", &width, 0.01f);
+        ImGui::DragFloat("height###quadheight", &height, 0.01f);
+        ImGui::ColorPicker4("color###quadcolor", (float*)&color);
+    }
+
+};
+
 
 class ecsAudioListener : public ecsAttrib<ecsAudioListener> {
 public:

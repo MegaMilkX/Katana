@@ -38,6 +38,10 @@ public:
     uint64_t    getAttribBitmask();
     // Get bitmask of attributes that are considered inherited from a template
     uint64_t    getInheritedAttribBitmask();
+
+    operator bool() const {
+        return isValid();
+    }
 };
 
 
