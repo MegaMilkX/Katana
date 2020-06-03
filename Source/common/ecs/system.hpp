@@ -214,15 +214,19 @@ public:
                 auto& idx = ecsTupleMap<Arg>::array[it->second]->array_index;
                 auto& dirty_sig = ecsTupleMap<Arg>::array[it->second]->dirty_signature;
                 auto& didx = ecsTupleMap<Arg>::dirty_index;
-                if(idx < didx && (dirty_sig & attrib_sig) == 0) {
+                if(idx < didx) {
                     --didx;
                     auto last = ecsTupleMap<Arg>::array[didx];
                     auto moved = ecsTupleMap<Arg>::array[it->second];
                     last->array_index = idx;
                     moved->array_index = didx;
                     moved->dirty_signature |= attrib_sig;
+                    map[ent] = didx;                        // Update map
+                    map[last->getEntityUid()] = idx;        // 
                     ecsTupleMap<Arg>::array[didx] = moved;
                     ecsTupleMap<Arg>::array[idx] = last;
+                } else if ((dirty_sig & attrib_sig) == 0) {
+                    dirty_sig |= attrib_sig;
                 }
                 ecsTupleMap<Arg>::array[it->second]->signalAttribUpdate(attrib_sig);
             }
@@ -325,7 +329,7 @@ public:
                 auto& idx = ecsTupleMap<Arg>::array[it->second]->array_index;
                 auto& dirty_sig = ecsTupleMap<Arg>::array[it->second]->dirty_signature;
                 auto& didx = ecsTupleMap<Arg>::dirty_index;
-                if(idx < didx && (dirty_sig & attrib_sig) == 0) {
+                if(idx < didx) {
                     --didx;
                     auto last = ecsTupleMap<Arg>::array[didx];
                     auto moved = ecsTupleMap<Arg>::array[it->second];
@@ -336,6 +340,8 @@ public:
                     map[last->getEntityUid()] = idx;        // 
                     ecsTupleMap<Arg>::array[didx] = moved;
                     ecsTupleMap<Arg>::array[idx] = last;
+                } else if ((dirty_sig & attrib_sig) == 0) {
+                    dirty_sig |= attrib_sig;
                 }
                 ecsTupleMap<Arg>::array[it->second]->signalAttribUpdate(attrib_sig);
             }
