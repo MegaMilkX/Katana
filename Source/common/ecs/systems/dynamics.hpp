@@ -169,7 +169,15 @@ public:
 
     void onUpdate() {
         for(int i = get_dirty_index<ecsArchCollider>(); i < count<ecsArchCollider>(); ++i) {
-            LOG_WARN("Collider updated: " << get<ecsArchCollider>(i)->getEntityUid());
+            auto tuple = get<ecsArchCollider>(i);
+            if(tuple->is_dirty<ecsCollisionShape>()) {
+                LOG_WARN("Collision shape updated: " << tuple->getEntityUid());
+            }
+            if(tuple->is_dirty<ecsWorldTransform>()) {
+                LOG_WARN("World transform updated: " << tuple->getEntityUid());
+            }
+            tuple->clear_dirty_signature();
+            
         }
         clear_dirty<ecsArchCollider>();
 

@@ -152,12 +152,17 @@ public:
         } else {
             if(fits && added_requirement) {
                 Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
+                ptr->dirty_signature = entity_sig;
                 onFit(ptr);
                 if(has_optionals) {
                     ptr->updateOptionals(world, ent);
                 }
             }
             if(fits && added_optional) {
+                Arg* ptr = ecsTupleMap<Arg>::get(ent);
+                if(ptr) {// Probably never NULL, better be safe
+                    ptr->dirty_signature |= (diff_sig & opt_mask); // Set dirty flags for added optionals
+                }
                 ecsTupleMap<Arg>::updateOptionals(world, ent, entity_sig);
             }
         }
@@ -180,18 +185,21 @@ public:
             Arg* ptr = ecsTupleMap<Arg>::get(ent);
             if(ptr) {
                 ptr->clearOptionals((uint64_t)-1);
+                // No need to clear dirty flags for optionals, tuple is being removed anyway
                 onUnfit(ptr);
                 ecsTupleMap<Arg>::erase(ent);
             }
         } else {
             if(fits && removed_excluder) {
                 Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
+                ptr->dirty_signature = entity_sig;
                 onFit(ptr);
             }
             if(fits && removed_optional) {
                 Arg* ptr = ecsTupleMap<Arg>::get(ent);
                 if(ptr) {
                     ptr->clearOptionals(diff_sig);
+                    ptr->dirty_signature &= ~(diff_sig & opt_mask); // Clear dirty flags for removed optionals
                 }
             }
         }
@@ -204,13 +212,15 @@ public:
             auto it = map.find(ent);
             if(it != map.end()) {
                 auto& idx = ecsTupleMap<Arg>::array[it->second]->array_index;
+                auto& dirty_sig = ecsTupleMap<Arg>::array[it->second]->dirty_signature;
                 auto& didx = ecsTupleMap<Arg>::dirty_index;
-                if(idx < didx) {
+                if(idx < didx && (dirty_sig & attrib_sig) == 0) {
                     --didx;
                     auto last = ecsTupleMap<Arg>::array[didx];
                     auto moved = ecsTupleMap<Arg>::array[it->second];
                     last->array_index = idx;
                     moved->array_index = didx;
+                    moved->dirty_signature |= attrib_sig;
                     ecsTupleMap<Arg>::array[didx] = moved;
                     ecsTupleMap<Arg>::array[idx] = last;
                 }
@@ -249,12 +259,17 @@ public:
         } else {
             if(fits && added_requirement) {
                 Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
+                ptr->dirty_signature = entity_sig;
                 onFit(ptr);
                 if(has_optionals) {
                     ptr->updateOptionals(world, ent);
                 }
             }
             if(fits && added_optional) {
+                Arg* ptr = ecsTupleMap<Arg>::get(ent);
+                if(ptr) {// Probably never NULL, better be safe
+                    ptr->dirty_signature |= (diff_sig & opt_mask); // Set dirty flags for added optionals
+                }
                 ecsTupleMap<Arg>::updateOptionals(world, ent, entity_sig);
             }
         }
@@ -279,18 +294,21 @@ public:
             Arg* ptr = ecsTupleMap<Arg>::get(ent);
             if(ptr) {
                 ptr->clearOptionals((uint64_t)-1);
+                // No need to clear dirty flags for optionals, tuple is being removed anyway
                 onUnfit(ptr);
                 ecsTupleMap<Arg>::erase(ent);
             }
         } else {
             if(fits && removed_excluder) {
                 Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
+                ptr->dirty_signature = entity_sig;
                 onFit(ptr);
             }
             if(fits && removed_optional) {
                 Arg* ptr = ecsTupleMap<Arg>::get(ent);
                 if(ptr) {
                     ptr->clearOptionals(diff_sig);
+                    ptr->dirty_signature &= ~(diff_sig & opt_mask); // Clear dirty flags for removed optionals
                 }
             }
         }
@@ -305,13 +323,17 @@ public:
             auto it = map.find(ent);
             if(it != map.end()) {
                 auto& idx = ecsTupleMap<Arg>::array[it->second]->array_index;
+                auto& dirty_sig = ecsTupleMap<Arg>::array[it->second]->dirty_signature;
                 auto& didx = ecsTupleMap<Arg>::dirty_index;
-                if(idx < didx) {
+                if(idx < didx && (dirty_sig & attrib_sig) == 0) {
                     --didx;
                     auto last = ecsTupleMap<Arg>::array[didx];
                     auto moved = ecsTupleMap<Arg>::array[it->second];
                     last->array_index = idx;
                     moved->array_index = didx;
+                    moved->dirty_signature |= attrib_sig;
+                    map[ent] = didx;                        // Update map
+                    map[last->getEntityUid()] = idx;        // 
                     ecsTupleMap<Arg>::array[didx] = moved;
                     ecsTupleMap<Arg>::array[idx] = last;
                 }
