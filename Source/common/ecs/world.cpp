@@ -153,8 +153,74 @@ ecsEntityHandle ecsWorld::findEntity (const char* name) {
 }
 void ecsWorld::setParent (entity_id parent, entity_id child) {
     auto e = entities.deref(child);
-    e->parent_uid = parent;
-    // TODO: Signal systems
+    assert(e);
+    entity_id old_parent = getParent(child);
+    ecsEntity* old_parent_e = 0;
+    if (old_parent != NULL_ENTITY) {
+        old_parent_e = entities.deref(old_parent);
+    }
+    if(old_parent != NULL_ENTITY && old_parent_e) {
+        entity_id sib = getFirstChild(old_parent);
+        if(sib == child) {
+            old_parent_e->first_child_uid = getNextSibling(sib);
+        } else {
+            entity_id prev_sib = sib;
+            sib = getNextSibling(sib);
+            while(sib != NULL_ENTITY) {
+                if(sib == child) {
+                    entity_id next_sib = getNextSibling(sib);
+                    auto e0 = entities.deref(prev_sib);
+                    e0->next_sibling_uid = next_sib;
+                    break;
+                } else {
+                    prev_sib = sib;
+                    sib = getNextSibling(sib);
+                }
+            }
+        }
+        entities.deref(child)->next_sibling_uid = NULL_ENTITY;
+        entities.deref(child)->parent_uid = NULL_ENTITY;
+    }
+
+    if (parent == NULL_ENTITY) {
+        return;
+    }
+
+    auto parent_e = entities.deref(parent);
+    if(parent_e) {
+        entity_id first_child = getFirstChild(parent);
+        if(first_child == NULL_ENTITY) {
+            parent_e->first_child_uid = child;
+        } else { // Find last child
+            entity_id last_sib = first_child;
+            entity_id next_sib = getNextSibling(first_child);
+            while(next_sib != NULL_ENTITY) {
+                last_sib = next_sib;
+                next_sib = getNextSibling(last_sib);
+            }
+            auto last_sib_e = entities.deref(last_sib);
+            last_sib_e->next_sibling_uid = child;
+        }
+        auto child_e = entities.deref(child);
+        child_e->parent_uid = parent;
+        child_e->next_sibling_uid = NULL_ENTITY;
+    }
+    // TODO: Signal systems ?
+}
+entity_id ecsWorld::getParent (entity_id e) {
+    auto en = entities.deref(e);
+    assert(en);
+    return en->parent_uid;
+}
+entity_id ecsWorld::getFirstChild (entity_id e) {
+    auto en = entities.deref(e);
+    assert(en);
+    return en->first_child_uid;
+}
+entity_id ecsWorld::getNextSibling (entity_id e) {
+    auto en = entities.deref(e);
+    assert(en);
+    return en->next_sibling_uid;
 }
 
 

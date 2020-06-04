@@ -149,7 +149,7 @@ public:
 template<typename... Args>
 class ecsTuple : public ecsTupleBase, public ecsTuplePart<Args>... {
 public:
-    uint32_t array_index = 0;
+    uint32_t             array_index     = 0;
 
     ecsTuple() {}
     ecsTuple(ecsWorld* world, entity_id ent)

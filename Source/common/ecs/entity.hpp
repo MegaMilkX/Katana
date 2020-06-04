@@ -33,6 +33,9 @@ class ecsEntity {
     friend ecsWorld;
 
     entity_id parent_uid = NULL_ENTITY;
+    entity_id first_child_uid = NULL_ENTITY;
+    entity_id next_sibling_uid = NULL_ENTITY;
+    
     entity_id entity_uid;
     uint64_t attrib_bits;
     std::map<uint8_t, std::shared_ptr<ecsAttribBase>> attribs;

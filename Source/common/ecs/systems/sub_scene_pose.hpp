@@ -66,7 +66,7 @@ public:
         for(auto& t : get_array<ecsTupleAnimNode>()) {
             auto bone = skeleton->getBone(t->get<ecsName>()->name);
             if(bone) {
-                nodes[bone->id] = t.get();
+                nodes[bone->id] = t;
             }    
         }
     }

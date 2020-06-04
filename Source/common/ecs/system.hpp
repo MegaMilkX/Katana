@@ -4,6 +4,9 @@
 #include "tuple.hpp"
 
 #include <map>
+#include <unordered_map>
+#include <vector>
+#include <memory>
 
 class ecsWorld;
 
@@ -43,15 +46,22 @@ public:
 
 template<typename T>
 class ecsTupleMap : public ecsTupleMapBase {
+public:
+    typedef std::vector<T*>                         array_t;
+    typedef std::unordered_map<entity_id, size_t>   map_t;
+
 protected:
     uint32_t                                dirty_index = 0;
-    std::vector<std::shared_ptr<T>>         array;
-    std::unordered_map<entity_id, size_t>   map;
-
-    std::vector<ecsTupleMap<T>>             sub_world_tuples_array;
-    std::unordered_map<entity_id, size_t>   sub_world_tuples_map;
+    array_t                                 array;
+    map_t                                   map;
 
 public:
+    ~ecsTupleMap() {
+        for(int i = 0; i < array.size(); ++i) {
+            delete array[i];
+        }
+    }
+
     void clear_dirty_index() {
         dirty_index = array.size();
     }
@@ -73,17 +83,7 @@ public:
         arch_ptr->array_index = array.size();
         map[ent] = array.size();
         array.resize(array.size() + 1);
-        array[array.size() - 1].reset(arch_ptr);
-        return arch_ptr;
-    }
-
-    T* insert(entity_id ent, const T& arch) {
-        //LOG(this << ": insert " << ent << ": " << rttr::type::get<T>().get_name().to_string());
-        T* arch_ptr = new T(arch);
-        arch_ptr->array_index = array.size();
-        map[ent] = array.size();
-        array.resize(array.size() + 1);
-        array[array.size() - 1].reset(arch_ptr);
+        array[array.size() - 1] = arch_ptr;
         return arch_ptr;
     }
 
@@ -99,7 +99,7 @@ public:
         if(it == map.end()) {
             return 0;
         }
-        return array[it->second].get();
+        return array[it->second];
     }
 
     void erase(entity_id ent) {
@@ -112,13 +112,59 @@ public:
         map.erase(it);
         if(erase_pos < array.size() - 1) {
             array[erase_pos] = array[array.size() - 1];
+            delete array[array.size() - 1];
             array.resize(array.size() - 1);
             map[array[erase_pos]->getEntityUid()] = erase_pos;
         } else {
+            delete array[array.size() - 1];
             array.resize(array.size() - 1);
         }
     }
 };
+
+template<typename T>
+void ecsMarkTupleDirty(
+    ecsWorld* world,
+    typename ecsTupleMap<T>::map_t& map,
+    typename ecsTupleMap<T>::array_t& array_,
+    uint32_t& dirty_index,
+    entity_id ent,
+    uint64_t attrib_sig,
+    uint64_t array_idx
+) {
+    auto& idx = array_[array_idx]->array_index;
+    auto& dirty_sig = array_[array_idx]->dirty_signature;
+    if(idx < dirty_index) {
+        --dirty_index;
+        auto last = array_[dirty_index];
+        auto moved = array_[array_idx];
+        last->array_index = idx;
+        moved->array_index = dirty_index;
+        moved->dirty_signature |= attrib_sig;
+        map[ent] = dirty_index;                        // Update map
+        map[last->getEntityUid()] = idx;        // 
+        array_[dirty_index] = moved;
+        array_[idx] = last;
+
+        // Dirty children recursively
+        auto child = world->getFirstChild(ent);
+        while(child != NULL_ENTITY) {
+            auto it = map.find(child);
+            if(it != map.end()) {
+                ecsMarkTupleDirty<T>(
+                    world,
+                    map, 
+                    array_,
+                    dirty_index, 
+                    child, attrib_sig, it->second
+                );
+            }
+            child = world->getNextSibling(child);
+        }
+    } else if ((dirty_sig & attrib_sig) == 0) {
+        dirty_sig |= attrib_sig;
+    }
+}
 
 template<typename... Args>
 class ecsSystemRecursive;
@@ -211,23 +257,13 @@ public:
             auto map = ecsTupleMap<Arg>::map;
             auto it = map.find(ent);
             if(it != map.end()) {
-                auto& idx = ecsTupleMap<Arg>::array[it->second]->array_index;
-                auto& dirty_sig = ecsTupleMap<Arg>::array[it->second]->dirty_signature;
-                auto& didx = ecsTupleMap<Arg>::dirty_index;
-                if(idx < didx) {
-                    --didx;
-                    auto last = ecsTupleMap<Arg>::array[didx];
-                    auto moved = ecsTupleMap<Arg>::array[it->second];
-                    last->array_index = idx;
-                    moved->array_index = didx;
-                    moved->dirty_signature |= attrib_sig;
-                    map[ent] = didx;                        // Update map
-                    map[last->getEntityUid()] = idx;        // 
-                    ecsTupleMap<Arg>::array[didx] = moved;
-                    ecsTupleMap<Arg>::array[idx] = last;
-                } else if ((dirty_sig & attrib_sig) == 0) {
-                    dirty_sig |= attrib_sig;
-                }
+                ecsMarkTupleDirty<Arg>(
+                    world,
+                    ecsTupleMap<Arg>::map, 
+                    ecsTupleMap<Arg>::array,
+                    ecsTupleMap<Arg>::dirty_index,
+                    ent, attrib_sig, it->second
+                );
                 ecsTupleMap<Arg>::array[it->second]->signalAttribUpdate(attrib_sig);
             }
         }
@@ -326,23 +362,13 @@ public:
             auto map = ecsTupleMap<Arg>::map;
             auto it = map.find(ent);
             if(it != map.end()) {
-                auto& idx = ecsTupleMap<Arg>::array[it->second]->array_index;
-                auto& dirty_sig = ecsTupleMap<Arg>::array[it->second]->dirty_signature;
-                auto& didx = ecsTupleMap<Arg>::dirty_index;
-                if(idx < didx) {
-                    --didx;
-                    auto last = ecsTupleMap<Arg>::array[didx];
-                    auto moved = ecsTupleMap<Arg>::array[it->second];
-                    last->array_index = idx;
-                    moved->array_index = didx;
-                    moved->dirty_signature |= attrib_sig;
-                    map[ent] = didx;                        // Update map
-                    map[last->getEntityUid()] = idx;        // 
-                    ecsTupleMap<Arg>::array[didx] = moved;
-                    ecsTupleMap<Arg>::array[idx] = last;
-                } else if ((dirty_sig & attrib_sig) == 0) {
-                    dirty_sig |= attrib_sig;
-                }
+                ecsMarkTupleDirty<Arg>(
+                    world,
+                    ecsTupleMap<Arg>::map, 
+                    ecsTupleMap<Arg>::array,
+                    ecsTupleMap<Arg>::dirty_index,
+                    ent, attrib_sig, it->second
+                );
                 ecsTupleMap<Arg>::array[it->second]->signalAttribUpdate(attrib_sig);
             }
         }
@@ -355,7 +381,7 @@ template<typename... Args>
 class ecsSystem : public ecsSystemRecursive<Args...> {
 public:
     template<typename ARCH_T>
-    std::vector<std::shared_ptr<ARCH_T>>& get_array() {
+    std::vector<ARCH_T*>& get_array() {
         return ecsTupleMap<ARCH_T>::array;
     }
     template<typename ARCH_T>
@@ -364,7 +390,7 @@ public:
     }
     template<typename ARCH_T>
     ARCH_T* get(int i) {
-        return ecsTupleMap<ARCH_T>::array[i].get();
+        return ecsTupleMap<ARCH_T>::array[i];
     }
     template<typename ARCH_T>
     int get_dirty_index() const {
@@ -381,7 +407,7 @@ public:
         if(it == ecsTupleMap<ARCH_T>::map.end()) {
             return 0;
         }
-        return ecsTupleMap<ARCH_T>::array[it->second].get();
+        return ecsTupleMap<ARCH_T>::array[it->second];
     }
 
     uint64_t get_mask() const override {
