@@ -40,6 +40,42 @@ void ecsWorld::tryClearTemplateLink(entity_id e) {
 }
 
 
+void ecsWorld::_linkTupleContainer (entity_id e, ecsTupleMapBase* tuple_map, ecsTupleBase* tuple) {
+    auto ent = entities.deref(e);
+    auto tuple_map_ref = ent->first_tuple_map.get();
+    if (tuple_map_ref == 0) {
+        ent->first_tuple_map.reset(new ecsTupleMapReference());
+        ent->first_tuple_map->tuple = tuple;
+        ent->first_tuple_map->ptr = tuple_map;
+        return;
+    }
+    while(tuple_map_ref != 0) {
+        if(tuple_map_ref->next == 0) {
+            tuple_map_ref->next.reset(new ecsTupleMapReference());
+            tuple_map_ref->next->tuple = tuple;
+            tuple_map_ref->next->ptr = tuple_map;
+            break;
+        }
+        tuple_map_ref = tuple_map_ref->next.get();
+    }
+}
+void ecsWorld::_unlinkTupleContainer (entity_id e, ecsTupleMapBase* tuple_map) {
+    auto ent = entities.deref(e);
+    auto tuple_map_ref = ent->first_tuple_map.get();
+    if(tuple_map_ref->ptr == tuple_map) {
+        ent->first_tuple_map.swap(tuple_map_ref->next);
+    }
+    while(tuple_map_ref != 0) {
+        auto next = tuple_map_ref->next.get();
+        if(next && next->ptr == tuple_map) {
+            tuple_map_ref->next.swap(next->next);
+            break;
+        }
+        tuple_map_ref = next;
+    }
+}
+
+
 ecsWorld::ecsWorld() {
     global_attrib_counters.resize(get_last_attrib_id() + 1);
 }
@@ -226,7 +262,7 @@ entity_id ecsWorld::getNextSibling (entity_id e) {
 
 void ecsWorld::createAttrib(entity_id ent, attrib_id attrib) {
     auto e = entities.deref(ent);
-    auto a = e->getAttrib(attrib);
+    auto a = e->getAttrib(this, attrib);
 
     global_attrib_counters[attrib]++;
     global_attrib_mask |= (1 << attrib);
@@ -375,11 +411,12 @@ void ecsWorld::resetToTemplate(entity_id ent) {
 void ecsWorld::signalAttribUpdate(entity_id ent, attrib_id attrib) {
     uint64_t attr_mask = 1 << attrib;
     auto e = entities.deref(ent);
+    e->signalAttribUpdate(this, attrib);/*
     if(e->getAttribBits() & attr_mask) {
         for(auto& sys : systems) {
             sys->signalUpdate(ent, attr_mask);
         }
-    }
+    }*/
 }
 
 int ecsWorld::systemCount() {

@@ -9,10 +9,6 @@
 class ecsysSceneGraph;
 class tupleTransform;
 class ecsTranslation : public ecsAttrib<ecsTranslation> {
-    friend ecsysSceneGraph;
-    friend tupleTransform;
-    ecsysSceneGraph* system = 0;
-    size_t dirty_index = 0;
     gfxm::vec3 position = gfxm::vec3(.0f, .0f, .0f);
 public:
     void dirty();
@@ -40,10 +36,6 @@ public:
 };
 
 class ecsRotation : public ecsAttrib<ecsRotation> {
-    friend ecsysSceneGraph;
-    friend tupleTransform;
-    ecsysSceneGraph* system = 0;
-    size_t dirty_index = 0;
     gfxm::quat _rotation = gfxm::quat(.0f, .0f, .0f, 1.0f);
 public:
     void dirty();
@@ -74,10 +66,6 @@ public:
 };
 
 class ecsScale : public ecsAttrib<ecsScale> {
-    friend ecsysSceneGraph;
-    friend tupleTransform;
-    ecsysSceneGraph* system = 0;
-    size_t dirty_index = 0;
     gfxm::vec3 _scale = gfxm::vec3(1.f, 1.f, 1.f);
 public:
     void dirty();

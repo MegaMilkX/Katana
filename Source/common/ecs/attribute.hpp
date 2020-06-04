@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include "types.hpp"
+#include "entity_handle.hpp"
 #include "util/write_ctx.hpp"
 #include "util/read_ctx.hpp"
 
@@ -34,13 +35,14 @@ class ecsEntity;
 class ecsAttribBase {
     friend ecsEntity;
 
-    entity_id entity = (entity_id)-1;
+    ecsEntityHandle h_entity;
 
 public:
     virtual ~ecsAttribBase() {}
     virtual uint64_t get_id() const = 0;
 
-    entity_id getEntityId() { return entity; }
+    entity_id getEntityId() { return h_entity.getId(); }
+    ecsEntityHandle getEntityHdl() { return h_entity; }
 
     virtual void onGui(ecsWorld* world, entity_id ent) {}
 

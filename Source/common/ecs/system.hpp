@@ -35,13 +35,7 @@ public:
 };
 
 
-class ecsTupleMapBase {
-public:
-    virtual ~ecsTupleMapBase() {}
-    virtual uint64_t get_mask() const = 0;
-    virtual uint64_t get_opt_mask() const = 0;
-    virtual uint64_t get_exclusion_mask() const = 0;
-};
+#include "tuple_map_base.hpp"
 
 
 template<typename T>
@@ -51,7 +45,6 @@ public:
     typedef std::unordered_map<entity_id, size_t>   map_t;
 
 protected:
-    uint32_t                                dirty_index = 0;
     array_t                                 array;
     map_t                                   map;
 
@@ -74,6 +67,23 @@ public:
     }
     uint64_t get_exclusion_mask() const override {
         return T::get_exclusion_signature_static();
+    }
+    void signalTupleUpdate(uint32_t array_index, uint64_t attrib_sig) override {
+        array[array_index]->signalAttribUpdate(attrib_sig);
+    }
+    void markDirty(uint32_t array_index) override {
+        --dirty_index;
+        auto replaced_ptr = array[dirty_index];
+        auto moved_ptr    = array[array_index];
+        // TODO: To remove later
+        map[replaced_ptr->getEntityUid()] = array_index;
+        map[moved_ptr->getEntityUid()]    = dirty_index;
+        //
+        
+        array[dirty_index] = moved_ptr;
+        moved_ptr->array_index = dirty_index;
+        array[array_index] = replaced_ptr;
+        replaced_ptr->array_index = array_index;        
     }
 
     T* create(ecsWorld* world, entity_id ent) {
@@ -193,12 +203,14 @@ public:
             Arg* ptr = ecsTupleMap<Arg>::get(ent);
             if(ptr) {
                 onUnfit(ptr);
+                world->_unlinkTupleContainer(ent, (ecsTupleMap<Arg>*)this);
                 ecsTupleMap<Arg>::erase(ent);
             }
         } else {
             if(fits && added_requirement) {
                 Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
                 ptr->dirty_signature = entity_sig;
+                world->_linkTupleContainer(ent, (ecsTupleMap<Arg>*)this, ptr);
                 onFit(ptr);
                 if(has_optionals) {
                     ptr->updateOptionals(world, ent);
@@ -233,12 +245,14 @@ public:
                 ptr->clearOptionals((uint64_t)-1);
                 // No need to clear dirty flags for optionals, tuple is being removed anyway
                 onUnfit(ptr);
+                world->_unlinkTupleContainer(ent, (ecsTupleMap<Arg>*)this);
                 ecsTupleMap<Arg>::erase(ent);
             }
         } else {
             if(fits && removed_excluder) {
                 Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
                 ptr->dirty_signature = entity_sig;
+                world->_linkTupleContainer(ent, (ecsTupleMap<Arg>*)this, ptr);
                 onFit(ptr);
             }
             if(fits && removed_optional) {
@@ -252,7 +266,7 @@ public:
     }
 
     void signalUpdate(entity_id ent, uint64_t attrib_sig) {
-        uint64_t arch_sig = Arg::get_signature_static();
+        uint64_t arch_sig = Arg::get_signature_static() | Arg::get_optional_signature_static();
         if((arch_sig & attrib_sig) != 0) {
             auto map = ecsTupleMap<Arg>::map;
             auto it = map.find(ent);
@@ -294,12 +308,14 @@ public:
             Arg* ptr = ecsTupleMap<Arg>::get(ent);
             if(ptr) {
                 onUnfit(ptr);
+                world->_unlinkTupleContainer(ent, (ecsTupleMap<Arg>*)this);
                 ecsTupleMap<Arg>::erase(ent);
             }
         } else {
             if(fits && added_requirement) {
                 Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
                 ptr->dirty_signature = entity_sig;
+                world->_linkTupleContainer(ent, (ecsTupleMap<Arg>*)this, ptr);
                 onFit(ptr);
                 if(has_optionals) {
                     ptr->updateOptionals(world, ent);
@@ -336,12 +352,14 @@ public:
                 ptr->clearOptionals((uint64_t)-1);
                 // No need to clear dirty flags for optionals, tuple is being removed anyway
                 onUnfit(ptr);
+                world->_unlinkTupleContainer(ent, (ecsTupleMap<Arg>*)this);
                 ecsTupleMap<Arg>::erase(ent);
             }
         } else {
             if(fits && removed_excluder) {
                 Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
                 ptr->dirty_signature = entity_sig;
+                world->_linkTupleContainer(ent, (ecsTupleMap<Arg>*)this, ptr);
                 onFit(ptr);
             }
             if(fits && removed_optional) {
@@ -357,7 +375,7 @@ public:
     }
 
     void signalUpdate(entity_id ent, uint64_t attrib_sig) {
-        uint64_t arch_sig = Arg::get_signature_static();
+        uint64_t arch_sig = Arg::get_signature_static() | Arg::get_optional_signature_static();
         if((arch_sig & attrib_sig) != 0) {
             auto map = ecsTupleMap<Arg>::map;
             auto it = map.find(ent);

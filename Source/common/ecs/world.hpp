@@ -163,6 +163,9 @@ class ecsWorld : public Resource {
     }
 
 public:
+    void                        _linkTupleContainer         (entity_id e, ecsTupleMapBase* tuple_map, ecsTupleBase* tuple);
+    void                        _unlinkTupleContainer       (entity_id e, ecsTupleMapBase* tuple_map);
+
     ecsWorld();
     ~ecsWorld();
 
@@ -270,7 +273,7 @@ T* ecsWorld::setAttrib(entity_id ent, const T& value) {
     auto e = entities.deref(ent);
     auto a = e->findAttrib<T>();
     if(!a) {
-        e->setAttrib<T>(value);
+        e->setAttrib<T>(this, value);
         a = e->findAttrib<T>();
         
         global_attrib_counters[T::get_id_static()]++;
@@ -303,9 +306,10 @@ template<typename T>
 void ecsWorld::updateAttrib(entity_id ent, const T& value) {
     auto e = entities.deref(ent);
     if(e->updateAttrib(value)) {
+        e->signalAttribUpdate(this, T::get_id_static());/*
         for(auto& sys : systems) {
             sys->signalUpdate(ent, 1 << T::get_id_static());
-        }
+        }*/
     }
 }
 

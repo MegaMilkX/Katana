@@ -38,8 +38,6 @@ class ecsysSceneGraph : public ecsSystem<
     std::map<entity_id, Node> nodes;
     std::set<Node*> root_nodes;
 
-    std::vector<tupleTransform*> dirty_vec;
-    size_t first_dirty_index = 0;
 
     void onFit(ecsTupleSubGraph* sub_graph) {
         if(sub_graph->get<ecsSubScene>()->getWorld()) {
@@ -49,21 +47,6 @@ class ecsysSceneGraph : public ecsSystem<
 
     void onFit(tupleTransform* o) {
         o->system = this;
-        o->dirty_index = dirty_vec.size();
-        dirty_vec.emplace_back(o); 
-    }
-    void onUnfit(tupleTransform* o) {/*
-        uint64_t current_index = o->dirty_index;
-        dirty_vec.back()->setDirtyIndex(current_index);
-        dirty_vec[current_index] = dirty_vec.back();
-        dirty_vec.resize(dirty_vec.size() - 1);*/
-        if (o->dirty_index < first_dirty_index) {
-            --first_dirty_index;
-        }
-        dirty_vec.erase(dirty_vec.begin() + o->dirty_index);
-        for (int i = o->dirty_index; i < dirty_vec.size(); ++i) {
-            dirty_vec[i]->setDirtyIndex(dirty_vec[i]->dirty_index - 1);
-        }
     }
 
     void onFit(ecsTuple<ecsParentTransform>* o) {
@@ -110,13 +93,12 @@ class ecsysSceneGraph : public ecsSystem<
             a->sub_system->onUpdate();
         }
 
-        for(size_t i = first_dirty_index; i < dirty_vec.size(); ++i) {
-            auto a = dirty_vec[i];
-
-            ecsTranslation* translation = a->get_optional<ecsTranslation>();
-            ecsRotation* rotation = a->get_optional<ecsRotation>();
-            ecsScale* scale = a->get_optional<ecsScale>();
-            ecsWorldTransform* world = a->get<ecsWorldTransform>();
+        for(int i = count<tupleTransform>() - 1; i >= get_dirty_index<tupleTransform>(); --i) {
+            auto tuple = get<tupleTransform>(i);
+            ecsTranslation* translation     = tuple->get_optional<ecsTranslation>();
+            ecsRotation* rotation           = tuple->get_optional<ecsRotation>();
+            ecsScale* scale                 = tuple->get_optional<ecsScale>();
+            ecsWorldTransform* world        = tuple->get<ecsWorldTransform>();
 
             gfxm::mat4 local = gfxm::mat4(1.0f);
             if(translation) {
@@ -128,24 +110,19 @@ class ecsysSceneGraph : public ecsSystem<
             if(scale) {
                 local = gfxm::scale(local, scale->getScale());
             }
-
             world->transform = local;
-        }
 
-        for(size_t i = first_dirty_index; i < dirty_vec.size(); ++i) {
-            auto a = dirty_vec[i];
-
-            ecsParentTransform* parent_transform = a->get_optional<ecsParentTransform>();
-            if(!parent_transform) continue;
-            ecsWorldTransform* parent_world = parent_transform->parent_transform;
-            ecsWorldTransform* world = a->get<ecsWorldTransform>();
-
-            if(parent_world) {
-                world->transform = parent_world->transform * world->transform;
+            ecsParentTransform* parent_transform = tuple->get_optional<ecsParentTransform>();
+            if(parent_transform) {
+                ecsWorldTransform* parent_world = parent_transform->parent_transform;
+                if(parent_world) {
+                    world->transform = parent_world->transform * world->transform;
+                }
             }
-        }
 
-        first_dirty_index = dirty_vec.size();
+            tuple->clear_dirty_signature();
+        }
+        clear_dirty<tupleTransform>();
     }
 
     void imguiTreeNode(ecsWorld* world, Node* node, entity_id* selected) {
@@ -184,34 +161,7 @@ class ecsysSceneGraph : public ecsSystem<
         }
     }
 
-    void setDirtyIndexRecursive(tupleTransform* o) {
-        for(auto c : o->children) {
-            setDirtyIndexRecursive(c);
-        }
-
-        //first_dirty_index = o->;
-        uint64_t current_index = o->dirty_index;
-        uint64_t new_index = std::max((size_t)0, std::min(first_dirty_index - 1, dirty_vec.size() - 1));
-        if(current_index >= first_dirty_index) {
-            return;
-        }
-
-        tupleTransform* tmp = dirty_vec[new_index];
-        dirty_vec[new_index] = dirty_vec[current_index];
-        dirty_vec[current_index] = tmp;
-        tmp->setDirtyIndex(current_index);
-        o->setDirtyIndex(new_index);
-
-        first_dirty_index = new_index;
-    }
-
 public:
-    void setDirtyIndex(size_t index) {
-        if(index < first_dirty_index) {
-            setDirtyIndexRecursive(dirty_vec[index]);
-        }
-    }
-
     entity_id createNode() {
         entity_id ent = world->createEntity().getId();
         hierarchy_dirty = true;

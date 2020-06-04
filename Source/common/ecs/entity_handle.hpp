@@ -1,7 +1,7 @@
 #ifndef ECS_ENTITY_HANDLE_HPP
 #define ECS_ENTITY_HANDLE_HPP
 
-#include "attribute.hpp"
+#include "types.hpp"
 
 class ecsWorld;
 class ecsEntityHandle {
@@ -55,11 +55,15 @@ T* ecsEntityHandle::getAttrib() {
 }
 template<typename T>
 void ecsEntityHandle::setAttrib(const T& value) {
-
+    assert(false);
 }
 template<typename T>
 void ecsEntityHandle::updateAttrib(const T& value) {
-
+    assert(false);
+}
+template<typename T>
+void ecsEntityHandle::signalUpdate() {
+    world->signalAttribUpdate<T>(id);
 }
 
 

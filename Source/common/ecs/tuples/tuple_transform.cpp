@@ -14,5 +14,4 @@ void tupleTransform::onRemoveOptional(ecsParentTransform* p) {
         parent->children.erase(this);
     }
     parent = 0;
-    system->setDirtyIndex(dirty_index);
 }

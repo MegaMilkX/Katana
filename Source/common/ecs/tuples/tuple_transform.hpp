@@ -30,33 +30,6 @@ public:
     }
     void onAddOptional(ecsParentTransform* p) override;
     void onRemoveOptional(ecsParentTransform* p) override;
-
-    void onAddOptional(ecsTranslation* trs) override {
-        trs->system = system;
-        trs->dirty_index = dirty_index;
-    }
-    void onAddOptional(ecsRotation* trs) override {
-        trs->system = system;
-        trs->dirty_index = dirty_index;
-    }
-    void onAddOptional(ecsScale* trs) override {
-        trs->system = system;
-        trs->dirty_index = dirty_index;
-    }
-
-
-    void setDirtyIndex(size_t i) {
-        dirty_index = i;
-        if(get_optional<ecsTranslation>()) {
-            get_optional<ecsTranslation>()->dirty_index = i;
-        }
-        if(get_optional<ecsRotation>()) {
-            get_optional<ecsRotation>()->dirty_index = i;
-        }
-        if(get_optional<ecsScale>()) {
-            get_optional<ecsScale>()->dirty_index = i;
-        }
-    }
 };
 
 

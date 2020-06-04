@@ -4,7 +4,7 @@
 
 
 void ecsTranslation::dirty() {
-    if(system) system->setDirtyIndex(dirty_index);
+    getEntityHdl().signalUpdate<ecsTranslation>();
 }
 
 void ecsTranslation::translate(float x, float y, float z) {
@@ -29,7 +29,7 @@ const gfxm::vec3& ecsTranslation::getPosition() const {
 
 
 void ecsRotation::dirty() {
-    if(system) system->setDirtyIndex(dirty_index);
+    getEntityHdl().signalUpdate<ecsTranslation>();
 }
 
 void ecsRotation::rotate(float angle, float axisX, float axisY, float axisZ) {
@@ -69,7 +69,7 @@ const gfxm::quat& ecsRotation::getRotation() const {
 
 
 void ecsScale::dirty() {
-    if(system) system->setDirtyIndex(dirty_index);
+    getEntityHdl().signalUpdate<ecsTranslation>();
 }
 
 void ecsScale::setScale(float s) {

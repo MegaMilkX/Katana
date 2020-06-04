@@ -6,6 +6,9 @@
 #include <memory>
 
 #include "attribute.hpp"
+#include "entity_handle.hpp"
+#include "tuple_map_base.hpp"
+#include "tuple_base.hpp"
 
 
 static const entity_id NULL_ENTITY = -1;
@@ -28,6 +31,12 @@ inline ecsAttribBase* allocAttrib(attrib_id id) {
     return ptr;
 }
 
+struct ecsTupleMapReference {
+    ecsTupleBase*                           tuple = 0;
+    ecsTupleMapBase*                        ptr = 0;
+    std::unique_ptr<ecsTupleMapReference>   next;
+};
+
 class ecsWorld;
 class ecsEntity {
     friend ecsWorld;
@@ -35,15 +44,17 @@ class ecsEntity {
     entity_id parent_uid = NULL_ENTITY;
     entity_id first_child_uid = NULL_ENTITY;
     entity_id next_sibling_uid = NULL_ENTITY;
-    
+
     entity_id entity_uid;
     uint64_t attrib_bits;
     std::map<uint8_t, std::shared_ptr<ecsAttribBase>> attribs;
     uint64_t bitmaskInheritedAttribs = 0;
 
-    ecsAttribBase* allocAttribOwned(attrib_id id) {
+    std::unique_ptr<ecsTupleMapReference> first_tuple_map;
+
+    ecsAttribBase* allocAttribOwned(ecsWorld* world, attrib_id id) {
         auto ptr = allocAttrib(id);
-        ptr->entity = entity_uid;
+        ptr->h_entity = ecsEntityHandle(world, entity_uid);
         return ptr;
     }
 
@@ -53,18 +64,18 @@ public:
         return dynamic_cast<T*>(getAttrib(T::get_id_static()));
     }
 
-    ecsAttribBase* getAttrib(attrib_id id) {
+    ecsAttribBase* getAttrib(ecsWorld* world, attrib_id id) {
         ecsAttribBase* ptr = findAttrib(id); // TODO: ???
-        ptr = allocAttribOwned(id);
+        ptr = allocAttribOwned(world, id);
         attribs[(uint8_t)id].reset(ptr);
         setBit(id);
         return ptr;
     }
     template<typename T>
-    T* setAttrib(const T& value) {
+    T* setAttrib(ecsWorld* world, const T& value) {
         T* ptr = findAttrib<T>();
         if(!ptr) {
-            ptr = (T*)allocAttribOwned(T::get_id_static());
+            ptr = (T*)allocAttribOwned(world, T::get_id_static());
             if(!ptr) {
                 return 0;
             }
@@ -110,6 +121,8 @@ public:
         *(T*)(it->second.get()) = (value);        
         return true;
     }
+
+    void signalAttribUpdate(ecsWorld* world, uint8_t attrib_id);
 
     const uint64_t& getAttribBits() const {
         return attrib_bits;
