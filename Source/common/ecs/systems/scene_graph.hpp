@@ -112,12 +112,8 @@ class ecsysSceneGraph : public ecsSystem<
             }
             world->transform = local;
 
-            ecsParentTransform* parent_transform = tuple->get_optional<ecsParentTransform>();
-            if(parent_transform) {
-                ecsWorldTransform* parent_world = parent_transform->parent_transform;
-                if(parent_world) {
-                    world->transform = parent_world->transform * world->transform;
-                }
+            if(tuple->get_parent()) {
+                world->transform = tuple->get_parent()->get<ecsWorldTransform>()->transform * world->transform;
             }
 
             tuple->clear_dirty_signature();

@@ -165,6 +165,7 @@ class ecsWorld : public Resource {
 public:
     void                        _linkTupleContainer         (entity_id e, ecsTupleMapBase* tuple_map, ecsTupleBase* tuple);
     void                        _unlinkTupleContainer       (entity_id e, ecsTupleMapBase* tuple_map);
+    void                        _findTreeRelations          (entity_id e, ecsTupleMapBase* tuple_map, ecsTupleBase* tuple);
 
     ecsWorld();
     ~ecsWorld();
@@ -280,9 +281,6 @@ T* ecsWorld::setAttrib(entity_id ent, const T& value) {
         global_attrib_mask |= (1 << T::get_id_static());
         
         onAttribsCreated(ent, e->getAttribBits(), 1 << T::get_id_static());
-        for(auto& sys : systems) {
-            sys->attribsCreated(this, ent, e->getAttribBits(), 1 << T::get_id_static());
-        }
     } else {
         updateAttrib(ent, value);
     }

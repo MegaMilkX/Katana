@@ -58,6 +58,16 @@ class ecsEntity {
         return ptr;
     }
 
+    ecsTupleBase* findTupleOfSameContainer(ecsTupleMapBase* container) {
+        auto map = first_tuple_map.get();
+        while(map != 0) {
+            if(map->ptr == container) {
+                return map->tuple;
+            }
+            map = map->next.get();
+        }
+    }
+
 public:
     template<typename T>
     T* getAttrib() {
@@ -135,5 +145,7 @@ public:
     }
 
 };
+
+void recursiveTupleMarkDirty(ecsTupleMapBase* container, ecsTupleBase* tuple, uint64_t attrib_id);
 
 #endif

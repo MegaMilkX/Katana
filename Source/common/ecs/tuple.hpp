@@ -150,6 +150,16 @@ public:
         return ecsTuplePart<ecsOptional<T>>::ptr;
     }
 
+    ecsTuple<Args...>* get_parent() {
+        return (ecsTuple<Args...>*)parent;
+    }
+    ecsTuple<Args...>* get_next_sibling() {
+        return (ecsTuple<Args...>*)next_sibling;
+    }
+    ecsTuple<Args...>* get_first_child() {
+        return (ecsTuple<Args...>*)first_child;
+    }
+
     void signalAttribUpdate(uint64_t attrib_sig) {
         int x[] = { ecsTuplePart<Args>::_signalAttribUpdate(attrib_sig)... };
     }

@@ -6,12 +6,104 @@
 #include "../resource/entity_template.hpp"
 #include "attribs/base_attribs.hpp"
 
+void unlinkTupleTreeRelations(ecsTupleBase* tuple) {
+    if(tuple->parent) {
+        if(tuple->prev_sibling == 0) { // First child
+            if (tuple->next_sibling) {
+                tuple->next_sibling->prev_sibling = 0;
+            }
+            tuple->parent->first_child = tuple->next_sibling;
+        } else {
+            if(tuple->next_sibling) {
+                tuple->next_sibling->prev_sibling = tuple->prev_sibling;
+            }
+            tuple->prev_sibling->next_sibling = tuple->next_sibling;
+        }
+    }
+
+    auto t = tuple->first_child;
+    while(t != 0) {
+        t->parent = 0;
+        t->prev_sibling = 0;
+        auto next = t->next_sibling;
+        t->next_sibling = 0;
+        t = next;
+    }
+
+    tuple->parent = 0;
+}
 
 void ecsWorld::onAttribsCreated(entity_id ent, uint64_t entity_sig, uint64_t diff_sig) {
-    // TODO ?
+    // Check removal by excluders and optional additions
+    auto e = entities.deref(ent);
+    auto tuple_map = e->first_tuple_map.get();
+    while(tuple_map != 0) {
+        auto tuple_map_ptr = tuple_map->ptr;
+        uint64_t mask      = tuple_map->ptr->get_mask();
+        uint64_t opt_mask  = tuple_map->ptr->get_opt_mask();
+        uint64_t excl_mask = tuple_map->ptr->get_exclusion_mask();
+        const bool requirements_satisfied = (entity_sig & mask) == mask;
+        const bool added_optional = (opt_mask & diff_sig) != 0;
+        const bool added_excluder = (excl_mask & diff_sig) != 0;
+
+        if(added_excluder) {
+            tuple_map_ptr->onUnfitProxy(tuple_map->tuple->array_index);
+
+            unlinkTupleTreeRelations(tuple_map->tuple);
+            
+            tuple_map_ptr->erase(tuple_map->tuple->array_index);
+            tuple_map = tuple_map->next.get();
+            _unlinkTupleContainer(ent, tuple_map_ptr);
+            continue;
+        } else if(/*requirements_satisfied && */added_optional) {
+            tuple_map->tuple->dirty_signature |= (diff_sig & opt_mask); // Set dirty flags for added optionals
+            tuple_map->tuple->updateOptionals(this, ent);
+        }
+        tuple_map = tuple_map->next.get();
+    }
+
+    // Check additions
+    for(auto& sys : systems) {
+        sys->attribsCreated(this, ent, entity_sig, diff_sig);
+    }
 }
 void ecsWorld::onAttribsRemoved(entity_id ent, uint64_t entity_sig, uint64_t diff_sig) {
-    // TODO ?
+    // Check removals
+    auto e = entities.deref(ent);
+    auto tuple_map = e->first_tuple_map.get();
+    while(tuple_map != 0) {
+        auto tuple_map_ptr = tuple_map->ptr;
+        uint64_t mask = tuple_map_ptr->get_mask();
+        uint64_t opt_mask = tuple_map_ptr->get_opt_mask();
+        uint64_t excl_mask = tuple_map_ptr->get_exclusion_mask();
+
+        const bool requirements_satisfied = (entity_sig & mask) == mask;
+        const bool has_excluders = (entity_sig & excl_mask) != 0;
+        const bool fits = requirements_satisfied && !has_excluders;
+        const bool removed_requirement = (mask & diff_sig) != 0;
+        const bool removed_optional = (opt_mask & diff_sig) != 0;
+        const bool removed_excluder = (excl_mask & diff_sig) != 0;
+
+        if(removed_requirement) {
+            tuple_map_ptr->onUnfitProxy(tuple_map->tuple->array_index);
+
+            unlinkTupleTreeRelations(tuple_map->tuple);
+
+            tuple_map_ptr->erase(tuple_map->tuple->array_index);
+            tuple_map = tuple_map->next.get();
+            _unlinkTupleContainer(ent, tuple_map_ptr);
+            continue;
+        } else if (fits && removed_optional) {
+            tuple_map->tuple->clearOptionals(diff_sig);
+            tuple_map->tuple->dirty_signature &= ~(diff_sig & opt_mask); // Clear dirty flags for removed optionals
+        }
+        tuple_map = tuple_map->next.get();
+    }
+
+    // Check additions
+    for(auto& sys : systems) {
+        sys->attribsRemoved(this, ent, entity_sig, diff_sig);
+    }
 }
 
 
@@ -73,6 +165,57 @@ void ecsWorld::_unlinkTupleContainer (entity_id e, ecsTupleMapBase* tuple_map) {
         }
         tuple_map_ref = next;
     }
+}
+void ecsWorld::_findTreeRelations (entity_id e, ecsTupleMapBase* tuple_map, ecsTupleBase* tuple) {
+    auto parent_id = getParent(e);
+    if(parent_id != NULL_ENTITY && tuple->parent == 0) {
+        auto parent = entities.deref(parent_id);
+        auto parent_tuple = parent->findTupleOfSameContainer(tuple_map);
+        if(parent_tuple) {
+            tuple->parent = parent_tuple;
+            auto child = parent_tuple->first_child;
+            if (!child) {
+                parent_tuple->first_child = tuple;
+            } else {
+                while(child != 0) {
+                    if(child == tuple) {
+                        break; // Already added as a child
+                    }
+                    auto next = child->next_sibling;
+                    if(next == 0) {
+                        child->next_sibling = tuple;
+                        tuple->prev_sibling = child;
+                        break;
+                    }
+                    child = next;
+                }
+            }
+        }
+    }
+
+    auto child_id = getFirstChild(e);
+    auto attachment_tuple = tuple;
+    while (child_id != NULL_ENTITY) {
+        auto c = entities.deref(child_id);
+        auto c_tuple = c->findTupleOfSameContainer(tuple_map);
+        if(!c_tuple) {
+            child_id = getNextSibling(child_id);
+            continue;
+        }
+        if(attachment_tuple == tuple) {
+            c_tuple->prev_sibling = 0;
+            attachment_tuple->first_child = c_tuple;
+            attachment_tuple = c_tuple;
+            c_tuple->parent = tuple;
+        } else {
+            c_tuple->prev_sibling = attachment_tuple;
+            attachment_tuple->next_sibling = c_tuple;
+            attachment_tuple = c_tuple;
+            c_tuple->parent = tuple;
+        }
+        child_id = getNextSibling(child_id);
+    }
+    attachment_tuple->next_sibling = 0;
 }
 
 
@@ -153,11 +296,7 @@ void ecsWorld::removeEntity(entity_id id) {
     auto e = entities.deref(id);
     assert(e);
 
-    for(auto& sys : systems) {
-        // Signal this entity as an empty one
-        sys->attribsRemoved(this, id, e->getAttribBits(), e->getAttribBits());
-    }
-    
+    onAttribsRemoved(id, e->getAttribBits(), e->getAttribBits());    
 
     for (int i = 0; i < get_last_attrib_id() + 1; ++i) {
         if ((1 << i) & e->getAttribBits()) {
@@ -190,6 +329,7 @@ ecsEntityHandle ecsWorld::findEntity (const char* name) {
 void ecsWorld::setParent (entity_id parent, entity_id child) {
     auto e = entities.deref(child);
     assert(e);
+
     entity_id old_parent = getParent(child);
     ecsEntity* old_parent_e = 0;
     if (old_parent != NULL_ENTITY) {
@@ -241,7 +381,16 @@ void ecsWorld::setParent (entity_id parent, entity_id child) {
         child_e->parent_uid = parent;
         child_e->next_sibling_uid = NULL_ENTITY;
     }
-    // TODO: Signal systems ?
+    
+    // Update tuple relations. Tree relations turned out to be quite heavy
+    auto tuple_map = e->first_tuple_map.get();
+    while(tuple_map != 0) {
+        unlinkTupleTreeRelations(tuple_map->tuple);
+        _findTreeRelations(child, tuple_map->ptr, tuple_map->tuple);
+        recursiveTupleMarkDirty(tuple_map->ptr, tuple_map->tuple, e->getAttribBits());
+        tuple_map = tuple_map->next.get();
+    }
+
 }
 entity_id ecsWorld::getParent (entity_id e) {
     auto en = entities.deref(e);
@@ -267,9 +416,7 @@ void ecsWorld::createAttrib(entity_id ent, attrib_id attrib) {
     global_attrib_counters[attrib]++;
     global_attrib_mask |= (1 << attrib);
 
-    for(auto& sys : systems) {
-        sys->attribsCreated(this, ent, e->getAttribBits(), 1 << attrib);
-    }
+    onAttribsCreated(ent, e->getAttribBits(), 1 << a->get_id());
 }
 void ecsWorld::setAttribInheritanceMask(entity_id e, uint64_t mask) {
     auto ent = entities.deref(e);
@@ -292,9 +439,7 @@ void ecsWorld::clearAllAttribInheritance(entity_id e) {
 }
 void ecsWorld::removeAttrib(entity_id ent, attrib_id attrib) {
     auto e = entities.deref(ent);
-    for(auto& sys : systems) {
-        sys->attribsRemoved(this, ent, e->getAttribBits(), 1 << attrib);
-    }
+    onAttribsRemoved(ent, e->getAttribBits(), 1 << attrib);
 
     global_attrib_counters[attrib]--;
     if(global_attrib_counters[attrib] == 0) {

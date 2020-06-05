@@ -9,8 +9,12 @@ class ecsTupleBase {
 protected:
     entity_id entity_uid;
 public:
-    uint32_t    array_index         = 0;
-    uint64_t    dirty_signature     = 0;
+    uint32_t        array_index         = 0;
+    uint64_t        dirty_signature     = 0;
+    ecsTupleBase*   parent              = 0;
+    ecsTupleBase*   prev_sibling        = 0;
+    ecsTupleBase*   next_sibling        = 0;
+    ecsTupleBase*   first_child         = 0;
 
     virtual ~ecsTupleBase() {}
     virtual uint64_t get_signature() const = 0;
@@ -32,7 +36,7 @@ public:
     entity_id getEntityUid() const { return entity_uid; }
 
     virtual void signalAttribUpdate(uint64_t attrib_sig) = 0;
-    
+
 };
 
 

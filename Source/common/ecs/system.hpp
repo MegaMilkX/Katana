@@ -25,7 +25,7 @@ public:
     virtual void attribsCreated(ecsWorld* world, entity_id ent, uint64_t entity_sig, uint64_t diff_sig) = 0;
     virtual void attribsRemoved(ecsWorld* world, entity_id ent, uint64_t entity_sig, uint64_t diff_sig) = 0;
 
-    virtual void signalUpdate(entity_id ent, uint64_t attrib_sig) = 0;
+    //virtual void signalUpdate(entity_id ent, uint64_t attrib_sig) = 0;
 
     ecsWorld* getWorld() const { return world; }
 
@@ -41,14 +41,17 @@ public:
 template<typename T>
 class ecsTupleMap : public ecsTupleMapBase {
 public:
-    typedef std::vector<T*>                         array_t;
-    typedef std::unordered_map<entity_id, size_t>   map_t;
+    typedef std::vector<T*>                 array_t;
+    std::function<void(T*)>                 on_unfit_cb;
 
 protected:
     array_t                                 array;
-    map_t                                   map;
 
 public:
+    ecsTupleMap(std::function<void(T*)> on_unfit_cb)
+    : on_unfit_cb(on_unfit_cb) {
+        
+    }
     ~ecsTupleMap() {
         for(int i = 0; i < array.size(); ++i) {
             delete array[i];
@@ -75,10 +78,6 @@ public:
         --dirty_index;
         auto replaced_ptr = array[dirty_index];
         auto moved_ptr    = array[array_index];
-        // TODO: To remove later
-        map[replaced_ptr->getEntityUid()] = array_index;
-        map[moved_ptr->getEntityUid()]    = dirty_index;
-        //
         
         array[dirty_index] = moved_ptr;
         moved_ptr->array_index = dirty_index;
@@ -91,44 +90,35 @@ public:
         T* arch_ptr = new T();
         arch_ptr->init(world, ent);
         arch_ptr->array_index = array.size();
-        map[ent] = array.size();
+
         array.resize(array.size() + 1);
         array[array.size() - 1] = arch_ptr;
         return arch_ptr;
     }
-
+/*
     void updateOptionals(ecsWorld* world, entity_id ent, uint64_t entity_sig) {
         T* value = get(ent);
         if(!value) return;
         value->updateOptionals(world, ent);
         //LOG(this << ": optional updated " << ent << ": " << rttr::type::get<T>().get_name().to_string());
-    }
+    }*/
 
-    T* get(entity_id ent) {
-        auto it = map.find(ent);
-        if(it == map.end()) {
-            return 0;
-        }
-        return array[it->second];
-    }
-
-    void erase(entity_id ent) {
+    void erase(uint32_t array_index) override {
         //LOG(this << ": erase " << ent << ": " << rttr::type::get<T>().get_name().to_string());
-        auto it = map.find(ent);
-        if(it == map.end()) {
-            return;
-        }
-        size_t erase_pos = it->second;
-        map.erase(it);
-        if(erase_pos < array.size() - 1) {
-            array[erase_pos] = array[array.size() - 1];
-            delete array[array.size() - 1];
+        if(array_index < array.size() - 1) {
+            auto ptr = array[array_index];
+            array[array_index] = array[array.size() - 1];
+            array[array_index]->array_index = array_index;
+            delete ptr;
             array.resize(array.size() - 1);
-            map[array[erase_pos]->getEntityUid()] = erase_pos;
         } else {
             delete array[array.size() - 1];
             array.resize(array.size() - 1);
         }
+    }
+
+    void onUnfitProxy(uint32_t array_index) override {
+        on_unfit_cb(array[array_index]);
     }
 };
 
@@ -183,6 +173,9 @@ template<typename Arg>
 class ecsSystemRecursive<Arg> 
 : public ecsTupleMap<Arg>, public ecsSystemBase {
 public:
+    ecsSystemRecursive()
+    : ecsTupleMap<Arg>(std::bind(&ecsSystemRecursive<Arg>::onUnfit, this, std::placeholders::_1)) {}
+
     virtual void onFit(Arg* arch) {}
     virtual void onUnfit(Arg* arch) {}
 
@@ -200,29 +193,32 @@ public:
         const bool added_excluder = (exclusion_mask & diff_sig) != 0;
         
         if(added_excluder) {
+            // Exclusion is already covered by ecsWorld
+            /*
             Arg* ptr = ecsTupleMap<Arg>::get(ent);
             if(ptr) {
                 onUnfit(ptr);
                 world->_unlinkTupleContainer(ent, (ecsTupleMap<Arg>*)this);
                 ecsTupleMap<Arg>::erase(ent);
-            }
+            }*/
         } else {
             if(fits && added_requirement) {
                 Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
                 ptr->dirty_signature = entity_sig;
                 world->_linkTupleContainer(ent, (ecsTupleMap<Arg>*)this, ptr);
+                world->_findTreeRelations(ent, (ecsTupleMap<Arg>*)this, ptr);
                 onFit(ptr);
                 if(has_optionals) {
                     ptr->updateOptionals(world, ent);
                 }
-            }
+            }/*
             if(fits && added_optional) {
                 Arg* ptr = ecsTupleMap<Arg>::get(ent);
                 if(ptr) {// Probably never NULL, better be safe
                     ptr->dirty_signature |= (diff_sig & opt_mask); // Set dirty flags for added optionals
                 }
                 ecsTupleMap<Arg>::updateOptionals(world, ent, entity_sig);
-            }
+            }*/
         }
     }
     void attribsRemoved(ecsWorld* world, entity_id ent, uint64_t entity_sig, uint64_t diff_sig) override {
@@ -239,7 +235,7 @@ public:
         const bool removed_optional = (opt_mask & diff_sig) != 0;
         const bool removed_excluder = (exclusion_mask & diff_sig) != 0;
 
-        if(removed_requirement) {
+        if(removed_requirement) {/*
             Arg* ptr = ecsTupleMap<Arg>::get(ent);
             if(ptr) {
                 ptr->clearOptionals((uint64_t)-1);
@@ -247,24 +243,25 @@ public:
                 onUnfit(ptr);
                 world->_unlinkTupleContainer(ent, (ecsTupleMap<Arg>*)this);
                 ecsTupleMap<Arg>::erase(ent);
-            }
+            }*/
         } else {
             if(fits && removed_excluder) {
                 Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
                 ptr->dirty_signature = entity_sig;
                 world->_linkTupleContainer(ent, (ecsTupleMap<Arg>*)this, ptr);
+                world->_findTreeRelations(ent, (ecsTupleMap<Arg>*)this, ptr);
                 onFit(ptr);
-            }
+            }/*
             if(fits && removed_optional) {
                 Arg* ptr = ecsTupleMap<Arg>::get(ent);
                 if(ptr) {
                     ptr->clearOptionals(diff_sig);
                     ptr->dirty_signature &= ~(diff_sig & opt_mask); // Clear dirty flags for removed optionals
                 }
-            }
+            }*/
         }
     }
-
+    /*
     void signalUpdate(entity_id ent, uint64_t attrib_sig) {
         uint64_t arch_sig = Arg::get_signature_static() | Arg::get_optional_signature_static();
         if((arch_sig & attrib_sig) != 0) {
@@ -281,13 +278,16 @@ public:
                 ecsTupleMap<Arg>::array[it->second]->signalAttribUpdate(attrib_sig);
             }
         }
-    }
+    }*/
 };
 
 template<typename Arg, typename... Args>
 class ecsSystemRecursive<Arg, Args...> 
 : public ecsTupleMap<Arg>, public ecsSystemRecursive<Args...> {
 public:
+    ecsSystemRecursive()
+    : ecsTupleMap<Arg>(std::bind(&ecsSystemRecursive<Arg, Args...>::onUnfit, this, std::placeholders::_1)) {}
+
     virtual void onFit(Arg* arch) {}
     virtual void onUnfit(Arg* arch) {}
 
@@ -305,29 +305,32 @@ public:
         const bool added_excluder = (exclusion_mask & diff_sig) != 0;
         
         if(added_excluder) {
+            // Exclusion is already covered by ecsWorld
+            /*
             Arg* ptr = ecsTupleMap<Arg>::get(ent);
             if(ptr) {
                 onUnfit(ptr);
                 world->_unlinkTupleContainer(ent, (ecsTupleMap<Arg>*)this);
                 ecsTupleMap<Arg>::erase(ent);
-            }
+            }*/
         } else {
             if(fits && added_requirement) {
                 Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
                 ptr->dirty_signature = entity_sig;
                 world->_linkTupleContainer(ent, (ecsTupleMap<Arg>*)this, ptr);
+                world->_findTreeRelations(ent, (ecsTupleMap<Arg>*)this, ptr);
                 onFit(ptr);
                 if(has_optionals) {
                     ptr->updateOptionals(world, ent);
                 }
-            }
+            }/*
             if(fits && added_optional) {
                 Arg* ptr = ecsTupleMap<Arg>::get(ent);
                 if(ptr) {// Probably never NULL, better be safe
                     ptr->dirty_signature |= (diff_sig & opt_mask); // Set dirty flags for added optionals
                 }
                 ecsTupleMap<Arg>::updateOptionals(world, ent, entity_sig);
-            }
+            }*/
         }
 
         ecsSystemRecursive<Args...>::attribsCreated(world, ent, entity_sig, diff_sig);
@@ -346,7 +349,7 @@ public:
         const bool removed_optional = (opt_mask & diff_sig) != 0;
         const bool removed_excluder = (exclusion_mask & diff_sig) != 0;
 
-        if(removed_requirement) {
+        if(removed_requirement) {/*
             Arg* ptr = ecsTupleMap<Arg>::get(ent);
             if(ptr) {
                 ptr->clearOptionals((uint64_t)-1);
@@ -354,26 +357,27 @@ public:
                 onUnfit(ptr);
                 world->_unlinkTupleContainer(ent, (ecsTupleMap<Arg>*)this);
                 ecsTupleMap<Arg>::erase(ent);
-            }
+            }*/
         } else {
             if(fits && removed_excluder) {
                 Arg* ptr = ecsTupleMap<Arg>::create(world, ent);
                 ptr->dirty_signature = entity_sig;
                 world->_linkTupleContainer(ent, (ecsTupleMap<Arg>*)this, ptr);
+                world->_findTreeRelations(ent, (ecsTupleMap<Arg>*)this, ptr);
                 onFit(ptr);
-            }
+            }/*
             if(fits && removed_optional) {
                 Arg* ptr = ecsTupleMap<Arg>::get(ent);
                 if(ptr) {
                     ptr->clearOptionals(diff_sig);
                     ptr->dirty_signature &= ~(diff_sig & opt_mask); // Clear dirty flags for removed optionals
                 }
-            }
+            }*/
         }
         
         ecsSystemRecursive<Args...>::attribsRemoved(world, ent, entity_sig, diff_sig);
     }
-
+    /*
     void signalUpdate(entity_id ent, uint64_t attrib_sig) {
         uint64_t arch_sig = Arg::get_signature_static() | Arg::get_optional_signature_static();
         if((arch_sig & attrib_sig) != 0) {
@@ -392,7 +396,7 @@ public:
         }
 
         ecsSystemRecursive<Args...>::signalUpdate(ent, attrib_sig);
-    }
+    }*/
 };
 
 template<typename... Args>
@@ -418,7 +422,7 @@ public:
     void clear_dirty() {
         return ecsTupleMap<ARCH_T>::clear_dirty_index();
     }
-
+    /*
     template<typename ARCH_T>
     ARCH_T* get_tuple(entity_id ent) {
         auto it = ecsTupleMap<ARCH_T>::map.find(ent);
@@ -426,7 +430,7 @@ public:
             return 0;
         }
         return ecsTupleMap<ARCH_T>::array[it->second];
-    }
+    }*/
 
     uint64_t get_mask() const override {
         static uint64_t x[] = { ecsTupleMap<Args>::get_mask()... };

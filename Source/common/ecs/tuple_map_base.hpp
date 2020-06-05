@@ -15,6 +15,10 @@ public:
 
     virtual void signalTupleUpdate(uint32_t array_index, uint64_t attrib_sig) = 0;
     virtual void markDirty(uint32_t array_index) = 0;
+
+    virtual void erase(uint32_t array_index) = 0;
+
+    virtual void onUnfitProxy(uint32_t array_index) = 0;
 };
 
 
