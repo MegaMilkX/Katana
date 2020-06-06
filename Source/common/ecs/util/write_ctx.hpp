@@ -29,7 +29,7 @@ public:
     entity_id getRemappedEntityId(entity_id oldId) {
         auto it = old_to_new_id.find(oldId);
         if(it == old_to_new_id.end()) {
-            return (entity_id)-1;
+            return NULL_ENTITY;
         } else {
             return it->second;
         }

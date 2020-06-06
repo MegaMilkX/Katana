@@ -15,7 +15,6 @@ void ecsInit (void) {
     regEcsAttrib<ecsRotation>("Rotation", "Spatial");
     regEcsAttrib<ecsScale>("Scale", "Spatial");
     regEcsAttrib<ecsWorldTransform>("WorldTransform", "Spatial");
-    regEcsAttrib<ecsParentTransform>("ParentTransform", "Spatial");
     regEcsAttrib<ecsVelocity>("Velocity");
     regEcsAttrib<ecsCollisionShape>("CollisionShape", "Collision");
     regEcsAttrib<ecsCollisionPlane>("CollisionPlane", "Collision");

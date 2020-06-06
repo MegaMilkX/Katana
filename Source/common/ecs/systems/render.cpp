@@ -132,7 +132,7 @@ void computeSkinCache(ecsMeshes::Segment* seg, const gfxm::mat4& root_m4) {
         auto t = seg->skin_data->bone_nodes[i];
         if(t) {
             // HINT: bind_transforms are already inverted it seems
-            bone_transforms[i] = root_m4 * t->transform * seg->skin_data->bind_transforms[i];
+            bone_transforms[i] = root_m4 * t->getTransform() * seg->skin_data->bind_transforms[i];
         } else {
             bone_transforms[i] = root_m4 * gfxm::mat4(1.0f);
         }

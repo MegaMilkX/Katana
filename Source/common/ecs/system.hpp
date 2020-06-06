@@ -115,6 +115,9 @@ public:
             delete array[array.size() - 1];
             array.resize(array.size() - 1);
         }
+        if (dirty_index > array.size()) {
+            dirty_index = array.size();
+        }
     }
 
     void onUnfitProxy(uint32_t array_index) override {

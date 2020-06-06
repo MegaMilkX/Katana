@@ -4,14 +4,14 @@
 
 void recursiveTupleMarkDirty(ecsTupleMapBase* container, ecsTupleBase* tuple, uint64_t attrib_mask) {
     if(tuple->array_index < container->dirty_index) {
-        container->markDirty(tuple->array_index);
-        tuple->dirty_signature |= attrib_mask;
-
         auto tuple_child = tuple->first_child;
         while(tuple_child) {
             recursiveTupleMarkDirty(container, tuple_child, attrib_mask);
             tuple_child = tuple_child->next_sibling;
         }
+
+        container->markDirty(tuple->array_index);
+        tuple->dirty_signature |= attrib_mask;
     }
 }
 

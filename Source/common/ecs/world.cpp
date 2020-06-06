@@ -309,6 +309,16 @@ void ecsWorld::removeEntity(entity_id id) {
 
     clearTemplateLink(id);
 
+    auto parent_id = getParent(id);
+    if(parent_id != NULL_ENTITY) {
+        setParent(NULL_ENTITY, id);
+    }
+    auto child = getFirstChild(id);
+    while(child != NULL_ENTITY) {
+        setParent(parent_id, child);
+        child = getNextSibling(child);
+    }
+
     *e = ecsEntity(); // This removes attributes
     entities.free(id);
     live_entities.erase(id);
@@ -337,20 +347,22 @@ void ecsWorld::setParent (entity_id parent, entity_id child) {
     }
     if(old_parent != NULL_ENTITY && old_parent_e) {
         entity_id sib = getFirstChild(old_parent);
-        if(sib == child) {
-            old_parent_e->first_child_uid = getNextSibling(sib);
-        } else {
-            entity_id prev_sib = sib;
-            sib = getNextSibling(sib);
-            while(sib != NULL_ENTITY) {
-                if(sib == child) {
-                    entity_id next_sib = getNextSibling(sib);
-                    auto e0 = entities.deref(prev_sib);
-                    e0->next_sibling_uid = next_sib;
-                    break;
-                } else {
-                    prev_sib = sib;
-                    sib = getNextSibling(sib);
+        if(sib != NULL_ENTITY) {
+            if(sib == child) {
+                old_parent_e->first_child_uid = getNextSibling(sib);
+            } else {
+                entity_id prev_sib = sib;
+                sib = getNextSibling(sib);
+                while(sib != NULL_ENTITY) {
+                    if(sib == child) {
+                        entity_id next_sib = getNextSibling(sib);
+                        auto e0 = entities.deref(prev_sib);
+                        e0->next_sibling_uid = next_sib;
+                        break;
+                    } else {
+                        prev_sib = sib;
+                        sib = getNextSibling(sib);
+                    }
                 }
             }
         }
@@ -688,6 +700,9 @@ void ecsWorld::serializeEntity (ecsWorldWriteCtx& ctx, entity_id e, bool keep_te
     }
 
     ctx.write<uint64_t>(inheritedBitmask);
+    ctx.write<entity_id>(ctx.getRemappedEntityId(ent->parent_uid));
+    ctx.write<entity_id>(ctx.getRemappedEntityId(ent->next_sibling_uid));
+    ctx.write<entity_id>(ctx.getRemappedEntityId(ent->first_child_uid));
     ctx.write<uint32_t>(attrib_count);
     for(int i = 0; i <= get_last_attrib_id(); ++i) {
         if(keep_template_link && (inheritedBitmask & (1 << i))) {
@@ -710,6 +725,12 @@ void ecsWorld::serializeEntity (ecsWorldWriteCtx& ctx, entity_id e, bool keep_te
 void ecsWorld::deserializeEntity (ecsWorldReadCtx& ctx, entity_id e, uint64_t attrib_ignore_mask) {
     uint64_t inheritedBitmask = ctx.read<uint64_t>();
     inheritedBitmask = ctx.convertMask(inheritedBitmask);
+
+    auto ent = ctx.getWorld()->entities.deref(e);
+    ent->parent_uid = ctx.read<entity_id>();
+    ent->next_sibling_uid = ctx.read<entity_id>();
+    ent->first_child_uid = ctx.read<entity_id>();
+
     uint32_t attrib_count = ctx.read<uint32_t>();
 
     if(inheritedBitmask) {

@@ -303,11 +303,11 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
 
 typedef std::map<std::string, entity_id> name_to_ent_map_t;
 #include "../util/threading/delegated_call.hpp"
-void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, name_to_ent_map_t& node_map, const aiScene* ai_scene, aiNode* ai_node, entity_id ent) {
-    ecsName* ecs_name = graph->getWorld()->getAttrib<ecsName>(ent);
-    ecsTranslation* translation = graph->getWorld()->getAttrib<ecsTranslation>(ent);
-    ecsRotation* rotation = graph->getWorld()->getAttrib<ecsRotation>(ent);
-    ecsScale* scale = graph->getWorld()->getAttrib<ecsScale>(ent);
+void assimpImportEcsSceneGraph(ecsWorld* world, name_to_ent_map_t& node_map, const aiScene* ai_scene, aiNode* ai_node, ecsEntityHandle ent) {
+    ecsName* ecs_name = ent.getAttrib<ecsName>();
+    ecsTranslation* translation = ent.getAttrib<ecsTranslation>();
+    ecsRotation* rotation = ent.getAttrib<ecsRotation>();
+    ecsScale* scale = ent.getAttrib<ecsScale>();
 
     ecs_name->name = ai_node->mName.C_Str();
     
@@ -322,18 +322,18 @@ void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, name_to_ent_map_t& node_m
         scale->setScale(ai_scale.x, ai_scale.y, ai_scale.z);
     }
 
-    graph->getWorld()->getAttrib<ecsWorldTransform>(ent);
+    ent.getAttrib<ecsWorldTransform>();
     
-    node_map[ecs_name->name] = ent;
+    node_map[ecs_name->name] = ent.getId();
 
     for(unsigned i = 0; i < ai_node->mNumChildren; ++i) {
-        auto child_ent = graph->createNode();
-        graph->setParent(child_ent, ent);
-        assimpImportEcsSceneGraph(graph, node_map, ai_scene, ai_node->mChildren[i], child_ent);
+        auto child_ent = world->createEntity();
+        world->setParent(ent.getId(), child_ent.getId());
+        assimpImportEcsSceneGraph(world, node_map, ai_scene, ai_node->mChildren[i], child_ent);
     }
 
     if(ai_node->mNumMeshes) {
-        auto ecs_meshes = graph->getWorld()->getAttrib<ecsMeshes>(ent);
+        auto ecs_meshes = ent.getAttrib<ecsMeshes>();
 
         std::vector<const aiMesh*> ai_meshes;
         for(unsigned i = 0; i < ai_node->mNumMeshes; ++i) {
@@ -350,7 +350,7 @@ void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, name_to_ent_map_t& node_m
             seg.submesh_index = i;
             
             aiMesh* ai_mesh = ai_scene->mMeshes[ai_node->mMeshes[i]];
-            delegatedCall([ai_mesh, &seg, &node_map, &graph](){
+            delegatedCall([ai_mesh, &seg, &node_map, world](){
                 if(ai_mesh->mNumBones) {
                     seg.skin_data.reset(new ecsMeshes::SkinData());
                     
@@ -408,7 +408,7 @@ void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, name_to_ent_map_t& node_m
 
                         auto it = node_map.find(name);
                         if(it != node_map.end()) {
-                            seg.skin_data->bone_nodes.emplace_back(graph->getWorld()->getAttrib<ecsWorldTransform>(it->second));
+                            seg.skin_data->bone_nodes.emplace_back(world->getAttrib<ecsWorldTransform>(it->second));
                             seg.skin_data->bind_transforms.emplace_back(
                                 gfxm::transpose(*(gfxm::mat4*)&ai_bone->mOffsetMatrix)
                             );
@@ -420,10 +420,10 @@ void assimpImportEcsSceneGraph(ecsysSceneGraph* graph, name_to_ent_map_t& node_m
     }
 }
 
-entity_id assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_scene) {
-    entity_id root_ent = graph->createNode();
+entity_id assimpImportEcsSceneGraph(ecsWorld* world, const aiScene* ai_scene) {
+    ecsEntityHandle root_ent = world->createEntity();
     name_to_ent_map_t node_map;
-    assimpImportEcsSceneGraph(graph, node_map, ai_scene, ai_scene->mRootNode, root_ent);
+    assimpImportEcsSceneGraph(world, node_map, ai_scene, ai_scene->mRootNode, root_ent);
 
     double scaleFactor = 1.0f;
     if(ai_scene->mMetaData) {
@@ -432,11 +432,11 @@ entity_id assimpImportEcsSceneGraph(ecsysSceneGraph* graph, const aiScene* ai_sc
             scaleFactor *= 0.01;
         }
     }
-    graph->getWorld()->getAttrib<ecsScale>(root_ent)->setScale((float)scaleFactor);
+    root_ent.getAttrib<ecsScale>()->setScale((float)scaleFactor);
     return root_ent;
 }
 
-entity_id assimpImportEcsScene(ecsysSceneGraph* graph, AssimpScene* scn) {
+entity_id assimpImportEcsScene(ecsWorld* world, AssimpScene* scn) {
     const aiScene* ai_scene = scn->getScene();
     if(!ai_scene) {
         LOG_WARN("Assimp import: failed to load scene '" << "TODO: PUT NAME HERE" << "'");
@@ -453,7 +453,7 @@ entity_id assimpImportEcsScene(ecsysSceneGraph* graph, AssimpScene* scn) {
     //scene_name = scene_name.substr(0, scene_name.find_first_of('.')); 
 
     //loadResources(ai_scene);
-    entity_id e = assimpImportEcsSceneGraph(graph, ai_scene);
+    entity_id e = assimpImportEcsSceneGraph(world, ai_scene);
     //scene->getRoot()->setName(scene_name);
 
 /*
@@ -470,7 +470,7 @@ entity_id assimpImportEcsScene(ecsysSceneGraph* graph, AssimpScene* scn) {
 }
 
 
-entity_id assimpImportEcsScene(ecsysSceneGraph* graph, const char* filename) {
+entity_id assimpImportEcsScene(ecsWorld* world, const char* filename) {
     progressBegin("Fbx import", 100);
 
     std::ifstream f(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + std::string(filename), std::ios::binary | std::ios::ate);
@@ -489,7 +489,7 @@ entity_id assimpImportEcsScene(ecsysSceneGraph* graph, const char* filename) {
     progressStep(1.0f, "Reading fbx scene");
     AssimpScene assimp_scene(buffer.data(), buffer.size(), filename);
     progressStep(1.0f, "Constructing world");
-    entity_id e = assimpImportEcsScene(graph, &assimp_scene);
+    entity_id e = assimpImportEcsScene(world, &assimp_scene);
     
     progressEnd();
     return e;

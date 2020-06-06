@@ -6,8 +6,7 @@
 
 #include "../../lib/imguizmo/ImGuizmo.h"
 
-class ecsysSceneGraph;
-class tupleTransform;
+
 class ecsTranslation : public ecsAttrib<ecsTranslation> {
     gfxm::vec3 position = gfxm::vec3(.0f, .0f, .0f);
 public:
@@ -91,22 +90,14 @@ public:
 };
 
 class ecsWorldTransform : public ecsAttrib<ecsWorldTransform> {
-public:
     gfxm::mat4 transform = gfxm::mat4(1.0f);
-};
-
-class ecsParentTransform : public ecsAttrib<ecsParentTransform> {
 public:
-    entity_id          parent_entity;
-    ecsWorldTransform* parent_transform = 0;
-
-    void write(ecsWorldWriteCtx& out) override {
-        out.writeEntityRef(parent_entity);
-        out.writeAttribRef(parent_transform);
+    void setTransform(const gfxm::mat4& t) {
+        transform = t;
+        getEntityHdl().signalUpdate<ecsWorldTransform>();
     }
-    void read(ecsWorldReadCtx& in) override {
-        parent_entity = in.readEntityRef();
-        parent_transform = (ecsWorldTransform*)in.readAttribRef();
+    const gfxm::mat4& getTransform() const {
+        return transform;
     }
 };
 

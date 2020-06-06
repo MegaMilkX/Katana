@@ -11,9 +11,6 @@
 #include "tuple_base.hpp"
 
 
-static const entity_id NULL_ENTITY = -1;
-
-
 inline ecsAttribBase* allocAttrib(attrib_id id) {
     ecsAttribBase* ptr = 0;
     auto inf = getEcsAttribTypeLib().get_info(id);

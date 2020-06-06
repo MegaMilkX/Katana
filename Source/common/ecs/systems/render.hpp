@@ -33,7 +33,7 @@ public:
         for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsLightOmni>>()) {
             dl.omnis.emplace_back(
                 DrawList::OmniLight {
-                    root_transform * a->get<ecsWorldTransform>()->transform * gfxm::vec4(0,0,0,1),
+                    root_transform * a->get<ecsWorldTransform>()->getTransform() * gfxm::vec4(0,0,0,1),
                     a->get<ecsLightOmni>()->color,
                     a->get<ecsLightOmni>()->intensity,
                     a->get<ecsLightOmni>()->radius
@@ -46,7 +46,7 @@ public:
                 
                 GLuint vao = seg.mesh->mesh.getVao();
                 Material* mat = seg.material.get();
-                gfxm::mat4 transform = a->get<ecsWorldTransform>()->transform;
+                gfxm::mat4 transform = a->get<ecsWorldTransform>()->getTransform();
                 size_t indexOffset = seg.mesh->submeshes.size() > 0 ? seg.mesh->submeshes[seg.submesh_index].indexOffset : 0;
                 size_t indexCount = seg.mesh->submeshes.size() > 0 ? (seg.mesh->submeshes[seg.submesh_index].indexCount) : seg.mesh->mesh.getIndexCount();
                 
@@ -112,13 +112,13 @@ public:
 
     void fillDrawList(DrawList& dl) {
         for(auto& a : get_array<ecsTupleSubSceneRenderable>()) {
-            a->sub_system->fillDrawList(dl, a->get<ecsWorldTransform>()->transform, a->getEntityUid());
+            a->sub_system->fillDrawList(dl, a->get<ecsWorldTransform>()->getTransform(), a->getEntityUid());
         }
 
         for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsLightOmni>>()) {
             dl.omnis.emplace_back(
                 DrawList::OmniLight {
-                    a->get<ecsWorldTransform>()->transform * gfxm::vec4(0,0,0,1),
+                    a->get<ecsWorldTransform>()->getTransform() * gfxm::vec4(0,0,0,1),
                     a->get<ecsLightOmni>()->color,
                     a->get<ecsLightOmni>()->intensity,
                     a->get<ecsLightOmni>()->radius
@@ -132,7 +132,7 @@ public:
                 
                 GLuint vao = seg.mesh->mesh.getVao();
                 Material* mat = seg.material.get();
-                gfxm::mat4 transform = a->get<ecsWorldTransform>()->transform;
+                gfxm::mat4 transform = a->get<ecsWorldTransform>()->getTransform();
                 size_t indexOffset = seg.mesh->submeshes.size() > 0 ? seg.mesh->submeshes[seg.submesh_index].indexOffset : 0;
                 size_t indexCount = seg.mesh->submeshes.size() > 0 ? (seg.mesh->submeshes[seg.submesh_index].indexCount) : seg.mesh->mesh.getIndexCount();
                 
@@ -183,7 +183,7 @@ public:
     void fillDrawList(DrawList& dl, entity_id entity_filter) {
         for(auto& a : get_array<ecsTupleSubSceneRenderable>()) {
             if(a->getEntityUid() == entity_filter) {
-                a->sub_system->fillDrawList(dl, a->get<ecsWorldTransform>()->transform, a->getEntityUid());
+                a->sub_system->fillDrawList(dl, a->get<ecsWorldTransform>()->getTransform(), a->getEntityUid());
                 break;
             }
         }
@@ -197,7 +197,7 @@ public:
                 
                 GLuint vao = seg.mesh->mesh.getVao();
                 Material* mat = seg.material.get();
-                gfxm::mat4 transform = a->get<ecsWorldTransform>()->transform;
+                gfxm::mat4 transform = a->get<ecsWorldTransform>()->getTransform();
                 size_t indexOffset = seg.mesh->submeshes.size() > 0 ? seg.mesh->submeshes[seg.submesh_index].indexOffset : 0;
                 size_t indexCount = seg.mesh->submeshes.size() > 0 ? (seg.mesh->submeshes[seg.submesh_index].indexCount) : seg.mesh->mesh.getIndexCount();
                 

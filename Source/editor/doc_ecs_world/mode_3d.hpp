@@ -65,16 +65,14 @@ public:
         // Check if any async tasks finished
         for(auto& t : model_dnd_tasks) {
             if(t->isDone()) {
-                auto sceneGraphSys = t->target_world->getSystem<ecsysSceneGraph>();
-                entity_id ent = sceneGraphSys->createNode();
-                t->target_world->setAttrib(ent, t->subscene);            
+                auto ent = t->target_world->createEntity();
+                t->target_world->setAttrib(ent.getId(), t->subscene);            
                 
-                t->target_world->createAttrib<ecsTagSubSceneRender>(ent);
-                t->target_world->createAttrib<ecsWorldTransform>(ent);
+                ent.getAttrib<ecsTagSubSceneRender>();
+                ent.getAttrib<ecsWorldTransform>();
 
-                t->target_world->createAttrib<ecsName>(ent);
-                t->target_world->getAttrib<ecsName>(ent)->name = t->entity_name;
-                state.selected_ent = ent;
+                ent.getAttrib<ecsName>()->name = t->entity_name;
+                state.selected_ent = ent.getId();
 
                 model_dnd_tasks.erase(t);
                 break;
@@ -256,10 +254,9 @@ public:
             state.selected_ent = state.world->createEntity().getId();
             ecsEntityHandle h(state.world, state.selected_ent);
             h.getAttrib<ecsName>()->name = "New object";
-            h.getAttrib<ecsWorldTransform>();
             h.getAttrib<ecsTranslation>();
             h.getAttrib<ecsRotation>();
-            h.getAttrib<ecsScale>();
+            h.getAttrib<ecsWorldTransform>();
         }
         ImGui::SameLine();
         if(ImGui::SmallButton(ICON_MDI_MINUS " Remove")) {
@@ -276,21 +273,17 @@ public:
         }
         ImGui::PushItemWidth(-1);
         if(ImGui::ListBoxHeader("###OBJECT_LIST", ImVec2(0, 0))) {
-            std::map<entity_id, std::vector<entity_id>> child_map;
             std::vector<entity_id> top_level_entities;
             auto& entities = state.world->getEntities();
             for(auto e : entities) {
                 ecsEntityHandle hdl(state.world, e);
-                ecsParentTransform* pt = hdl.findAttrib<ecsParentTransform>();
-                if(pt && pt->parent_entity >= 0) {
-                    child_map[pt->parent_entity].emplace_back(hdl.getId());
-                    continue;
+                if(state.world->getParent(e) == NULL_ENTITY) {
+                    top_level_entities.emplace_back(hdl.getId());
                 }
-                top_level_entities.emplace_back(hdl.getId());
             }
             
             if(search_query.empty()) {
-                imguiEntityList(state.world, top_level_entities, child_map, state.selected_ent);
+                imguiEntityList_(state.world, top_level_entities, state.selected_ent);
             } else {
                 std::vector<entity_id> found_entities;
                 auto& entities = state.world->getEntities();
@@ -308,7 +301,7 @@ public:
                         found_entities.emplace_back(hdl.getId());
                     }
                 }
-                imguiEntityList(state.world, found_entities, child_map, state.selected_ent);
+                imguiEntityList_(state.world, found_entities, state.selected_ent);
             }
             ImGui::ListBoxFooter();
         }

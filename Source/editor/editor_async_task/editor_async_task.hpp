@@ -24,8 +24,7 @@ public:
 
     void execute() override {
         subscene = ecsSubScene(std::shared_ptr<ecsWorld>(new ecsWorld()));
-        ecsysSceneGraph* sceneGraph = subscene.getWorld()->getSystem<ecsysSceneGraph>();
-        assimpImportEcsScene(sceneGraph, file_path.c_str());
+        assimpImportEcsScene(subscene.getWorld(), file_path.c_str());
     }
 };
 
@@ -61,7 +60,7 @@ public:
                     mesh_data.resize(mesh_data.size() + 1);
                     auto& md = mesh_data.back();
 
-                    md.transform = e->get<ecsWorldTransform>()->transform;
+                    md.transform = e->get<ecsWorldTransform>()->getTransform();
                     md.tex_width = 256;
                     md.tex_height = 256;
                     md.position.resize(seg.mesh->vertexCount() * 3);

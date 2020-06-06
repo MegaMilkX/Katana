@@ -68,7 +68,7 @@ public:
             if (translation && world_trans) {
                 gfxm::vec3 rm_t = t->sample_buffer.getRootMotionDelta().t;
                 rm_t.y = .0f;
-                rm_t = (world_trans->transform) * gfxm::vec4(rm_t, .0f);
+                rm_t = (world_trans->getTransform()) * gfxm::vec4(rm_t, .0f);
                 translation->translate(rm_t);
             }
         }

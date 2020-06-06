@@ -147,7 +147,7 @@ public:
     void onAttribUpdate(ecsWorldTransform* t) override {
         //auto& transform = rigid_body->getWorldTransform();        
         btTransform transform;
-        const gfxm::mat4& world_transform = t->transform;
+        const gfxm::mat4& world_transform = t->getTransform();
         transform.setFromOpenGLMatrix((float*)&world_transform);
         
         //LOG(world_transform);
@@ -231,7 +231,7 @@ public:
     void updateColliders() {
         assert(world);
         for(auto& a : get_array<ecsArchCollider>()) {
-            auto& matrix = root_transform * a->get<ecsWorldTransform>()->transform;
+            auto& matrix = root_transform * a->get<ecsWorldTransform>()->getTransform();
             btTransform btt;
             btt.setFromOpenGLMatrix((float*)&matrix);
             a->collision_object->setWorldTransform(btt);
@@ -258,7 +258,7 @@ public:
         }
 
         btTransform btt;
-        gfxm::mat4 m = root_transform * col->get<ecsWorldTransform>()->transform;
+        gfxm::mat4 m = root_transform * col->get<ecsWorldTransform>()->getTransform();
         btt.setFromOpenGLMatrix((float*)&m);
         col->collision_object->setWorldTransform(btt);
 
@@ -286,7 +286,7 @@ inline void ecsTupleCollisionSubScene::reinit(btDiscreteDynamicsWorld* world) {
     sub_dynamics = get<ecsSubScene>()->getWorld()->getSystem<ecsSubDynamicsSys>(world);
     sub_dynamics->world = world;
     sub_dynamics->updateRootTransform(
-        get<ecsWorldTransform>()->transform
+        get<ecsWorldTransform>()->getTransform()
     );
 }
 

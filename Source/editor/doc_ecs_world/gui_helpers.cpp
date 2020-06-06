@@ -47,11 +47,10 @@ void imguiEntityListItemContextMenu(const char* string_id, ecsEntityHandle hdl, 
     }
 }
 
-void imguiEntityListItem(
+void imguiEntityListItem_(
     ecsEntityHandle hdl, 
     const std::string& name, 
-    entity_id& selected_ent, 
-    const std::map<entity_id, std::vector<entity_id>>& child_map
+    entity_id& selected_ent
 ) {
     bool selected = selected_ent == hdl.getId();
 
@@ -60,14 +59,27 @@ void imguiEntityListItem(
         text_color = ImVec4(0.8f, 0.7f, 0.5f, 1.0f);
     }
 
-    auto it = child_map.find(hdl.getId());
     std::string string_id = MKSTR(name << "###" << hdl.getId());
-    if(it == child_map.end()) {
+    entity_id first_child_id = hdl.getWorld()->getFirstChild(hdl.getId());
+    if(first_child_id == NULL_ENTITY) {
         ImGui::PushStyleColor(ImGuiCol_Text, text_color);
         if(ImGui::Selectable(string_id.c_str(), selected_ent == hdl.getId())) {
             selected_ent = hdl.getId();
         }
         ImGui::PopStyleColor();
+        if(ImGui::BeginDragDropSource(0)) {
+            ImGui::SetDragDropPayload("DND_ENTITY", &hdl, sizeof(hdl));
+            ImGui::Text(string_id.c_str());
+            ImGui::EndDragDropSource();
+        }
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ENTITY")) {
+                ecsEntityHandle hdlp = *(ecsEntityHandle*)payload->Data;
+                hdl.getWorld()->setParent(hdl.getId(), hdlp.getId());
+            }
+            ImGui::EndDragDropTarget();
+        }
+
         imguiEntityListItemContextMenu(string_id.c_str(), hdl, selected_ent);
     } else { 
         ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow;
@@ -77,21 +89,38 @@ void imguiEntityListItem(
         ImGui::PushStyleColor(ImGuiCol_Text, text_color);
         bool open = ImGui::TreeNodeEx(MKSTR(name << "###" << hdl.getId()).c_str(), tree_node_flags);
         ImGui::PopStyleColor();
+        if(ImGui::BeginDragDropSource(0)) {
+            ImGui::SetDragDropPayload("DND_ENTITY", &hdl, sizeof(hdl));
+            ImGui::Text(string_id.c_str());
+            ImGui::EndDragDropSource();
+        }
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ENTITY")) {
+                ecsEntityHandle hdlp = *(ecsEntityHandle*)payload->Data;
+                hdl.getWorld()->setParent(hdl.getId(), hdlp.getId());
+            }
+            ImGui::EndDragDropTarget();
+        }
         imguiEntityListItemContextMenu(string_id.c_str(), hdl, selected_ent);
         if(ImGui::IsItemClicked(0)) {
             selected_ent = hdl.getId();
         }
         if(open) {
-            imguiEntityList(hdl.getWorld(), it->second, child_map, selected_ent);
+            std::vector<entity_id> children;
+            entity_id child_id = first_child_id;
+            while(child_id != NULL_ENTITY) {
+                children.push_back(child_id);
+                child_id = hdl.getWorld()->getNextSibling(child_id);
+            }
+            imguiEntityList_(hdl.getWorld(), children, selected_ent);
             ImGui::TreePop();
         }
     }
 }
 
-void imguiEntityList(
+void imguiEntityList_(
     ecsWorld* cur_world, 
     const std::vector<entity_id>& entities,
-    const std::map<entity_id, std::vector<entity_id>>& child_map,
     entity_id& selected_ent
 ) {
     std::vector<ecsEntityHandle> anon_entities;
@@ -100,7 +129,6 @@ void imguiEntityList(
     
     for(auto e : entities) {
         ecsEntityHandle hdl(cur_world, e);
-        ecsParentTransform* pt = hdl.findAttrib<ecsParentTransform>();
         ecsName* name = hdl.findAttrib<ecsName>();
         if(name) {
             if(!name->name.empty()) {
@@ -126,15 +154,15 @@ void imguiEntityList(
     for(int i = 0; i < named_entities.size(); ++i) {
         auto hdl = named_entities[i];
         std::string name = hdl.findAttrib<ecsName>()->name;
-        imguiEntityListItem(hdl, name, selected_ent, child_map);
+        imguiEntityListItem_(hdl, name, selected_ent);
     }
     for(int i = 0; i < unnamed_entities.size(); ++i) {
         auto hdl = unnamed_entities[i];
-        imguiEntityListItem(hdl, "[EMPTY_NAME]", selected_ent, child_map);
+        imguiEntityListItem_(hdl, "[EMPTY_NAME]", selected_ent);
     }
     for(int i = 0; i < anon_entities.size(); ++i) {
         auto hdl = anon_entities[i];
-        imguiEntityListItem(hdl, "[ANONYMOUS]", selected_ent, child_map);
+        imguiEntityListItem_(hdl, "[ANONYMOUS]", selected_ent);
     }
 }
 

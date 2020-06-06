@@ -8,17 +8,15 @@ void saveTemplate(ecsEntityHandle hdl);
 
 void imguiEntityListItemContextMenu(const char* string_id, ecsEntityHandle hdl, entity_id& selected_ent);
 
-void imguiEntityListItem(
+void imguiEntityListItem_(
     ecsEntityHandle hdl, 
     const std::string& name, 
-    entity_id& selected_ent, 
-    const std::map<entity_id, std::vector<entity_id>>& child_map
+    entity_id& selected_ent
 );
 
-void imguiEntityList(
+void imguiEntityList_(
     ecsWorld* cur_world, 
     const std::vector<entity_id>& entities,
-    const std::map<entity_id, std::vector<entity_id>>& child_map,
     entity_id& selected_ent
 );
 

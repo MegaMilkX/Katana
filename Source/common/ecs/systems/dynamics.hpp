@@ -80,7 +80,7 @@ public:
         }
 
         btTransform btt;
-        btt.setFromOpenGLMatrix((float*)&collider->get<ecsWorldTransform>()->transform);
+        btt.setFromOpenGLMatrix((float*)&collider->get<ecsWorldTransform>()->getTransform());
         collider->collision_object->setWorldTransform(btt);
 
         ecsCollisionFilter* filter = collider->get_optional<ecsCollisionFilter>();
@@ -132,7 +132,7 @@ public:
             local_inertia
         );
         btTransform btt, com;
-        btt.setFromOpenGLMatrix((float*)&rb->get<ecsWorldTransform>()->transform);
+        btt.setFromOpenGLMatrix((float*)&rb->get<ecsWorldTransform>()->getTransform());
         com.setIdentity();
         rb->motion_state = btDefaultMotionState(
             btt, com
@@ -173,27 +173,32 @@ public:
             if(tuple->is_dirty<ecsCollisionShape>()) {
                 LOG_WARN("Collision shape updated: " << tuple->getEntityUid());
             }
-            if(tuple->is_dirty<ecsWorldTransform>()) {
-                LOG_WARN("World transform updated: " << tuple->getEntityUid());
+            if(tuple->is_dirty<ecsWorldTransform>()) { // Update collider pos
+                auto& matrix = tuple->get<ecsWorldTransform>()->getTransform();
+                btTransform btt;
+                btt.setFromOpenGLMatrix((float*)&matrix);
+                tuple->collision_object->setWorldTransform(btt);
+                world->updateSingleAabb(tuple->collision_object.get());
             }
             tuple->clear_dirty_signature();
             
         }
         clear_dirty<ecsArchCollider>();
 
+        for(int i = get_dirty_index<ecsArchRigidBody>(); i < count<ecsArchRigidBody>(); ++i) {
+            auto a = get<ecsArchRigidBody>(i);
+            if(a->is_dirty<ecsWorldTransform>()) {
+                // Update rigid body transform
+            }
+            a->clear_dirty_signature();
+        }
+        clear_dirty<ecsArchRigidBody>();
+
         for(auto& a : get_array<ecsTupleCollisionSubScene>()) {
             // TODO: Optimize?
-            a->sub_dynamics->updateRootTransform(a->get<ecsWorldTransform>()->transform);
+            a->sub_dynamics->updateRootTransform(a->get<ecsWorldTransform>()->getTransform());
             a->sub_dynamics->updateColliders();
             // TODO
-        }
-
-        for(auto& a : get_array<ecsArchCollider>()) {
-            auto& matrix = a->get<ecsWorldTransform>()->transform;
-            btTransform btt;
-            btt.setFromOpenGLMatrix((float*)&matrix);
-            a->collision_object->setWorldTransform(btt);
-            world->updateSingleAabb(a->collision_object.get());
         }
 
         // Clear collision caches
@@ -207,7 +212,7 @@ public:
             auto& t = a->rigid_body->getWorldTransform();
             btVector3 btv3 = t.getOrigin();
             btQuaternion btq = t.getRotation();
-            auto& transform = a->get<ecsWorldTransform>()->transform;
+            auto& transform = a->get<ecsWorldTransform>()->getTransform();
             t.getOpenGLMatrix((float*)&transform);
         }
 

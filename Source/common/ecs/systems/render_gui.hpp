@@ -46,7 +46,7 @@ public:
             origin.y = origin_offsets[q->align_v];
             quads.push_back(DrawQuadCmd2d{
                 q->image ? q->image->GetGlName() : 0, // TODO: Default texture?
-                wt->transform,
+                wt->getTransform(),
                 q->width, q->height,
                 q->color,
                 origin

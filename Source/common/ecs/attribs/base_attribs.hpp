@@ -746,12 +746,15 @@ public:
 
     void Play() {
         cmd = PLAY;
+        getEntityHdl().signalUpdate<ecsAudioSource>();
     }
     void Pause() {
         cmd = PAUSE;
+        getEntityHdl().signalUpdate<ecsAudioSource>();
     }
     void Stop() {
         cmd = STOP;
+        getEntityHdl().signalUpdate<ecsAudioSource>();
     }
 
     void write(ecsWorldWriteCtx& out) override {
