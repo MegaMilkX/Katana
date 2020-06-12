@@ -11,7 +11,8 @@ void Renderer::drawSilhouettes(gl::FrameBuffer* fb, const gfxm::mat4& proj, cons
     setGlStates();
     setupUniformBuffers(proj, view);
 
-    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_ALWAYS);
     glDisable(GL_CULL_FACE);
     
     fb->bind();

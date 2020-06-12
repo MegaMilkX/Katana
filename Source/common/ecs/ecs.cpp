@@ -25,6 +25,7 @@ void ecsInit (void) {
     regEcsAttrib<ecsLightOmni>("LightOmni", "Rendering");
 
     regEcsAttrib<ecsGuiElement>("GuiElement", "GUI");
+    regEcsAttrib<ecsGuiText>("GuiText", "GUI");
     regEcsAttrib<ecsGuiImage>("GuiImage", "GUI");
 
     regEcsAttrib<ecsSubSceneAnimator>("SubSceneAnimator");

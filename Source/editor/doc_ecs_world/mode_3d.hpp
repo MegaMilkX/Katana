@@ -22,7 +22,7 @@ class DocEcsWorldMode3d : public DocEcsWorldMode {
     gl::FrameBuffer fb_silhouette;
     gl::FrameBuffer fb_pick;
 
-    Font font;
+    std::shared_ptr<Font> font;
 
 public:
     DocEcsWorldMode3d() {
@@ -31,7 +31,7 @@ public:
         fb_blur.addBuffer(0, GL_RED, GL_UNSIGNED_BYTE);
         fb_pick.addBuffer(0, GL_RGB, GL_UNSIGNED_INT);
 
-        font.load("OpenSans-Regular.ttf");
+        font = getResource<Font>("fonts/OpenSans-Regular.ttf");
     }
 
     const char* getName() const override { return "3D"; }
@@ -93,7 +93,7 @@ public:
         state.gvp.end();
 
         auto render2d = state.world->getSystem<ecsRenderGui>();
-        auto dl2d = render2d->getDrawList();
+        auto dl2d = render2d->makeDrawList(state.gvp.getSize().x, state.gvp.getSize().y);
         state.gvp.getViewport()->getFinalBuffer()->bind();
         draw2d(dl2d, state.gvp.getSize().x, state.gvp.getSize().y);
 
@@ -109,7 +109,7 @@ public:
         state.gvp.getViewport()->getFinalBuffer()->bind();
         static float counter = 0;
         drawText(
-            &font, 
+            font.get(), 
             MKSTR("General text quality test: " << (int)counter << "\n" << "This is a new line" << "\nHello World!").c_str(), 
             state.gvp.getSize().x, state.gvp.getSize().y,
             (int)(sinf(counter) * 100.0f) + 100.0f, (int)(cosf(counter) * 100.0f) + 200.0f);

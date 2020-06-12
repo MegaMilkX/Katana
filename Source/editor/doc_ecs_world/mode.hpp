@@ -1,7 +1,7 @@
 #ifndef DOC_ECS_WORLD_MODE_HPP
 #define DOC_ECS_WORLD_MODE_HPP
 
-#include "../common/util/font/font.hpp"
+#include "../common/resource/font.hpp"
 
 #include "gui_helpers.hpp"
 

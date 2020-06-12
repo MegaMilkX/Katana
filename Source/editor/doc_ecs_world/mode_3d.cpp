@@ -39,57 +39,70 @@ void draw2d(const DrawList2d& dl, float screenW, float screenH) {
     static gl::ShaderProgram* sh_quad = shaderLoader().loadShaderProgram(
         "shaders/quad2d.glsl", false, VERTEX_FMT::QUAD_2D::getVertexDesc()
     );
+    static gl::ShaderProgram* sh_text = shaderLoader().loadShaderProgram(
+        "shaders/text.glsl", false, VERTEX_FMT::TEXT::getVertexDesc()
+    );
 
     // TODO: Clean up buffer
     static GLuint vao = createQuadVao();
 
+    //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+    glEnable(GL_SCISSOR_TEST);
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glViewport(0, 0, screenW, screenH);
 
-    glActiveTexture(GL_TEXTURE0);
+    gfxm::mat4 proj = gfxm::ortho(0.0f, screenW, 0.0f, screenH, -1000.0f, 1000.0f);
 
-    sh_quad->use();
-    float aspect = screenW / screenH;
-    float w;
-    float h;
-    if(screenW > screenH) {
-        w = 1280.0f;
-        h = 1280.0f / aspect;
-    } else {
-        w = 1280.0f * aspect;
-        h = 1280.0f;
-    }
-    gfxm::mat4 proj = gfxm::ortho(0.0f, w, 0.0f, h, -1000.0f, 1000.0f);
-    glUniformMatrix4fv(sh_quad->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
+    for(size_t i = 0; i < dl.count; ++i) {
+        auto& cmd = dl.array[i];
 
-    glBindVertexArray(vao);
-    for(size_t i = 0; i < dl.quad_count; ++i) {
-        glBindTexture(GL_TEXTURE_2D, dl.quads[i].texture);
-        glUniformMatrix4fv(sh_quad->getUniform("mat_model"), 1, GL_FALSE, (float*)&dl.quads[i].transform);
-        glUniform4fv(sh_quad->getUniform("color"), 1, (float*)&dl.quads[i].color);
-        gfxm::vec2 quad_size = gfxm::vec2(dl.quads[i].width, dl.quads[i].height);
-        glUniform2fv(sh_quad->getUniform("quad_size"), 1, (float*)&quad_size);
-        glUniform2fv(sh_quad->getUniform("origin"), 1, (float*)&dl.quads[i].origin);
+        glScissor(cmd.clip_rect.x, cmd.clip_rect.y, cmd.clip_rect.z, cmd.clip_rect.w);
+        if(cmd.type == DRAW_CMD_QUAD) {
+            sh_quad->use();
+            glUniformMatrix4fv(sh_quad->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
+            glBindVertexArray(vao);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, cmd.quad.texture);
+            glUniformMatrix4fv(sh_quad->getUniform("mat_model"), 1, GL_FALSE, (float*)&cmd.transform);
+            glUniform4fv(sh_quad->getUniform("color"), 1, (float*)&cmd.quad.color);
+            gfxm::vec2 quad_size = gfxm::vec2(cmd.quad.width, cmd.quad.height);
+            glUniform2fv(sh_quad->getUniform("quad_size"), 1, (float*)&quad_size);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        } else if(cmd.type == DRAW_CMD_TEXT) {
+            sh_text->use();
+            glBindVertexArray(cmd.text.vao);
+            glUniformMatrix4fv(sh_text->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
+            glUniformMatrix4fv(sh_text->getUniform("mat_model"), 1, GL_FALSE, (float*)&cmd.transform);
+            glUniform1i(sh_text->getUniform("lookupTextureWidth"), cmd.text.lookup_texture_width);
+            
+            GLuint texture = cmd.text.tex_atlas;
+            GLuint lookupTexture = cmd.text.tex_lookup;
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texture);
+            glActiveTexture(GL_TEXTURE0 + 1);
+            glBindTexture(GL_TEXTURE_2D, lookupTexture);
 
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+            glDrawArrays(GL_TRIANGLES, 0, cmd.text.vertex_count);
+        }
     }
 }
 
 
 void drawText(Font* fnt, const std::string& str, float screenW, float screenH, float x, float y) {
+    const int FACE_HEIGHT = 26;
     std::vector<gfxm::vec3> vertices;
     std::vector<gfxm::vec2> uv;
     std::vector<float>      uv_lookup_indices;
     float horiAdvance = .0f;
-    float lineOffset = fnt->getLineHeight();
+    float lineOffset = fnt->getLineHeight(FACE_HEIGHT);
     for(int i = 0; i < str.size(); ++i) {
         if(str[i] == '\n') {
-            lineOffset += fnt->getLineHeight();
+            lineOffset += fnt->getLineHeight(FACE_HEIGHT);
             horiAdvance = .0f;
             continue;
         }
-        const auto& g = fnt->getGlyph(str[i]);
+        const auto& g = fnt->getGlyph(str[i], FACE_HEIGHT);
         float y_ofs = g.height - g.bearingY;
         float x_ofs = g.bearingX;
         vertices.push_back(gfxm::vec3(horiAdvance + x_ofs,           0 - y_ofs - lineOffset,        0));
@@ -160,10 +173,10 @@ void drawText(Font* fnt, const std::string& str, float screenW, float screenH, f
     glUniformMatrix4fv(sh->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
     gfxm::mat4 model = gfxm::translate(gfxm::mat4(1.0f), gfxm::vec3(x, y, 0));
     glUniformMatrix4fv(sh->getUniform("mat_model"), 1, GL_FALSE, (float*)&model);
-    glUniform1i(sh->getUniform("lookupTextureWidth"), fnt->getLookupTextureWidth());
+    glUniform1i(sh->getUniform("lookupTextureWidth"), fnt->getLookupTextureWidth(FACE_HEIGHT));
     
-    GLuint texture = fnt->getAtlasTexture();
-    GLuint lookupTexture = fnt->getGlyphLookupTexture();
+    GLuint texture = fnt->getAtlasTexture(FACE_HEIGHT);
+    GLuint lookupTexture = fnt->getGlyphLookupTexture(FACE_HEIGHT);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
     glActiveTexture(GL_TEXTURE0 + 1);
