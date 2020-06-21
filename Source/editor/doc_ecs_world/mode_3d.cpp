@@ -1,14 +1,15 @@
 #include "mode_3d.hpp"
 
+#include "../../common/render/mesh_data.hpp"
 
 static GLuint createQuadVao() {
     static const std::vector<float> vertices = {
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 
-        1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-        0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-        1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-        1.0f, 1.0f, 0.0f, 1.0f, 1.0f
+        0.0f,  0.0f, 0.0f, 0.0f, 1.0f, 
+        1.0f,  0.0f, 0.0f, 1.0f, 1.0f,
+        0.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+        1.0f,  0.0f, 0.0f, 1.0f, 1.0f,
+        1.0f, -1.0f, 0.0f, 1.0f, 0.0f
     };
 
     GLuint vao_handle = 0;
@@ -52,12 +53,12 @@ void draw2d(const DrawList2d& dl, float screenW, float screenH) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glViewport(0, 0, screenW, screenH);
 
-    gfxm::mat4 proj = gfxm::ortho(0.0f, screenW, 0.0f, screenH, -1000.0f, 1000.0f);
+    gfxm::mat4 proj = gfxm::ortho(0.0f, screenW, -screenH, 0.0f, -1000.0f, 1000.0f);
 
     for(size_t i = 0; i < dl.count; ++i) {
         auto& cmd = dl.array[i];
 
-        glScissor(cmd.clip_rect.x, cmd.clip_rect.y, cmd.clip_rect.z, cmd.clip_rect.w);
+        glScissor(cmd.clip_rect.min.x, screenH + cmd.clip_rect.min.y - cmd.clip_rect.max.y, cmd.clip_rect.max.x, cmd.clip_rect.max.y);
         if(cmd.type == DRAW_CMD_QUAD) {
             sh_quad->use();
             glUniformMatrix4fv(sh_quad->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
@@ -84,8 +85,283 @@ void draw2d(const DrawList2d& dl, float screenW, float screenH) {
             glBindTexture(GL_TEXTURE_2D, lookupTexture);
 
             glDrawArrays(GL_TRIANGLES, 0, cmd.text.vertex_count);
+        } else if(cmd.type == DRAW_CMD_LINE) {
+            static gl::ShaderProgram* sh = shaderLoader().loadShaderProgram(
+                "shaders/line.glsl", false, VERTEX_FMT::LINE::getVertexDesc()
+            );
+            sh->use();
+            gfxm::mat4 model(1.0f);
+            gfxm::mat4 view(1.0f);
+            glUniformMatrix4fv(sh->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
+            glUniformMatrix4fv(sh->getUniform("mat_model"), 1, GL_FALSE, (float*)&model);
+            glUniformMatrix4fv(sh->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
+            glUniform4fv(sh->getUniform("color"), 1, (float*)&cmd.line.color);
+
+            glBindVertexArray(cmd.line.vao);
+            glDrawArrays(GL_LINES, 0, cmd.line.vertex_count);
         }
     }
+/*
+    glViewport(0, 0, screenW, screenH);
+    glScissor(0, 0, screenW, screenH);
+    {
+        std::vector<gfxm::vec3> vertices = {
+            { .0f, .0f, .0f },
+            { 500.0f, .0f, .0f },
+            { 500.0f, -500.0f, .0f },
+            { .0f, -500.0f, .0f }
+        };
+        std::vector<unsigned char> colors = {
+            255, 255, 0, 255,
+            255, 255, 0, 255,
+            255, 180, 0, 255,
+            255, 180, 0, 255
+        };
+        std::vector<uint32_t> indices = {
+            0, 1, 1, 2, 2, 3, 3, 0
+        };
+        static gl::ShaderProgram* sh = shaderLoader().loadShaderProgram(
+            "shaders/line.glsl", false, VERTEX_FMT::LINE::getVertexDesc()
+        );
+        MeshData<VERTEX_FMT::LINE> lineMesh;
+        lineMesh.upload(VERTEX_FMT::ENUM_LINE::Position, vertices.data(), vertices.size() * sizeof(gfxm::vec3));
+        lineMesh.upload(VERTEX_FMT::ENUM_LINE::ColorRGBA, colors.data(), colors.size() * sizeof(unsigned char));
+        lineMesh.uploadIndices(indices.data(), indices.size());
+    
+        sh->use();
+        gfxm::mat4 model(1.0f);
+        gfxm::mat4 view(1.0f);
+        glUniformMatrix4fv(sh->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
+        glUniformMatrix4fv(sh->getUniform("mat_model"), 1, GL_FALSE, (float*)&model);
+        glUniformMatrix4fv(sh->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
+
+        lineMesh.bind();
+        lineMesh.drawIndexed(GL_LINES);
+    }*/
+}
+
+static struct {
+    gfxm::rect  viewport;
+    GIZMO_RECT_CONTROL_POINT cp             = GIZMO_RECT_NONE;
+    int                      cp_flags       = GIZMO_RECT_CP_ALL;
+    bool                     btn_pressed    = false;
+    bool                     dragging       = false;
+    gfxm::vec2               last_mouse;
+    gfxm::vec3 nw;
+    gfxm::vec3 se;
+    gfxm::vec3 ne;
+    gfxm::vec3 sw;
+} gizmo_rect;
+void gizmoRect2dViewport(float left, float right, float bottom, float top) {
+    gizmo_rect.viewport = gfxm::rect(left, bottom, right, top);
+}
+bool gizmoRect2d(gfxm::rect& rect, gfxm::rect& delta, const gfxm::vec2& mouse, bool button_pressed, int cp_flags = GIZMO_RECT_CP_ALL) {
+    gizmo_rect.cp_flags = cp_flags;
+    gizmo_rect.nw = gfxm::vec3(rect.min.x, rect.max.y, .0f);
+    gizmo_rect.se = gfxm::vec3(rect.max.x, rect.min.y, .0f);
+    gizmo_rect.ne = gfxm::vec3(gizmo_rect.se.x, gizmo_rect.nw.y, .0f);
+    gizmo_rect.sw = gfxm::vec3(gizmo_rect.nw.x, gizmo_rect.se.y, .0f);
+
+    gfxm::vec3 mouse3(mouse.x, mouse.y, .0f);
+    const float active_radius = 8.0f;
+
+    gfxm::vec3 north = gfxm::lerp(gizmo_rect.nw, gizmo_rect.ne, 0.5f);
+    gfxm::vec3 south = gfxm::lerp(gizmo_rect.sw, gizmo_rect.se, 0.5f);
+    gfxm::vec3 west = gfxm::lerp(gizmo_rect.nw, gizmo_rect.sw, 0.5f);
+    gfxm::vec3 east = gfxm::lerp(gizmo_rect.ne, gizmo_rect.se, 0.5f);
+    gfxm::vec3 origin = gfxm::lerp(gizmo_rect.nw, gizmo_rect.se, 0.5f);
+
+    bool just_pressed = !gizmo_rect.btn_pressed && button_pressed;
+    bool just_released = gizmo_rect.btn_pressed && !button_pressed;
+
+    if(!gizmo_rect.btn_pressed) {
+        if((cp_flags & GIZMO_RECT_SE) && gfxm::length(mouse3 - gizmo_rect.se) < active_radius) {
+            gizmo_rect.cp = GIZMO_RECT_SE;
+        } else if((cp_flags & GIZMO_RECT_NE) && gfxm::length(mouse3 - gizmo_rect.ne) < active_radius) {
+            gizmo_rect.cp = GIZMO_RECT_NE;
+        } else if((cp_flags & GIZMO_RECT_SW) && gfxm::length(mouse3 - gizmo_rect.sw) < active_radius) {
+            gizmo_rect.cp = GIZMO_RECT_SW;
+        } else if((cp_flags & GIZMO_RECT_NW) && gfxm::length(mouse3 - gizmo_rect.nw) < active_radius) {
+            gizmo_rect.cp = GIZMO_RECT_NW;
+        } else if((cp_flags & GIZMO_RECT_SOUTH) && gfxm::length(mouse3 - south) < active_radius) {
+            gizmo_rect.cp = GIZMO_RECT_SOUTH;
+        } else if((cp_flags & GIZMO_RECT_EAST) && gfxm::length(mouse3 - east) < active_radius) {
+            gizmo_rect.cp = GIZMO_RECT_EAST;
+        } else if((cp_flags & GIZMO_RECT_NORTH) && gfxm::length(mouse3 - north) < active_radius) {
+            gizmo_rect.cp = GIZMO_RECT_NORTH;
+        } else if((cp_flags & GIZMO_RECT_WEST) && gfxm::length(mouse3 - west) < active_radius) {
+            gizmo_rect.cp = GIZMO_RECT_WEST;
+        } else if((cp_flags & GIZMO_RECT_ORIGIN) && gfxm::length(mouse3 - origin) < active_radius) {
+            gizmo_rect.cp = GIZMO_RECT_ORIGIN;
+        } else if((cp_flags & GIZMO_RECT_BOX) && rect.min.x < mouse.x && rect.max.x > mouse.x && rect.min.y < mouse.y && rect.max.y > mouse.y) {
+            gizmo_rect.cp = GIZMO_RECT_BOX;
+        } else {
+            gizmo_rect.cp = GIZMO_RECT_NONE;
+        }
+    }
+
+    gizmo_rect.btn_pressed = button_pressed;
+    delta.min = gfxm::vec2(0,0);
+    delta.max = gfxm::vec2(0,0);
+    
+    if(gizmo_rect.btn_pressed) {
+        gfxm::vec2 offs = mouse - gizmo_rect.last_mouse;
+        if(gizmo_rect.cp == GIZMO_RECT_NE ||
+            gizmo_rect.cp == GIZMO_RECT_EAST ||
+            gizmo_rect.cp == GIZMO_RECT_SE
+        ) {
+            delta.max.x += offs.x;
+        }
+        if(gizmo_rect.cp == GIZMO_RECT_NW ||
+            gizmo_rect.cp == GIZMO_RECT_WEST ||
+            gizmo_rect.cp == GIZMO_RECT_SW
+        ) {
+            delta.min.x += offs.x;
+        }
+        if(gizmo_rect.cp == GIZMO_RECT_NW ||
+            gizmo_rect.cp == GIZMO_RECT_NORTH ||
+            gizmo_rect.cp == GIZMO_RECT_NE
+        ) {
+            delta.max.y += offs.y;
+        }
+        if(gizmo_rect.cp == GIZMO_RECT_SW ||
+            gizmo_rect.cp == GIZMO_RECT_SOUTH ||
+            gizmo_rect.cp == GIZMO_RECT_SE
+        ) {
+            delta.min.y += offs.y;
+        }
+
+        if(gizmo_rect.cp == GIZMO_RECT_BOX) {
+            delta.min += offs;
+            delta.max += offs;
+        }
+
+        rect.min += delta.min;
+        rect.max += delta.max;
+    }
+
+    gizmo_rect.last_mouse = mouse;
+
+    if(gizmo_rect.cp != GIZMO_RECT_NONE && (gizmo_rect.btn_pressed || button_pressed)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+void gizmoRect2dDraw(float screenW, float screenH) {
+    const gfxm::vec4 color(1,1,1,1);
+
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_DEPTH_TEST);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glViewport(
+        0, 0, 
+        abs(gizmo_rect.viewport.max.x - gizmo_rect.viewport.min.x), 
+        abs(gizmo_rect.viewport.max.y - gizmo_rect.viewport.min.y)
+    );
+
+    gfxm::mat4 proj = gfxm::ortho(
+        gizmo_rect.viewport.min.x, gizmo_rect.viewport.max.x, 
+        gizmo_rect.viewport.min.y, gizmo_rect.viewport.max.y, 
+        -1000.0f, 1000.0f
+    );
+
+    gfxm::vec4 col(0.5f, 0.5f, 0.5f, 1.0f);
+    gfxm::vec4 col_hover(1.0f, 1.0f, 0.0f, 1.0f);
+
+    MeshData<VERTEX_FMT::LINE> mesh;
+    std::vector<gfxm::vec3> vertices = {
+        gizmo_rect.nw, gizmo_rect.ne,
+        gizmo_rect.ne, gizmo_rect.se,
+        gizmo_rect.se, gizmo_rect.sw,
+        gizmo_rect.sw, gizmo_rect.nw
+    };
+    const gfxm::vec4& c = gizmo_rect.cp == GIZMO_RECT_BOX ? col_hover : col;
+    uint8_t r = 255 * c.x;
+    uint8_t g = 255 * c.y;
+    uint8_t b = 255 * c.z;
+    uint8_t a = 255 * c.w;
+    std::vector<unsigned char> colors = {
+        r, g, b, a,   r, g, b, a,
+        r, g, b, a,   r, g, b, a,
+        r, g, b, a,   r, g, b, a,
+        r, g, b, a,   r, g, b, a
+    };
+
+    std::function<void(const gfxm::vec3&, float, const gfxm::vec4&)> add_square_fn = 
+    [&vertices, &colors](const gfxm::vec3& pos, float sz, const gfxm::vec4& col){
+        float sz_half = sz * 0.5f;
+        gfxm::vec3 nw = gfxm::vec3(pos.x - sz_half, pos.y + sz_half, .0f);
+        gfxm::vec3 se = gfxm::vec3(pos.x + sz_half, pos.y - sz_half, .0f);
+        gfxm::vec3 ne = gfxm::vec3(se.x, nw.y, .0f);
+        gfxm::vec3 sw = gfxm::vec3(nw.x, se.y, .0f);
+        std::vector<gfxm::vec3> v = {
+            nw, ne,
+            ne, se,
+            se, sw,
+            sw, nw
+        };
+        uint8_t r = 255 * col.x;
+        uint8_t g = 255 * col.y;
+        uint8_t b = 255 * col.z;
+        uint8_t a = 255 * col.w;
+        std::vector<unsigned char> c = {
+            r, g, b, a,   r, g, b, a,
+            r, g, b, a,   r, g, b, a,
+            r, g, b, a,   r, g, b, a,
+            r, g, b, a,   r, g, b, a
+        };
+        vertices.insert(vertices.end(), v.begin(), v.end());
+        colors.insert(colors.end(), c.begin(), c.end());
+    };
+    std::function<void(const gfxm::vec3&, float, const gfxm::vec4&)> add_cross_fn = 
+    [&vertices, &colors](const gfxm::vec3& pos, float sz, const gfxm::vec4& col){
+        float sz_half = sz * 0.5f;
+        std::vector<gfxm::vec3> v = {
+            pos - gfxm::vec3(sz_half,0,0), pos + gfxm::vec3(sz_half,0,0),
+            pos - gfxm::vec3(0,sz_half,0), pos + gfxm::vec3(0,sz_half,0)
+        };
+        uint8_t r = 255 * col.x;
+        uint8_t g = 255 * col.y;
+        uint8_t b = 255 * col.z;
+        uint8_t a = 255 * col.w;
+        std::vector<unsigned char> c = {
+            r, g, b, a,   r, g, b, a,
+            r, g, b, a,   r, g, b, a
+        };
+        vertices.insert(vertices.end(), v.begin(), v.end());
+        colors.insert(colors.end(), c.begin(), c.end());
+    };
+    
+    if(gizmo_rect.cp_flags & GIZMO_RECT_NW) add_square_fn(gizmo_rect.nw, 8, gizmo_rect.cp == GIZMO_RECT_NW ? col_hover : col);
+    if(gizmo_rect.cp_flags & GIZMO_RECT_NE) add_square_fn(gizmo_rect.ne, 8, gizmo_rect.cp == GIZMO_RECT_NE ? col_hover : col);
+    if(gizmo_rect.cp_flags & GIZMO_RECT_SW) add_square_fn(gizmo_rect.sw, 8, gizmo_rect.cp == GIZMO_RECT_SW ? col_hover : col);
+    if(gizmo_rect.cp_flags & GIZMO_RECT_SE) add_square_fn(gizmo_rect.se, 8, gizmo_rect.cp == GIZMO_RECT_SE ? col_hover : col);
+
+    if(gizmo_rect.cp_flags & GIZMO_RECT_NORTH) add_square_fn(gfxm::lerp(gizmo_rect.nw, gizmo_rect.ne, 0.5f), 8, gizmo_rect.cp == GIZMO_RECT_NORTH ? col_hover : col);
+    if(gizmo_rect.cp_flags & GIZMO_RECT_EAST) add_square_fn(gfxm::lerp(gizmo_rect.ne, gizmo_rect.se, 0.5f), 8, gizmo_rect.cp == GIZMO_RECT_EAST ? col_hover : col);
+    if(gizmo_rect.cp_flags & GIZMO_RECT_SOUTH) add_square_fn(gfxm::lerp(gizmo_rect.se, gizmo_rect.sw, 0.5f), 8, gizmo_rect.cp == GIZMO_RECT_SOUTH ? col_hover : col);
+    if(gizmo_rect.cp_flags & GIZMO_RECT_WEST) add_square_fn(gfxm::lerp(gizmo_rect.sw, gizmo_rect.nw, 0.5f), 8, gizmo_rect.cp == GIZMO_RECT_WEST ? col_hover : col);
+
+    gfxm::vec3 center = gfxm::lerp(gizmo_rect.nw, gizmo_rect.se, 0.5f);
+    if(gizmo_rect.cp_flags & GIZMO_RECT_ORIGIN) add_cross_fn(center, 8, gizmo_rect.cp == GIZMO_RECT_ORIGIN ? col_hover : col);
+
+    mesh.upload(VERTEX_FMT::ENUM_LINE::Position, vertices.data(), vertices.size() * sizeof(vertices[0]));
+    mesh.upload(VERTEX_FMT::ENUM_LINE::ColorRGBA, colors.data(), colors.size() * sizeof(colors[0]));
+
+    static gl::ShaderProgram* sh = shaderLoader().loadShaderProgram(
+        "shaders/line.glsl", false, VERTEX_FMT::LINE::getVertexDesc()
+    );
+    sh->use();
+    gfxm::mat4 model(1.0f);
+    gfxm::mat4 view(1.0f);
+    glUniformMatrix4fv(sh->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
+    glUniformMatrix4fv(sh->getUniform("mat_model"), 1, GL_FALSE, (float*)&model);
+    glUniformMatrix4fv(sh->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
+    glUniform4fv(sh->getUniform("color"), 1, (float*)&color);
+
+    mesh.bind();
+    mesh.draw(GL_LINES);
 }
 
 

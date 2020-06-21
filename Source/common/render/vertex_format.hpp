@@ -128,12 +128,14 @@ protected:
     }
 
 public:
+    static constexpr int attrib_count = sizeof...(Args) + 1;
+
     static int vertexSize() {
         return Arg::elem_size * Arg::count + PARENT_T::vertexSize();
     }
 
     static int attribCount() {
-        return sizeof...(Args) + 1;
+        return attrib_count;
     }
 
     static const ATTRIB_DESC& getAttribDesc(int idx) {
@@ -162,7 +164,6 @@ public:
 template<int N, typename Arg, typename... Args>
 const ATTRIB_DESC FORMAT<N, Arg, Args...>::desc = { Arg::name, Arg::out_name, Arg::elem_size, Arg::count, Arg::gl_type, Arg::normalized };
 
-
 #define DECL_VERTEX_FMT(NAME, ...) \
     struct ENUM_ ## NAME { enum { __VA_ARGS__ }; }; \
     typedef FORMAT<0, __VA_ARGS__> NAME;
@@ -181,6 +182,9 @@ DECL_VERTEX_FMT(TEXT,
 );
 DECL_VERTEX_FMT(QUAD_2D,
     Position, UV
+);
+DECL_VERTEX_FMT(LINE,
+    Position, ColorRGBA
 );
 
 }

@@ -315,8 +315,9 @@ void ecsWorld::removeEntity(entity_id id) {
     }
     auto child = getFirstChild(id);
     while(child != NULL_ENTITY) {
-        setParent(parent_id, child);
+        auto c = child;
         child = getNextSibling(child);
+        setParent(parent_id, c);
     }
 
     *e = ecsEntity(); // This removes attributes

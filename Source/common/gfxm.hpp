@@ -175,6 +175,18 @@ struct taabb
     tvec3<T> to;
 };
 
+template<typename T>
+struct trect {
+    trect() {}
+    trect(const tvec2<T>& min, const tvec2<T>& max)
+    : min(min), max(max) {}
+    trect(float minx, float miny, float maxx, float maxy)
+    : min(minx, miny), max(maxx, maxy) {}
+
+    tvec2<T> min;
+    tvec2<T> max;
+};
+
 typedef tvec2<float> vec2;
 typedef tvec2<int> ivec2;
 typedef tvec2<double> dvec2;
@@ -201,6 +213,9 @@ typedef tray<double> dray;
 
 typedef taabb<float> aabb;
 typedef taabb<double> daabb;
+
+typedef trect<float> rect;
+typedef trect<double> drect;
 
 // ====== Functions ======
 

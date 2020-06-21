@@ -4,10 +4,12 @@
 
 #include "../system.hpp"
 #include "../attribs/base_attribs.hpp"
+#include "../../render/mesh_data.hpp"
 
 enum DRAW_CMD_2D {
     DRAW_CMD_QUAD,
-    DRAW_CMD_TEXT
+    DRAW_CMD_TEXT,
+    DRAW_CMD_LINE
 };
 
 struct DrawCmd2d {
@@ -17,7 +19,7 @@ struct DrawCmd2d {
 
     DRAW_CMD_2D     type;
     gfxm::mat4      transform;
-    gfxm::vec4      clip_rect;
+    gfxm::rect      clip_rect;
 
     union {
         struct {
@@ -33,6 +35,11 @@ struct DrawCmd2d {
             uint32_t    vertex_count;
             float       lookup_texture_width;
         } text;
+        struct {
+            GLuint          vao;
+            int             vertex_count;
+            gfxm::vec4      color;
+        } line;
     };
 };
 
@@ -50,6 +57,129 @@ class ecsRenderGui : public ecsSystem<
 >{
     std::vector<DrawCmd2d> cmds;
     std::shared_ptr<Texture2D> texture_white_px;
+    MeshData<VERTEX_FMT::LINE> lineMesh;
+
+    void addQuad(const gfxm::rect& parent_rect, gfxm::rect& rect, ecsTupleGuiElement* elem, entity_id selected_ent) {
+        auto e = elem->get<ecsGuiElement>();
+
+        auto layoutFloat = e->getLayoutFloating();
+        auto layoutDock = e->getLayoutDocking();
+        bool isLayoutAuto = e->isLayout(GUI_ELEM_LAYOUT_AUTO);
+        
+        gfxm::vec2 pos(rect.min.x, rect.min.y);
+        gfxm::vec2 size = rect.max;
+        if(layoutFloat) {
+            pos = pos + layoutFloat->position;
+            size = layoutFloat->size;
+        } if (layoutDock) {
+            auto side = layoutDock->side;
+            float dock_sz = layoutDock->size;
+            if(side == GUI_ELEM_DOCK_TOP) {
+                size.y = dock_sz;
+                rect.min.y -= dock_sz;
+                rect.max.y -= dock_sz;
+            } else if(side == GUI_ELEM_DOCK_BOTTOM) {
+                pos.y -= size.y - dock_sz;
+                size.y = dock_sz;
+                rect.max.y -= dock_sz;
+            } else if(side == GUI_ELEM_DOCK_LEFT) {
+                size.x = dock_sz;
+                rect.min.x += dock_sz;
+                rect.max.x -= dock_sz;
+            } else if(side == GUI_ELEM_DOCK_RIGHT) {
+                pos.x += size.x - dock_sz;
+                size.x = dock_sz;
+                rect.max.x -= dock_sz;
+            }
+        }
+        pos.x += e->margin.x;
+        pos.y -= e->margin.y;
+        size.x -= e->margin.x + e->margin.z;
+        size.y -= e->margin.y + e->margin.w;
+
+        pos.x = ceil(pos.x);
+        pos.y = ceil(pos.y);
+        gfxm::rect rect_fin(
+            pos, 
+            size
+        );
+        gfxm::rect rect_inner(
+            pos,
+            size
+        );
+        rect_inner.min.x += e->padding.x;
+        rect_inner.min.y -= e->padding.y;
+        rect_inner.max.x -= e->padding.x + e->padding.z;
+        rect_inner.max.y -= e->padding.y + e->padding.w;
+
+        e->rendered_pos = rect_inner.min;
+        e->rendered_size = rect_inner.max;
+
+        GLuint tex = texture_white_px->GetGlName();
+        if(e->bg_image) {
+            tex = e->bg_image->GetGlName();
+        }
+
+        if(e->is<GuiElemText>()) {
+            auto text = e->getParams<GuiElemText>();
+            if (!text->text.empty() && text->font) {
+                text->textBuffer.rebuild(text->font.get(), text->text, text->face_height, text->alignment, gfxm::vec2(rect_fin.max.x, rect_fin.max.y));
+
+                if(text->vertical_center) {
+                    pos.y -= size.y * 0.5f - text->textBuffer.bb_size.y * 0.5f;
+                }
+
+                DrawCmd2d cmd;
+                memset(&cmd, 0, sizeof(cmd));
+                cmd.type = DRAW_CMD_TEXT;
+                cmd.transform = gfxm::translate(gfxm::mat4(1.0f), gfxm::vec3(pos.x, pos.y, 0));
+                cmd.clip_rect = parent_rect;
+                cmd.text.vao = text->textBuffer.vao;
+                cmd.text.tex_atlas = text->font->getAtlasTexture(text->face_height);
+                cmd.text.tex_lookup = text->font->getGlyphLookupTexture(text->face_height);
+                cmd.text.lookup_texture_width = text->font->getLookupTextureWidth(text->face_height);
+                cmd.text.vertex_count = text->textBuffer.vertex_count;
+                cmds.push_back(cmd);
+            }
+        } else if(e->is<GuiElemImage>()) {
+            auto img = e->getParams<GuiElemImage>();
+
+            GLuint tex = texture_white_px->GetGlName();
+            if(img->image) {
+                tex = img->image->GetGlName();
+            }
+            
+            DrawCmd2d cmd;
+            memset(&cmd, 0, sizeof(cmd));
+            cmd.type = DRAW_CMD_QUAD;
+            cmd.transform = gfxm::translate(gfxm::mat4(1.0f), gfxm::vec3(rect_fin.min.x, rect_fin.min.y, 0));
+            cmd.clip_rect = parent_rect;
+            cmd.quad.width = rect_fin.max.x;
+            cmd.quad.height = rect_fin.max.y;
+            cmd.quad.color = gfxm::vec4(1,1,1,1);
+            cmd.quad.texture = tex;
+            cmds.push_back(cmd);
+        } else if(e->is<GuiElemContainer>()) {
+            auto cont = e->getParams<GuiElemContainer>();
+
+            DrawCmd2d cmd;
+            memset(&cmd, 0, sizeof(cmd));
+            cmd.type = DRAW_CMD_QUAD;
+            cmd.transform = gfxm::translate(gfxm::mat4(1.0f), gfxm::vec3(rect_fin.min.x, rect_fin.min.y, 0));
+            cmd.clip_rect = parent_rect;
+            cmd.quad.width = rect_fin.max.x;
+            cmd.quad.height = rect_fin.max.y;
+            cmd.quad.color = e->bg_color;
+            cmd.quad.texture = tex;
+            cmds.push_back(cmd);
+
+            auto child = (ecsTupleGuiElement*)elem->first_child;
+            while(child) {
+                addQuad(rect_fin, rect_inner, child, selected_ent);
+                child = (ecsTupleGuiElement*)child->next_sibling;
+            }
+        }
+    }
 
 public:
     ecsRenderGui() {
@@ -58,7 +188,11 @@ public:
         texture_white_px->Data(wht, 1, 1, 4);
     }
 
-    DrawList2d makeDrawList(float screenW, float screenH) {
+    ecsGuiElement* hitTest(float screenW, float screenH, float x, float y) {
+        return 0;
+    }
+
+    DrawList2d makeDrawList(float screenW, float screenH, entity_id selected_ent) {
         cmds.clear();
 
         std::vector<ecsTupleGuiElement*> root_elements;
@@ -69,143 +203,9 @@ public:
             }
         }
 
-        std::function<void(ecsTupleGuiElement*, const gfxm::vec2&, const gfxm::vec4&)> add_quad_fn;
-        add_quad_fn = [this, &add_quad_fn](ecsTupleGuiElement* elem, const gfxm::vec2& pos,  const gfxm::vec4& clip_rect){
-            auto e = elem->get<ecsGuiElement>();
-            auto img = elem->get_optional<ecsGuiImage>();
-            auto text = elem->get_optional<ecsGuiText>();
-            GLuint tex = (img && img->image) ? img->image->GetGlName() : texture_white_px->GetGlName();
-            gfxm::vec4 color = (img) ? img->color : gfxm::vec4(0,0,0,1);
-            
-            DrawCmd2d cmd;
-            memset(&cmd, 0, sizeof(cmd));
-            if(text && text->font) {
-                cmd.type = DRAW_CMD_TEXT;
-                cmd.transform = gfxm::translate(gfxm::mat4(1.0f), gfxm::vec3(pos.x,pos.y,0));
-                cmd.clip_rect = clip_rect;
-                cmd.text.vao = text->vao;
-                cmd.text.tex_atlas = text->font->getAtlasTexture(text->face_height);
-                cmd.text.tex_lookup = text->font->getGlyphLookupTexture(text->face_height);
-                cmd.text.lookup_texture_width = text->font->getLookupTextureWidth(text->face_height);
-                cmd.text.vertex_count = text->vertex_count;
-            } else {
-                cmd.type = DRAW_CMD_QUAD;
-                cmd.transform = gfxm::translate(gfxm::mat4(1.0f), gfxm::vec3(pos.x,pos.y,0));
-                cmd.clip_rect = clip_rect;
-                cmd.quad.width = e->size.x;
-                cmd.quad.height = e->size.y;
-                cmd.quad.color = color;
-                cmd.quad.texture = tex;
-            }
-            cmds.push_back(cmd);
-
-            gfxm::vec2 child_pos_base;
-            if(e->align_h == GUI_ALIGN_LEFT) {
-                child_pos_base.x = pos.x;
-            } else if (e->align_h == GUI_ALIGN_CENTER) {
-                child_pos_base.x = pos.x + (int)(e->size.x * 0.5f);
-            } else if (e->align_h == GUI_ALIGN_RIGHT) {
-                child_pos_base.x = pos.x + e->size.x;
-            }
-            if(e->align_v == GUI_ALIGN_TOP) {
-                child_pos_base.y = pos.y + e->size.y;
-            } else if(e->align_v == GUI_ALIGN_CENTER) {
-                child_pos_base.y = pos.y + (int)(e->size.y * 0.5f);
-            } else if(e->align_v == GUI_ALIGN_BOTTOM) {
-                child_pos_base.y = pos.y;
-            }
-            gfxm::vec2 child_pos = child_pos_base;
-            gfxm::vec2 size = e->size;
-
-            static const float origin_offsets[] = {
-                0.0f,
-                1.0f,
-                1.0f,
-                0.0f,
-                0.5f
-            };
-
-            gfxm::vec4 this_clip_rect = gfxm::vec4(pos.x,pos.y,e->size.x,e->size.y);
-            auto child = (ecsTupleGuiElement*)elem->first_child;
-            float line_offset = .0f;
-            while(child) {
-                float child_width = .0f;
-                float child_height = .0f;
-                auto child_text = child->get_optional<ecsGuiText>();
-                auto child_elem = child->get<ecsGuiElement>();
-                if(child_text) {
-                    child_width = child_text->bb_width;
-                    child_height = child_text->bb_height;
-                } else {
-                    child_width = child_elem->size.x;
-                    child_height = child_elem->size.y;
-                }
-
-                float available_line_len = .0f;
-                float advance_len = .0f;
-                if(e->child_layout == GUI_CHILD_LAYOUT_HORI) {
-                    advance_len = child_width;
-                    if(e->align_h == GUI_ALIGN_LEFT) {
-                        available_line_len = pos.x + e->size.x - child_pos.x;
-                    } else if(e->align_h == GUI_ALIGN_RIGHT) {
-                        available_line_len = child_pos.x - pos.x;
-                    }
-                } else if(e->child_layout == GUI_CHILD_LAYOUT_VERT) {
-                    advance_len = child_height;
-                    if(e->align_h == GUI_ALIGN_TOP) {
-                        available_line_len = pos.y - child_pos.y;
-                    } else if(e->align_h == GUI_ALIGN_BOTTOM) {
-                        available_line_len = child_pos.y - pos.y + e->size.y;
-                    }
-                }
-                
-                if(available_line_len < advance_len) {
-                    if(e->child_layout == GUI_CHILD_LAYOUT_HORI) {
-                        child_pos.x = child_pos_base.x;
-                        if(e->align_v == GUI_ALIGN_TOP) {
-                            child_pos.y -= line_offset;
-                        } else {
-                            child_pos.y += line_offset;
-                        }
-                    } else if(e->child_layout == GUI_CHILD_LAYOUT_VERT) {
-                        child_pos.y = child_pos_base.y;
-                        if(e->align_h == GUI_ALIGN_RIGHT) {
-                            child_pos.x -= line_offset;
-                        } else {
-                            child_pos.x += line_offset;
-                        }
-                    }
-                    line_offset = .0f;
-                }
-
-                gfxm::vec2 quad_pos = child_pos;
-                quad_pos.x -= child_width * origin_offsets[e->align_h];
-                quad_pos.y -= child_height * origin_offsets[e->align_v];
-
-                add_quad_fn(child, quad_pos, this_clip_rect);
-
-                if(e->child_layout == GUI_CHILD_LAYOUT_HORI) {
-                    line_offset = gfxm::_max(line_offset, child_height);
-                    if(e->align_h == GUI_ALIGN_LEFT) {
-                        child_pos.x += child_width;
-                    } else if(e->align_h == GUI_ALIGN_RIGHT) {
-                        child_pos.x -= child_width;
-                    }
-                } else if(e->child_layout == GUI_CHILD_LAYOUT_VERT) {
-                    line_offset = gfxm::_max(line_offset, child_width);
-                    if(e->align_v == GUI_ALIGN_TOP) {
-                        child_pos.y -= child_height;
-                    } else if(e->align_v == GUI_ALIGN_BOTTOM) {
-                        child_pos.y += child_height;
-                    }
-                }
-
-                child = (ecsTupleGuiElement*)child->next_sibling;
-            }
-        };
+        gfxm::rect rect(0, 0, screenW, screenH);
         for(auto& a : root_elements) {
-            add_quad_fn(a, a->get<ecsGuiElement>()->position, gfxm::vec4(0,0,screenW,screenH));
-            
+            addQuad(gfxm::rect(0, 0, screenW, screenH), rect, a, selected_ent);           
         }
 
         return DrawList2d{

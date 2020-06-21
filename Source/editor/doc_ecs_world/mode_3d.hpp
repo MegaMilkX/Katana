@@ -9,6 +9,26 @@
 void draw2d(const DrawList2d& dl, float screenW, float screenH);
 void drawText(Font* fnt, const std::string& str, float screenW, float screenH, float x, float y);
 
+enum GIZMO_RECT_CONTROL_POINT {
+    GIZMO_RECT_NONE     = 0x000,
+    GIZMO_RECT_NORTH    = 0x001,
+    GIZMO_RECT_SOUTH    = 0x002,
+    GIZMO_RECT_WEST     = 0x004,
+    GIZMO_RECT_EAST     = 0x008,
+    GIZMO_RECT_NW       = 0x010,
+    GIZMO_RECT_NE       = 0x020,
+    GIZMO_RECT_SE       = 0x040,
+    GIZMO_RECT_SW       = 0x080,
+    GIZMO_RECT_ORIGIN   = 0x100,
+    GIZMO_RECT_BOX      = 0x200,
+    
+    GIZMO_RECT_CP_ALL   = 0xFFF
+};
+
+void gizmoRect2dViewport(float left, float right, float bottom, float top);
+bool gizmoRect2d(gfxm::rect& rect, gfxm::rect& delta, const gfxm::vec2& mouse, bool button_pressed, int cp_flags);
+void gizmoRect2dDraw(float screenW, float screenH);
+
 class DocEcsWorldMode3d : public DocEcsWorldMode {
     std::unique_ptr<edTaskEcsWorldCalcLightmaps>            lightmap_task;
     std::set<std::unique_ptr<edTaskEcsWorldModelDragNDrop>> model_dnd_tasks;
@@ -93,7 +113,7 @@ public:
         state.gvp.end();
 
         auto render2d = state.world->getSystem<ecsRenderGui>();
-        auto dl2d = render2d->makeDrawList(state.gvp.getSize().x, state.gvp.getSize().y);
+        auto dl2d = render2d->makeDrawList(state.gvp.getSize().x, state.gvp.getSize().y, state.selected_ent);
         state.gvp.getViewport()->getFinalBuffer()->bind();
         draw2d(dl2d, state.gvp.getSize().x, state.gvp.getSize().y);
 
@@ -106,6 +126,7 @@ public:
         blur(&fb_blur, fb_outline.getTextureId(0), gfxm::vec2(0, 1));
         cutout(&fb_outline, fb_blur.getTextureId(0), fb_silhouette.getTextureId(0));*/
         overlay(state.gvp.getViewport()->getFinalBuffer(), fb_blur.getTextureId(0));
+        /*
         state.gvp.getViewport()->getFinalBuffer()->bind();
         static float counter = 0;
         drawText(
@@ -113,9 +134,70 @@ public:
             MKSTR("General text quality test: " << (int)counter << "\n" << "This is a new line" << "\nHello World!").c_str(), 
             state.gvp.getSize().x, state.gvp.getSize().y,
             (int)(sinf(counter) * 100.0f) + 100.0f, (int)(cosf(counter) * 100.0f) + 200.0f);
-        counter += (1.0f/60.0f);
+        counter += (1.0f/60.0f);*/
 
-        if (!state.world->getEntities().empty()) {
+        bool using_gizmo = false;
+
+        float vp_w = state.gvp.getSize().x;
+        float vp_h = state.gvp.getSize().y;
+        ecsEntityHandle hdl(state.world, state.selected_ent);
+        if(hdl.isValid()){
+            auto elem = hdl.findAttrib<ecsGuiElement>();
+            
+            if(elem) {
+                gizmoRect2dViewport(0, vp_w, -vp_h, 0);
+
+                gfxm::rect rect;
+                rect.min.x = elem->rendered_pos.x;
+                rect.max.x = elem->rendered_pos.x + elem->rendered_size.x;
+                rect.min.y = elem->rendered_pos.y - elem->rendered_size.y;
+                rect.max.y = elem->rendered_pos.y;
+                auto& io = ImGui::GetIO();
+                auto impos = state.gvp.getMousePos();
+                gfxm::vec2 mpos(impos.x, impos.y);
+                float mx_coef = mpos.x / vp_w;
+                float my_coef = mpos.y / vp_h;
+                mpos.x = vp_w * mx_coef;
+                mpos.y = -(vp_h - vp_h * my_coef);
+                gfxm::rect rect_delta;
+                int giz_flags = 0;
+                if(elem->isLayout(GUI_ELEM_LAYOUT_FLOAT)) {
+                    giz_flags = GIZMO_RECT_CP_ALL;
+                } else if(elem->isLayout(GUI_ELEM_LAYOUT_DOCK)) {
+                    auto d = elem->getLayoutDocking();
+                    if(d->side == GUI_ELEM_DOCK_LEFT) {
+                        giz_flags = GIZMO_RECT_EAST;
+                    } else if(d->side == GUI_ELEM_DOCK_RIGHT) {
+                        giz_flags = GIZMO_RECT_WEST;
+                    } else if(d->side == GUI_ELEM_DOCK_TOP) {
+                        giz_flags = GIZMO_RECT_SOUTH;
+                    } else if(d->side == GUI_ELEM_DOCK_BOTTOM) {
+                        giz_flags = GIZMO_RECT_NORTH;
+                    }
+                }
+                using_gizmo = gizmoRect2d(rect, rect_delta, mpos, io.MouseDown[0], giz_flags);
+                if(using_gizmo) {
+                    if(elem->isLayout(GUI_ELEM_LAYOUT_FLOAT)) {
+                        auto l = elem->getLayoutFloating();
+                        l->position.x += rect_delta.min.x;
+                        l->position.y += rect_delta.max.y;
+                        l->size.x     += rect_delta.max.x - rect_delta.min.x;
+                        l->size.y     -= rect_delta.min.y - rect_delta.max.y;
+                    } else if(elem->isLayout(GUI_ELEM_LAYOUT_DOCK)) {
+                        auto d = elem->getLayoutDocking();
+                        if(d->side == GUI_ELEM_DOCK_LEFT || d->side == GUI_ELEM_DOCK_RIGHT) {
+                            d->size = rect.max.x - rect.min.x;
+                        } else if(d->side == GUI_ELEM_DOCK_TOP || d->side == GUI_ELEM_DOCK_BOTTOM) {
+                            d->size = rect.max.y - rect.min.y;
+                        }
+                    }
+                }
+
+                state.gvp.getViewport()->getFinalBuffer()->bind();
+                gizmoRect2dDraw(state.gvp.getSize().x, -state.gvp.getSize().y);
+            }
+        }
+        if (!state.world->getEntities().empty() && !using_gizmo) {
             auto tr = state.world->findAttrib<ecsTranslation>(state.selected_ent);
             auto rot = state.world->findAttrib<ecsRotation>(state.selected_ent);
             auto wt = state.world->findAttrib<ecsWorldTransform>(state.selected_ent);
@@ -135,6 +217,7 @@ public:
                     ImGuizmo::TRANSLATE, ImGuizmo::MODE::LOCAL,
                     (float*)&m, (float*)&dm, 0 /* snap */
                 );
+                using_gizmo = ImGuizmo::IsUsing();
                 if(ImGuizmo::IsUsing()) {
                     if(tr) {
                         tr->translate(dm[3]);
@@ -142,8 +225,10 @@ public:
                 }
             }
         }
+        
+
         auto mpos = state.gvp.getMousePos();
-        if(state.gvp.isMouseClicked(0) && !ImGuizmo::IsUsing()) {
+        if(state.gvp.isMouseClicked(0) && !using_gizmo) {
             if(cur_tweak_stage_id < spawn_tweak_stage_stack.size()) {
                 ++cur_tweak_stage_id;
                 if(cur_tweak_stage_id == spawn_tweak_stage_stack.size()) {
