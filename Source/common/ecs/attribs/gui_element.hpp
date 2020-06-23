@@ -73,168 +73,59 @@ enum GUI_CHILD_LAYOUT {
 };
 #include "gui/gui_attrib.hpp"
 class ecsGuiElement : public ecsAttrib<ecsGuiElement> {
-public:
-    GUI_ELEM_LAYOUT                                             layout = GUI_ELEM_LAYOUT_AUTO;
-    std::unique_ptr<GuiLayoutBase>                              layoutParams;
-    std::unique_ptr<GuiElemTypeParamsBase>                      typeParams      = 0;
-
-    // Move this to optional attribs
-    gfxm::vec4                      color = gfxm::vec4(1,1,1,1);
-    gfxm::vec4                      bg_color = gfxm::vec4(0,0,0,0);
-    std::shared_ptr<Texture2D>      bg_image;
-    gfxm::vec4                      margin;
-    gfxm::vec4                      padding;
-    //
-
-    // Read only
-    gfxm::vec2 rendered_pos;
-    gfxm::vec2 rendered_size;
-    //
-
-    template<typename T>
-    bool is() const {
-        return typeParams->getType() == T::getTypeStatic();
-    }
-    template<typename T>
-    T* getParams() {
-        if(!is<T>()) {
-            return 0;
-        }
-        return (T*)typeParams.get();
-    }
-
-    bool isLayout(GUI_ELEM_LAYOUT l) const {
-        return l == layout;
-    }
-    GuiLayoutFloating* getLayoutFloating() {
-        if(layout != GUI_ELEM_LAYOUT_FLOAT) {
-            return 0;
-        }
-        return (GuiLayoutFloating*)layoutParams.get();
-    }
-    GuiLayoutDocked* getLayoutDocking() {
-        if(layout != GUI_ELEM_LAYOUT_DOCK) {
-            return 0;
-        }
-        return (GuiLayoutDocked*)layoutParams.get();
-    }
-
+friend ecsRenderGui;
+    bool                enabled             = true;
     int                 order_index         = 0;
-    gfxm::vec2          position;
-    gfxm::vec2          size                = gfxm::vec2(300.0f, 200.0f);
-    GUI_ALIGNMENT       align_h             = GUI_ALIGN_LEFT;
-    GUI_ALIGNMENT       align_v             = GUI_ALIGN_TOP;
-    GUI_CHILD_LAYOUT    child_layout        = GUI_CHILD_LAYOUT_HORI;
+    gfxm::vec2          translation;
+    float               rotation;
+    gfxm::vec2          origin              = gfxm::vec2(0.5f, 0.5f);
 
-    ecsGuiElement() {
-        layoutParams.reset(0);
-        typeParams.reset(new GuiElemText(this));
+    gfxm::mat4          transform = gfxm::mat4(1.0f);
+    gfxm::rect          bounding_rect;
+
+public:
+    void setEnabled(bool e) { enabled = e; getEntityHdl().signalUpdate<ecsGuiElement>(); }
+    void setOrderIndex(int idx) { order_index = idx; getEntityHdl().signalUpdate<ecsGuiElement>(); }
+    void setTranslation(float x, float y) { translation = gfxm::vec2(x, y); getEntityHdl().signalUpdate<ecsGuiElement>(); }
+    void setRotation(float degrees) { rotation = degrees; getEntityHdl().signalUpdate<ecsGuiElement>(); }
+    void setOrigin(float x, float y) { setOrigin(gfxm::vec2(x, y)); }
+    void setOrigin(const gfxm::vec2& origin) { this->origin = origin; getEntityHdl().signalUpdate<ecsGuiElement>(); }
+
+    void translate(float x, float y) { translate(gfxm::vec2(x, y)); }
+    void translate(const gfxm::vec2& offs) { translation += offs; getEntityHdl().signalUpdate<ecsGuiElement>(); }
+
+    bool              isEnabled() const { return enabled; }
+    const float       getRotation() const { return rotation; }
+    const gfxm::vec2& getOrigin() const { return origin; }
+    const gfxm::mat4& getTransform() const { return transform; }
+
+    const gfxm::rect& getBoundingRect() const {
+        return bounding_rect;
     }
 
     void write(ecsWorldWriteCtx& w) override {
         w.write(order_index);
-        w.write(position);
-        w.write(size);
-        w.write<uint8_t>(align_h);
-        w.write<uint8_t>(align_v);
-        w.write<uint8_t>(child_layout);
+        w.write(translation);
+        w.write(rotation);
+        w.write(origin);
     }
     void read(ecsWorldReadCtx& r) override {
         r.read(order_index);
-        r.read(position);
-        r.read(size);
-        align_h = (GUI_ALIGNMENT)r.read<uint8_t>();
-        align_v = (GUI_ALIGNMENT)r.read<uint8_t>();
-        child_layout = (GUI_CHILD_LAYOUT)r.read<uint8_t>();
+        r.read(translation);
+        r.read(rotation);
+        r.read(origin);
     }
 
     void onGui(ecsWorld* w, entity_id e) override {
         if(ImGui::DragInt("order index###guielemorder", &order_index)) {
-
+            setOrderIndex(order_index);
         }
-
-        if(ImGui::BeginCombo("layout", getGuiElemLayoutName(layout))) {
-            for(int i = GUI_ELEM_LAYOUT_FIRST; i < GUI_ELEM_LAYOUT_COUNT; ++i) {
-                if(ImGui::Selectable(getGuiElemLayoutName((GUI_ELEM_LAYOUT)i))) {
-                    layout = (GUI_ELEM_LAYOUT)i;
-                    if(layout == GUI_ELEM_LAYOUT_AUTO) {
-                        layoutParams.reset(0);
-                    } else if(layout == GUI_ELEM_LAYOUT_FLOAT) {
-                        layoutParams.reset(new GuiLayoutFloating);
-                    } else if(layout == GUI_ELEM_LAYOUT_DOCK) {
-                        layoutParams.reset(new GuiLayoutDocked);
-                    }
-                }
-            }
-            ImGui::EndCombo();
+        if(ImGui::DragFloat2("translation###guielemtranslation", (float*)&translation)) {
+            setTranslation(translation.x, translation.y);
         }
-        if(layout == GUI_ELEM_LAYOUT_FLOAT) {
-            auto l = (GuiLayoutFloating*)layoutParams.get();
-            if(ImGui::DragFloat2("position###layoutFloatPos", (float*)&l->position)) {
-
-            }
-            if(ImGui::DragFloat2("size###layoutFloatSz", (float*)&l->size)) {
-                
-            }
-        } else if(layout == GUI_ELEM_LAYOUT_DOCK) {
-            auto l = (GuiLayoutDocked*)layoutParams.get();
-            if(ImGui::BeginCombo("side###GuiElemDockSide", getGuiElemDockName(l->side))) {
-                for(int i = GUI_ELEM_DOCK_FIRST; i < GUI_ELEM_DOCK_COUNT; ++i) {
-                    if(ImGui::Selectable(getGuiElemDockName((GUI_ELEM_DOCK)i))) {
-                        l->side = (GUI_ELEM_DOCK)i;
-                    }
-                }
-                ImGui::EndCombo();
-            }
-            if(ImGui::DragFloat("size###DockSize", &l->size)) {
-
-            }
+        if(ImGui::DragFloat("rotation###guielemrotation", &rotation)) {
+            setRotation(rotation);
         }
-
-        if(ImGui::BeginCombo("type###GuiElemType", getGuiElemTypeName(typeParams->getType()))) {
-            for(int i = 0; i < GUI_ELEM_TYPE_COUNT; ++i) {
-                if(ImGui::Selectable(getGuiElemTypeName((GUI_ELEM_TYPE)i))) {
-                    typeParams.reset(createGuiElemData((GUI_ELEM_TYPE)i, this));
-                }
-            }
-            ImGui::EndCombo();
-        }
-        if(typeParams->onGui()) {
-            // TODO: Signal update
-        }
-
-        ImGui::ColorEdit4("color###guicolor", (float*)&color);
-        ImGui::ColorEdit4("bg color###guibgcolor", (float*)&bg_color);
-        imguiResourceTreeCombo("bg image###guibgimage", bg_image, "png");
-        ImGui::DragFloat4("margin###guimargin", (float*)&margin);
-        ImGui::DragFloat4("padding###guipadding", (float*)&padding);
-        
-/*
-        if(ImGui::DragInt("order index###guielemorder", &order_index)) {
-
-        }
-        if(ImGui::DragFloat2("position###guielempos", (float*)&position)) {
-
-        }
-        if(ImGui::DragFloat2("size###guielemsz", (float*)&size)) {
-            
-        }
-
-        ImGui::RadioButton("left###guielemleft", (int*)&align_h, (int)GUI_ALIGN_LEFT);
-        ImGui::SameLine();
-        ImGui::RadioButton("center###guielemcenterh", (int*)&align_h, (int)GUI_ALIGN_CENTER);
-        ImGui::SameLine();
-        ImGui::RadioButton("right###guielemright", (int*)&align_h, (int)GUI_ALIGN_RIGHT);
-        
-        ImGui::RadioButton("top###guielemtop", (int*)&align_v, (int)GUI_ALIGN_TOP);
-        ImGui::SameLine();
-        ImGui::RadioButton("center###guielemcenterv", (int*)&align_v, (int)GUI_ALIGN_CENTER);
-        ImGui::SameLine();
-        ImGui::RadioButton("bottom###guielembottom", (int*)&align_v, (int)GUI_ALIGN_BOTTOM);
-
-        ImGui::RadioButton("horizontal###guichildh", (int*)&child_layout, (int)GUI_CHILD_LAYOUT_HORI);
-        ImGui::SameLine();
-        ImGui::RadioButton("vertical###guichildv", (int*)&child_layout, (int)GUI_CHILD_LAYOUT_VERT);*/
     }
 };
 class ecsGuiNode : public ecsAttrib<ecsGuiNode> {
@@ -461,52 +352,28 @@ public:
     }
 };
 class ecsGuiImage : public ecsAttrib<ecsGuiImage> {
-public:
+friend ecsRenderGui;
+
     std::shared_ptr<Texture2D> image;
-    float image_scale = 1.0f;
-    float u_offset = .0f;
-    float v_offset = .0f;
 
-    gfxm::vec4 color = gfxm::vec4(1, 1, 1, 1);
+public:
 
-    float width = 100.0f;
-    float height = 100.0f;
-
-    GUI_ALIGNMENT align_h = GUI_ALIGN_LEFT;
-    GUI_ALIGNMENT align_v = GUI_ALIGN_TOP;
+    void setImage(const std::shared_ptr<Texture2D>& img) {
+        image = img;
+        getEntityHdl().signalUpdate<ecsGuiImage>();
+    }
 
     void write(ecsWorldWriteCtx& ctx) override {
         ctx.writeResource(image);
-        ctx.write(color);
     }
     void read(ecsWorldReadCtx& ctx) override {
         image = ctx.readResource<Texture2D>();
-        color = ctx.read<gfxm::vec4>();
     }
 
     void onGui(ecsWorld* world, entity_id e) override {
         imguiResourceTreeCombo("image###quadimage", image, "png", [this](){
-            if(image) {
-                width = image->Width();
-                height = image->Height();
-            }
+            setImage(image);
         });
-
-        ImGui::RadioButton("left###quadleft", (int*)&align_h, (int)GUI_ALIGN_LEFT);
-        ImGui::SameLine();
-        ImGui::RadioButton("center###quadcenterh", (int*)&align_h, (int)GUI_ALIGN_CENTER);
-        ImGui::SameLine();
-        ImGui::RadioButton("right###quadright", (int*)&align_h, (int)GUI_ALIGN_RIGHT);
-        
-        ImGui::RadioButton("top###quadtop", (int*)&align_v, (int)GUI_ALIGN_TOP);
-        ImGui::SameLine();
-        ImGui::RadioButton("center###quadcenterv", (int*)&align_v, (int)GUI_ALIGN_CENTER);
-        ImGui::SameLine();
-        ImGui::RadioButton("bottom###quadbottom", (int*)&align_v, (int)GUI_ALIGN_BOTTOM);
-
-        ImGui::DragFloat("width###quadwidth", &width, 0.01f);
-        ImGui::DragFloat("height###quadheight", &height, 0.01f);
-        ImGui::ColorPicker4("color###quadcolor", (float*)&color);
     }
 
 };

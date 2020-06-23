@@ -179,11 +179,15 @@ public:
     void                        removeEntity                (entity_id id);
     const std::set<entity_id>&  getEntities() const;
     ecsEntityHandle             findEntity                  (const char* name);
+    ecsEntityHandle             findChild                   (entity_id parent, const char* name);
 
     void                        setParent                   (entity_id parent, entity_id child);
     entity_id                   getParent                   (entity_id e);
     entity_id                   getFirstChild               (entity_id e);
     entity_id                   getNextSibling              (entity_id e);
+
+    ecsEntityHandle             mergeWorld                  (const char* res_name);
+    ecsEntityHandle             mergeWorld                  (ecsWorld* world);
 
     template<typename T>
     T*                          findAttrib(entity_id ent);
@@ -237,6 +241,7 @@ public:
 
     void                        serialize(out_stream& out) override;
     bool                        deserialize(in_stream& in, size_t sz) override;
+    bool                        deserialize(in_stream& in, size_t sz, entity_id merge_parent);
 
     static void                 serializeAttribDesc     (ecsWorldWriteCtx& ctx);
     static void                 deserializeAttribDesc   (ecsWorldReadCtx& ctx);

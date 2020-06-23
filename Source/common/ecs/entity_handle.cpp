@@ -19,6 +19,10 @@ void ecsEntityHandle::remove() {
     world = 0;
 }
 
+ecsEntityHandle ecsEntityHandle::findChild(const char* name) {
+    return world->findChild(id, name);
+}
+
 uint64_t ecsEntityHandle::getAttribBitmask() {
     return world->getAttribBitmask(id);
 }

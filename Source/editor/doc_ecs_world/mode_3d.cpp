@@ -2,143 +2,6 @@
 
 #include "../../common/render/mesh_data.hpp"
 
-static GLuint createQuadVao() {
-    static const std::vector<float> vertices = {
-        0.0f,  0.0f, 0.0f, 0.0f, 1.0f, 
-        1.0f,  0.0f, 0.0f, 1.0f, 1.0f,
-        0.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-        1.0f,  0.0f, 0.0f, 1.0f, 1.0f,
-        1.0f, -1.0f, 0.0f, 1.0f, 0.0f
-    };
-
-    GLuint vao_handle = 0;
-    GLuint vbuf;
-    glGenBuffers(1, &vbuf);
-
-    glGenVertexArrays(1, &vao_handle);
-    glBindVertexArray(vao_handle);
-    glBindBuffer(GL_ARRAY_BUFFER, vbuf);
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(
-        0, 3, GL_FLOAT, GL_FALSE, 
-        sizeof(float) * 5, 0
-    );
-    glVertexAttribPointer(
-        1, 2, GL_FLOAT, GL_FALSE, 
-        sizeof(float) * 5, (void*)(sizeof(float) * 3)
-    );
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbuf);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), (void*)vertices.data(), GL_STREAM_DRAW);
-    
-    return vao_handle;
-}
-
-void draw2d(const DrawList2d& dl, float screenW, float screenH) {
-    static gl::ShaderProgram* sh_quad = shaderLoader().loadShaderProgram(
-        "shaders/quad2d.glsl", false, VERTEX_FMT::QUAD_2D::getVertexDesc()
-    );
-    static gl::ShaderProgram* sh_text = shaderLoader().loadShaderProgram(
-        "shaders/text.glsl", false, VERTEX_FMT::TEXT::getVertexDesc()
-    );
-
-    // TODO: Clean up buffer
-    static GLuint vao = createQuadVao();
-
-    //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-    glEnable(GL_SCISSOR_TEST);
-    glDisable(GL_DEPTH_TEST);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glViewport(0, 0, screenW, screenH);
-
-    gfxm::mat4 proj = gfxm::ortho(0.0f, screenW, -screenH, 0.0f, -1000.0f, 1000.0f);
-
-    for(size_t i = 0; i < dl.count; ++i) {
-        auto& cmd = dl.array[i];
-
-        glScissor(cmd.clip_rect.min.x, screenH + cmd.clip_rect.min.y - cmd.clip_rect.max.y, cmd.clip_rect.max.x, cmd.clip_rect.max.y);
-        if(cmd.type == DRAW_CMD_QUAD) {
-            sh_quad->use();
-            glUniformMatrix4fv(sh_quad->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
-            glBindVertexArray(vao);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, cmd.quad.texture);
-            glUniformMatrix4fv(sh_quad->getUniform("mat_model"), 1, GL_FALSE, (float*)&cmd.transform);
-            glUniform4fv(sh_quad->getUniform("color"), 1, (float*)&cmd.quad.color);
-            gfxm::vec2 quad_size = gfxm::vec2(cmd.quad.width, cmd.quad.height);
-            glUniform2fv(sh_quad->getUniform("quad_size"), 1, (float*)&quad_size);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-        } else if(cmd.type == DRAW_CMD_TEXT) {
-            sh_text->use();
-            glBindVertexArray(cmd.text.vao);
-            glUniformMatrix4fv(sh_text->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
-            glUniformMatrix4fv(sh_text->getUniform("mat_model"), 1, GL_FALSE, (float*)&cmd.transform);
-            glUniform1i(sh_text->getUniform("lookupTextureWidth"), cmd.text.lookup_texture_width);
-            
-            GLuint texture = cmd.text.tex_atlas;
-            GLuint lookupTexture = cmd.text.tex_lookup;
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, texture);
-            glActiveTexture(GL_TEXTURE0 + 1);
-            glBindTexture(GL_TEXTURE_2D, lookupTexture);
-
-            glDrawArrays(GL_TRIANGLES, 0, cmd.text.vertex_count);
-        } else if(cmd.type == DRAW_CMD_LINE) {
-            static gl::ShaderProgram* sh = shaderLoader().loadShaderProgram(
-                "shaders/line.glsl", false, VERTEX_FMT::LINE::getVertexDesc()
-            );
-            sh->use();
-            gfxm::mat4 model(1.0f);
-            gfxm::mat4 view(1.0f);
-            glUniformMatrix4fv(sh->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
-            glUniformMatrix4fv(sh->getUniform("mat_model"), 1, GL_FALSE, (float*)&model);
-            glUniformMatrix4fv(sh->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
-            glUniform4fv(sh->getUniform("color"), 1, (float*)&cmd.line.color);
-
-            glBindVertexArray(cmd.line.vao);
-            glDrawArrays(GL_LINES, 0, cmd.line.vertex_count);
-        }
-    }
-/*
-    glViewport(0, 0, screenW, screenH);
-    glScissor(0, 0, screenW, screenH);
-    {
-        std::vector<gfxm::vec3> vertices = {
-            { .0f, .0f, .0f },
-            { 500.0f, .0f, .0f },
-            { 500.0f, -500.0f, .0f },
-            { .0f, -500.0f, .0f }
-        };
-        std::vector<unsigned char> colors = {
-            255, 255, 0, 255,
-            255, 255, 0, 255,
-            255, 180, 0, 255,
-            255, 180, 0, 255
-        };
-        std::vector<uint32_t> indices = {
-            0, 1, 1, 2, 2, 3, 3, 0
-        };
-        static gl::ShaderProgram* sh = shaderLoader().loadShaderProgram(
-            "shaders/line.glsl", false, VERTEX_FMT::LINE::getVertexDesc()
-        );
-        MeshData<VERTEX_FMT::LINE> lineMesh;
-        lineMesh.upload(VERTEX_FMT::ENUM_LINE::Position, vertices.data(), vertices.size() * sizeof(gfxm::vec3));
-        lineMesh.upload(VERTEX_FMT::ENUM_LINE::ColorRGBA, colors.data(), colors.size() * sizeof(unsigned char));
-        lineMesh.uploadIndices(indices.data(), indices.size());
-    
-        sh->use();
-        gfxm::mat4 model(1.0f);
-        gfxm::mat4 view(1.0f);
-        glUniformMatrix4fv(sh->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
-        glUniformMatrix4fv(sh->getUniform("mat_model"), 1, GL_FALSE, (float*)&model);
-        glUniformMatrix4fv(sh->getUniform("mat_view"), 1, GL_FALSE, (float*)&view);
-
-        lineMesh.bind();
-        lineMesh.drawIndexed(GL_LINES);
-    }*/
-}
 
 static struct {
     gfxm::rect  viewport;
@@ -147,6 +10,10 @@ static struct {
     bool                     btn_pressed    = false;
     bool                     dragging       = false;
     gfxm::vec2               last_mouse;
+
+    gfxm::mat4 transform;
+    gfxm::vec3 origin;
+    float rotation_prev = .0f;
     gfxm::vec3 nw;
     gfxm::vec3 se;
     gfxm::vec3 ne;
@@ -155,7 +22,9 @@ static struct {
 void gizmoRect2dViewport(float left, float right, float bottom, float top) {
     gizmo_rect.viewport = gfxm::rect(left, bottom, right, top);
 }
-bool gizmoRect2d(gfxm::rect& rect, gfxm::rect& delta, const gfxm::vec2& mouse, bool button_pressed, int cp_flags = GIZMO_RECT_CP_ALL) {
+bool gizmoRect2d(gfxm::mat4& t, gfxm::vec2& lcl_pos_offs, float& rotation, gfxm::vec2& origin_, gfxm::rect& rect, const gfxm::vec2& mouse, bool button_pressed, int cp_flags = GIZMO_RECT_CP_ALL) {
+    gizmo_rect.transform = t;
+    gizmo_rect.origin = gfxm::vec3(origin_.x, origin_.y, .0f);
     gizmo_rect.cp_flags = cp_flags;
     gizmo_rect.nw = gfxm::vec3(rect.min.x, rect.max.y, .0f);
     gizmo_rect.se = gfxm::vec3(rect.max.x, rect.min.y, .0f);
@@ -163,49 +32,63 @@ bool gizmoRect2d(gfxm::rect& rect, gfxm::rect& delta, const gfxm::vec2& mouse, b
     gizmo_rect.sw = gfxm::vec3(gizmo_rect.nw.x, gizmo_rect.se.y, .0f);
 
     gfxm::vec3 mouse3(mouse.x, mouse.y, .0f);
+    mouse3 = gfxm::inverse(t) * gfxm::vec4(mouse3, 1.0f);
     const float active_radius = 8.0f;
+    const float active_radius12 = 12.0f;
 
     gfxm::vec3 north = gfxm::lerp(gizmo_rect.nw, gizmo_rect.ne, 0.5f);
     gfxm::vec3 south = gfxm::lerp(gizmo_rect.sw, gizmo_rect.se, 0.5f);
     gfxm::vec3 west = gfxm::lerp(gizmo_rect.nw, gizmo_rect.sw, 0.5f);
     gfxm::vec3 east = gfxm::lerp(gizmo_rect.ne, gizmo_rect.se, 0.5f);
-    gfxm::vec3 origin = gfxm::lerp(gizmo_rect.nw, gizmo_rect.se, 0.5f);
+    gfxm::vec3 origin 
+        = gfxm::vec3(
+            gfxm::lerp(gizmo_rect.nw.x, gizmo_rect.ne.x, origin_.x), 
+            gfxm::lerp(gizmo_rect.nw.y, gizmo_rect.sw.y, origin_.y), 
+            0
+        );//gfxm::lerp(gizmo_rect.nw, gizmo_rect.se, 0.5f);
 
     bool just_pressed = !gizmo_rect.btn_pressed && button_pressed;
     bool just_released = gizmo_rect.btn_pressed && !button_pressed;
 
+    gfxm::vec3 rotator_pos = gfxm::lerp(gizmo_rect.nw, gizmo_rect.ne, 0.5f) + gfxm::vec3(.0f, 20.0f, .0f);
     if(!gizmo_rect.btn_pressed) {
-        if((cp_flags & GIZMO_RECT_SE) && gfxm::length(mouse3 - gizmo_rect.se) < active_radius) {
-            gizmo_rect.cp = GIZMO_RECT_SE;
-        } else if((cp_flags & GIZMO_RECT_NE) && gfxm::length(mouse3 - gizmo_rect.ne) < active_radius) {
-            gizmo_rect.cp = GIZMO_RECT_NE;
-        } else if((cp_flags & GIZMO_RECT_SW) && gfxm::length(mouse3 - gizmo_rect.sw) < active_radius) {
-            gizmo_rect.cp = GIZMO_RECT_SW;
-        } else if((cp_flags & GIZMO_RECT_NW) && gfxm::length(mouse3 - gizmo_rect.nw) < active_radius) {
-            gizmo_rect.cp = GIZMO_RECT_NW;
-        } else if((cp_flags & GIZMO_RECT_SOUTH) && gfxm::length(mouse3 - south) < active_radius) {
-            gizmo_rect.cp = GIZMO_RECT_SOUTH;
-        } else if((cp_flags & GIZMO_RECT_EAST) && gfxm::length(mouse3 - east) < active_radius) {
-            gizmo_rect.cp = GIZMO_RECT_EAST;
-        } else if((cp_flags & GIZMO_RECT_NORTH) && gfxm::length(mouse3 - north) < active_radius) {
-            gizmo_rect.cp = GIZMO_RECT_NORTH;
-        } else if((cp_flags & GIZMO_RECT_WEST) && gfxm::length(mouse3 - west) < active_radius) {
-            gizmo_rect.cp = GIZMO_RECT_WEST;
-        } else if((cp_flags & GIZMO_RECT_ORIGIN) && gfxm::length(mouse3 - origin) < active_radius) {
+        if((cp_flags & GIZMO_RECT_ORIGIN) && gfxm::length(mouse3 - origin) < active_radius) {
             gizmo_rect.cp = GIZMO_RECT_ORIGIN;
-        } else if((cp_flags & GIZMO_RECT_BOX) && rect.min.x < mouse.x && rect.max.x > mouse.x && rect.min.y < mouse.y && rect.max.y > mouse.y) {
+        } else if((cp_flags & GIZMO_RECT_SE) && gfxm::length(mouse3 - gizmo_rect.se) < active_radius12) {
+            gizmo_rect.cp = GIZMO_RECT_SE;
+        } else if((cp_flags & GIZMO_RECT_NE) && gfxm::length(mouse3 - gizmo_rect.ne) < active_radius12) {
+            gizmo_rect.cp = GIZMO_RECT_NE;
+        } else if((cp_flags & GIZMO_RECT_SW) && gfxm::length(mouse3 - gizmo_rect.sw) < active_radius12) {
+            gizmo_rect.cp = GIZMO_RECT_SW;
+        } else if((cp_flags & GIZMO_RECT_NW) && gfxm::length(mouse3 - gizmo_rect.nw) < active_radius12) {
+            gizmo_rect.cp = GIZMO_RECT_NW;
+        } else if((cp_flags & GIZMO_RECT_SOUTH) && gfxm::length(mouse3 - south) < active_radius12) {
+            gizmo_rect.cp = GIZMO_RECT_SOUTH;
+        } else if((cp_flags & GIZMO_RECT_EAST) && gfxm::length(mouse3 - east) < active_radius12) {
+            gizmo_rect.cp = GIZMO_RECT_EAST;
+        } else if((cp_flags & GIZMO_RECT_NORTH) && gfxm::length(mouse3 - north) < active_radius12) {
+            gizmo_rect.cp = GIZMO_RECT_NORTH;
+        } else if((cp_flags & GIZMO_RECT_WEST) && gfxm::length(mouse3 - west) < active_radius12) {
+            gizmo_rect.cp = GIZMO_RECT_WEST;
+        } else if((cp_flags & GIZMO_RECT_BOX) && rect.min.x < mouse3.x && rect.max.x > mouse3.x && rect.min.y < mouse3.y && rect.max.y > mouse3.y) {
             gizmo_rect.cp = GIZMO_RECT_BOX;
+        } else if((cp_flags & GIZMO_RECT_ROTATE) && gfxm::length(mouse3 - rotator_pos) < active_radius) {
+            gizmo_rect.cp = GIZMO_RECT_ROTATE;
         } else {
             gizmo_rect.cp = GIZMO_RECT_NONE;
         }
     }
 
     gizmo_rect.btn_pressed = button_pressed;
+    gfxm::rect delta;
     delta.min = gfxm::vec2(0,0);
     delta.max = gfxm::vec2(0,0);
     
     if(gizmo_rect.btn_pressed) {
-        gfxm::vec2 offs = mouse - gizmo_rect.last_mouse;
+        gfxm::vec3 last_mouse3 = gfxm::vec3(gizmo_rect.last_mouse, .0f);
+        last_mouse3 = gfxm::inverse(t) * gfxm::vec4(last_mouse3, 1.0f);
+        gfxm::vec3 offs = mouse3 - last_mouse3;
+
         if(gizmo_rect.cp == GIZMO_RECT_NE ||
             gizmo_rect.cp == GIZMO_RECT_EAST ||
             gizmo_rect.cp == GIZMO_RECT_SE
@@ -232,8 +115,36 @@ bool gizmoRect2d(gfxm::rect& rect, gfxm::rect& delta, const gfxm::vec2& mouse, b
         }
 
         if(gizmo_rect.cp == GIZMO_RECT_BOX) {
-            delta.min += offs;
-            delta.max += offs;
+            offs = t * gfxm::vec4(offs, .0f);
+            lcl_pos_offs = gfxm::vec2(offs.x, offs.y);
+        }
+
+        if(gizmo_rect.cp == GIZMO_RECT_ROTATE) {
+            gfxm::vec3 O = t * gfxm::vec4(origin, 1.0f);
+            gfxm::vec2 N = gfxm::normalize(gfxm::vec2(mouse.x, mouse.y) - gfxm::vec2(O.x, O.y));
+            float theta = atan2(N.x, N.y);
+            float deg = gfxm::degrees(theta);
+            
+            if(just_pressed) {
+                gizmo_rect.rotation_prev = deg;
+            } else {
+                float prev = gizmo_rect.rotation_prev;
+                float delta = deg - prev;
+
+                rotation -= delta;
+
+                gizmo_rect.rotation_prev = deg;
+            }
+        }
+
+        if(gizmo_rect.cp == GIZMO_RECT_ORIGIN) {
+            float noffs_x = offs.x / (gizmo_rect.ne.x - gizmo_rect.nw.x);
+            float noffs_y = offs.y / (gizmo_rect.nw.y - gizmo_rect.sw.y);
+            origin_.x += noffs_x;
+            origin_.y -= noffs_y;
+
+            offs = t * gfxm::vec4(offs, .0f);
+            lcl_pos_offs = gfxm::vec2(offs.x, offs.y);
         }
 
         rect.min += delta.min;
@@ -255,7 +166,7 @@ void gizmoRect2dDraw(float screenW, float screenH) {
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glViewport(
-        0, 0, 
+        0, 0,
         abs(gizmo_rect.viewport.max.x - gizmo_rect.viewport.min.x), 
         abs(gizmo_rect.viewport.max.y - gizmo_rect.viewport.min.y)
     );
@@ -267,7 +178,7 @@ void gizmoRect2dDraw(float screenW, float screenH) {
     );
 
     gfxm::vec4 col(0.5f, 0.5f, 0.5f, 1.0f);
-    gfxm::vec4 col_hover(1.0f, 1.0f, 0.0f, 1.0f);
+    gfxm::vec4 col_hover(1.0f, 0.8f, 0.0f, 1.0f);
 
     MeshData<VERTEX_FMT::LINE> mesh;
     std::vector<gfxm::vec3> vertices = {
@@ -332,6 +243,32 @@ void gizmoRect2dDraw(float screenW, float screenH) {
         vertices.insert(vertices.end(), v.begin(), v.end());
         colors.insert(colors.end(), c.begin(), c.end());
     };
+    std::function<void(const gfxm::vec3&, float, const gfxm::vec4&)> add_diamond_fn = 
+    [&vertices, &colors](const gfxm::vec3& pos, float sz, const gfxm::vec4& col){
+        float sz_half = sz * 0.5f;
+        gfxm::vec3 n = gfxm::vec3(pos.x, pos.y + sz_half, .0f);
+        gfxm::vec3 s = gfxm::vec3(pos.x, pos.y - sz_half, .0f);
+        gfxm::vec3 w = gfxm::vec3(pos.x - sz_half, pos.y, .0f);
+        gfxm::vec3 e = gfxm::vec3(pos.x + sz_half, pos.y, .0f);
+        std::vector<gfxm::vec3> v = {
+            n, e,
+            e, s,
+            s, w,
+            w, n
+        };
+        uint8_t r = 255 * col.x;
+        uint8_t g = 255 * col.y;
+        uint8_t b = 255 * col.z;
+        uint8_t a = 255 * col.w;
+        std::vector<unsigned char> c = {
+            r, g, b, a,   r, g, b, a,
+            r, g, b, a,   r, g, b, a,
+            r, g, b, a,   r, g, b, a,
+            r, g, b, a,   r, g, b, a
+        };
+        vertices.insert(vertices.end(), v.begin(), v.end());
+        colors.insert(colors.end(), c.begin(), c.end());
+    };
     
     if(gizmo_rect.cp_flags & GIZMO_RECT_NW) add_square_fn(gizmo_rect.nw, 8, gizmo_rect.cp == GIZMO_RECT_NW ? col_hover : col);
     if(gizmo_rect.cp_flags & GIZMO_RECT_NE) add_square_fn(gizmo_rect.ne, 8, gizmo_rect.cp == GIZMO_RECT_NE ? col_hover : col);
@@ -343,8 +280,17 @@ void gizmoRect2dDraw(float screenW, float screenH) {
     if(gizmo_rect.cp_flags & GIZMO_RECT_SOUTH) add_square_fn(gfxm::lerp(gizmo_rect.se, gizmo_rect.sw, 0.5f), 8, gizmo_rect.cp == GIZMO_RECT_SOUTH ? col_hover : col);
     if(gizmo_rect.cp_flags & GIZMO_RECT_WEST) add_square_fn(gfxm::lerp(gizmo_rect.sw, gizmo_rect.nw, 0.5f), 8, gizmo_rect.cp == GIZMO_RECT_WEST ? col_hover : col);
 
-    gfxm::vec3 center = gfxm::lerp(gizmo_rect.nw, gizmo_rect.se, 0.5f);
-    if(gizmo_rect.cp_flags & GIZMO_RECT_ORIGIN) add_cross_fn(center, 8, gizmo_rect.cp == GIZMO_RECT_ORIGIN ? col_hover : col);
+    gfxm::vec3 origin 
+        = gfxm::vec3(
+            gfxm::lerp(gizmo_rect.nw.x, gizmo_rect.ne.x, gizmo_rect.origin.x), 
+            gfxm::lerp(gizmo_rect.nw.y, gizmo_rect.sw.y, gizmo_rect.origin.y), 
+            0
+        );
+    if(gizmo_rect.cp_flags & GIZMO_RECT_ORIGIN) add_cross_fn(origin, 16, gizmo_rect.cp == GIZMO_RECT_ORIGIN ? col_hover : col);
+    if(gizmo_rect.cp_flags & GIZMO_RECT_ORIGIN) add_diamond_fn(origin, 12, gizmo_rect.cp == GIZMO_RECT_ORIGIN ? col_hover : col);
+
+    gfxm::vec3 rotator_pos = gfxm::lerp(gizmo_rect.nw, gizmo_rect.ne, 0.5f) + gfxm::vec3(.0f, 20.0f, .0f);
+    if(gizmo_rect.cp_flags & GIZMO_RECT_ROTATE) add_diamond_fn(rotator_pos, 12, gizmo_rect.cp == GIZMO_RECT_ROTATE ? col_hover : col);
 
     mesh.upload(VERTEX_FMT::ENUM_LINE::Position, vertices.data(), vertices.size() * sizeof(vertices[0]));
     mesh.upload(VERTEX_FMT::ENUM_LINE::ColorRGBA, colors.data(), colors.size() * sizeof(colors[0]));
@@ -353,7 +299,7 @@ void gizmoRect2dDraw(float screenW, float screenH) {
         "shaders/line.glsl", false, VERTEX_FMT::LINE::getVertexDesc()
     );
     sh->use();
-    gfxm::mat4 model(1.0f);
+    gfxm::mat4 model = gizmo_rect.transform;
     gfxm::mat4 view(1.0f);
     glUniformMatrix4fv(sh->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
     glUniformMatrix4fv(sh->getUniform("mat_model"), 1, GL_FALSE, (float*)&model);

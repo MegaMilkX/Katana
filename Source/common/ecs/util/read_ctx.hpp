@@ -14,6 +14,7 @@ class ecsWorldReadCtx {
     ecsWorld* world = 0;
     in_stream* strm = 0;
     std::unordered_map<attrib_id, std::string> attrib_names;
+    std::unordered_map<entity_id, entity_id> old_to_new_id;
 
 
 public:
@@ -22,6 +23,18 @@ public:
 
     ecsWorld*  getWorld() { return world; }
     in_stream* getStream() { return strm; }
+
+    void remapEntityId(entity_id oldId, entity_id newId) {
+        old_to_new_id[oldId] = newId;
+    }
+    entity_id getRemappedEntityId(entity_id oldId) {
+        auto it = old_to_new_id.find(oldId);
+        if(it == old_to_new_id.end()) {
+            return NULL_ENTITY;
+        } else {
+            return it->second;
+        }
+    }
 
     uint64_t convertMask(uint64_t mask) {
         uint64_t converted = 0;
@@ -113,7 +126,7 @@ public:
         if(e == SERIALIZED_ENTITY_ERROR) {
             return ENTITY_ERROR;
         } else {
-            return (entity_id)e;
+            return getRemappedEntityId((entity_id)e);
         }
     }
 

@@ -21,12 +21,13 @@ enum GIZMO_RECT_CONTROL_POINT {
     GIZMO_RECT_SW       = 0x080,
     GIZMO_RECT_ORIGIN   = 0x100,
     GIZMO_RECT_BOX      = 0x200,
+    GIZMO_RECT_ROTATE   = 0x400,
     
     GIZMO_RECT_CP_ALL   = 0xFFF
 };
 
 void gizmoRect2dViewport(float left, float right, float bottom, float top);
-bool gizmoRect2d(gfxm::rect& rect, gfxm::rect& delta, const gfxm::vec2& mouse, bool button_pressed, int cp_flags);
+bool gizmoRect2d(gfxm::mat4& t, gfxm::vec2& lcl_pos_offs, float& rotation, gfxm::vec2& origin, gfxm::rect& rect, const gfxm::vec2& mouse, bool button_pressed, int cp_flags);
 void gizmoRect2dDraw(float screenW, float screenH);
 
 class DocEcsWorldMode3d : public DocEcsWorldMode {
@@ -143,58 +144,31 @@ public:
         ecsEntityHandle hdl(state.world, state.selected_ent);
         if(hdl.isValid()){
             auto elem = hdl.findAttrib<ecsGuiElement>();
+            auto gui_text = hdl.findAttrib<ecsGuiText>();
             
             if(elem) {
-                gizmoRect2dViewport(0, vp_w, -vp_h, 0);
+                gizmoRect2dViewport(0, vp_w, 0, vp_h);
 
-                gfxm::rect rect;
-                rect.min.x = elem->rendered_pos.x;
-                rect.max.x = elem->rendered_pos.x + elem->rendered_size.x;
-                rect.min.y = elem->rendered_pos.y - elem->rendered_size.y;
-                rect.max.y = elem->rendered_pos.y;
+                gfxm::rect rect = elem->getBoundingRect();
                 auto& io = ImGui::GetIO();
                 auto impos = state.gvp.getMousePos();
                 gfxm::vec2 mpos(impos.x, impos.y);
-                float mx_coef = mpos.x / vp_w;
-                float my_coef = mpos.y / vp_h;
-                mpos.x = vp_w * mx_coef;
-                mpos.y = -(vp_h - vp_h * my_coef);
                 gfxm::rect rect_delta;
-                int giz_flags = 0;
-                if(elem->isLayout(GUI_ELEM_LAYOUT_FLOAT)) {
-                    giz_flags = GIZMO_RECT_CP_ALL;
-                } else if(elem->isLayout(GUI_ELEM_LAYOUT_DOCK)) {
-                    auto d = elem->getLayoutDocking();
-                    if(d->side == GUI_ELEM_DOCK_LEFT) {
-                        giz_flags = GIZMO_RECT_EAST;
-                    } else if(d->side == GUI_ELEM_DOCK_RIGHT) {
-                        giz_flags = GIZMO_RECT_WEST;
-                    } else if(d->side == GUI_ELEM_DOCK_TOP) {
-                        giz_flags = GIZMO_RECT_SOUTH;
-                    } else if(d->side == GUI_ELEM_DOCK_BOTTOM) {
-                        giz_flags = GIZMO_RECT_NORTH;
-                    }
-                }
-                using_gizmo = gizmoRect2d(rect, rect_delta, mpos, io.MouseDown[0], giz_flags);
+                int giz_flags = GIZMO_RECT_CP_ALL;
+
+                gfxm::mat4 transform = elem->getTransform();
+                gfxm::vec2 pos_offs;
+                float      rotation = elem->getRotation();
+                gfxm::vec2 origin = elem->getOrigin();
+                using_gizmo = gizmoRect2d(transform, pos_offs, rotation, origin, rect, mpos, io.MouseDown[0], giz_flags);
                 if(using_gizmo) {
-                    if(elem->isLayout(GUI_ELEM_LAYOUT_FLOAT)) {
-                        auto l = elem->getLayoutFloating();
-                        l->position.x += rect_delta.min.x;
-                        l->position.y += rect_delta.max.y;
-                        l->size.x     += rect_delta.max.x - rect_delta.min.x;
-                        l->size.y     -= rect_delta.min.y - rect_delta.max.y;
-                    } else if(elem->isLayout(GUI_ELEM_LAYOUT_DOCK)) {
-                        auto d = elem->getLayoutDocking();
-                        if(d->side == GUI_ELEM_DOCK_LEFT || d->side == GUI_ELEM_DOCK_RIGHT) {
-                            d->size = rect.max.x - rect.min.x;
-                        } else if(d->side == GUI_ELEM_DOCK_TOP || d->side == GUI_ELEM_DOCK_BOTTOM) {
-                            d->size = rect.max.y - rect.min.y;
-                        }
-                    }
+                    elem->translate(pos_offs);
+                    elem->setRotation(rotation);
+                    elem->setOrigin(origin);
                 }
 
                 state.gvp.getViewport()->getFinalBuffer()->bind();
-                gizmoRect2dDraw(state.gvp.getSize().x, -state.gvp.getSize().y);
+                gizmoRect2dDraw(state.gvp.getSize().x, state.gvp.getSize().y);
             }
         }
         if (!state.world->getEntities().empty() && !using_gizmo) {
@@ -276,7 +250,14 @@ public:
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_RESOURCE")) {
                 ResourceNode* node = *(ResourceNode**)payload->Data;
                 LOG("Payload received: " << node->getFullName());
-                if(has_suffix(node->getName(), ".entity")) {
+                if(has_suffix(node->getName(), ".ecsw")) {
+                    state.backupState();
+                    std::string fname = node->getFullName();
+                    auto hdl = state.world->mergeWorld(fname.c_str());
+                    if(hdl.isValid()) {
+                        state.selected_ent = hdl.getId();
+                    }
+                } else if(has_suffix(node->getName(), ".entity")) {
                     state.backupState();
                     std::string fname = node->getFullName();
                     file_stream f(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + fname, file_stream::F_IN);
@@ -296,28 +277,6 @@ public:
                     );
                     model_dnd_tasks.insert(std::unique_ptr<edTaskEcsWorldModelDragNDrop>(task));
                     edTaskPost(task);
-                    /*
-                    auto sceneGraphSys = state.world->getSystem<ecsysSceneGraph>();
-                    entity_id ent = sceneGraphSys->createNode();
-                    ecsSubScene sub_scene(std::shared_ptr<ecsWorld>(new ecsWorld()));
-                    state.world->setAttrib(ent, sub_scene);
-                    
-                    ecsysSceneGraph* sceneGraph = sub_scene.getWorld()->getSystem<ecsysSceneGraph>();
-                    state.world->createAttrib<ecsTagSubSceneRender>(ent);
-                    state.world->createAttrib<ecsWorldTransform>(ent);
-
-                    assimpImportEcsScene(sceneGraph, node->getFullName().c_str());
-
-                    state.world->createAttrib<ecsName>(ent);
-                    state.world->getAttrib<ecsName>(ent)->name = node->getName();
-                    selected_ent = ent;
-
-                    spawn_tweak_stage_stack.push_back(SpawnTweakStage(
-                        ecsEntityHandle(state.world, selected_ent), cursor_data, [](ecsEntityHandle e, const SpawnTweakData& c){
-                            e.getAttrib<ecsTranslation>()->setPosition(c.cursor.pos + c.cursor.normal * 0.5f);
-                            return c.cursor_start;
-                        }
-                    ));*/
                 }
             }
             ImGui::EndDragDropTarget();

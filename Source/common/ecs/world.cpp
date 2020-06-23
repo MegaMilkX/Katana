@@ -337,6 +337,23 @@ ecsEntityHandle ecsWorld::findEntity (const char* name) {
     }
     return ecsEntityHandle(0, -1);
 }
+ecsEntityHandle ecsWorld::findChild (entity_id parent, const char* name) {
+    auto child = getFirstChild(parent);
+    while(child != NULL_ENTITY) {
+        auto a = findAttrib<ecsName>(child);
+        if(a) {
+            if(a->name == name) {
+                return ecsEntityHandle(this, child);
+            }
+        }
+        auto hdl = findChild(child, name);
+        if(hdl.isValid()) {
+            return hdl;
+        }
+        child = getNextSibling(child);
+    }
+    return ecsEntityHandle(0, -1);
+}
 void ecsWorld::setParent (entity_id parent, entity_id child) {
     auto e = entities.deref(child);
     assert(e);
@@ -419,6 +436,26 @@ entity_id ecsWorld::getNextSibling (entity_id e) {
     auto en = entities.deref(e);
     assert(en);
     return en->next_sibling_uid;
+}
+
+
+ecsEntityHandle ecsWorld::mergeWorld (const char* res_name) {
+    auto w = getResource<ecsWorld>(res_name);
+    if(!w) {
+        return ecsEntityHandle(0,-1);
+    }
+    auto hdl = mergeWorld(w.get());
+    hdl.getAttrib<ecsName>()->name = res_name;
+    return hdl;
+}
+ecsEntityHandle ecsWorld::mergeWorld (ecsWorld* world) {
+    auto merge_root = createEntity();
+
+    dstream strm;
+    world->serialize(strm);
+    strm.jump(0);
+    deserialize(strm, strm.bytes_available(), merge_root.getId());
+    return merge_root;
 }
 
 
@@ -631,26 +668,48 @@ void ecsWorld::serialize(out_stream& out) {
     }
 }
 bool ecsWorld::deserialize(in_stream& in, size_t sz) {
+    return deserialize(in, sz, NULL_ENTITY);
+}
+bool ecsWorld::deserialize(in_stream& in, size_t sz, entity_id merge_parent) {
     ecsWorldReadCtx ctx(this, &in);
 
     deserializeAttribDesc(ctx);
 
     // Template references
     uint32_t template_ref_count = ctx.read<uint32_t>();
+    std::vector<entity_id> tpl_entities;
+    std::vector<std::shared_ptr<EntityTemplate>> tpl_templates;
     for(int i = 0; i < template_ref_count; ++i) {
         entity_id e = ctx.read<uint64_t>();
         auto tpl = ctx.readResource<EntityTemplate>();
-        setTemplateLink(e, tpl);
+        tpl_entities.push_back(e);
+        tpl_templates.push_back(tpl);
     }
 
     // Entities
     uint64_t ent_count = ctx.read<uint64_t>();
+    std::vector<entity_id> loaded_entities;
     for(int i = 0; i < ent_count; ++i) {
-        createEntity();
+        auto hdl = createEntity();
+        loaded_entities.push_back(hdl.getId());
+        ctx.remapEntityId(i, hdl.getId());
+    }
+
+    for(int i = 0; i < tpl_entities.size() && i < tpl_templates.size(); ++i) {
+        setTemplateLink(ctx.getRemappedEntityId(tpl_entities[i]), tpl_templates[i]);
     }
 
     for(int i = 0; i < ent_count; ++i) {
-        deserializeEntity(ctx, i);
+        deserializeEntity(ctx, ctx.getRemappedEntityId(i));
+    }
+
+    if(merge_parent != NULL_ENTITY) {
+        for(int i = 0; i < loaded_entities.size(); ++i) {
+            auto p = getParent(loaded_entities[i]);
+            if(p == NULL_ENTITY) {
+                setParent(merge_parent, loaded_entities[i]);
+            }
+        }
     }
 
     return true;
@@ -728,9 +787,9 @@ void ecsWorld::deserializeEntity (ecsWorldReadCtx& ctx, entity_id e, uint64_t at
     inheritedBitmask = ctx.convertMask(inheritedBitmask);
 
     auto ent = ctx.getWorld()->entities.deref(e);
-    ent->parent_uid = ctx.read<entity_id>();
-    ent->next_sibling_uid = ctx.read<entity_id>();
-    ent->first_child_uid = ctx.read<entity_id>();
+    ent->parent_uid = ctx.getRemappedEntityId(ctx.read<entity_id>());
+    ent->next_sibling_uid = ctx.getRemappedEntityId(ctx.read<entity_id>());
+    ent->first_child_uid = ctx.getRemappedEntityId(ctx.read<entity_id>());
 
     uint32_t attrib_count = ctx.read<uint32_t>();
 

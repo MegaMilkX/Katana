@@ -19,6 +19,8 @@ public:
 
     void        remove();
 
+    // Find child by name
+    ecsEntityHandle findChild(const char* name);
     // Get existing attribute
     template<typename T>
     T*          findAttrib() const;

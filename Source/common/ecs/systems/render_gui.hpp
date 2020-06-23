@@ -48,12 +48,16 @@ struct DrawList2d {
     size_t                  count;
 };
 
-class ecsTupleGuiElement : public ecsTuple<ecsGuiElement, ecsOptional<ecsGuiImage>, ecsOptional<ecsGuiText>> {
-public:
-};
+void draw2d(const DrawList2d& dl, float screenW, float screenH);
+
+class ecsTupleGuiElement : public ecsTuple<ecsGuiElement> {};
+class ecsTplGuiText : public ecsTuple<ecsGuiElement, ecsGuiText> {};
+class ecsTplGuiImage : public ecsTuple<ecsGuiElement, ecsGuiImage> {};
 
 class ecsRenderGui : public ecsSystem<
-    ecsTupleGuiElement
+    ecsTupleGuiElement,
+    ecsTplGuiText,
+    ecsTplGuiImage
 >{
     std::vector<DrawCmd2d> cmds;
     std::shared_ptr<Texture2D> texture_white_px;
@@ -62,123 +66,7 @@ class ecsRenderGui : public ecsSystem<
     void addQuad(const gfxm::rect& parent_rect, gfxm::rect& rect, ecsTupleGuiElement* elem, entity_id selected_ent) {
         auto e = elem->get<ecsGuiElement>();
 
-        auto layoutFloat = e->getLayoutFloating();
-        auto layoutDock = e->getLayoutDocking();
-        bool isLayoutAuto = e->isLayout(GUI_ELEM_LAYOUT_AUTO);
-        
-        gfxm::vec2 pos(rect.min.x, rect.min.y);
-        gfxm::vec2 size = rect.max;
-        if(layoutFloat) {
-            pos = pos + layoutFloat->position;
-            size = layoutFloat->size;
-        } if (layoutDock) {
-            auto side = layoutDock->side;
-            float dock_sz = layoutDock->size;
-            if(side == GUI_ELEM_DOCK_TOP) {
-                size.y = dock_sz;
-                rect.min.y -= dock_sz;
-                rect.max.y -= dock_sz;
-            } else if(side == GUI_ELEM_DOCK_BOTTOM) {
-                pos.y -= size.y - dock_sz;
-                size.y = dock_sz;
-                rect.max.y -= dock_sz;
-            } else if(side == GUI_ELEM_DOCK_LEFT) {
-                size.x = dock_sz;
-                rect.min.x += dock_sz;
-                rect.max.x -= dock_sz;
-            } else if(side == GUI_ELEM_DOCK_RIGHT) {
-                pos.x += size.x - dock_sz;
-                size.x = dock_sz;
-                rect.max.x -= dock_sz;
-            }
-        }
-        pos.x += e->margin.x;
-        pos.y -= e->margin.y;
-        size.x -= e->margin.x + e->margin.z;
-        size.y -= e->margin.y + e->margin.w;
 
-        pos.x = ceil(pos.x);
-        pos.y = ceil(pos.y);
-        gfxm::rect rect_fin(
-            pos, 
-            size
-        );
-        gfxm::rect rect_inner(
-            pos,
-            size
-        );
-        rect_inner.min.x += e->padding.x;
-        rect_inner.min.y -= e->padding.y;
-        rect_inner.max.x -= e->padding.x + e->padding.z;
-        rect_inner.max.y -= e->padding.y + e->padding.w;
-
-        e->rendered_pos = rect_inner.min;
-        e->rendered_size = rect_inner.max;
-
-        GLuint tex = texture_white_px->GetGlName();
-        if(e->bg_image) {
-            tex = e->bg_image->GetGlName();
-        }
-
-        if(e->is<GuiElemText>()) {
-            auto text = e->getParams<GuiElemText>();
-            if (!text->text.empty() && text->font) {
-                text->textBuffer.rebuild(text->font.get(), text->text, text->face_height, text->alignment, gfxm::vec2(rect_fin.max.x, rect_fin.max.y));
-
-                if(text->vertical_center) {
-                    pos.y -= size.y * 0.5f - text->textBuffer.bb_size.y * 0.5f;
-                }
-
-                DrawCmd2d cmd;
-                memset(&cmd, 0, sizeof(cmd));
-                cmd.type = DRAW_CMD_TEXT;
-                cmd.transform = gfxm::translate(gfxm::mat4(1.0f), gfxm::vec3(pos.x, pos.y, 0));
-                cmd.clip_rect = parent_rect;
-                cmd.text.vao = text->textBuffer.vao;
-                cmd.text.tex_atlas = text->font->getAtlasTexture(text->face_height);
-                cmd.text.tex_lookup = text->font->getGlyphLookupTexture(text->face_height);
-                cmd.text.lookup_texture_width = text->font->getLookupTextureWidth(text->face_height);
-                cmd.text.vertex_count = text->textBuffer.vertex_count;
-                cmds.push_back(cmd);
-            }
-        } else if(e->is<GuiElemImage>()) {
-            auto img = e->getParams<GuiElemImage>();
-
-            GLuint tex = texture_white_px->GetGlName();
-            if(img->image) {
-                tex = img->image->GetGlName();
-            }
-            
-            DrawCmd2d cmd;
-            memset(&cmd, 0, sizeof(cmd));
-            cmd.type = DRAW_CMD_QUAD;
-            cmd.transform = gfxm::translate(gfxm::mat4(1.0f), gfxm::vec3(rect_fin.min.x, rect_fin.min.y, 0));
-            cmd.clip_rect = parent_rect;
-            cmd.quad.width = rect_fin.max.x;
-            cmd.quad.height = rect_fin.max.y;
-            cmd.quad.color = gfxm::vec4(1,1,1,1);
-            cmd.quad.texture = tex;
-            cmds.push_back(cmd);
-        } else if(e->is<GuiElemContainer>()) {
-            auto cont = e->getParams<GuiElemContainer>();
-
-            DrawCmd2d cmd;
-            memset(&cmd, 0, sizeof(cmd));
-            cmd.type = DRAW_CMD_QUAD;
-            cmd.transform = gfxm::translate(gfxm::mat4(1.0f), gfxm::vec3(rect_fin.min.x, rect_fin.min.y, 0));
-            cmd.clip_rect = parent_rect;
-            cmd.quad.width = rect_fin.max.x;
-            cmd.quad.height = rect_fin.max.y;
-            cmd.quad.color = e->bg_color;
-            cmd.quad.texture = tex;
-            cmds.push_back(cmd);
-
-            auto child = (ecsTupleGuiElement*)elem->first_child;
-            while(child) {
-                addQuad(rect_fin, rect_inner, child, selected_ent);
-                child = (ecsTupleGuiElement*)child->next_sibling;
-            }
-        }
     }
 
 public:
@@ -195,6 +83,108 @@ public:
     DrawList2d makeDrawList(float screenW, float screenH, entity_id selected_ent) {
         cmds.clear();
 
+        for(int i = get_dirty_index<ecsTplGuiText>(); i < count<ecsTplGuiText>(); ++i) {
+            auto tuple = get<ecsTplGuiText>(i);
+            auto e = tuple->get<ecsGuiElement>();
+            auto t = tuple->get<ecsGuiText>();
+            if(tuple->is_dirty<ecsGuiText>()) {
+                float width = t->bb_width;
+                float height = t->bb_height;
+                e->bounding_rect = gfxm::rect(0, -height, width, 0);
+            }
+
+            tuple->clear_dirty_signature();
+        }
+        clear_dirty<ecsTplGuiText>();
+
+        for(int i = get_dirty_index<ecsTplGuiImage>(); i < count<ecsTplGuiImage>(); ++i) {
+            auto tuple = get<ecsTplGuiImage>(i);
+            auto e = tuple->get<ecsGuiElement>();
+            auto img = tuple->get<ecsGuiImage>();
+            if(tuple->is_dirty<ecsGuiImage>() && img->image) {
+                float width = img->image->Width();
+                float height = img->image->Height();
+                e->bounding_rect = gfxm::rect(0, -height, width, 0);
+            }
+
+            tuple->clear_dirty_signature();
+        }
+        clear_dirty<ecsTplGuiImage>();
+
+        for(int i = get_dirty_index<ecsTupleGuiElement>(); i < count<ecsTupleGuiElement>(); ++i) {
+            auto tuple = get<ecsTupleGuiElement>(i);
+            auto e = tuple->get<ecsGuiElement>();
+
+            gfxm::vec3 translation = gfxm::vec3(e->translation.x, e->translation.y, .0f);
+            gfxm::quat rotation    = gfxm::angle_axis(gfxm::radian(e->rotation), gfxm::vec3(.0f, .0f, 1.0f));
+            gfxm::vec3 scale       = gfxm::vec3(1, 1, 1);
+
+            gfxm::mat4 local = gfxm::mat4(1.0f);
+            local = gfxm::translate(local, translation);
+            local = local * gfxm::to_mat4(rotation);
+            local = gfxm::translate(
+                local, 
+                gfxm::vec3(-e->bounding_rect.max.x * e->origin.x, -e->bounding_rect.min.y * e->origin.y, 0)
+            );
+            local = gfxm::scale(local, scale);
+            e->transform = local;
+
+            if(tuple->get_parent()) {
+                e->transform = tuple->get_parent()->get<ecsGuiElement>()->transform * e->transform;
+                e->enabled = tuple->get_parent()->get<ecsGuiElement>()->isEnabled();
+            }
+
+            tuple->clear_dirty_signature();
+        }
+        clear_dirty<ecsTupleGuiElement>();
+
+        
+        for(auto& a : get_array<ecsTplGuiImage>()) {
+            if(!a->get<ecsGuiElement>()->isEnabled()) {
+                continue;
+            }
+            auto img = a->get<ecsGuiImage>();
+            
+            if(img->image) {
+                gfxm::rect rect = a->get<ecsGuiElement>()->bounding_rect;
+
+                DrawCmd2d cmd;
+                memset(&cmd, 0, sizeof(cmd));
+                cmd.type = DRAW_CMD_QUAD;
+                cmd.clip_rect = gfxm::rect(0, 0, screenW, screenH);
+                cmd.transform = a->get<ecsGuiElement>()->transform;
+                cmd.quad.color = gfxm::vec4(1,1,1,1);
+                cmd.quad.width = rect.max.x - rect.min.x;
+                cmd.quad.height = rect.max.y - rect.min.y;
+                cmd.quad.texture = img->image->GetGlName();
+                cmds.push_back(cmd);
+            }
+        }
+
+        for(auto& a : get_array<ecsTplGuiText>()) {
+            if(!a->get<ecsGuiElement>()->isEnabled()) {
+                continue;
+            }
+            auto text = a->get<ecsGuiText>();
+            
+            if(text->font && !text->str.empty()) {
+                //text->rebuildBuffers();
+
+                DrawCmd2d cmd;
+                memset(&cmd, 0, sizeof(cmd));
+                cmd.type = DRAW_CMD_TEXT;
+                cmd.clip_rect = gfxm::rect(0, 0, screenW, screenH);
+                cmd.transform = a->get<ecsGuiElement>()->transform;
+                cmd.text.lookup_texture_width = text->font->getLookupTextureWidth(text->face_height);
+                cmd.text.tex_atlas            = text->font->getAtlasTexture(text->face_height);
+                cmd.text.tex_lookup           = text->font->getGlyphLookupTexture(text->face_height);
+                cmd.text.vao                  = text->vao;
+                cmd.text.vertex_count         = text->vertex_count;
+                cmds.push_back(cmd);
+            }
+        }
+
+        /*
         std::vector<ecsTupleGuiElement*> root_elements;
         for(auto& a : get_array<ecsTupleGuiElement>()) {
             auto e = a->get<ecsGuiElement>();
@@ -206,7 +196,7 @@ public:
         gfxm::rect rect(0, 0, screenW, screenH);
         for(auto& a : root_elements) {
             addQuad(gfxm::rect(0, 0, screenW, screenH), rect, a, selected_ent);           
-        }
+        }*/
 
         return DrawList2d{
             cmds.data(), cmds.size()
