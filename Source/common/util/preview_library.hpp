@@ -4,11 +4,11 @@
 #include <memory>
 #include <string>
 
-#include "../common/resource/texture2d.h"
+#include "../resource/texture2d.h"
 
-#include "../common/lib/sqlite/sqlite3.h"
+#include "../lib/sqlite/sqlite3.h"
 
-#include "../common/util/singleton.hpp"
+#include "singleton.hpp"
 
 class PreviewLibrary : public Singleton<PreviewLibrary> {
     sqlite3* _db;

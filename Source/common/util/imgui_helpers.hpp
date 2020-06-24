@@ -20,6 +20,8 @@
 
 #include "../resource/resource_desc_library.hpp"
 
+#include "preview_library.hpp"
+
 
 typedef void(*tryOpenDocumentFn_t)(const std::string&);
 typedef void(*tryOpenDocumentFromPtrFn_t)(std::shared_ptr<Resource> res);
@@ -88,18 +90,20 @@ void imguiResourceTreeCombo(
     
     if(ImGui::BeginCombo(MKSTR("###" << label).c_str(), current_name.c_str())) {
         std::set<const ResourceNode*> valid_nodes;
-        std::function<bool(const std::shared_ptr<ResourceNode>&, const std::string&, std::set<const ResourceNode*>&)> walkNodes;
-        walkNodes = [&walkNodes](const std::shared_ptr<ResourceNode>& node, const std::string& suffix,  std::set<const ResourceNode*>& valid_nodes)->bool {
+        std::function<bool(const std::shared_ptr<ResourceNode>&, const std::vector<std::string>&, std::set<const ResourceNode*>&)> walkNodes;
+        walkNodes = [&walkNodes](const std::shared_ptr<ResourceNode>& node, const std::vector<std::string>& extensions,  std::set<const ResourceNode*>& valid_nodes)->bool {
             bool has_valid_child = false;
             for(auto& kv : node->getChildren()) {
-                if(walkNodes(kv.second, suffix, valid_nodes)) {
+                if(walkNodes(kv.second, extensions, valid_nodes)) {
                     has_valid_child = true;
                 }
             }
             if(!has_valid_child) {
-                if(has_suffix(node->getName(), suffix)) {
-                    valid_nodes.insert(node.get());
-                    return true;
+                for(int i = 0; i < extensions.size(); ++i) {
+                    if(has_suffix(node->getName(), "." + extensions[i])) {
+                        valid_nodes.insert(node.get());
+                        return true;
+                    }
                 }
             } else {
                 valid_nodes.insert(node.get());
@@ -108,7 +112,8 @@ void imguiResourceTreeCombo(
             return false;
         };
 
-        walkNodes(gResourceTree.getRoot(), MKSTR("." << ext), valid_nodes);
+        std::vector<std::string> tokens = split(ext, ',');
+        walkNodes(gResourceTree.getRoot(), tokens, valid_nodes);
 
         std::function<void(const std::shared_ptr<ResourceNode>&, const std::set<const ResourceNode*>&)> imguiResourceTree;
         imguiResourceTree = [&callback, &res, &imguiResourceTree](const std::shared_ptr<ResourceNode>& node, const std::set<const ResourceNode*>& valid_nodes) {
@@ -132,10 +137,16 @@ void imguiResourceTreeCombo(
                     ImGui::TreePop();
                 }
             } else {
-                if(ImGui::Selectable(node_label.c_str())) {
+                auto tex = PreviewLibrary::get()->getPreview(node->getFullName(), time(0) /* TODO */);
+                ImGui::Image(
+                    (ImTextureID)tex->GetGlName(), 
+                    ImVec2(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()),
+                    ImVec2(0, 1), ImVec2(1, 0)
+                ); ImGui::SameLine();
+                bool selected = (res && res->Name() == node->getFullName());
+                if(ImGui::Selectable(node_label.c_str(), selected)) {
                     res = node->getResource<T>();
                     if(callback) callback();
-                    //setClip(node->getResource<AudioClip>());
                 }
             }
         };
@@ -149,6 +160,20 @@ void imguiResourceTreeCombo(
         }
 
         ImGui::EndCombo();
+    }
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_RESOURCE")) {
+            ResourceNode* node = *(ResourceNode**)payload->Data;
+            if(node) {
+                auto r = node->getResource<T>();
+                if(r) {
+                    res = r;
+                    if(callback) callback();
+                }
+
+            }
+        }
+        ImGui::EndDragDropTarget();
     }
 
     //ImGui::SameLine();

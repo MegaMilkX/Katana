@@ -80,6 +80,7 @@ friend ecsRenderGui;
     float               rotation;
     gfxm::vec2          origin              = gfxm::vec2(0.5f, 0.5f);
 
+    gfxm::mat4          local_transform = gfxm::mat4(1.0f);
     gfxm::mat4          transform = gfxm::mat4(1.0f);
     gfxm::rect          bounding_rect;
 
@@ -97,6 +98,7 @@ public:
     bool              isEnabled() const { return enabled; }
     const float       getRotation() const { return rotation; }
     const gfxm::vec2& getOrigin() const { return origin; }
+    const gfxm::mat4& getLocalTransform() const { return local_transform; }
     const gfxm::mat4& getTransform() const { return transform; }
 
     const gfxm::rect& getBoundingRect() const {
@@ -127,17 +129,6 @@ public:
             setRotation(rotation);
         }
     }
-};
-class ecsGuiNode : public ecsAttrib<ecsGuiNode> {
-friend ecsRenderGui;
-    gfxm::vec2 translation;
-    gfxm::vec2 size;
-public:
-
-};
-class ecsGuiContentLayout : public ecsAttrib<ecsGuiContentLayout> {
-public:
-
 };
 class ecsGuiText : public ecsAttrib<ecsGuiText> {
     friend ecsRenderGui;
@@ -371,9 +362,32 @@ public:
     }
 
     void onGui(ecsWorld* world, entity_id e) override {
-        imguiResourceTreeCombo("image###quadimage", image, "png", [this](){
+        imguiResourceTreeCombo("image###quadimage", image, "png,jpg", [this](){
             setImage(image);
         });
+    }
+
+};
+class ecsGuiAnchor : public ecsAttrib<ecsGuiAnchor> {
+friend ecsRenderGui;
+    gfxm::vec2 anchor_origin;
+    
+public:
+    void setAnchor(float hori, float vert) { setAnchor(gfxm::vec2(hori, vert)); }
+    void setAnchor(const gfxm::vec2& anchor) { anchor_origin = anchor; getEntityHdl().signalUpdate<ecsGuiAnchor>(); }
+    const gfxm::vec2& getAnchor() const { return anchor_origin; }
+
+    void write(ecsWorldWriteCtx& ctx) override {
+        ctx.write(anchor_origin);
+    }
+    void read(ecsWorldReadCtx& ctx) override {
+        ctx.read(anchor_origin);
+    }
+
+    void onGui(ecsWorld* world, entity_id e) override {
+        if(ImGui::DragFloat2("anchor###guianchor", (float*)&anchor_origin, .001f, .0f, 1.0f)) {
+            setAnchor(anchor_origin);
+        }
     }
 
 };

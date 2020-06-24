@@ -22,7 +22,7 @@ static struct {
 void gizmoRect2dViewport(float left, float right, float bottom, float top) {
     gizmo_rect.viewport = gfxm::rect(left, bottom, right, top);
 }
-bool gizmoRect2d(gfxm::mat4& t, gfxm::vec2& lcl_pos_offs, float& rotation, gfxm::vec2& origin_, gfxm::rect& rect, const gfxm::vec2& mouse, bool button_pressed, int cp_flags = GIZMO_RECT_CP_ALL) {
+bool gizmoRect2d(gfxm::mat4& t, const gfxm::mat4& local, gfxm::vec2& lcl_pos_offs, float& rotation, gfxm::vec2& origin_, gfxm::rect& rect, const gfxm::vec2& mouse, bool button_pressed, int cp_flags = GIZMO_RECT_CP_ALL) {
     gizmo_rect.transform = t;
     gizmo_rect.origin = gfxm::vec3(origin_.x, origin_.y, .0f);
     gizmo_rect.cp_flags = cp_flags;
@@ -30,6 +30,8 @@ bool gizmoRect2d(gfxm::mat4& t, gfxm::vec2& lcl_pos_offs, float& rotation, gfxm:
     gizmo_rect.se = gfxm::vec3(rect.max.x, rect.min.y, .0f);
     gizmo_rect.ne = gfxm::vec3(gizmo_rect.se.x, gizmo_rect.nw.y, .0f);
     gizmo_rect.sw = gfxm::vec3(gizmo_rect.nw.x, gizmo_rect.se.y, .0f);
+
+    gfxm::mat4 parent_transform = gfxm::inverse(local) * t;
 
     gfxm::vec3 mouse3(mouse.x, mouse.y, .0f);
     mouse3 = gfxm::inverse(t) * gfxm::vec4(mouse3, 1.0f);
@@ -88,6 +90,7 @@ bool gizmoRect2d(gfxm::mat4& t, gfxm::vec2& lcl_pos_offs, float& rotation, gfxm:
         gfxm::vec3 last_mouse3 = gfxm::vec3(gizmo_rect.last_mouse, .0f);
         last_mouse3 = gfxm::inverse(t) * gfxm::vec4(last_mouse3, 1.0f);
         gfxm::vec3 offs = mouse3 - last_mouse3;
+        gfxm::vec3 lcl_offs = gfxm::inverse(parent_transform) * t * gfxm::vec4(offs, .0f);
 
         if(gizmo_rect.cp == GIZMO_RECT_NE ||
             gizmo_rect.cp == GIZMO_RECT_EAST ||
@@ -115,8 +118,7 @@ bool gizmoRect2d(gfxm::mat4& t, gfxm::vec2& lcl_pos_offs, float& rotation, gfxm:
         }
 
         if(gizmo_rect.cp == GIZMO_RECT_BOX) {
-            offs = t * gfxm::vec4(offs, .0f);
-            lcl_pos_offs = gfxm::vec2(offs.x, offs.y);
+            lcl_pos_offs = gfxm::vec2(lcl_offs.x, lcl_offs.y);
         }
 
         if(gizmo_rect.cp == GIZMO_RECT_ROTATE) {
@@ -143,8 +145,7 @@ bool gizmoRect2d(gfxm::mat4& t, gfxm::vec2& lcl_pos_offs, float& rotation, gfxm:
             origin_.x += noffs_x;
             origin_.y -= noffs_y;
 
-            offs = t * gfxm::vec4(offs, .0f);
-            lcl_pos_offs = gfxm::vec2(offs.x, offs.y);
+            lcl_pos_offs = gfxm::vec2(lcl_offs.x, lcl_offs.y);
         }
 
         rect.min += delta.min;
@@ -177,7 +178,7 @@ void gizmoRect2dDraw(float screenW, float screenH) {
         -1000.0f, 1000.0f
     );
 
-    gfxm::vec4 col(0.5f, 0.5f, 0.5f, 1.0f);
+    gfxm::vec4 col(0.7f, 0.5f, 0.6f, 1.0f);
     gfxm::vec4 col_hover(1.0f, 0.8f, 0.0f, 1.0f);
 
     MeshData<VERTEX_FMT::LINE> mesh;

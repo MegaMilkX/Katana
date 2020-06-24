@@ -23,8 +23,8 @@
 
 #include "../common/gen/no_preview.png.h"
 
-#include "preview_library.hpp"
-#include "thumb_builder.hpp"
+#include "../common/util/preview_library.hpp"
+#include "../common/util/thumb_builder.hpp"
 
 void EditorResourceTree::initDirWatch(const std::string& dir) {
     dwChangeHandle = FindFirstChangeNotificationA(

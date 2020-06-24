@@ -1,8 +1,8 @@
 #include "thumb_builder.hpp"
 
 #include <windows.h>
-#include "../common/util/filesystem.hpp"
-#include "../common/util/log.hpp"
+#include "filesystem.hpp"
+#include "log.hpp"
 
 #include "preview_library.hpp"
 

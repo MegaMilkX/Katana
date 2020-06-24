@@ -25,10 +25,9 @@ void ecsInit (void) {
     regEcsAttrib<ecsLightOmni>("LightOmni", "Rendering");
 
     regEcsAttrib<ecsGuiElement>("GuiElement", "GUI");
-    regEcsAttrib<ecsGuiNode>("GuiNode", "GUI");
-    regEcsAttrib<ecsGuiContentLayout>("GuiContentLayout", "GUI");
     regEcsAttrib<ecsGuiText>("GuiText", "GUI");
     regEcsAttrib<ecsGuiImage>("GuiImage", "GUI");
+    regEcsAttrib<ecsGuiAnchor>("GuiAnchor", "GUI");
 
     regEcsAttrib<ecsSubSceneAnimator>("SubSceneAnimator");
     regEcsAttrib<ecsAudioListener>("AudioListener", "Audio");

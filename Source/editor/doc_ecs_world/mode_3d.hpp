@@ -27,7 +27,7 @@ enum GIZMO_RECT_CONTROL_POINT {
 };
 
 void gizmoRect2dViewport(float left, float right, float bottom, float top);
-bool gizmoRect2d(gfxm::mat4& t, gfxm::vec2& lcl_pos_offs, float& rotation, gfxm::vec2& origin, gfxm::rect& rect, const gfxm::vec2& mouse, bool button_pressed, int cp_flags);
+bool gizmoRect2d(gfxm::mat4& t, const gfxm::mat4& local, gfxm::vec2& lcl_pos_offs, float& rotation, gfxm::vec2& origin, gfxm::rect& rect, const gfxm::vec2& mouse, bool button_pressed, int cp_flags);
 void gizmoRect2dDraw(float screenW, float screenH);
 
 class DocEcsWorldMode3d : public DocEcsWorldMode {
@@ -160,7 +160,7 @@ public:
                 gfxm::vec2 pos_offs;
                 float      rotation = elem->getRotation();
                 gfxm::vec2 origin = elem->getOrigin();
-                using_gizmo = gizmoRect2d(transform, pos_offs, rotation, origin, rect, mpos, io.MouseDown[0], giz_flags);
+                using_gizmo = gizmoRect2d(transform, elem->getLocalTransform(), pos_offs, rotation, origin, rect, mpos, io.MouseDown[0], giz_flags);
                 if(using_gizmo) {
                     elem->translate(pos_offs);
                     elem->setRotation(rotation);
@@ -277,6 +277,12 @@ public:
                     );
                     model_dnd_tasks.insert(std::unique_ptr<edTaskEcsWorldModelDragNDrop>(task));
                     edTaskPost(task);
+                } else if(has_suffix(node->getName(), ".png") || has_suffix(node->getName(), ".jpg") || has_suffix(node->getName(), ".jpeg") || has_suffix(node->getName(), ".tga")) {
+                    state.backupState();
+                    auto hdl = state.world->createEntity();
+                    hdl.getAttrib<ecsGuiElement>();
+                    hdl.getAttrib<ecsGuiImage>()->setImage(node->getResource<Texture2D>());
+                    state.selected_ent = hdl.getId();
                 }
             }
             ImGui::EndDragDropTarget();

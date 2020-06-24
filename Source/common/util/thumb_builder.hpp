@@ -1,7 +1,7 @@
 #ifndef THUMB_BUILDER_HPP
 #define THUMB_BUILDER_HPP
 
-#include "../common/util/singleton.hpp"
+#include "singleton.hpp"
 
 #include <string>
 #include <thread>

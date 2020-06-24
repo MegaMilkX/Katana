@@ -422,6 +422,11 @@ public:
         return ecsTupleMap<ARCH_T>::dirty_index;
     }
     template<typename ARCH_T>
+    void set_dirty_index(int idx) {
+        assert(idx >= 0 && idx <= ecsTupleMap<ARCH_T>::array.size());
+        ecsTupleMap<ARCH_T>::dirty_index = idx;
+    }
+    template<typename ARCH_T>
     void clear_dirty() {
         return ecsTupleMap<ARCH_T>::clear_dirty_index();
     }

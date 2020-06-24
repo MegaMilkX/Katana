@@ -3,6 +3,8 @@
 
 #include "../gl/glextutil.h"
 
+#include <assert.h>
+
 namespace VERTEX_FMT {
 
 template<int SIZE, GLenum GLTYPE>

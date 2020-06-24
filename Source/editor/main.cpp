@@ -9,7 +9,7 @@
 #include "../katana/timer.hpp"
 #include "../common/katana_impl.hpp"
 
-#include "thumb_builder.hpp"
+#include "../common/util/thumb_builder.hpp"
 
 #include "../common/input/draft/input_mgr.hpp"
 #include "../common/input/draft/input_device_xinput_pad.hpp"

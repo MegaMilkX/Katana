@@ -1,21 +1,21 @@
 #include "preview_library.hpp"
 
-#include "../common/gen/no_preview.png.h"
-#include "../common/gen/error_preview.png.h"
+#include "../gen/no_preview.png.h"
+#include "../gen/error_preview.png.h"
 
-#include "../common/resource/resource_desc_library.hpp"
-#include "../common/resource/resource_tree.hpp"
+#include "../resource/resource_desc_library.hpp"
+#include "../resource/resource_tree.hpp"
 
 #include "../lib/stb_image_resize.h"
 
-#include "../common/scene/game_scene.hpp"
-#include "../common/resource/model_source.hpp"
+#include "../scene/game_scene.hpp"
+#include "../resource/model_source.hpp"
 
-#include "../common/renderer.hpp"
-#include "../common/scene/controllers/render_controller.hpp"
+#include "../renderer.hpp"
+#include "../scene/controllers/render_controller.hpp"
 
-#include "../common/gen/mesh_sphere.h"
-
+#include "../gen/mesh_sphere.h"
+/*
 template<typename T>
 std::shared_ptr<Texture2D> makePreview(std::shared_ptr<T> res) {
     return std::shared_ptr<Texture2D>();
@@ -116,7 +116,7 @@ std::shared_ptr<Texture2D> makePreview<Material>(std::shared_ptr<Material> mat) 
     mdl->getSegment(0).material = mat;
 
     return makePreview(scn);
-}
+}*/
 
 PreviewLibrary::PreviewLibrary() {
     no_preview_tex.reset(new Texture2D());
