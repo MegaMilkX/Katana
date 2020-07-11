@@ -12,6 +12,8 @@
 #include "../../common/renderer.hpp"
 #include "../../common/gui_viewport.hpp"
 
+#include "../editor_async_task/editor_async_task.hpp"
+
 
 static const int UNDO_STACK_MAX = 35;
 
@@ -24,6 +26,8 @@ struct DocEcsWorldState {
     entity_id           selected_ent = 0;
     GuiViewport         gvp;
     DrawList            dl;
+
+    std::set<std::unique_ptr<edTaskEcsWorldModelDragNDrop>> model_dnd_tasks;
 
     void backupState() {
         assert(undo_stack);

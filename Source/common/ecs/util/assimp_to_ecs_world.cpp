@@ -137,6 +137,14 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
                 }
             }
         }
+        for(auto& bw : boneWeights_) {
+            float total = bw.x + bw.y + bw.z + bw.w;
+            if(total == .0f) {
+                continue;
+            }
+            bw = bw / total;
+        }
+
         boneIndices.insert(boneIndices.end(), boneIndices_.begin(), boneIndices_.end());
         boneWeights.insert(boneWeights.end(), boneWeights_.begin(), boneWeights_.end());
 
@@ -301,9 +309,10 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
 }
 
 
-typedef std::map<std::string, entity_id> name_to_ent_map_t;
+typedef std::map<std::string, entity_id>        name_to_ent_map_t;
+typedef std::unordered_map<aiNode*, entity_id>  node_to_entity_t;
 #include "../util/threading/delegated_call.hpp"
-void assimpImportEcsSceneGraph(ecsWorld* world, name_to_ent_map_t& node_map, const aiScene* ai_scene, aiNode* ai_node, ecsEntityHandle ent) {
+void assimpImportEcsSceneGraph(ecsWorld* world, name_to_ent_map_t& node_map, node_to_entity_t& deferred_entity_map, const aiScene* ai_scene, aiNode* ai_node, ecsEntityHandle ent) {
     ecsName* ecs_name = ent.getAttrib<ecsName>();
     ecsTranslation* translation = ent.getAttrib<ecsTranslation>();
     ecsRotation* rotation = ent.getAttrib<ecsRotation>();
@@ -329,93 +338,107 @@ void assimpImportEcsSceneGraph(ecsWorld* world, name_to_ent_map_t& node_map, con
     for(unsigned i = 0; i < ai_node->mNumChildren; ++i) {
         auto child_ent = world->createEntity();
         world->setParent(ent.getId(), child_ent.getId());
-        assimpImportEcsSceneGraph(world, node_map, ai_scene, ai_node->mChildren[i], child_ent);
+        assimpImportEcsSceneGraph(world, node_map, deferred_entity_map, ai_scene, ai_node->mChildren[i], child_ent);
     }
 
     if(ai_node->mNumMeshes) {
-        auto ecs_meshes = ent.getAttrib<ecsMeshes>();
+        deferred_entity_map[ai_node] = ent.getId();
+    }
+}
 
-        std::vector<const aiMesh*> ai_meshes;
-        for(unsigned i = 0; i < ai_node->mNumMeshes; ++i) {
-            ai_meshes.emplace_back(ai_scene->mMeshes[ai_node->mMeshes[i]]);
-        }
-        progressStep(1.0f, "Merging meshes");
-        std::shared_ptr<Mesh> mesh = mergeMeshes(ai_meshes);
-        
-        for(unsigned i = 0; i < ai_node->mNumMeshes; ++i) {
-            progressStep(1.0f, "Uploading meshes");
-            auto& seg = ecs_meshes->getSegment(i);
-            seg.mesh = mesh;
-            // TODO: Assign material
-            seg.submesh_index = i;
+void assimpImportEcsSceneMeshes(ecsWorld* world, name_to_ent_map_t& node_map, node_to_entity_t& deferred_entity_map, const aiScene* ai_scene) {
+    for(auto& it : deferred_entity_map) {
+        auto ai_node = it.first;
+        auto entity =  it.second;
+
+        ecsEntityHandle ent(world, entity);
+
+        if(ai_node->mNumMeshes) {
+            deferred_entity_map[ai_node] = ent.getId();
+            auto ecs_meshes = ent.getAttrib<ecsMeshes>();
+
+            std::vector<const aiMesh*> ai_meshes;
+            for(unsigned i = 0; i < ai_node->mNumMeshes; ++i) {
+                ai_meshes.emplace_back(ai_scene->mMeshes[ai_node->mMeshes[i]]);
+            }
+            progressStep(1.0f, "Merging meshes");
+            std::shared_ptr<Mesh> mesh = mergeMeshes(ai_meshes);
             
-            aiMesh* ai_mesh = ai_scene->mMeshes[ai_node->mMeshes[i]];
-            delegatedCall([ai_mesh, &seg, &node_map, world](){
-                if(ai_mesh->mNumBones) {
-                    seg.skin_data.reset(new ecsMeshes::SkinData());
-                    
-                    size_t vertexCount = seg.mesh->vertexCount();
-                    seg.skin_data->vao_cache.reset(new gl::VertexArrayObject);
-                    seg.skin_data->position_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
-                    seg.skin_data->normal_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
-                    seg.skin_data->tangent_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
-                    seg.skin_data->bitangent_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
-                    seg.skin_data->vao_cache->attach(seg.skin_data->position_cache->getId(), 
-                        VERTEX_FMT::ENUM_GENERIC::Position, VERTEX_FMT::Position::count, 
-                        VERTEX_FMT::Position::gl_type, VERTEX_FMT::Position::normalized ? GL_TRUE : GL_FALSE, 0, 0
-                    );
-                    seg.skin_data->vao_cache->attach(seg.skin_data->normal_cache->getId(), 
-                        VERTEX_FMT::ENUM_GENERIC::Normal, VERTEX_FMT::Normal::count, 
-                        VERTEX_FMT::Normal::gl_type, VERTEX_FMT::Normal::normalized ? GL_TRUE : GL_FALSE, 0, 0
-                    );
-                    seg.skin_data->vao_cache->attach(seg.skin_data->tangent_cache->getId(), 
-                        VERTEX_FMT::ENUM_GENERIC::Tangent, VERTEX_FMT::Tangent::count, 
-                        VERTEX_FMT::Tangent::gl_type, VERTEX_FMT::Tangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
-                    );
-                    seg.skin_data->vao_cache->attach(seg.skin_data->bitangent_cache->getId(), 
-                        VERTEX_FMT::ENUM_GENERIC::Bitangent, VERTEX_FMT::Bitangent::count, 
-                        VERTEX_FMT::Bitangent::gl_type, VERTEX_FMT::Bitangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
-                    );
-                    seg.skin_data->pose_cache.reset(new gl::Buffer(GL_STREAM_DRAW, sizeof(float) * 16 * ai_mesh->mNumBones));
-
-                    if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UV)) {
-                        GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UV)->getId();
-                        seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::UV, 
-                            VERTEX_FMT::UV::count, VERTEX_FMT::UV::gl_type, 
-                            VERTEX_FMT::UV::normalized ? GL_TRUE : GL_FALSE, 0, 0
+            for(unsigned i = 0; i < ai_node->mNumMeshes; ++i) {
+                progressStep(1.0f, "Uploading meshes");
+                auto& seg = ecs_meshes->getSegment(i);
+                seg.mesh = mesh;
+                // TODO: Assign material
+                seg.submesh_index = i;
+                
+                aiMesh* ai_mesh = ai_scene->mMeshes[ai_node->mMeshes[i]];
+                delegatedCall([ai_mesh, &seg, &node_map, world](){
+                    if(ai_mesh->mNumBones) {
+                        seg.skin_data.reset(new ecsMeshes::SkinData());
+                        
+                        size_t vertexCount = seg.mesh->vertexCount();
+                        seg.skin_data->vao_cache.reset(new gl::VertexArrayObject);
+                        seg.skin_data->position_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
+                        seg.skin_data->normal_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
+                        seg.skin_data->tangent_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
+                        seg.skin_data->bitangent_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
+                        seg.skin_data->vao_cache->attach(seg.skin_data->position_cache->getId(), 
+                            VERTEX_FMT::ENUM_GENERIC::Position, VERTEX_FMT::Position::count, 
+                            VERTEX_FMT::Position::gl_type, VERTEX_FMT::Position::normalized ? GL_TRUE : GL_FALSE, 0, 0
                         );
-                    }
-                    if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)) {
-                        GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)->getId();
-                        seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::UVLightmap, 
-                            VERTEX_FMT::UVLightmap::count, VERTEX_FMT::UVLightmap::gl_type, 
-                            VERTEX_FMT::UVLightmap::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                        seg.skin_data->vao_cache->attach(seg.skin_data->normal_cache->getId(), 
+                            VERTEX_FMT::ENUM_GENERIC::Normal, VERTEX_FMT::Normal::count, 
+                            VERTEX_FMT::Normal::gl_type, VERTEX_FMT::Normal::normalized ? GL_TRUE : GL_FALSE, 0, 0
                         );
-                    }
-                    if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA)) {
-                        GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA)->getId();
-                        seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::ColorRGBA, 
-                            VERTEX_FMT::ColorRGBA::count, VERTEX_FMT::ColorRGBA::gl_type, 
-                            VERTEX_FMT::ColorRGBA::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                        seg.skin_data->vao_cache->attach(seg.skin_data->tangent_cache->getId(), 
+                            VERTEX_FMT::ENUM_GENERIC::Tangent, VERTEX_FMT::Tangent::count, 
+                            VERTEX_FMT::Tangent::gl_type, VERTEX_FMT::Tangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
                         );
-                    }
-                    GLuint index_buf_id = seg.mesh->mesh.getIndexBuffer()->getId();
-                    seg.skin_data->vao_cache->attachIndexBuffer(index_buf_id);
+                        seg.skin_data->vao_cache->attach(seg.skin_data->bitangent_cache->getId(), 
+                            VERTEX_FMT::ENUM_GENERIC::Bitangent, VERTEX_FMT::Bitangent::count, 
+                            VERTEX_FMT::Bitangent::gl_type, VERTEX_FMT::Bitangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                        );
+                        seg.skin_data->pose_cache.reset(new gl::Buffer(GL_STATIC_DRAW, sizeof(float) * 16 * ai_mesh->mNumBones));
 
-                    for(unsigned j = 0; j < ai_mesh->mNumBones; ++j) {
-                        aiBone* ai_bone = ai_mesh->mBones[j];
-                        std::string name(ai_bone->mName.data, ai_bone->mName.length);
-
-                        auto it = node_map.find(name);
-                        if(it != node_map.end()) {
-                            seg.skin_data->bone_nodes.emplace_back(world->getAttrib<ecsWorldTransform>(it->second));
-                            seg.skin_data->bind_transforms.emplace_back(
-                                gfxm::transpose(*(gfxm::mat4*)&ai_bone->mOffsetMatrix)
+                        if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UV)) {
+                            GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UV)->getId();
+                            seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::UV, 
+                                VERTEX_FMT::UV::count, VERTEX_FMT::UV::gl_type, 
+                                VERTEX_FMT::UV::normalized ? GL_TRUE : GL_FALSE, 0, 0
                             );
                         }
+                        if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)) {
+                            GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)->getId();
+                            seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::UVLightmap, 
+                                VERTEX_FMT::UVLightmap::count, VERTEX_FMT::UVLightmap::gl_type, 
+                                VERTEX_FMT::UVLightmap::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                            );
+                        }
+                        if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA)) {
+                            GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA)->getId();
+                            seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::ColorRGBA, 
+                                VERTEX_FMT::ColorRGBA::count, VERTEX_FMT::ColorRGBA::gl_type, 
+                                VERTEX_FMT::ColorRGBA::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                            );
+                        }
+                        GLuint index_buf_id = seg.mesh->mesh.getIndexBuffer()->getId();
+                        seg.skin_data->vao_cache->attachIndexBuffer(index_buf_id);
+
+                        for(unsigned j = 0; j < ai_mesh->mNumBones; ++j) {
+                            aiBone* ai_bone = ai_mesh->mBones[j];
+                            std::string name(ai_bone->mName.data, ai_bone->mName.length);
+
+                            auto it = node_map.find(name);
+                            if(it != node_map.end()) {
+                                seg.skin_data->bone_nodes.emplace_back(world->getAttrib<ecsWorldTransform>(it->second));
+                                seg.skin_data->bind_transforms.emplace_back(
+                                    gfxm::transpose(*(gfxm::mat4*)&ai_bone->mOffsetMatrix)
+                                );
+                            }
+                        }
                     }
-                }
-            });
+                });
+            }
         }
     }
 }
@@ -423,7 +446,9 @@ void assimpImportEcsSceneGraph(ecsWorld* world, name_to_ent_map_t& node_map, con
 entity_id assimpImportEcsSceneGraph(ecsWorld* world, const aiScene* ai_scene) {
     ecsEntityHandle root_ent = world->createEntity();
     name_to_ent_map_t node_map;
-    assimpImportEcsSceneGraph(world, node_map, ai_scene, ai_scene->mRootNode, root_ent);
+    node_to_entity_t deferred_entity_map;
+    assimpImportEcsSceneGraph(world, node_map, deferred_entity_map, ai_scene, ai_scene->mRootNode, root_ent);
+    assimpImportEcsSceneMeshes(world, node_map, deferred_entity_map, ai_scene);
 
     double scaleFactor = 1.0f;
     if(ai_scene->mMetaData) {

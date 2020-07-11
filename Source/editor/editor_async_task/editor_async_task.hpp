@@ -15,9 +15,10 @@ public:
     std::string file_path;
     ecsSubScene subscene;
     ecsWorld*   target_world;
+    bool        as_subscene;
 
-    edTaskEcsWorldModelDragNDrop(const char* name, const char* file_path, const char* entity_name, ecsWorld* target_world)
-        : edTaskAsync(name), file_path(file_path), entity_name(entity_name), target_world(target_world)
+    edTaskEcsWorldModelDragNDrop(const char* name, const char* file_path, const char* entity_name, ecsWorld* target_world, bool as_subscene = true)
+        : edTaskAsync(name), file_path(file_path), entity_name(entity_name), target_world(target_world), as_subscene(as_subscene)
     {
         
     }

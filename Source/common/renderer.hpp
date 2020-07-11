@@ -161,7 +161,7 @@ protected:
 
 
 #define RENDERER_PBR_SHADOW_CUBEMAP_COUNT 4
-#define RENDERER_PBR_SHADOW_CUBEMAP_SIZE 256
+#define RENDERER_PBR_SHADOW_CUBEMAP_SIZE 512
 
 class RendererPBR : public Renderer {
     gl::ShaderProgram* prog_gbuf_solid;

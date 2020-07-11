@@ -32,7 +32,6 @@ void gizmoRect2dDraw(float screenW, float screenH);
 
 class DocEcsWorldMode3d : public DocEcsWorldMode {
     std::unique_ptr<edTaskEcsWorldCalcLightmaps>            lightmap_task;
-    std::set<std::unique_ptr<edTaskEcsWorldModelDragNDrop>> model_dnd_tasks;
 
     CursorData                        cursor_data;
     std::vector<SpawnTweakStage>      spawn_tweak_stage_stack;
@@ -52,7 +51,7 @@ public:
         fb_blur.addBuffer(0, GL_RED, GL_UNSIGNED_BYTE);
         fb_pick.addBuffer(0, GL_RGB, GL_UNSIGNED_INT);
 
-        font = getResource<Font>("fonts/OpenSans-Regular.ttf");
+        //font = getResource<Font>("fonts/OpenSans-Regular.ttf");
     }
 
     const char* getName() const override { return "3D"; }
@@ -84,18 +83,19 @@ public:
 
     void onMainWindow(DocEcsWorldState& state) override {
         // Check if any async tasks finished
-        for(auto& t : model_dnd_tasks) {
+        for(auto& t : state.model_dnd_tasks) {
             if(t->isDone()) {
-                auto ent = t->target_world->createEntity();
-                t->target_world->setAttrib(ent.getId(), t->subscene);            
-                
-                ent.getAttrib<ecsTagSubSceneRender>();
-                ent.getAttrib<ecsWorldTransform>();
+                if(t->as_subscene) {
+                    auto ent = t->target_world->createEntity();
+                    t->target_world->setAttrib(ent.getId(), t->subscene);            
+                    
+                    ent.getAttrib<ecsTagSubSceneRender>();
+                    ent.getAttrib<ecsWorldTransform>();
 
-                ent.getAttrib<ecsName>()->name = t->entity_name;
-                state.selected_ent = ent.getId();
-
-                model_dnd_tasks.erase(t);
+                    ent.getAttrib<ecsName>()->name = t->entity_name;
+                    state.selected_ent = ent.getId();
+                }
+                state.model_dnd_tasks.erase(t);
                 break;
             }
         }
@@ -145,7 +145,8 @@ public:
         if(hdl.isValid()){
             auto elem = hdl.findAttrib<ecsGuiElement>();
             auto gui_text = hdl.findAttrib<ecsGuiText>();
-            
+            auto gui_img  = hdl.findAttrib<ecsGuiImage>();
+
             if(elem) {
                 gizmoRect2dViewport(0, vp_w, 0, vp_h);
 
@@ -156,15 +157,18 @@ public:
                 gfxm::rect rect_delta;
                 int giz_flags = GIZMO_RECT_CP_ALL;
 
-                gfxm::mat4 transform = elem->getTransform();
+                gfxm::mat4 transform = elem->getDrawTransform();
                 gfxm::vec2 pos_offs;
                 float      rotation = elem->getRotation();
                 gfxm::vec2 origin = elem->getOrigin();
-                using_gizmo = gizmoRect2d(transform, elem->getLocalTransform(), pos_offs, rotation, origin, rect, mpos, io.MouseDown[0], giz_flags);
+                using_gizmo = gizmoRect2d(transform, elem->getLocalDrawTransform(), pos_offs, rotation, origin, rect, mpos, io.MouseDown[0], giz_flags);
                 if(using_gizmo) {
                     elem->translate(pos_offs);
                     elem->setRotation(rotation);
                     elem->setOrigin(origin);
+                    if(gui_img) {
+                        gui_img->setSize(rect.max.x - rect.min.x, rect.max.y - rect.min.y);
+                    }
                 }
 
                 state.gvp.getViewport()->getFinalBuffer()->bind();
@@ -246,6 +250,8 @@ public:
             ImGui::MenuItem("Instantiate");
             ImGui::EndPopup();
         }
+        ImGuiID fbxPopupId = ImGui::GetID("fbxPopupId");
+        static ResourceNode* dragged_node = 0;
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_RESOURCE")) {
                 ResourceNode* node = *(ResourceNode**)payload->Data;
@@ -268,25 +274,42 @@ public:
                         }
                     }
                 } else if(has_suffix(node->getName(), ".fbx")) {
-                    state.backupState();
-                    edTaskEcsWorldModelDragNDrop* task = new edTaskEcsWorldModelDragNDrop(
-                        MKSTR("Importing " << node->getFullName()).c_str(),
-                        node->getFullName().c_str(),
-                        node->getName().c_str(),
-                        state.world
-                    );
-                    model_dnd_tasks.insert(std::unique_ptr<edTaskEcsWorldModelDragNDrop>(task));
-                    edTaskPost(task);
+                    dragged_node = node;
+                    ImGui::OpenPopupEx(fbxPopupId);
                 } else if(has_suffix(node->getName(), ".png") || has_suffix(node->getName(), ".jpg") || has_suffix(node->getName(), ".jpeg") || has_suffix(node->getName(), ".tga")) {
                     state.backupState();
                     auto hdl = state.world->createEntity();
                     hdl.getAttrib<ecsGuiElement>();
-                    hdl.getAttrib<ecsGuiImage>()->setImage(node->getResource<Texture2D>());
+                    auto res = node->getResource<Texture2D>();
+                    if(res) {
+                        hdl.getAttrib<ecsGuiImage>()->setImage(res);
+                        hdl.getAttrib<ecsGuiImage>()->setSize(res->Width(), res->Height());
+                    }
                     state.selected_ent = hdl.getId();
                 }
             }
             ImGui::EndDragDropTarget();
         }
+        if(ImGui::BeginPopupEx(fbxPopupId, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_Modal | ImGuiWindowFlags_NoResize)) {
+            if(ImGui::Button("Merge")) {
+                entity_id e = assimpImportEcsScene(state.world, dragged_node->getFullName().c_str());
+                state.selected_ent = e;
+                ImGui::CloseCurrentPopup();
+            }
+            if(ImGui::Button("As SubScene")) {
+                state.backupState();
+                edTaskEcsWorldModelDragNDrop* task = new edTaskEcsWorldModelDragNDrop(
+                    MKSTR("Importing " << dragged_node->getFullName()).c_str(),
+                    dragged_node->getFullName().c_str(),
+                    dragged_node->getName().c_str(),
+                    state.world
+                );
+                state.model_dnd_tasks.insert(std::unique_ptr<edTaskEcsWorldModelDragNDrop>(task));
+                edTaskPost(task);
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }        
     }
 
     void onToolbox(DocEcsWorldState& state) override {

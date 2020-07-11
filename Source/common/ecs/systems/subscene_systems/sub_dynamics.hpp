@@ -136,6 +136,60 @@ public:
     btCollisionWorld* world = 0;
     std::shared_ptr<btCollisionObject> collision_object;
 };
+class ecsTplCollisionMesh : public ecsTuple<
+    ecsWorldTransform, ecsCollisionMesh,
+    ecsOptional<ecsCollisionCache>, ecsOptional<ecsCollisionFilter>
+> {
+public:
+    btCollisionWorld*                   world = 0;
+    std::unique_ptr<btCollisionObject>  collision_object;
+
+    void onAttribUpdate(ecsCollisionMesh* p) override {
+        if(collision_object && get_optional<ecsCollisionCache>()) {
+            collision_object->setUserPointer(get_optional<ecsCollisionCache>());
+        }
+        world->removeCollisionObject(collision_object.get());
+        collision_object->setCollisionShape(p->shape.get());
+
+        ecsCollisionFilter* filter = get_optional<ecsCollisionFilter>();
+        uint64_t group = 1;
+        uint64_t mask = 1;
+        if(filter) {
+            group = filter->group;
+            mask = filter->mask;
+        }
+
+        world->addCollisionObject(collision_object.get(), (int)group, (int)mask);
+    }
+
+    void onAddOptional(ecsCollisionCache* cache) override {
+        if(collision_object) {
+            collision_object->setUserPointer((void*)cache);
+        }
+    }
+    void onRemoveOptional(ecsCollisionCache* cache) override {
+        if(collision_object) {
+            collision_object->setUserPointer(0);
+        }
+    }
+
+    void onAddOptional(ecsCollisionFilter* filter) override {
+        if(collision_object && world) {
+            world->removeCollisionObject(collision_object.get());
+            uint64_t group = filter->group;
+            uint64_t mask = filter->mask;
+            world->addCollisionObject(collision_object.get(), (int)group, (int)mask);
+        }
+    }
+    void onRemoveOptional(ecsCollisionFilter* filter) override {
+        if(collision_object && world) {
+            world->removeCollisionObject(collision_object.get());
+            uint64_t group = 1;
+            uint64_t mask = 1;
+            world->addCollisionObject(collision_object.get(), (int)group, (int)mask);
+        }
+    }
+};
 class ecsArchRigidBody : public ecsTuple<
     ecsWorldTransform, 
     ecsCollisionShape, 
@@ -214,6 +268,7 @@ public:
 
 class ecsSubDynamicsSys : public ecsSystem<
     ecsArchCollider,
+    ecsTplCollisionMesh,
     ecsArchRigidBody,
     ecsTupleCollisionCache
 > {
@@ -231,7 +286,15 @@ public:
     void updateColliders() {
         assert(world);
         for(auto& a : get_array<ecsArchCollider>()) {
-            auto& matrix = root_transform * a->get<ecsWorldTransform>()->getTransform();
+            auto& matrix = a->get<ecsWorldTransform>()->getTransform();
+            btTransform btt;
+            btt.setFromOpenGLMatrix((float*)&matrix);
+            a->collision_object->setWorldTransform(btt);
+            world->updateSingleAabb(a->collision_object.get());
+        }
+
+        for(auto& a : get_array<ecsTplCollisionMesh>()) {
+            auto& matrix = a->get<ecsWorldTransform>()->getTransform();
             btTransform btt;
             btt.setFromOpenGLMatrix((float*)&matrix);
             a->collision_object->setWorldTransform(btt);
@@ -250,6 +313,7 @@ public:
         col->world = world;
         col->collision_object.reset(new btCollisionObject());
         col->collision_object->setUserIndex((int)col->getEntityUid()); // TODO: Bad, entity_id is 64 bit FIX THIS
+        col->collision_object->setUserIndex2(getWorld()->getWorldIndex());
         col->collision_object->setCollisionShape(
             col->get<ecsCollisionShape>()->shape.get()
         );
@@ -273,6 +337,40 @@ public:
         world->addCollisionObject(col->collision_object.get(), (int)group, (int)mask);
     }
     void onUnfit(ecsArchCollider* col) override {
+        assert(world);
+        world->removeCollisionObject(
+            col->collision_object.get()
+        );
+    }
+
+    void onFit(ecsTplCollisionMesh* col) override {
+        assert(world);
+        col->world = world;
+        auto& c = col->collision_object;
+        c.reset(new btCollisionObject());
+        c->setUserIndex((int)col->getEntityUid());
+        c->setUserIndex2(getWorld()->getWorldIndex());
+        c->setCollisionShape(col->get<ecsCollisionMesh>()->shape.get());
+        if(col->get_optional<ecsCollisionCache>()) {
+            c->setUserPointer(col->get_optional<ecsCollisionCache>());
+        }
+
+        btTransform btt;
+        gfxm::mat4 m = col->get<ecsWorldTransform>()->getTransform();
+        btt.setFromOpenGLMatrix((float*)&m);
+        c->setWorldTransform(btt);
+
+        ecsCollisionFilter* filter = col->get_optional<ecsCollisionFilter>();
+        uint64_t group = 1;
+        uint64_t mask = 1;
+        if(filter) {
+            group = filter->group;
+            mask = filter->mask;
+        }
+
+        world->addCollisionObject(c.get(), (int)group, (int)mask);
+    }
+    void onUnfit(ecsTplCollisionMesh* col) override {
         assert(world);
         world->removeCollisionObject(
             col->collision_object.get()

@@ -5,7 +5,7 @@
 
 class ecsWorld;
 class ecsEntityHandle {
-    entity_id id;
+    entity_id id = -1;
     ecsWorld* world = 0;
 public:
     ecsEntityHandle() {}
@@ -17,7 +17,10 @@ public:
     entity_id   getId() const;
     ecsWorld*   getWorld();
 
+    ecsEntityHandle getParent() const;
+
     void        remove();
+    void        removeTree();
 
     // Find child by name
     ecsEntityHandle findChild(const char* name);

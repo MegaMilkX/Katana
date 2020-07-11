@@ -37,6 +37,7 @@ void AnimFSMStateClip::update(float dt, AnimSampleBuffer& sample_buffer, Skeleto
     prev_cursor = cursor;
     cursor += dt * (anim->fps / anim->length);
     if(cursor > 1.0f) {
+        owner_fsm->incrementPlayCount();
         cursor -= 1.0f;
     }
 }

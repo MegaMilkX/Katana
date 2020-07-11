@@ -33,7 +33,7 @@ public:
         for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsLightOmni>>()) {
             dl.omnis.emplace_back(
                 DrawList::OmniLight {
-                    root_transform * a->get<ecsWorldTransform>()->getTransform() * gfxm::vec4(0,0,0,1),
+                    a->get<ecsWorldTransform>()->getTransform() * gfxm::vec4(0,0,0,1),
                     a->get<ecsLightOmni>()->color,
                     a->get<ecsLightOmni>()->intensity,
                     a->get<ecsLightOmni>()->radius
@@ -56,12 +56,12 @@ public:
                     s.material = mat;
                     s.indexCount = indexCount;
                     s.indexOffset = indexOffset;
-                    s.transform = root_transform * transform;
+                    s.transform = transform;
                     s.object_ptr = (void*)subscene_owner;
                     s.lightmap = seg.lightmap.get();
                     dl.solids.emplace_back(s);
                 } else {                // Skinned mesh
-                    computeSkinCache(&seg, root_transform);
+                    computeSkinCache(&seg, gfxm::mat4(1.0f));
                     DrawCmdSolid s;
                     s.vao = seg.skin_data->vao_cache->getId();
                     s.material = mat;
@@ -69,13 +69,14 @@ public:
                     s.indexOffset = indexOffset;
                     s.transform = gfxm::mat4(1.0f);//transform;
                     s.object_ptr = (void*)subscene_owner;
-                    /*
+                    
+                    dl.solids.emplace_back(s);/*
                     std::vector<gfxm::mat4> bone_transforms;
                     for(auto t : seg.skin_data->bone_nodes) {
                         if(t) {
-                            bone_transforms.emplace_back(root_transform * t->transform);
+                            bone_transforms.emplace_back(t->getTransform());
                         } else {
-                            bone_transforms.emplace_back(root_transform * gfxm::mat4(1.0f));
+                            bone_transforms.emplace_back(gfxm::mat4(1.0f));
                         }
                     }
 
@@ -84,10 +85,11 @@ public:
                     s.material = mat;
                     s.indexCount = indexCount;
                     s.indexOffset = indexOffset;
-                    s.transform = root_transform * transform;
+                    s.transform = transform;
                     s.bone_transforms = bone_transforms;
-                    s.bind_transforms = seg.skin_data->bind_transforms;*/
-                    dl.solids.emplace_back(s);
+                    s.bind_transforms = seg.skin_data->bind_transforms;
+                    s.object_ptr = (void*)a->getEntityUid();
+                    dl.skins.emplace_back(s);*/
                 }
             }
         }

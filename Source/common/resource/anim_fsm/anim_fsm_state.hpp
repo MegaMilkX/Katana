@@ -46,6 +46,9 @@ public:
     const gfxm::vec2&  getEditorPos() const { return editor_pos; }
     void               setEditorPos(const gfxm::vec2& value) { editor_pos = value; }
 
+    void               setNormalCursor(float c) { cursor = c; }
+    float              getNormalCursor() const { return cursor; }
+
     std::set<AnimFSMTransition*>& getTransitions() {
         return out_transitions;
     }

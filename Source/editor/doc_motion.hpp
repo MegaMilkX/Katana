@@ -17,9 +17,6 @@ class DocMotion : public EditorDocumentTyped<Motion> {
     ecsWorld                            world;
     std::shared_ptr<EntityTemplate>     reference;
 
-    //ktNode* cam_pivot = 0;
-    //DirLight* cam_light = 0;
-    //ktNode* root_motion_node = 0;
     gfxm::vec3 root_motion_pos;
     gfxm::quat root_motion_rot;
     int        root_motion_bone_id = -1;

@@ -77,6 +77,18 @@ void MotionGuiBlendTree::drawToolbox(Editor* ed) {
             blendTree->createNode<SingleAnimJob>();
             blendTree->prepare();
         }
+        if(ImGui::MenuItem("SingleAnimPose")) {
+            blendTree->createNode<SingleAnimPoseJob>();
+            blendTree->prepare();
+        }
+        if(ImGui::MenuItem("BlendAdd")) {
+            blendTree->addNode(new BlendAddJob);
+            blendTree->prepare();
+        }
+        if(ImGui::MenuItem("Blend2")) {
+            blendTree->addNode(new Blend2Job);
+            blendTree->prepare();
+        }
         if(ImGui::MenuItem("Blend3")) {
             blendTree->addNode(new Blend3Job);
             blendTree->prepare();

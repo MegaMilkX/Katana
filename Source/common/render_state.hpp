@@ -43,11 +43,11 @@ public:
         unsigned char nrm[3] = { 128, 128, 255 };
         texture_normal_px->Data(nrm, 1, 1, 3);
         texture_def_roughness_px.reset(new Texture2D());
-        unsigned char rgh[3] = { 230, 230, 230 };
+        unsigned char rgh[3] = { 150, 150, 150 };
         texture_def_roughness_px->Data(rgh, 1, 1, 3);
 
         texture_def_metallic_px.reset(new Texture2D());
-        unsigned char mtl[3] = { 0, 0, 0 };
+        unsigned char mtl[3] = { 70, 70, 70 };
         texture_def_metallic_px->Data(mtl, 1, 1, 3);
     }
 

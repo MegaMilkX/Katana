@@ -46,9 +46,11 @@ void Font::rebuildAtlas (uint16_t font_height) {
     std::vector<char> buf(r.w * r.h);
     for (int i = 0; i < cached_characters.size(); ++i) {
         FT_UInt glyph_idx = FT_Get_Char_Index(face, cached_characters[i]);
-        assert(!FT_Load_Glyph(face, glyph_idx, FT_LOAD_DEFAULT | FT_LOAD_TARGET_NORMAL));
+        FT_Error err = FT_Load_Glyph(face, glyph_idx, FT_LOAD_DEFAULT | FT_LOAD_TARGET_NORMAL);
+        assert(!err);
         if(face->glyph->format != FT_GLYPH_FORMAT_BITMAP) {
-            assert(!FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL));
+            err = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
+            assert(!err);
         }
         assert(face->glyph->bitmap.pixel_mode == FT_PIXEL_MODE_GRAY);
 
@@ -141,7 +143,8 @@ Font::AtlasData* Font::getAtlasData(uint16_t font_height) {
 
 
 Font::Font() {
-    assert(!FT_Init_FreeType(&ftLib));
+    auto ret = FT_Init_FreeType(&ftLib);
+    assert(!ret);
 }
 Font::~Font() {
     if(face) {

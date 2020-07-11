@@ -34,8 +34,14 @@ public:
     }
 };
 
+class ecsTplAnimator : public ecsTuple<ecsAnimator, ecsOptional<ecsTranslation>, ecsOptional<ecsWorldTransform>> {
+public:
+
+};
+
 class ecsysAnimation : public ecsSystem<
-    ecsTupleAnimatedSubScene
+    ecsTupleAnimatedSubScene,
+    ecsTplAnimator
 > {
 public:
     void onFit(ecsTupleAnimatedSubScene* t) {
@@ -48,6 +54,43 @@ public:
     }
     
     void onUpdate() {
+        for(int i = get_dirty_index<ecsTplAnimator>(); i < count<ecsTplAnimator>(); ++i) {
+            auto t = get<ecsTplAnimator>(i);
+            auto a = t->get<ecsAnimator>();
+            if(a->skeleton) {
+                a->sample_buffer = AnimSampleBuffer(a->skeleton.get());
+                a->target_nodes.resize(a->skeleton->boneCount());
+                for(int j = 0; j < a->skeleton->boneCount(); ++j) {
+                    auto& b = a->skeleton->getBone(j);
+                    auto chdl = a->getEntityHdl().findChild(b.name.c_str());
+                    if(chdl.isValid()) {
+                        a->target_nodes[j].t = chdl.findAttrib<ecsTranslation>();
+                        a->target_nodes[j].r = chdl.findAttrib<ecsRotation>();
+                        a->target_nodes[j].s = chdl.findAttrib<ecsScale>();
+                    }
+                }
+            }
+        }
+        clear_dirty<ecsTplAnimator>();
+
+        for(auto& t : get_array<ecsTplAnimator>()) {
+            auto a = t->get<ecsAnimator>();
+            if(!a->motion_ref) {
+                continue;
+            }
+            if(!a->skeleton) {
+                continue;
+            }
+            a->getLclMotion()->update(1.0f/60.0f, a->sample_buffer);
+            for(int i = 0; i < a->sample_buffer.getSamples().size(); ++i) {
+                auto& s = a->sample_buffer[i];
+                auto& tn = a->target_nodes[i];
+                if(tn.t) tn.t->setPosition(s.t);
+                if(tn.r) tn.r->setRotation(s.r);
+                if(tn.s) tn.s->setScale(s.s);
+            }
+        }
+
         auto& arr = get_array<ecsTupleAnimatedSubScene>();
         for(auto t : arr) {
             auto animator = t->get<ecsSubSceneAnimator>();

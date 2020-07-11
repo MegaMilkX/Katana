@@ -16,8 +16,13 @@ void ecsInit (void) {
     regEcsAttrib<ecsScale>("Scale", "Spatial");
     regEcsAttrib<ecsWorldTransform>("WorldTransform", "Spatial");
     regEcsAttrib<ecsVelocity>("Velocity");
+
+    regEcsAttrib<ecsConstraint>("Constraint", "Constraints");
+    regEcsAttrib<ecsIK>("IK", "Constraints");
+
     regEcsAttrib<ecsCollisionShape>("CollisionShape", "Collision");
     regEcsAttrib<ecsCollisionPlane>("CollisionPlane", "Collision");
+    regEcsAttrib<ecsCollisionMesh>("CollisionMesh", "Collision");
     regEcsAttrib<ecsCollisionCache>("CollisionCache", "Collision");
     regEcsAttrib<ecsCollisionFilter>("CollisionFilter", "Collision");
     regEcsAttrib<ecsMass>("Mass", "Physics");
@@ -29,7 +34,11 @@ void ecsInit (void) {
     regEcsAttrib<ecsGuiImage>("GuiImage", "GUI");
     regEcsAttrib<ecsGuiAnchor>("GuiAnchor", "GUI");
 
-    regEcsAttrib<ecsSubSceneAnimator>("SubSceneAnimator");
+    regEcsAttrib<ecsAnimator>("Animator", "Animation");
+    regEcsAttrib<ecsSubSceneAnimator>("SubSceneAnimator", "Animation");
+
     regEcsAttrib<ecsAudioListener>("AudioListener", "Audio");
     regEcsAttrib<ecsAudioSource>("AudioSource", "Audio");
+
+    regEcsAttrib<ecsBehavior>("Behavior");
 }

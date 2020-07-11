@@ -63,6 +63,7 @@ class ecsEntity {
             }
             map = map->next.get();
         }
+        return 0;
     }
 
 public:

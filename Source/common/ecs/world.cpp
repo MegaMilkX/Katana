@@ -6,6 +6,30 @@
 #include "../resource/entity_template.hpp"
 #include "attribs/base_attribs.hpp"
 
+
+std::vector<ecsWorld*> world_pool;
+std::set<int32_t>          free_world_indices;
+int32_t acquireWorldIndex(ecsWorld* w) {
+    int32_t idx = -1;
+    if(free_world_indices.empty()) {
+        idx = world_pool.size();
+        world_pool.push_back(w);
+    } else {
+        idx = *free_world_indices.begin();
+        free_world_indices.erase(free_world_indices.begin());
+        world_pool[idx] = w;
+    }
+    return idx;
+}
+void freeWorldIndex(int32_t i) {
+    free_world_indices.insert(i);
+    world_pool[i] = 0;
+}
+ecsWorld* derefWorldIndex(int32_t i) {
+    return world_pool[i];
+}
+
+
 void unlinkTupleTreeRelations(ecsTupleBase* tuple) {
     if(tuple->parent) {
         if(tuple->prev_sibling == 0) { // First child
@@ -196,7 +220,7 @@ void ecsWorld::_findTreeRelations (entity_id e, ecsTupleMapBase* tuple_map, ecsT
     auto child_id = getFirstChild(e);
     auto attachment_tuple = tuple;
     while (child_id != NULL_ENTITY) {
-        auto c = entities.deref(child_id);
+        volatile auto c = entities.deref(child_id);
         auto c_tuple = c->findTupleOfSameContainer(tuple_map);
         if(!c_tuple) {
             child_id = getNextSibling(child_id);
@@ -220,6 +244,8 @@ void ecsWorld::_findTreeRelations (entity_id e, ecsTupleMapBase* tuple_map, ecsT
 
 
 ecsWorld::ecsWorld() {
+    pool_index = acquireWorldIndex(this);
+
     global_attrib_counters.resize(get_last_attrib_id() + 1);
 }
 
@@ -232,6 +258,8 @@ ecsWorld::~ecsWorld() {
     for(auto& kv : template_to_entities) {
         kv.first->eraseReferencingWorld(this);
     }
+
+    freeWorldIndex(pool_index);
 }
 
 void ecsWorld::clearEntities (void) {
@@ -324,6 +352,18 @@ void ecsWorld::removeEntity(entity_id id) {
     entities.free(id);
     live_entities.erase(id);
 }
+void ecsWorld::removeTree(entity_id id) {
+    std::function<void(ecsWorld*, entity_id)> delete_fn = [&delete_fn](ecsWorld* w, entity_id e){
+        auto child = w->getFirstChild(e);
+        while(child != NULL_ENTITY) {
+            auto next_child = w->getNextSibling(child);
+            delete_fn(w, child);
+            child = next_child;
+        }
+        w->removeEntity(e);
+    };
+    delete_fn(this, id);
+}
 const std::set<entity_id>& ecsWorld::getEntities() const {
     return live_entities;
 }
@@ -359,6 +399,9 @@ void ecsWorld::setParent (entity_id parent, entity_id child) {
     assert(e);
 
     entity_id old_parent = getParent(child);
+    if (old_parent == parent) {
+        return;
+    }
     ecsEntity* old_parent_e = 0;
     if (old_parent != NULL_ENTITY) {
         old_parent_e = entities.deref(old_parent);
@@ -413,13 +456,14 @@ void ecsWorld::setParent (entity_id parent, entity_id child) {
     }
     
     // Update tuple relations. Tree relations turned out to be quite heavy
+    /*
     auto tuple_map = e->first_tuple_map.get();
     while(tuple_map != 0) {
         unlinkTupleTreeRelations(tuple_map->tuple);
         _findTreeRelations(child, tuple_map->ptr, tuple_map->tuple);
         recursiveTupleMarkDirty(tuple_map->ptr, tuple_map->tuple, e->getAttribBits());
         tuple_map = tuple_map->next.get();
-    }
+    }*/
 
 }
 entity_id ecsWorld::getParent (entity_id e) {

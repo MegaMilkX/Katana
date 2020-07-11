@@ -2,6 +2,7 @@
 
 #include "world.hpp"
 
+
 bool ecsEntityHandle::isValid() const {
     // TODO
     return world != 0;
@@ -14,8 +15,17 @@ ecsWorld* ecsEntityHandle::getWorld() {
     return world;
 }
 
+ecsEntityHandle ecsEntityHandle::getParent() const {
+    return ecsEntityHandle(world, world->getParent(id));
+}
+
 void ecsEntityHandle::remove() {
     world->removeEntity(id);
+    world = 0;
+}
+
+void ecsEntityHandle::removeTree() {
+    world->removeTree(id);
     world = 0;
 }
 

@@ -114,7 +114,12 @@ inline int64_t archetypeOffset(uint64_t attrib_mask, uint64_t attrib_id) {
 #include "types.hpp"
 #include "../resource/entity_template.hpp"
 
+ecsWorld* derefWorldIndex(int32_t idx);
+
 class ecsWorld : public Resource {
+    int32_t                                     pool_index = -1;
+
+    ecsEntityHandle                             parent_world_entity;
     ecsWorld*                                   parent_world            = 0;
 
     uint64_t                                    global_attrib_mask      = 0;
@@ -170,6 +175,8 @@ public:
     ecsWorld();
     ~ecsWorld();
 
+    int32_t                     getWorldIndex               (void) const { return pool_index; }
+
     void                        clearEntities               (void);
     void                        clearSystems                (void);
 
@@ -177,6 +184,7 @@ public:
     ecsEntityHandle             createEntity                (archetype_mask_t attrib_signature);
     ecsEntityHandle             createEntityFromTemplate    (const char* tplPath);
     void                        removeEntity                (entity_id id);
+    void                        removeTree                  (entity_id id);
     const std::set<entity_id>&  getEntities() const;
     ecsEntityHandle             findEntity                  (const char* name);
     ecsEntityHandle             findChild                   (entity_id parent, const char* name);
@@ -188,6 +196,9 @@ public:
 
     ecsEntityHandle             mergeWorld                  (const char* res_name);
     ecsEntityHandle             mergeWorld                  (ecsWorld* world);
+
+    void                        setParentWorldEntity        (ecsEntityHandle hdl) { parent_world_entity = hdl; }
+    ecsEntityHandle             getParentWorldEntity        (void) const { return parent_world_entity; }
 
     template<typename T>
     T*                          findAttrib(entity_id ent);

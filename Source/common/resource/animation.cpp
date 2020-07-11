@@ -137,6 +137,35 @@ std::vector<int32_t>& Animation::getMapping(Skeleton* skel) {
     buildAnimSkeletonMapping(this, skel, vec);
     return vec;
 }
+std::vector<int32_t>  Animation::makeMapping(Skeleton* skel, int root_bone_id) {
+    auto bone = skel->getBone(root_bone_id);
+
+    std::vector<int32_t> mapping(nodeCount(), -1);
+    std::function<void(Skeleton::Bone&)> walk_bones_fn = [&walk_bones_fn, this, &skel, &mapping](Skeleton::Bone& b){
+        int32_t bone_index = b.id;
+        int32_t node_index = getNodeIndex(b.name);
+        if(node_index >= 0) {
+            mapping[node_index] = bone_index;
+        }
+        
+        int32_t child = b.first_child;
+        while(child != -1) {
+            auto& bc = skel->getBone(child);
+            walk_bones_fn(bc);
+            child = bc.next_sibling;
+        }
+    };
+    walk_bones_fn(bone);
+    return mapping;
+}
+std::vector<int32_t>  Animation::makeMapping(Skeleton* skel, const char* root_bone_name) {
+    auto bone = skel->getBone(root_bone_name);
+    if(!bone) {
+        assert(false);
+        return std::vector<int32_t>(nodeCount(), -1);
+    }
+    return makeMapping(skel, bone->id);
+}
 
 
 void Animation::sample_one(int node_id, float cursor, AnimSample& sample) {

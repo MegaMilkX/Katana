@@ -22,6 +22,8 @@ public:
     struct Bone {
         int32_t id;
         int32_t parent;
+        int32_t first_child;
+        int32_t next_sibling;
         std::string name;
         gfxm::mat4 bind_pose;
     };
@@ -41,9 +43,10 @@ public:
         if(it == name_to_bone.end()) {
             int32_t bone_id = (int32_t)bones.size();
             bones.emplace_back(
-                Bone{ bone_id, -1, name, gfxm::mat4(1.0f) }
+                Bone{ bone_id, -1, -1, -1, name, gfxm::mat4(1.0f) }
             );
             name_to_bone[name] = bone_id;
+            root_bone_indices.insert(bone_id);
         }
     }
     void setDefaultPose(const std::string& bone, const gfxm::mat4& pose) {
@@ -56,7 +59,22 @@ public:
         Bone* b = getBone(bone);
         Bone* p = getBone(parent);
         if(b && p) {
+            root_bone_indices.erase(b->id);
+
             b->parent = p->id;
+            if(p->first_child == -1) {
+                p->first_child = b->id;
+            } else {
+                int32_t child = p->first_child;
+                int32_t last_child = child;
+                while(child != -1) {
+                    Bone& c = getBone(child);
+                    last_child = child;
+                    child = c.next_sibling;
+                }
+                Bone& last_c = getBone(last_child);
+                last_c.next_sibling = b->id;
+            }
         }
     }
 
@@ -108,6 +126,15 @@ public:
         return &bones[it->second];
     }
 
+    int rootBoneCount() {
+        return root_bone_indices.size();
+    }
+    Bone& getRootBone(int i) {
+        auto it = root_bone_indices.begin();
+        std::advance(it, i);
+        return bones[*it];
+    }
+
     std::vector<AnimSample> makePoseArray() {
         std::vector<AnimSample> pose;
         pose.resize(bones.size());
@@ -154,7 +181,7 @@ public:
             gfxm::mat4 pose = in.read<gfxm::mat4>();
             bones.emplace_back(
                 Bone {
-                    id, parent_id, name, pose
+                    id, parent_id, -1, -1, name, pose
                 }
             );
         }
@@ -163,12 +190,38 @@ public:
             uint32_t bone_id = in.read<uint32_t>();
             name_to_bone[name] = bone_id;
         }
+
+        // Fill up first_child/next_sibling indices
+        for (uint32_t i = 0; i < bone_count; ++i) {
+            int32_t parent = bones[i].parent;
+            if (parent < 0) {
+                root_bone_indices.insert(i);
+                continue;
+            }
+            auto& b = getBone(i);
+            auto& p = getBone(parent);
+            if (p.first_child == -1) {
+                p.first_child = b.id;
+            }
+            else {
+                int32_t child = p.first_child;
+                int32_t last_child = child;
+                while (child != -1) {
+                    Bone& c = getBone(child);
+                    last_child = child;
+                    child = c.next_sibling;
+                }
+                Bone& last_c = getBone(last_child);
+                last_c.next_sibling = b.id;
+            }
+        }
         
         return true; 
     }
 private:
     std::vector<Bone> bones;
     std::map<std::string, size_t> name_to_bone;
+    std::set<int32_t> root_bone_indices;
 };
 
 #endif

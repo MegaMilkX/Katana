@@ -228,7 +228,7 @@ void gizmoRect2dDraw(float screenW, float screenH) {
     };
     std::function<void(const gfxm::vec3&, float, const gfxm::vec4&)> add_cross_fn = 
     [&vertices, &colors](const gfxm::vec3& pos, float sz, const gfxm::vec4& col){
-        float sz_half = sz * 0.5f;
+        float sz_half = 100000;//sz * 0.5f;
         std::vector<gfxm::vec3> v = {
             pos - gfxm::vec3(sz_half,0,0), pos + gfxm::vec3(sz_half,0,0),
             pos - gfxm::vec3(0,sz_half,0), pos + gfxm::vec3(0,sz_half,0)

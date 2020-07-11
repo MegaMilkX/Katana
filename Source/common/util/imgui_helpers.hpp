@@ -317,6 +317,9 @@ inline void imguiObjectCombo(
     }
 }
 
+#include "ecs/entity_handle.hpp"
+bool imguiEntityCombo(const char* label, ecsWorld* world, ecsEntityHandle& out);
+
 namespace ImGui {
 
 inline bool DragFloat3Autospeed(const char* label, float* v, float v_min = .0f, float v_max = .0f, const char* format = "%.3f", float power = 1.0f) {

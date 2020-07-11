@@ -72,6 +72,7 @@ public:
         collider->world = world;
         collider->collision_object.reset(new btCollisionObject());
         collider->collision_object->setUserIndex((int)collider->getEntityUid()); // TODO: Bad, entity_id is 64 bit FIX THIS
+        collider->collision_object->setUserIndex2(getWorld()->getWorldIndex());
         collider->collision_object->setCollisionShape(
             collider->get<ecsCollisionShape>()->shape.get()
         );
@@ -102,6 +103,7 @@ public:
         p->world = world;
         p->collision_object.reset(new btCollisionObject());
         p->collision_object->setUserIndex((int)p->getEntityUid()); // TODO: Bad, entity_id is 64 bit FIX THIS
+        p->collision_object->setUserIndex2(getWorld()->getWorldIndex());
         p->collision_object->setCollisionShape(
             p->get<ecsCollisionPlane>()->shape.get()
         );
@@ -238,27 +240,35 @@ public:
                 cacheA = (ecsCollisionCache*)A->getUserPointer();
                 cacheA->entities.push_back(ecsCollisionCache::Other());
                 cacheEntityA = &cacheA->entities.back();
-                cacheEntityA->entity = ecsEntityHandle(getWorld(), (entity_id)B->getUserIndex()); // TODO: FIX THIS, NEED TO GET SUBSCENE WORLD INSTEAD OF THIS
+                cacheEntityA->entity = ecsEntityHandle(derefWorldIndex(B->getUserIndex2()), (entity_id)B->getUserIndex());
             }
             if(B->getUserPointer()) {
                 cacheB = (ecsCollisionCache*)B->getUserPointer();
                 cacheB->entities.push_back(ecsCollisionCache::Other());
                 cacheEntityB = &cacheB->entities.back();
-                cacheEntityB->entity = ecsEntityHandle(getWorld(), (entity_id)A->getUserIndex()); // TODO: FIX THIS, NEED TO GET SUBSCENE WORLD INSTEAD OF THIS
+                cacheEntityB->entity = ecsEntityHandle(derefWorldIndex(A->getUserIndex2()), (entity_id)A->getUserIndex());
             }
 
             int numContacts = contactManifold->getNumContacts();
             for(int j = 0; j < numContacts; ++j) {
-                btManifoldPoint& pt = contactManifold->getContactPoint(j);
-                if(pt.getDistance() < .0f) {
-                    const btVector3& ptA = pt.getPositionWorldOnA();
-                    const btVector3& ptB = pt.getPositionWorldOnB();
-                    const btVector3& normalOnB = pt.m_normalWorldOnB;
+                btManifoldPoint& btpt = contactManifold->getContactPoint(j);
+                if(btpt.getDistance() < .0f) {
+                    const btVector3& ptA = btpt.getPositionWorldOnA();
+                    const btVector3& ptB = btpt.getPositionWorldOnB();
+                    const btVector3& normalOnB = btpt.m_normalWorldOnB;
 
                     if(cacheEntityA) {
+                        ecsCollisionCache::CollisionPoint pt;
+                        pt.pointOnA = gfxm::vec3(ptA.getX(), ptA.getY(), ptA.getZ());
+                        pt.pointOnB = gfxm::vec3(ptB.getX(), ptB.getY(), ptB.getZ());
+                        pt.normalOnB = gfxm::vec3(normalOnB.getX(), normalOnB.getY(), normalOnB.getZ());
                         cacheEntityA->points.push_back(pt);
                     }
                     if(cacheEntityB) {
+                        ecsCollisionCache::CollisionPoint pt;
+                        pt.pointOnA = gfxm::vec3(ptB.getX(), ptB.getY(), ptB.getZ());
+                        pt.pointOnB = gfxm::vec3(ptA.getX(), ptA.getY(), ptA.getZ());
+                        pt.normalOnB = -gfxm::vec3(normalOnB.getX(), normalOnB.getY(), normalOnB.getZ());
                         cacheEntityB->points.push_back(pt);
                     }
 

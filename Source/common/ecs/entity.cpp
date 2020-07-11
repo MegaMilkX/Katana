@@ -11,8 +11,8 @@ void recursiveTupleMarkDirty(ecsTupleMapBase* container, ecsTupleBase* tuple, ui
         }
 
         container->markDirty(tuple->array_index);
-        tuple->dirty_signature |= attrib_mask;
     }
+    tuple->dirty_signature |= attrib_mask;
 }
 
 void ecsEntity::signalAttribUpdate(ecsWorld* world, uint8_t attrib_id) {

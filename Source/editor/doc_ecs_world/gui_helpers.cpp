@@ -43,6 +43,12 @@ void imguiEntityListItemContextMenu(const char* string_id, ecsEntityHandle hdl, 
             }
             hdl.remove();
         }
+        if(ImGui::MenuItem("Delete tree")) {
+            if(selected_ent == hdl.getId()) {
+                selected_ent = 0;
+            }
+            hdl.removeTree();
+        }
         ImGui::EndPopup();
     }
 }

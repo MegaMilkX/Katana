@@ -101,6 +101,8 @@ public:
     void                 fireEvents(float from, float to, std::function<void(const std::string& name)> cb, float threshold = 1.0f);
 
     std::vector<int32_t>& getMapping(Skeleton* skel);
+    std::vector<int32_t>  makeMapping(Skeleton* skel, int root_bone_id);
+    std::vector<int32_t>  makeMapping(Skeleton* skel, const char* root_bone_name);
 
     void                 sample_one(int node_id, float cursor, AnimSample& sample);
 

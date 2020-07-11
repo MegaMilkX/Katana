@@ -82,6 +82,8 @@ friend ecsRenderGui;
 
     gfxm::mat4          local_transform = gfxm::mat4(1.0f);
     gfxm::mat4          transform = gfxm::mat4(1.0f);
+    gfxm::mat4          local_draw_transform = gfxm::mat4(1.0f);
+    gfxm::mat4          draw_transform = gfxm::mat4(1.0f);
     gfxm::rect          bounding_rect;
 
 public:
@@ -91,7 +93,7 @@ public:
     void setRotation(float degrees) { rotation = degrees; getEntityHdl().signalUpdate<ecsGuiElement>(); }
     void setOrigin(float x, float y) { setOrigin(gfxm::vec2(x, y)); }
     void setOrigin(const gfxm::vec2& origin) { this->origin = origin; getEntityHdl().signalUpdate<ecsGuiElement>(); }
-
+    
     void translate(float x, float y) { translate(gfxm::vec2(x, y)); }
     void translate(const gfxm::vec2& offs) { translation += offs; getEntityHdl().signalUpdate<ecsGuiElement>(); }
 
@@ -100,6 +102,8 @@ public:
     const gfxm::vec2& getOrigin() const { return origin; }
     const gfxm::mat4& getLocalTransform() const { return local_transform; }
     const gfxm::mat4& getTransform() const { return transform; }
+    const gfxm::mat4& getLocalDrawTransform() const { return local_draw_transform; }
+    const gfxm::mat4& getDrawTransform() const { return draw_transform; }
 
     const gfxm::rect& getBoundingRect() const {
         return bounding_rect;
@@ -346,6 +350,7 @@ class ecsGuiImage : public ecsAttrib<ecsGuiImage> {
 friend ecsRenderGui;
 
     std::shared_ptr<Texture2D> image;
+    gfxm::vec2                 size;
 
 public:
 
@@ -353,18 +358,30 @@ public:
         image = img;
         getEntityHdl().signalUpdate<ecsGuiImage>();
     }
+    void setSize(float w, float h) { setSize(gfxm::vec2(w, h)); }
+    void setSize(const gfxm::vec2& sz) { size = sz; getEntityHdl().signalUpdate<ecsGuiImage>(); }
+
+    const gfxm::vec2& getSize() const { return size; }
 
     void write(ecsWorldWriteCtx& ctx) override {
         ctx.writeResource(image);
+        ctx.write(size);
     }
     void read(ecsWorldReadCtx& ctx) override {
         image = ctx.readResource<Texture2D>();
+        ctx.read(size);
     }
 
     void onGui(ecsWorld* world, entity_id e) override {
         imguiResourceTreeCombo("image###quadimage", image, "png,jpg", [this](){
             setImage(image);
+            if(image) {
+                setSize(image->Width(), image->Height());
+            }
         });
+        if(ImGui::DragFloat2("size###guiimgsize", (float*)&size, 1.0f, .0f)) {
+            setSize(size);
+        }
     }
 
 };

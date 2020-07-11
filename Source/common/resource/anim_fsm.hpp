@@ -43,11 +43,28 @@ class AnimFSM : public AnimatorBase {
     std::vector<AnimSample> trans_samples;
     Motion* owner_motion = 0;
 
+    int cursor_value = -1;
+    int play_count_value = -1;
+    int play_count = 0;
+
     void pickEntryAction();
 
 public:
     AnimFSM(Motion* motion)
-    : owner_motion(motion) {}
+    : owner_motion(motion) {
+        if(motion) {
+            cursor_value = motion->getBlackboard().getIndex("normal_cursor");
+            if(cursor_value == -1) {
+                cursor_value = motion->getBlackboard().allocValue();
+                motion->getBlackboard().setName(cursor_value, "normal_cursor");
+            }
+            play_count_value = motion->getBlackboard().getIndex("play_count");
+            if(play_count_value == -1) {
+                play_count_value = motion->getBlackboard().allocValue();
+                motion->getBlackboard().setName(play_count_value, "play_count");
+            }
+        }
+    }
 
     ANIMATOR_TYPE getType() const override { return ANIMATOR_FSM; }
 
@@ -82,6 +99,8 @@ public:
     void                                        setEntryAction(const std::string& name);
 
     AnimFSMState*                               getCurrentAction();
+
+    void incrementPlayCount() { play_count++; }
 
     void update(float dt, AnimSampleBuffer& sample_buffer) override;
     AnimSample getRootMotion() override { return AnimSample(); }

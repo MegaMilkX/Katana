@@ -99,6 +99,10 @@ public:
     const gfxm::mat4& getTransform() const {
         return transform;
     }
+
+    gfxm::vec3 getPosition() const {
+        return (gfxm::vec3)(transform * gfxm::vec4(0, 0, 0, 1));
+    }
 };
 
 

@@ -110,9 +110,8 @@ public:
             auto e = tuple->get<ecsGuiElement>();
             auto img = tuple->get<ecsGuiImage>();
             if(tuple->is_dirty<ecsGuiImage>() && img->image) {
-                float width = img->image->Width();
-                float height = img->image->Height();
-                e->bounding_rect = gfxm::rect(0, -height, width, 0);
+                auto& sz = img->getSize();
+                e->bounding_rect = gfxm::rect(0, -sz.y, sz.x, 0);
 
                 ecsEntityHandle(world, tuple->getEntityUid()).signalUpdate<ecsGuiElement>();
             }
@@ -141,18 +140,22 @@ public:
             }
 
             gfxm::mat4 local = gfxm::mat4(1.0f);
+            gfxm::mat4 local_draw = gfxm::mat4(1.0f);
             local = gfxm::translate(local, translation);
             local = local * gfxm::to_mat4(rotation);
-            local = gfxm::translate(
+            local_draw = gfxm::translate(
                 local, 
                 gfxm::vec3(-e->bounding_rect.max.x * e->origin.x, -e->bounding_rect.min.y * e->origin.y, 0)
             );
             local = gfxm::scale(local, scale);
+            e->draw_transform = local_draw;
+            e->local_draw_transform = local_draw;
             e->local_transform = local;
             e->transform = local;
 
             if(tuple->get_parent()) {
                 e->transform = tuple->get_parent()->get<ecsGuiElement>()->transform * e->transform;
+                e->draw_transform = tuple->get_parent()->get<ecsGuiElement>()->transform * e->draw_transform;
                 e->enabled = tuple->get_parent()->get<ecsGuiElement>()->isEnabled();
             }
 
@@ -174,7 +177,7 @@ public:
                 memset(&cmd, 0, sizeof(cmd));
                 cmd.type = DRAW_CMD_QUAD;
                 cmd.clip_rect = gfxm::rect(0, 0, screenW, screenH);
-                cmd.transform = a->get<ecsGuiElement>()->transform;
+                cmd.transform = a->get<ecsGuiElement>()->draw_transform;
                 cmd.quad.color = gfxm::vec4(1,1,1,1);
                 cmd.quad.width = rect.max.x - rect.min.x;
                 cmd.quad.height = rect.max.y - rect.min.y;
@@ -196,7 +199,7 @@ public:
                 memset(&cmd, 0, sizeof(cmd));
                 cmd.type = DRAW_CMD_TEXT;
                 cmd.clip_rect = gfxm::rect(0, 0, screenW, screenH);
-                cmd.transform = a->get<ecsGuiElement>()->transform;
+                cmd.transform = a->get<ecsGuiElement>()->draw_transform;
                 cmd.text.lookup_texture_width = text->font->getLookupTextureWidth(text->face_height);
                 cmd.text.tex_atlas            = text->font->getAtlasTexture(text->face_height);
                 cmd.text.tex_lookup           = text->font->getGlyphLookupTexture(text->face_height);

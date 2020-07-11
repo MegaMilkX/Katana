@@ -138,6 +138,8 @@ void AnimFSM::update(
     }
     auto act = actions[current_action];
 
+    owner_motion->getBlackboard().setValue(play_count_value, (float)play_count);
+
     for(auto& t : act->getTransitions()) {
         bool res = false;
         for(auto& cond : t->conditions) {
@@ -165,6 +167,9 @@ void AnimFSM::update(
                 }
             }
             act = actions[current_action];
+            act->setNormalCursor(.0f);
+            play_count = 0;
+            
             trans_samples = sample_buffer.getSamples();
             trans_speed = 1.0f / t->blendTime;
             trans_weight = .0f;
@@ -173,6 +178,8 @@ void AnimFSM::update(
 
     
     act->update(dt, sample_buffer, getMotion()->getSkeleton().get(), trans_weight);
+    owner_motion->getBlackboard().setValue(cursor_value, act->getNormalCursor());
+
     if(trans_weight < 1.0f) {
         for(size_t i = 0; i < sample_buffer.sampleCount(); ++i) {
             sample_buffer[i].t = gfxm::lerp(trans_samples[i].t, sample_buffer[i].t, trans_weight);
