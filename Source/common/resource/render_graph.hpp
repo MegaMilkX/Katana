@@ -6,11 +6,13 @@
 
 #include "../gl/frame_buffer.hpp"
 
-class RenderJobTexture2d : public JobNode<RenderJobTexture2d, JobGraph> {
+class RenderGraph;
+
+class RenderJobTexture2d : public JobNode<RenderJobTexture2d, RenderGraph> {
     std::shared_ptr<Texture2D> texture;
     GLuint texid;
 public:
-    void onInit(JobGraph*) {
+    void onInit(RenderGraph*) {
         bind<GLuint>(&texid);
     }
     void onInvoke() {
@@ -23,11 +25,11 @@ public:
     }
 };
 
-class RenderJobFrameBuffer : public JobNode<RenderJobFrameBuffer, JobGraph> {
+class RenderJobFrameBuffer : public JobNode<RenderJobFrameBuffer, RenderGraph> {
     gl::FrameBuffer fb;
     gl::FrameBuffer* fb_ptr = &fb;
 public:
-    void onInit(JobGraph*) {
+    void onInit(RenderGraph*) {
         fb.addBuffer(0, GL_RGB, GL_UNSIGNED_BYTE);
         fb.reinitBuffers(640, 480);
         bind<gl::FrameBuffer*>(&fb_ptr);
@@ -41,11 +43,11 @@ public:
     }
 };
 
-class RenderJobClear : public JobNode<RenderJobClear, JobGraph> {
+class RenderJobClear : public JobNode<RenderJobClear, RenderGraph> {
     gl::FrameBuffer* fb;
     gfxm::vec4 color;
 public:
-    void onInit(JobGraph*) {
+    void onInit(RenderGraph*) {
         bind(&fb);
     }
     void onInvoke() {
@@ -60,10 +62,10 @@ public:
     }
 };
 
-class RenderJobRoot : public JobNode<RenderJobRoot, JobGraph> {
+class RenderJobRoot : public JobNode<RenderJobRoot, RenderGraph> {
     gl::FrameBuffer* fb = 0;
 public:
-    void onInit(JobGraph*) {
+    void onInit(RenderGraph*) {
 
     }
     void onInvoke() {

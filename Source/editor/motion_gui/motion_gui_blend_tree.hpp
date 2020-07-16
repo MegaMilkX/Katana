@@ -5,6 +5,7 @@
 #include "motion_gui.hpp"
 
 #include "../../common/resource/blend_tree.hpp"
+#include "../../common/resource/blend_tree_nodes.hpp"
 
 
 class MotionGuiBlendTree : public MotionGuiBase {

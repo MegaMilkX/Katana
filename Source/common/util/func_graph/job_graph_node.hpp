@@ -18,6 +18,7 @@ struct JobInput {
     JobOutput* source = 0;
     rttr::type type;
     JobGraphNode* owner = 0;
+    float         influence = .0f; // For visuals in the editor
 };
 struct JobOutput {
     void* value_ptr = 0;
@@ -29,6 +30,7 @@ class FuncNodeDesc;
 
 class JobGraph;
 class JobGraphNode {
+friend JobGraph;
     RTTR_ENABLE()
 protected:
     uint32_t uid = 0;
@@ -36,7 +38,8 @@ protected:
     std::vector<JobInput> inputs;
     std::vector<JobOutput> outputs;
 
-    gfxm::vec2 visual_pos;
+    std::string     name = "Node";
+    gfxm::vec2      visual_pos;
 
     virtual void onInit_(JobGraph* owner_graph) = 0;
 
@@ -52,8 +55,13 @@ public:
     size_t outputCount() const { return outputs.size(); }
     JobInput* getInput(size_t i) { return &inputs[i]; }
     JobOutput* getOutput(size_t i) { return &outputs[i]; }
+    const std::string& getName() const { return name; }
+    void               setName(const std::string& name) { this->name = name; }
     const gfxm::vec2& getPos() const { return visual_pos; }
     void setPos(const gfxm::vec2& pos) { visual_pos = pos; } 
+
+    void signalOverride() { onOverride(); }
+    virtual void onOverride() {}
 
     bool connect(size_t input, JobOutput* source) {
         if(input >= inputs.size()) {

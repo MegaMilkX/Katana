@@ -22,6 +22,14 @@ class JobNodeDescLib : public Singleton<JobNodeDescLib> {
         FuncNodeDesc*
     > descs_by_type;
 public:
+    int descCount() const {
+        return descs.size();
+    }
+    FuncNodeDesc* getDesc(int i) {
+        auto it = descs.begin();
+        std::advance(it, i);
+        return it->second.get();
+    }
     FuncNodeDesc* getDesc(const std::string& name) {
         auto it = descs.find(name);
         if(it == descs.end()) {
@@ -68,6 +76,7 @@ public:
         desc->node_constructor = []()->JobGraphNode*{
             return new T();
         };
+        desc->graph_type = T::get_graph_type_s();
     }
     ~regJobNode() {
 

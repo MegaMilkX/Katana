@@ -13,6 +13,8 @@
 struct MotionParamData {
     std::string     name;
     float           value = .0f;
+    float           target_value = .0f;
+    float           lerp_step = .0f; // per second
 };
 
 class MotionBlackboard;
@@ -114,6 +116,11 @@ public:
         if (id < 0) return;
         params[id].value = val;
     }
+    void lerpValue(int id, float target, float time) {
+        if (id < 0) return;
+        params[id].target_value = target;
+        params[id].lerp_step = (params[id].target_value - params[id].value) / time;
+    }
     const std::string& getName(int id) {
         return params[id].name;
     }
@@ -139,6 +146,24 @@ public:
         int id = allocValue();
         setName(id, name);
         return id;
+    }
+
+    void update(float dt) {
+        for(int i = 0; i < params.size(); ++i) {
+            auto& p = params[i];
+            if(p.lerp_step != .0f) {
+                float step = .0f;
+                if(p.lerp_step > .0f) {
+                    step = gfxm::_min(p.target_value - p.value, p.lerp_step * dt);   
+                } else if(p.lerp_step < .0f) {
+                    step = gfxm::_max(p.target_value - p.value, p.lerp_step * dt);
+                }
+                p.value += step;
+                if(p.target_value - p.value < FLT_EPSILON) {
+                    p.lerp_step = .0f;
+                }
+            }
+        }
     }
 
     void serialize(out_stream& out) {
@@ -219,6 +244,7 @@ public:
     }
 
     void update(float dt, AnimSampleBuffer& sample_buffer) {
+        getBlackboard().update(dt);
         if(animator) {
             animator->update(dt, sample_buffer);
         }

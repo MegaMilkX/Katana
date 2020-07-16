@@ -1,5 +1,12 @@
 #include "blend_tree.hpp"
 
+#include "blend_tree_nodes.hpp"
+
+BlendTree::BlendTree(Motion* motion)
+: owner_motion(motion) {
+    addNode(new PoseResultJob());
+}
+
 void BlendTree::clear() {
     JobGraph::clear();
     addNode(new PoseResultJob);
@@ -9,6 +16,53 @@ void BlendTree::copy(BlendTree* other) {
     other->write(strm);
     strm.jump(0);
     read(strm);
+}
+
+Motion* BlendTree::getMotion() {
+    return owner_motion;
+}
+void BlendTree::rebuild() {
+    JobGraph::reinitNodes();
+}
+
+void BlendTree::setCursor(float cur) {
+    prev_cursor = cursor;
+    cursor = cur;
+    if(cursor > 1.0f) {
+        cursor -= (int)cursor;
+    }
+}
+float BlendTree::getPrevCursor() const {
+    return prev_cursor;
+}
+float BlendTree::getCursor() const {
+    return cursor;
+}
+
+Pose& BlendTree::getPoseData(float normal_cursor) {
+    run();
+    return pose;
+}
+
+void BlendTree::update(float dt, AnimSampleBuffer& sample_buffer) {
+    run();
+    prev_cursor = cursor;
+    cursor += dt * pose.speed;
+    if(cursor > 1.0f) {
+        cursor -= 1.0f;
+    }
+    
+    for(size_t i = 0; i < sample_buffer.sampleCount() && i < pose.sample_buffer.sampleCount(); ++i) {
+        sample_buffer[i] = pose.sample_buffer[i];
+    }
+    sample_buffer.getRootMotionDelta() = pose.sample_buffer.getRootMotionDelta();
+}
+AnimSample   BlendTree::getRootMotion() {
+    AnimSample sample;
+
+    
+
+    return sample;
 }
 
 void BlendTree::write(out_stream& out) {

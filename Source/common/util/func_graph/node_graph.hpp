@@ -14,6 +14,12 @@ inline uint64_t next_job_node_type_id() {
     return id++;
 }
 
+struct JobConnection {
+    JobOutput* out;
+    JobInput*  in;
+    float      weight;
+};
+
 template<typename NODE_T, typename GRAPH_T>
 class JobNode : public JobGraphNode {
 protected:
@@ -22,10 +28,21 @@ protected:
     rttr::type getGraphType() const override { 
         return rttr::type::get<GRAPH_T>(); 
     }
+    bool is_connected(int i) {
+        JobInput& in = inputs[i];
+        return in.source != 0;
+    }
     template<typename T>
     T& get(size_t i) {
         JobInput& in = inputs[i];
         return *(T*)in.source->value_ptr;
+    }
+    // Only for editor
+    template<typename T>
+    void override_input(int i, const T& value) {
+        JobInput& in = inputs[i];
+        (*(T*)in.source->value_ptr) = value;
+        in.source->owner->signalOverride();
     }
     template<typename T>
     void bind(T* value_ptr) {
@@ -44,6 +61,15 @@ protected:
     virtual void onInit(GRAPH_T* owner_graph) = 0;
     virtual void onInvoke() = 0;
 
+    // Only for visuals in editor
+    void markConnection(int i, float weight = 1.0f) {
+        JobInput& in = inputs[i];
+        if(in.source == 0) {
+            return;
+        }
+        graph->addMarkedConnection(in.source, &in, weight);
+    }
+
 public:
     JobNode() {
         desc = JobNodeDescLib::get()->getDesc(rttr::type::get<NODE_T>());
@@ -61,6 +87,9 @@ public:
     } 
     uint64_t get_type_id() const override {  
         return get_type_id_static();
+    }
+    static rttr::type get_graph_type_s() {
+        return rttr::type::get<GRAPH_T>();
     }
 
     bool isInvokable() override { return true; }
@@ -120,6 +149,8 @@ protected:
     uint32_t next_uid = 0;
     std::vector<JobGraphNode*> invokable_nodes;
 
+    std::vector<JobConnection> marked_connections;
+
 public:
     JobGraph() {}
     virtual ~JobGraph() {}
@@ -139,7 +170,16 @@ public:
 
     // Ownership is transferred to the JobGraph
     void addNode(JobGraphNode* job);
+    void removeNode(JobGraphNode* job);
     JobGraphNode* getNode(uint32_t uid);
+
+    void addMarkedConnection(JobOutput* out, JobInput* in, float weight);
+    int markedConnectionCount() const {
+        return marked_connections.size();
+    }
+    JobConnection& getMarkedConnection(int i) {
+        return marked_connections[i];
+    }
 
     void prepare();
 

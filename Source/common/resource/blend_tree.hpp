@@ -4,7 +4,7 @@
 #include "resource.h"
 #include "anim_primitive.hpp"
 
-#include "blend_tree_nodes.hpp"
+#include "../util/func_graph/node_graph.hpp"
 
 #include "../scene/game_scene.hpp"
 #include "skeleton.hpp"
@@ -12,6 +12,10 @@
 
 #include "../util/object_pool.hpp"
 
+struct Pose {
+    AnimSampleBuffer        sample_buffer;
+    float                   speed = 1.0f;
+};
 
 class BlendTree : public AnimatorBase, public JobGraphTpl<BlendTree> {    
     Motion*         owner_motion = 0;
@@ -20,36 +24,19 @@ class BlendTree : public AnimatorBase, public JobGraphTpl<BlendTree> {
     float           cursor = .0f;
 
 public:
-    BlendTree(Motion* motion)
-    : owner_motion(motion) {
-        addNode(new PoseResultJob());
-    }
+    BlendTree(Motion* motion);
 
     ANIMATOR_TYPE getType() const override { return ANIMATOR_BLEND_TREE; }
 
     void clear() override;
     void copy(BlendTree* other);
 
-    Motion* getMotion() override {
-        return owner_motion;
-    }
-    void rebuild() override {
-        JobGraph::reinitNodes();
-    }
+    Motion* getMotion() override;
+    void rebuild() override;
 
-    void setCursor(float cur) {
-        prev_cursor = cursor;
-        cursor = cur;
-        if(cursor > 1.0f) {
-            cursor -= (int)cursor;
-        }
-    }
-    float getPrevCursor() const {
-        return prev_cursor;
-    }
-    float getCursor() const {
-        return cursor;
-    }
+    void setCursor(float cur);
+    float getPrevCursor() const;
+    float getCursor() const;
 
     template<typename T>
     T* createNode() {
@@ -58,31 +45,10 @@ public:
         return node;
     }
 
-    Pose& getPoseData(float normal_cursor) {
-        run();
-        return pose;
-    }
+    Pose& getPoseData(float normal_cursor);
 
-    void update(float dt, AnimSampleBuffer& sample_buffer) override {
-        run();
-        prev_cursor = cursor;
-        cursor += dt * pose.speed;
-        if(cursor > 1.0f) {
-            cursor -= 1.0f;
-        }
-        
-        for(size_t i = 0; i < sample_buffer.sampleCount() && i < pose.sample_buffer.sampleCount(); ++i) {
-            sample_buffer[i] = pose.sample_buffer[i];
-        }
-        sample_buffer.getRootMotionDelta() = pose.sample_buffer.getRootMotionDelta();
-    }
-    AnimSample   getRootMotion() override {
-        AnimSample sample;
-
-        
-
-        return sample;
-    }
+    void update(float dt, AnimSampleBuffer& sample_buffer) override;
+    AnimSample   getRootMotion() override;
 
     void         write(out_stream& out) override;
     void         read(in_stream& in) override;

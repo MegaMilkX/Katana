@@ -25,6 +25,7 @@ struct FuncNodeDesc {
     std::vector<In> ins;
     std::vector<Out> outs;
     gfxm::vec3 color;
+    rttr::type graph_type = rttr::type::get<JobGraph>();
 };
 
 #endif

@@ -105,6 +105,11 @@ struct tmat3
         col[1].y = f;
         col[2].z = f;
     }
+    explicit tmat3(const tvec3<T>& col0, const tvec3<T>& col1, const tvec3<T>& col2) {
+        col[0] = col0;
+        col[1] = col1;
+        col[2] = col2;
+    }
     
     tvec3<T> operator[](const int &i) const {
         return col[i];

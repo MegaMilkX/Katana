@@ -1,6 +1,6 @@
 #include "blend_tree.hpp"
 
-#include "blend_tree.hpp"
+#include "blend_tree_nodes.hpp"
 
 #include "motion.hpp"
 
@@ -23,6 +23,11 @@ STATIC_RUN(BLEND_TREE_NODES) {
         .color(.0, .4, .1);
     regJobNode<PoseResultJob>("PoseResult")
         .in<Pose>("result");
+    regJobNode<Blend2dJob>("Blend2d")
+        .in<float>("x")
+        .in<float>("y")
+        .out<Pose>("result")
+        .color(.6f, .1f, .3f);
     regJobNode<BlendAddJob>("BlendAdd")
         .in<Pose>("target")
         .in<Pose>("pose")

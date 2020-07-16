@@ -49,6 +49,30 @@ void JobGraph::addNode(JobGraphNode* job) {
     job->init(this);
     dirty = true;
 }
+void JobGraph::removeNode(JobGraphNode* job) {
+    auto& vec = nodes_by_type[job->get_type_id()];
+    for(int i = 0; i < vec.size(); ++i) {
+        if(vec[i] == job) {
+            vec.erase(vec.begin() + i);
+            break;
+        }
+    }
+    nodes_by_uid.erase(job->getUid());
+    nodes.erase(job);
+
+    // Find all inputs relying on this node
+    for(auto& n : nodes) {
+        for(int i = 0; i < n->inputCount(); ++i) {
+            auto in = n->getInput(i);
+            if(in->source && in->source->owner == job) {
+                in->source = 0;
+            }
+        }
+    }
+
+    delete job;
+    dirty = true;
+}
 
 JobGraphNode* JobGraph::getNode(uint32_t uid) {
     auto it = nodes_by_uid.find(uid);
@@ -56,6 +80,10 @@ JobGraphNode* JobGraph::getNode(uint32_t uid) {
         return 0;
     }
     return it->second;
+}
+
+void JobGraph::addMarkedConnection(JobOutput* out, JobInput* in, float weight) {
+    marked_connections.push_back(JobConnection{ out, in, weight });
 }
 
 void JobGraph::prepare() {
@@ -113,6 +141,8 @@ void JobGraph::run() {
     if(dirty) {
         prepare();
     }
+
+    marked_connections.clear();
     for(auto job : invokable_nodes) {
         job->invoke();
     }
