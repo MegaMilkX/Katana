@@ -44,4 +44,7 @@ void ecsInit (void) {
     regEcsAttrib<ecsAudioSource>("AudioSource", "Audio");
 
     regEcsAttrib<ecsBehavior>("Behavior");
+
+    // System attribs
+    regEcsAttrib<ecsCollisionObject>("CollisionObject");
 }

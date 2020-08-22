@@ -15,6 +15,7 @@ struct attrib_type_info {
     constructor_in_place_fn_t constructor_in_place;
     std::string name;
     size_t size_of = 0;
+    ecsAttribType attrib_type;
 };
 
 class EcsAttribTypeLib {
@@ -33,6 +34,7 @@ public:
         };
         inf.name = name;
         inf.size_of = sizeof(T);
+        inf.attrib_type = T::get_attrib_type_static();
         table[category].emplace_back(T::get_id_static());
         attrib_infos[T::get_id_static()] = inf;
         attrib_indices[name] = T::get_id_static();

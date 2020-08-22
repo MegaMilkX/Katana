@@ -40,6 +40,7 @@ class ecsAttribBase {
 public:
     virtual ~ecsAttribBase() {}
     virtual uint64_t get_id() const = 0;
+    virtual ecsAttribType get_attrib_type() const = 0;
 
     entity_id getEntityId() { return h_entity.getId(); }
     ecsEntityHandle getEntityHdl() { return h_entity; }
@@ -50,7 +51,7 @@ public:
     virtual void read(ecsWorldReadCtx& in) {}
 };
 
-template<typename T>
+template<typename T, ecsAttribType ATTR_TYPE = ecsAttribType::Normal>
 class ecsAttrib : public ecsAttribBase {
 public:
     static uint64_t get_id_static() {
@@ -59,6 +60,12 @@ public:
     } 
     uint64_t get_id() const override {
         return get_id_static();
+    }
+    static ecsAttribType get_attrib_type_static() {
+        return ATTR_TYPE;
+    }
+    ecsAttribType get_attrib_type() const override {
+        return get_attrib_type_static();
     }
 };
 

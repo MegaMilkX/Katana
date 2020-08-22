@@ -37,6 +37,9 @@ void imguiEntityAttributeList(DocEcsWorldState& state) {
             if(it.first == "") {
                 for(auto& attr_id : it.second) {
                     auto inf = getEcsAttribTypeLib().get_info(attr_id);
+                    if(inf->attrib_type != ecsAttribType::Normal) {
+                        continue;
+                    }
                     if(ImGui::Selectable(inf->name.c_str())) {
                         state.backupState();
                         if(bitmaskInheritedAttribs & (1 << attr_id)) {
@@ -54,6 +57,9 @@ void imguiEntityAttributeList(DocEcsWorldState& state) {
                 if(open) {
                     for(auto& attr_id : it.second) {
                         auto inf = getEcsAttribTypeLib().get_info(attr_id);
+                        if(inf->attrib_type != ecsAttribType::Normal) {
+                            continue;
+                        }
                         if(ImGui::Selectable(inf->name.c_str())) {
                             state.backupState();
                             if(bitmaskInheritedAttribs & (1 << attr_id)) {

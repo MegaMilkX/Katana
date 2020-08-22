@@ -20,6 +20,8 @@
 #include "animator.hpp"
 #include "behavior.hpp"
 
+#include "system_attribs.hpp"
+
 class ecsSubScene : public ecsAttrib<ecsSubScene> {
     std::shared_ptr<ecsWorld> world;
 public:

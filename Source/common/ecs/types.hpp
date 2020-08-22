@@ -20,5 +20,10 @@ static const entity_id      NULL_ENTITY             = -1;
 const entity_id             ENTITY_ERROR            = (entity_id)-1;
 const uint64_t              SERIALIZED_ENTITY_ERROR = (uint64_t)-1;
 
+enum class ecsAttribType {
+    Normal,
+    System
+};
+
 
 #endif
