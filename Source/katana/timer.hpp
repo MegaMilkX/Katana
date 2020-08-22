@@ -5,10 +5,10 @@
 #include <windows.h>
 #include <stdint.h>
 
-class timer
+class ktTimer
 {
 public:
-    timer()
+    ktTimer()
     {
         QueryPerformanceFrequency(&_freq);
     }

@@ -31,12 +31,31 @@ public:
 
 #include "../common/render/vertex_format.hpp"
 
+#include "../common/angel_script.hpp"
+
+void aslPrint(int value) {
+    LOG_WARN("AngelScript: " << value);
+}
+
 int main(int argc, char* argv[]) {
     if(!katanaInit()) {
         LOG_ERR("Failed to initialize engine");
         return 0;
     }
+/*
+    {
+        int r = aslGetEngine()->RegisterGlobalFunction("void print(int)", asFUNCTION(aslPrint), asCALL_CDECL);
 
+        asIScriptModule* mod = aslGetEngine()->GetModule(0, asGM_ALWAYS_CREATE);
+        mod->AddScriptSection("script", "void main() { print(10); }");
+        mod->Build();
+
+        asIScriptFunction* func = mod->GetFunctionByDecl("void main()");
+        asIScriptContext* ctx = aslGetEngine()->CreateContext();
+        ctx->Prepare(func);
+        ctx->Execute();
+    }
+*/
     ResourceDescLibrary::get()->init();
 
     if(!ThumbBuilder::get()->init()) {
@@ -82,9 +101,9 @@ int main(int argc, char* argv[]) {
     getInputMgr().addDevice(new InputDeviceXInputPad(2));
     getInputMgr().addDevice(new InputDeviceXInputPad(3));
 
-    InputAction action;
-    InputAction actionJump;
-    InputAction actionBack;
+    InputAction2 action;
+    InputAction2 actionJump;
+    InputAction2 actionBack;
     InputAxis   axis;
     ButtonCombo comb(rttr::type::get<InputAdapterXboxPad>(), 0);
     action.inputs.push_back(comb);
@@ -147,7 +166,7 @@ int main(int argc, char* argv[]) {
         app_state.reset(new Editor());
     }
 
-    timer frameTimer;
+    ktTimer frameTimer;
     float dt = 1.0f/60.0f;
     //try {
         app_state->onInit();

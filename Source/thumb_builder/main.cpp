@@ -185,7 +185,15 @@ int main(int argc, char** argv) {
 			0
 		); // Set as invalid
 		texture = makePreview(retrieve<GameScene>(res_path));
-	} else if(type == rttr::type::get<ModelSource>()) {
+	} else if (type == rttr::type::get<ecsWorld>()) {
+    dbInsertOrReplace(
+      res_path,
+      time(0), // TODO: Use actual file modify time
+      1,
+      0
+    ); // Set as invalid
+    texture = makePreview(retrieve<ecsWorld>(res_path));
+  } else if(type == rttr::type::get<ModelSource>()) {
 		dbInsertOrReplace(
 			res_path,
 			time(0), // TODO: Use actual file modify time

@@ -10,6 +10,7 @@
 void ecsInit (void) {
     regEcsAttrib<ecsName>("Name");
     regEcsAttrib<ecsSubScene>("SubScene");
+    regEcsAttrib<ecsModel>("Model");
     regEcsAttrib<ecsTagSubSceneRender>("TagSubSceneRender");
     regEcsAttrib<ecsTranslation>("Translation", "Spatial");
     regEcsAttrib<ecsRotation>("Rotation", "Spatial");
@@ -25,9 +26,11 @@ void ecsInit (void) {
     regEcsAttrib<ecsCollisionMesh>("CollisionMesh", "Collision");
     regEcsAttrib<ecsCollisionCache>("CollisionCache", "Collision");
     regEcsAttrib<ecsCollisionFilter>("CollisionFilter", "Collision");
+    regEcsAttrib<ecsKinematicCharacter>("KinematicCharacter", "Collision");
     regEcsAttrib<ecsMass>("Mass", "Physics");
     regEcsAttrib<ecsMeshes>("Meshes", "Rendering");
     regEcsAttrib<ecsLightOmni>("LightOmni", "Rendering");
+    regEcsAttrib<ecsLightDirect>("LightDirect", "Rendering");
 
     regEcsAttrib<ecsGuiElement>("GuiElement", "GUI");
     regEcsAttrib<ecsGuiText>("GuiText", "GUI");

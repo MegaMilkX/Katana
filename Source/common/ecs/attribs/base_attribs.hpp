@@ -16,6 +16,7 @@
 
 #include "../../util/threading/delegated_call.hpp"
 
+#include "model.hpp"
 #include "animator.hpp"
 #include "behavior.hpp"
 
@@ -719,6 +720,10 @@ public:
     };
     std::vector<Other> entities;
 };
+class ecsKinematicCharacter : public ecsAttrib<ecsKinematicCharacter> {
+public:
+
+};
 
 class ecsLightOmni : public ecsAttrib<ecsLightOmni> {
 public:
@@ -740,6 +745,25 @@ public:
     void read(ecsWorldReadCtx& r) override {
         color = r.read<gfxm::vec3>();
         radius = r.read<float>();
+        intensity = r.read<float>();
+    }
+};
+class ecsLightDirect : public ecsAttrib<ecsLightDirect> {
+public:
+    gfxm::vec3 color = gfxm::vec3(1,1,1);
+    float      intensity;
+
+    void onGui(ecsWorld* world, entity_id ent) override {
+        ImGui::ColorEdit3(MKSTR("color##" << this).c_str(), (float*)&color);
+        ImGui::DragFloat(MKSTR("intensity##" << this).c_str(), &intensity, 0.01f);
+    }
+
+    void write(ecsWorldWriteCtx& w) override {
+        w.write(color);
+        w.write(intensity);
+    }
+    void read(ecsWorldReadCtx& r) override {
+        color = r.read<gfxm::vec3>();
         intensity = r.read<float>();
     }
 };

@@ -86,6 +86,7 @@ target_include_directories(common PRIVATE
 	$ENGINE_SRC_DIR/lib/assimp/build/include/
 	$ENGINE_SRC_DIR/lib/bullet3-2.88/src/
 	$ENGINE_SRC_DIR/lib/freetype-2.10.0/include/
+	$ENGINE_SRC_DIR/lib/angelscript/include/
 	$INCLUDE_PATHS
 )
 target_link_directories(common PRIVATE 
@@ -101,6 +102,7 @@ target_include_directories($PROJECT_NAME PRIVATE
 	$ENGINE_SRC_DIR/lib/bullet3-2.88/src/
 	$ENGINE_SRC_DIR/katana/
 	$ENGINE_SRC_DIR/lib/freetype-2.10.0/include/
+	$ENGINE_SRC_DIR/lib/angelscript/include/
 	$INCLUDE_PATHS
 )
 target_link_directories($PROJECT_NAME PRIVATE 
@@ -118,6 +120,7 @@ target_link_libraries($PROJECT_NAME
 	assimp
 	zlibstatic
 	freetype
+	angelscript
 	common
 )
 
@@ -129,6 +132,7 @@ target_include_directories(${PROJECT_NAME}_editor PRIVATE
 	$ENGINE_SRC_DIR/lib/assimp/build/include/
 	$ENGINE_SRC_DIR/lib/bullet3-2.88/src/
 	$ENGINE_SRC_DIR/lib/freetype-2.10.0/include/
+	$ENGINE_SRC_DIR/lib/angelscript/include/
 	$INCLUDE_PATHS
 )
 target_link_directories(${PROJECT_NAME}_editor PRIVATE 
@@ -146,6 +150,7 @@ target_link_libraries(${PROJECT_NAME}_editor
 	assimp
 	zlibstatic
 	freetype
+	angelscript
 	common
 )
 
@@ -157,6 +162,7 @@ target_include_directories(thumb_builder PRIVATE
 	$ENGINE_SRC_DIR/lib/assimp/build/include/
 	$ENGINE_SRC_DIR/lib/bullet3-2.88/src/
 	$ENGINE_SRC_DIR/lib/freetype-2.10.0/include/
+	$ENGINE_SRC_DIR/lib/angelscript/include/
 	$INCLUDE_PATHS
 )
 target_link_directories(thumb_builder PRIVATE 
@@ -174,6 +180,7 @@ target_link_libraries(thumb_builder
 	assimp
 	zlibstatic
 	freetype
+	angelscript
 	common
 )
 
@@ -246,5 +253,12 @@ add_subdirectory(
 add_subdirectory(
 	$ENGINE_SRC_DIR/lib/freetype-2.10.0
 	$ENGINE_SRC_DIR/lib/freetype-2.10.0/build
+)
+
+option(BUILD_SHARED_LIBS OFF)
+option(AS_NO_EXCEPTIONS OFF)
+add_subdirectory(
+	$ENGINE_SRC_DIR/lib/angelscript/projects/cmake
+	$ENGINE_SRC_DIR/lib/angelscript/build
 )
 

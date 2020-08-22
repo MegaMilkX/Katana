@@ -6,6 +6,8 @@
 
 #include "../attributes/action_state_machine.hpp"
 
+#include "../ecs/util/assimp_to_ecs_world.hpp"
+
 void ModelSource::loadSkeleton(const aiScene* ai_scene) {
     skeleton.reset(new Skeleton());
 
@@ -507,19 +509,22 @@ void ModelSource::loadResources(const aiScene* ai_scene) {
     }
 }
 
-void ModelSource::loadSceneGraph(const aiScene* ai_scene, aiNode* node, ktNode* o) {
-    o->setName(node->mName.C_Str());
-    o->getTransform()->setTransform(
-        gfxm::transpose(*(gfxm::mat4*)&node->mTransformation)
-    );
+void ModelSource::loadSceneGraph(const aiScene* ai_scene, aiNode* node, ecsEntityHandle ent) {
+    ent.getAttrib<ecsName>()->name = node->mName.C_Str();
+    gfxm::mat4 m = gfxm::transpose(*(gfxm::mat4*)&node->mTransformation);
+    ent.getAttrib<ecsTranslation>()->setPosition(m * gfxm::vec4(0,0,0,1));
+    ent.getAttrib<ecsRotation>()->setRotation(gfxm::to_quat(gfxm::to_orient_mat3(m)));
+    ent.getAttrib<ecsScale>()->setScale(gfxm::length(m[0]), gfxm::length(m[1]), gfxm::length(m[2]));
+    ent.getAttrib<ecsWorldTransform>();
     
     for(unsigned i = 0; i < node->mNumChildren; ++i) {
-        auto c = o->createChild();
+        auto c = ent.getWorld()->createEntity();
+        ent.getWorld()->setParent(ent.getId(), c.getId());
         loadSceneGraph(ai_scene, node->mChildren[i], c);
     }
 
     if(node->mNumMeshes) {
-        auto m = o->get<Model>();
+        auto m = ent.getAttrib<ecsMeshes>();
         if(m) {
             std::vector<const aiMesh*> ai_meshes;
             for(unsigned i = 0; i < node->mNumMeshes; ++i) {
@@ -536,14 +541,14 @@ void ModelSource::loadSceneGraph(const aiScene* ai_scene, aiNode* node, ktNode* 
                 seg.submesh_index = i;
                 aiMesh* ai_mesh = ai_scene->mMeshes[node->mMeshes[i]];
                 if(ai_mesh->mNumBones) {
-                    seg.skin_data.reset(new Model::SkinData());
+                    seg.skin_data.reset(new ecsMeshes::SkinData());
                     for(unsigned j = 0; j < ai_mesh->mNumBones; ++j) {
                         aiBone* ai_bone = ai_mesh->mBones[j];
                         std::string name(ai_bone->mName.data, ai_bone->mName.length);
 
-                        ktNode* bone_object = o->getRoot()->findObject(name);
-                        if(bone_object) {
-                            seg.skin_data->bone_nodes.emplace_back(bone_object);
+                        ecsEntityHandle bone_object = ent.getWorld()->findEntity(name.c_str());
+                        if(bone_object.isValid()) {
+                            seg.skin_data->bone_nodes.emplace_back(bone_object.getAttrib<ecsWorldTransform>());
                             seg.skin_data->bind_transforms.emplace_back(
                                 gfxm::transpose(*(gfxm::mat4*)&ai_bone->mOffsetMatrix)
                             );
@@ -556,11 +561,12 @@ void ModelSource::loadSceneGraph(const aiScene* ai_scene, aiNode* node, ktNode* 
 }
 
 void ModelSource::loadSceneGraph(const aiScene* ai_scene) {
-    loadSceneGraph(ai_scene, ai_scene->mRootNode, scene->getRoot());
+    
+    loadSceneGraph(ai_scene, ai_scene->mRootNode, world->createEntity());
 }
 
 ModelSource::ModelSource() {
-    scene.reset(new GameScene());
+    world.reset(new ecsWorld());
 }
 ModelSource::~ModelSource() {
 
@@ -594,31 +600,28 @@ bool ModelSource::deserialize(in_stream& in, size_t sz) {
     scene_name = scene_name.substr(0, scene_name.find_first_of('.')); 
 
     loadResources(ai_scene);
-    loadSceneGraph(ai_scene);
-    scene->getRoot()->setName(scene_name);
-    scene->getRoot()->getTransform()->setScale((float)scaleFactor);
+    auto idRoot = assimpImportEcsScene(world.get(), Name().c_str());
+    ecsEntityHandle hRoot(world.get(), idRoot);
 
-/*
-    if(anims.size() > 0) {
-        auto anim_stack = scene->getRoot()->get<AnimationStack>();
-        anim_stack->setSkeleton(skeleton);
-    }
-    for(unsigned i = 0; i < anims.size(); ++i) {
-        auto anim_stack = scene->getRoot()->get<AnimationStack>();
-        anim_stack->addAnim(anims[i]);
-    }
-*/
-    scene->getRoot()->refreshAabb();
-
-    scene->Name(scene_name + ".so");
+    world->Name(scene_name + ".ecsw");
     if(skeleton) {
         skeleton->scale_factor = (float)scaleFactor;
         skeleton->Name(scene_name + ".skl");
-        scene->getRoot()->get<SkeletonRef>()->skeleton = skeleton;
     }
     return true;
 }
 
+bool ModelSource::unpackSkeleton(const std::string& dir) {
+    std::string rname = Name();
+    rname = rname.substr(0, rname.find_last_of('.'));
+    const std::string unpack_dir = dir + "/" + rname;
+    std::string skel_path  = unpack_dir + "/" + skeleton->Name();
+    if(skeleton) {
+        skeleton->write_to_file(skel_path);
+    }
+
+    return true;
+}
 bool ModelSource::unpack(const std::string& dir) {
     std::string rname = Name();
     rname = rname.substr(0, rname.find_last_of('.'));
@@ -638,8 +641,11 @@ bool ModelSource::unpack(const std::string& dir) {
     createDirRecursive(material_dir);
     createDirRecursive(texture_dir);
 
+    std::string world_path = source_dir + "/" + world->Name();
+    std::string skel_path  = unpack_dir + "/" + skeleton->Name();
+
     if(skeleton) {
-        skeleton->write_to_file(unpack_dir + "/" + skeleton->Name());
+        skeleton->write_to_file(skel_path);
         skeleton->Name(res_dir_dep_rel + "/" + skeleton->Name());
     }
 
@@ -648,6 +654,8 @@ bool ModelSource::unpack(const std::string& dir) {
         m->Name(res_dir_dep_rel + "/mesh/" + m->Name());
     }
     for(auto a : anims) {
+        a->reference_file = world_path;
+        a->reference_skeleton_file = skel_path;
         a->write_to_file(anim_dir + "/" + a->Name());
         a->Name(res_dir_dep_rel + "/anim/" + a->Name());
     }
@@ -660,8 +668,8 @@ bool ModelSource::unpack(const std::string& dir) {
         t->Name(res_dir_dep_rel + "/texture/" + t->Name());
     }
 
-    if(scene) {
-        scene->write_to_file(source_dir + "/" + scene->Name());
+    if(world) {
+        world->write_to_file(world_path);
     }
 
     gResourceTree.scanFilesystem(get_module_dir() + "/" + platformGetConfig().data_dir);

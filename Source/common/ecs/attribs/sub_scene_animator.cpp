@@ -10,6 +10,9 @@ ecsSubSceneAnimator::ecsSubSceneAnimator()
 
 void ecsSubSceneAnimator::setSkeleton(std::shared_ptr<Skeleton> skel) {
     skeleton = skel;
+    if(skeleton) {
+        sample_buffer = AnimSampleBuffer(skeleton.get());
+    }
     if(motion_ref) {
         setMotion(motion_ref);
     }

@@ -153,14 +153,11 @@ public:
             auto& p = params[i];
             if(p.lerp_step != .0f) {
                 float step = .0f;
-                if(p.lerp_step > .0f) {
-                    step = gfxm::_min(p.target_value - p.value, p.lerp_step * dt);   
-                } else if(p.lerp_step < .0f) {
-                    step = gfxm::_max(p.target_value - p.value, p.lerp_step * dt);
-                }
-                p.value += step;
-                if(p.target_value - p.value < FLT_EPSILON) {
+                if(abs(p.target_value - p.value) < abs(p.lerp_step * dt)) {
+                    p.value = p.target_value;
                     p.lerp_step = .0f;
+                } else {
+                    p.value += p.lerp_step * dt;
                 }
             }
         }
@@ -245,13 +242,10 @@ public:
 
     void update(float dt, AnimSampleBuffer& sample_buffer) {
         getBlackboard().update(dt);
+        sample_buffer.getRootMotionDelta().t = gfxm::vec3(0,0,0);
+        sample_buffer.getRootMotionDelta().r = gfxm::quat(0,0,0,1);
         if(animator) {
             animator->update(dt, sample_buffer);
-        }
-    }
-    AnimSample getRootMotion() {
-        if(animator) {
-            return animator->getRootMotion();
         }
     }
 

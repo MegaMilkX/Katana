@@ -16,6 +16,11 @@
 
 #include "../common/gen/mesh_sphere.h"
 
+#include "../common/ecs/world.hpp"
+#include "../common/ecs/attribs/base_attribs.hpp"
+#include "../common/ecs/systems/render.hpp"
+#include "../common/ecs/systems/scene_graph.hpp"
+
 template<typename T>
 std::shared_ptr<Texture2D> makePreview(std::shared_ptr<T> res) {
     return std::shared_ptr<Texture2D>();
@@ -34,6 +39,56 @@ std::shared_ptr<Texture2D> makePreview<Texture2D>(std::shared_ptr<Texture2D> res
         buf.data(), w, h, 0, res->getBpp()
     );
     out_tex->Data(buf.data(), w, h, res->getBpp());
+    return out_tex;
+}
+template<>
+std::shared_ptr<Texture2D> makePreview<ecsWorld>(std::shared_ptr<ecsWorld> world) {
+    gfxm::mat4 _proj;
+    gfxm::mat4 _view;
+    gfxm::vec2 vp_sz(128, 128);
+    gfxm::vec3 cam_pivot(0, 1.1f, 0);
+    float cam_angle_y = gfxm::radian(45.0f);
+    float cam_angle_x = gfxm::radian(-25.0f);
+    float cam_zoom = 1.5f;
+
+    _proj = gfxm::perspective(gfxm::radian(45.0f), vp_sz.x / (float)vp_sz.y, 0.01f, cam_zoom * 2.0f);
+    gfxm::transform tcam;
+    tcam.position(cam_pivot);
+    tcam.rotate(cam_angle_y, gfxm::vec3(0.0f, 1.0f, 0.0f));
+    tcam.rotate(cam_angle_x, tcam.right());
+    tcam.translate(tcam.back() * cam_zoom);
+    _view = gfxm::inverse(tcam.matrix());
+
+    auto light = world->createEntity();
+    light.getAttrib<ecsTranslation>()->setPosition(tcam.matrix() * gfxm::vec4(0, 0, 0, 1));
+    light.getAttrib<ecsWorldTransform>();
+    light.getAttrib<ecsLightOmni>()->intensity  = 6.0f;
+    light.getAttrib<ecsLightOmni>()->radius     = 5.0f;
+
+    RenderViewport vp;
+    vp.init(128, 128);
+    RendererPBR renderer;
+
+    DrawList dl;
+    world->getSystem<ecsysSceneGraph>();
+    world->update();
+    world->getSystem<ecsRenderSystem>()->fillDrawList(dl);
+
+    curve<gfxm::vec3> gradient;
+    gradient[.0f] = gfxm::vec3(0, 0, 0);
+    gradient[.2f] = gfxm::vec3(0, 0, 0);
+    gradient[1.0f] = gfxm::vec3(1, 1, 1);
+    renderer.setSkyGradient(gradient);
+    renderer.draw(&vp, _proj, _view, dl);
+
+    std::vector<unsigned char> buf(128 * 128 * 3);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, vp.getFinalImage());
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, buf.data());
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    std::shared_ptr<Texture2D> out_tex(new Texture2D());
+    out_tex->Data(buf.data(), 128, 128, 3);
     return out_tex;
 }
 template<>
@@ -88,7 +143,6 @@ std::shared_ptr<Texture2D> makePreview<GameScene>(std::shared_ptr<GameScene> res
     gradient[1.0f] = gfxm::vec3(1,1,1);
     renderer.setSkyGradient(gradient);
     renderer.draw(&vp, _proj, _view, dl, false, true);
-    renderer.draw(&vp, _proj, _view, dl, false, true);
     std::vector<unsigned char> buf(128 * 128 * 3);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, vp.getFinalImage());
@@ -101,7 +155,7 @@ std::shared_ptr<Texture2D> makePreview<GameScene>(std::shared_ptr<GameScene> res
 }
 template<>
 std::shared_ptr<Texture2D> makePreview<ModelSource>(std::shared_ptr<ModelSource> res) {
-    return makePreview(res->scene);
+    return makePreview(res->world);
 }
 template<>
 std::shared_ptr<Texture2D> makePreview<Material>(std::shared_ptr<Material> mat) {

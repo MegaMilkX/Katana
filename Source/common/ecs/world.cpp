@@ -6,6 +6,8 @@
 #include "../resource/entity_template.hpp"
 #include "attribs/base_attribs.hpp"
 
+#include <stack>
+
 
 std::vector<ecsWorld*> world_pool;
 std::set<int32_t>          free_world_indices;
@@ -31,30 +33,23 @@ ecsWorld* derefWorldIndex(int32_t i) {
 
 
 void unlinkTupleTreeRelations(ecsTupleBase* tuple) {
-    if(tuple->parent) {
-        if(tuple->prev_sibling == 0) { // First child
-            if (tuple->next_sibling) {
-                tuple->next_sibling->prev_sibling = 0;
-            }
-            tuple->parent->first_child = tuple->next_sibling;
-        } else {
-            if(tuple->next_sibling) {
-                tuple->next_sibling->prev_sibling = tuple->prev_sibling;
-            }
-            tuple->prev_sibling->next_sibling = tuple->next_sibling;
-        }
+    if (tuple->parent) {
+        tuple->parent->_removeChild(tuple);
     }
-
+  
     auto t = tuple->first_child;
     while(t != 0) {
         t->parent = 0;
-        t->prev_sibling = 0;
         auto next = t->next_sibling;
+        t->prev_sibling = 0;
         t->next_sibling = 0;
         t = next;
-    }
+    }    
 
     tuple->parent = 0;
+    tuple->first_child = 0;
+    tuple->prev_sibling = 0;
+    tuple->next_sibling = 0;
 }
 
 void ecsWorld::onAttribsCreated(entity_id ent, uint64_t entity_sig, uint64_t diff_sig) {
@@ -190,7 +185,30 @@ void ecsWorld::_unlinkTupleContainer (entity_id e, ecsTupleMapBase* tuple_map) {
         tuple_map_ref = next;
     }
 }
-void ecsWorld::_findTreeRelations (entity_id e, ecsTupleMapBase* tuple_map, ecsTupleBase* tuple) {
+void ecsWorld::_findTreeRelations (entity_id eid, ecsTupleMapBase* tuple_map, ecsTupleBase* tuple) {
+    assert(!tuple->parent);
+    assert(!tuple->first_child);
+
+    entity_id pid = getParent(eid);
+    if(pid != NULL_ENTITY) {
+        auto parent_entity = entities.deref(pid);
+        auto parent_tuple  = parent_entity->findTupleOfSameContainer(tuple_map);
+        if(parent_tuple) {
+            parent_tuple->_addChild(tuple);
+        }
+    }
+    
+    entity_id cid = getFirstChild(eid);
+    while(cid != NULL_ENTITY) {
+        auto child_entity = entities.deref(cid);
+        auto child_tuple  = child_entity->findTupleOfSameContainer(tuple_map);
+        if(child_tuple) {
+            tuple->_addChild(child_tuple);
+        }
+
+        cid = getNextSibling(cid);
+    }
+/*
     auto parent_id = getParent(e);
     if(parent_id != NULL_ENTITY && tuple->parent == 0) {
         auto parent = entities.deref(parent_id);
@@ -220,7 +238,7 @@ void ecsWorld::_findTreeRelations (entity_id e, ecsTupleMapBase* tuple_map, ecsT
     auto child_id = getFirstChild(e);
     auto attachment_tuple = tuple;
     while (child_id != NULL_ENTITY) {
-        volatile auto c = entities.deref(child_id);
+        auto c = entities.deref(child_id);
         auto c_tuple = c->findTupleOfSameContainer(tuple_map);
         if(!c_tuple) {
             child_id = getNextSibling(child_id);
@@ -238,8 +256,7 @@ void ecsWorld::_findTreeRelations (entity_id e, ecsTupleMapBase* tuple_map, ecsT
             c_tuple->parent = tuple;
         }
         child_id = getNextSibling(child_id);
-    }
-    attachment_tuple->next_sibling = 0;
+    }*/
 }
 
 
@@ -402,6 +419,28 @@ void ecsWorld::setParent (entity_id parent, entity_id child) {
     if (old_parent == parent) {
         return;
     }
+
+    // Update tree depth indices
+    std::stack<entity_id> stack;
+    stack.push(child);
+    while(!stack.empty()) {
+        entity_id eid = stack.top();
+        stack.pop();
+        entity_id pid = getParent(eid);
+        int parent_tree_depth = 0;
+        if(pid != NULL_ENTITY) {
+            parent_tree_depth = entities.deref(pid)->tree_depth;
+        }
+        entities.deref(eid)->tree_depth = parent_tree_depth + 1;
+
+        auto c = getFirstChild(eid);
+        while(c != NULL_ENTITY) {
+            stack.push(c);
+            c = getNextSibling(c);
+        }
+    }
+    //
+
     ecsEntity* old_parent_e = 0;
     if (old_parent != NULL_ENTITY) {
         old_parent_e = entities.deref(old_parent);
@@ -431,39 +470,37 @@ void ecsWorld::setParent (entity_id parent, entity_id child) {
         entities.deref(child)->parent_uid = NULL_ENTITY;
     }
 
-    if (parent == NULL_ENTITY) {
-        return;
-    }
-
-    auto parent_e = entities.deref(parent);
-    if(parent_e) {
-        entity_id first_child = getFirstChild(parent);
-        if(first_child == NULL_ENTITY) {
-            parent_e->first_child_uid = child;
-        } else { // Find last child
-            entity_id last_sib = first_child;
-            entity_id next_sib = getNextSibling(first_child);
-            while(next_sib != NULL_ENTITY) {
-                last_sib = next_sib;
-                next_sib = getNextSibling(last_sib);
+    if (parent != NULL_ENTITY) {
+        auto parent_e = entities.deref(parent);
+        if(parent_e) {
+            entity_id first_child = getFirstChild(parent);
+            if(first_child == NULL_ENTITY) {
+                parent_e->first_child_uid = child;
+            } else { // Find last child
+                entity_id last_sib = first_child;
+                entity_id next_sib = getNextSibling(first_child);
+                while(next_sib != NULL_ENTITY) {
+                    last_sib = next_sib;
+                    next_sib = getNextSibling(last_sib);
+                }
+                auto last_sib_e = entities.deref(last_sib);
+                last_sib_e->next_sibling_uid = child;
             }
-            auto last_sib_e = entities.deref(last_sib);
-            last_sib_e->next_sibling_uid = child;
+            auto child_e = entities.deref(child);
+            child_e->parent_uid = parent;
+            child_e->next_sibling_uid = NULL_ENTITY;
         }
-        auto child_e = entities.deref(child);
-        child_e->parent_uid = parent;
-        child_e->next_sibling_uid = NULL_ENTITY;
     }
     
     // Update tuple relations. Tree relations turned out to be quite heavy
-    /*
+    // Why was this commented out?
     auto tuple_map = e->first_tuple_map.get();
     while(tuple_map != 0) {
         unlinkTupleTreeRelations(tuple_map->tuple);
         _findTreeRelations(child, tuple_map->ptr, tuple_map->tuple);
         recursiveTupleMarkDirty(tuple_map->ptr, tuple_map->tuple, e->getAttribBits());
         tuple_map = tuple_map->next.get();
-    }*/
+    }
 
 }
 entity_id ecsWorld::getParent (entity_id e) {
@@ -480,6 +517,11 @@ entity_id ecsWorld::getNextSibling (entity_id e) {
     auto en = entities.deref(e);
     assert(en);
     return en->next_sibling_uid;
+}
+int ecsWorld::getTreeDepth (entity_id e) {
+    auto en = entities.deref(e);
+    assert(en);
+    return en->tree_depth;
 }
 
 
@@ -747,6 +789,25 @@ bool ecsWorld::deserialize(in_stream& in, size_t sz, entity_id merge_parent) {
         deserializeEntity(ctx, ctx.getRemappedEntityId(i));
     }
 
+    // Update tree depth indices
+    for(int i = 0; i < loaded_entities.size(); ++i) {
+        std::stack<entity_id> stack;
+        stack.push(loaded_entities[i]);
+
+        while(!stack.empty()) {
+            entity_id e = stack.top();
+            stack.pop();
+
+            entity_id c = getFirstChild(e);
+            while(c != NULL_ENTITY) {
+                entities.deref(c)->tree_depth++;
+                stack.push(c);
+                c = getNextSibling(c);
+            }
+        }
+    }
+    //
+
     if(merge_parent != NULL_ENTITY) {
         for(int i = 0; i < loaded_entities.size(); ++i) {
             auto p = getParent(loaded_entities[i]);
@@ -831,9 +892,14 @@ void ecsWorld::deserializeEntity (ecsWorldReadCtx& ctx, entity_id e, uint64_t at
     inheritedBitmask = ctx.convertMask(inheritedBitmask);
 
     auto ent = ctx.getWorld()->entities.deref(e);
-    ent->parent_uid = ctx.getRemappedEntityId(ctx.read<entity_id>());
-    ent->next_sibling_uid = ctx.getRemappedEntityId(ctx.read<entity_id>());
-    ent->first_child_uid = ctx.getRemappedEntityId(ctx.read<entity_id>());
+    entity_id parent_id         = ctx.getRemappedEntityId(ctx.read<entity_id>());
+    entity_id next_sibling_id   = ctx.getRemappedEntityId(ctx.read<entity_id>());
+    entity_id first_child_id    = ctx.getRemappedEntityId(ctx.read<entity_id>());
+    // Need to call setParent here instead of setting indices directly.
+    // Otherwise if this entity already has attributes (created when deserializing other entities, e.g skin data in ecsMeshes)
+    // the callbacks to restructure tuple trees won't be called, which is very bad
+    // TODO: Find a way to make this whole process simpler and less prone to error
+    ctx.getWorld()->setParent(parent_id, e);
 
     uint32_t attrib_count = ctx.read<uint32_t>();
 

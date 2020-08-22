@@ -33,6 +33,9 @@ public:
         static Log fl;
         return &fl;
     }
+    static void Write(const std::ostringstream& strm, Type type = LOG_INFO) {
+        GetInstance()->_write(strm.str(), type);
+    }
     static void Write(const std::string& str, Type type = LOG_INFO) {
         GetInstance()->_write(str, type);
     }
@@ -83,7 +86,7 @@ private:
                     std::string str = static_cast<std::ostringstream&>(
                         std::ostringstream() << _typeToString(e.type) 
                         << " | " << buffer 
-                        << " | " << std::hex << e.thread_id 
+                        << " | " << std::hex << std::uppercase << e.thread_id 
                         << ": " << e.line 
                         << std::endl).str();
                     f << str;
@@ -157,10 +160,10 @@ private:
 static_cast<std::ostringstream&>(std::ostringstream() << LINE).str()
 
 //#define LOG(LINE) std::cout << MKSTR(LINE) << std::endl;
-#define LOG(LINE) Log::Write(MKSTR(LINE));
-#define LOG_WARN(LINE) Log::Write(MKSTR(LINE), Log::LOG_WARN);
-#define LOG_ERR(LINE) Log::Write(MKSTR(LINE), Log::LOG_ERROR);
-#define LOG_DBG(LINE) Log::Write(MKSTR(LINE), Log::LOG_DEBUG_INFO);
+#define LOG(LINE) Log::Write(std::ostringstream() << LINE);
+#define LOG_WARN(LINE) Log::Write(std::ostringstream() << LINE, Log::LOG_WARN);
+#define LOG_ERR(LINE) Log::Write(std::ostringstream() << LINE, Log::LOG_ERROR);
+#define LOG_DBG(LINE) Log::Write(std::ostringstream() << LINE, Log::LOG_DEBUG_INFO);
 
 inline std::ostream& operator<< (std::ostream& stream, const gfxm::vec2& v) {
     stream << "[" << v.x << ", " << v.y << "]";

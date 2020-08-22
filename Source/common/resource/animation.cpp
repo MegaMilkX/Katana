@@ -1,5 +1,6 @@
 #include "animation.hpp"
 
+#include <stack>
 #include "skeleton.hpp"
 
 void buildAnimSkeletonMapping(Animation* anim, Skeleton* skel, std::vector<int32_t>& bone_mapping) {
@@ -192,6 +193,25 @@ static gfxm::mat4 getParentTransform(Skeleton* skeleton, const std::vector<AnimS
     }
     return m;
 }
+static gfxm::mat4 calcWorldTransform(Skeleton* skeleton, const std::vector<AnimSample>& samples, int32_t bone_idx, float scaleFactor) {
+    const auto* bone = &skeleton->getBone(bone_idx);
+    std::stack<int32_t> stack;
+    stack.push(bone_idx);
+    while(bone->parent >= 0) {
+        stack.push(bone->parent);
+        bone = &skeleton->getBone(bone->parent);
+    }
+    gfxm::mat4 m = gfxm::scale(gfxm::mat4(1.0f), gfxm::vec3(scaleFactor, scaleFactor, scaleFactor));
+    while (!stack.empty()) {
+        auto id = stack.top();
+        stack.pop();
+        gfxm::mat4 lcl = gfxm::translate(gfxm::mat4(1.0f), samples[id].t)
+            * gfxm::to_mat4(samples[id].r)
+            * gfxm::scale(gfxm::mat4(1.0f), samples[id].s);
+        m = m * lcl;
+    }
+    return m;
+}
 
 void Animation::sample_remapped(
     AnimSampleBuffer& sample_buffer,
@@ -202,6 +222,46 @@ void Animation::sample_remapped(
 ) {
     sample_remapped(sample_buffer.getSamples(), cursor, mapping);
 
+    if(root_motion_node_index >= 0) {
+        if(enable_root_motion_t_xz) {
+            int32_t rm_bone_id      = mapping[root_motion_node_index];
+            int32_t root_bone_id    = skeleton->getRootOf(rm_bone_id);
+            // This is the root bone of the skeleton, that is scaled by scaleFactor(FBX)
+            // it is not animated, normally
+            gfxm::mat4 root_transform = skeleton->getBone(root_bone_id).bind_pose;
+
+            AnimSampleBuffer zero_pose(skeleton);
+            AnimSampleBuffer last_pose(skeleton);
+            sample_remapped(zero_pose.getSamples(), .0f, mapping);
+            sample_remapped(last_pose.getSamples(), length, mapping);
+            AnimSampleBuffer prev_pose(skeleton);
+            sample_remapped(prev_pose.getSamples(), prev_cursor, mapping);
+
+            gfxm::mat4 zero_world = calcWorldTransform(skeleton, zero_pose.getSamples(), rm_bone_id, skeleton->scale_factor);
+            gfxm::mat4 last_world = calcWorldTransform(skeleton, last_pose.getSamples(), rm_bone_id, skeleton->scale_factor);
+            gfxm::mat4 prev_world = calcWorldTransform(skeleton, prev_pose.getSamples(), rm_bone_id, skeleton->scale_factor);
+            gfxm::mat4 curr_world = calcWorldTransform(skeleton, sample_buffer.getSamples(), rm_bone_id, skeleton->scale_factor);
+
+            gfxm::mat4 scaleFactorInverse = gfxm::inverse(gfxm::scale(gfxm::mat4(1.0f), gfxm::vec3(skeleton->scale_factor, skeleton->scale_factor, skeleton->scale_factor)));
+
+            gfxm::vec3 zero_wpos  = zero_world * gfxm::vec4(0,0,0,1);
+            gfxm::vec3 last_wpos  = last_world * gfxm::vec4(0,0,0,1);
+            gfxm::vec3 prev_wpos  = prev_world * gfxm::vec4(0,0,0,1);
+            gfxm::vec3 curr_wpos  = curr_world * gfxm::vec4(0,0,0,1);
+            gfxm::vec3 root_rollback = scaleFactorInverse * gfxm::vec4(curr_wpos, .0f);
+
+            auto& root_bone_pos = sample_buffer[root_bone_id].t;
+            root_bone_pos -= root_rollback;
+
+            if(prev_cursor <= cursor) {
+                sample_buffer.getRootMotionDelta().t = (curr_wpos - prev_wpos);
+            } else {
+                sample_buffer.getRootMotionDelta().t =
+                    ((last_wpos - prev_wpos) + (curr_wpos - zero_wpos));
+            }
+        }
+    }
+    /*
     if(root_motion_node_index >= 0) {
         if(enable_root_motion_t_xz) {
             int32_t rm_bone_id = mapping[root_motion_node_index];
@@ -238,7 +298,7 @@ void Animation::sample_remapped(
                     ((rm_last_world_t - rm_prev_world_t) + (rm_world_t - rm_zero_world_t)) * skeleton->scale_factor;
             }
         }
-    }
+    }*/
 }
 
 void Animation::sample_remapped(
@@ -450,6 +510,17 @@ void Animation::serialize(out_stream& out_) {
         w.write(root_motion_node_name);
         zipw.add("root_motion", out.getBuffer());
     }
+    {
+        dstream out;
+        DataWriter w(&out);
+        w.write(reference_file);
+        w.write(reference_skeleton_file);
+        w.write(ref_camera_target);
+        w.write(ref_cam_rot_x);
+        w.write(ref_cam_rot_y);
+        w.write(ref_cam_zoom);
+        zipw.add("editor_data", out.getBuffer());
+    }
 
     auto buf = zipw.finalize();
     out_.write((char*)buf.data(), buf.size());
@@ -571,6 +642,19 @@ bool Animation::deserialize(in_stream& in_, size_t sz) {
         if(flags & 2) enable_root_motion_t_y = true;
         if(flags & 4) enable_root_motion_r_y = true;
         setRootMotionSourceNode(root_motion_node_name);  
+    }
+    buf = zipr.extractFile("editor_data");
+    if(!buf.empty()) {
+        dstream in;
+        in.setBuffer(buf);
+        DataReader r(&in);
+
+        reference_file = r.readStr();
+        reference_skeleton_file = r.readStr();
+        ref_camera_target = r.readStr();
+        ref_cam_rot_x = r.read<float>();
+        ref_cam_rot_y = r.read<float>();
+        ref_cam_zoom = r.read<float>();
     }
     return true;
 }

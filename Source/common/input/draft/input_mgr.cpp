@@ -50,7 +50,7 @@ void InputMgr2::assignDevice(InputDevice* device, size_t user_idx) {
     device->setUser(&users[user_idx]);
 }
 
-void InputMgr2::setAction(const char* name, const InputAction& action) {
+void InputMgr2::setAction(const char* name, const InputAction2& action) {
     auto it = action_uids.find(name);
     if(it == action_uids.end()) {
         input_action_uid_t uid = actions.size() + 1;

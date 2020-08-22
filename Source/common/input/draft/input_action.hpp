@@ -20,7 +20,7 @@ struct ButtonCombo {
     int         keys[3];
 };
 
-struct InputAction {
+struct InputAction2 {
     std::string name;
     std::vector<ButtonCombo> inputs;
 };

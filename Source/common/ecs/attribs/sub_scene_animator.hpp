@@ -18,6 +18,7 @@ public:
     std::shared_ptr<Motion> motion_ref;
     Motion motion_lcl_;
     Motion* motion_ptr = 0;
+    AnimSampleBuffer sample_buffer;
 
     ecsSubSceneAnimator();
 

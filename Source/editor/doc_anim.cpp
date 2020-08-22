@@ -13,7 +13,7 @@ static void extractYRotation(const gfxm::quat q, gfxm::quat& out_q, gfxm::mat3& 
 }
 
 DocAnim::DocAnim() {
-    
+    hLight = world.createEntity();
 }
 
 static gfxm::mat4 getParentTransform(Skeleton* skeleton, const std::vector<AnimSample>& samples, int32_t bone_idx) {
@@ -36,8 +36,7 @@ static gfxm::mat4 getParentTransform(Skeleton* skeleton, const std::vector<AnimS
 }
 
 void DocAnim::onGui(Editor* ed, float dt) {
-
-    std::vector<ktNode*> tgt_nodes;
+    std::vector<ecsEntityHandle> tgt_nodes;
     if(ref_skel) {
         auto& skel = ref_skel;
 
@@ -59,9 +58,7 @@ void DocAnim::onGui(Editor* ed, float dt) {
         AnimSampleBuffer sample_buf(skel.get());
         //std::vector<AnimSample> zero_pose = skel->makePoseArray();
         //_resource->sample_remapped(pose, .0f, mapping);
-        _resource->sample_remapped(sample_buf, prev_cursor, cursor, ref_skel.get(), mapping);
-
-        ktNode* root = scn.getRoot();
+        _resource->sample_remapped(sample_buf, prev_cursor, cursor, skel.get(), mapping);
 
 /*
         // ROOT MOTION
@@ -174,22 +171,22 @@ void DocAnim::onGui(Editor* ed, float dt) {
         tgt_nodes.resize(skel->boneCount());
         for(size_t i = 0; i < skel->boneCount(); ++i) {
             auto& bone = skel->getBone(i);
-            ktNode* node = scn.findObject(bone.name);
-            tgt_nodes[i] = node;
+            ecsEntityHandle hdl = world.findEntity(bone.name.c_str());
+            tgt_nodes[i] = hdl;
         }
         for(size_t i = 0; i < sample_buf.sampleCount(); ++i) {
             auto n = tgt_nodes[i];
-            if(n) {
-                n->getTransform()->setPosition(sample_buf[i].t);
-                n->getTransform()->setRotation(sample_buf[i].r);
-                n->getTransform()->setScale(sample_buf[i].s);
+            if(n.isValid()) {
+                n.getAttrib<ecsTranslation>()->setPosition(sample_buf[i].t);
+                n.getAttrib<ecsRotation>()->setRotation(sample_buf[i].r);
+                n.getAttrib<ecsScale>()->setScale(sample_buf[i].s);
             }
         }
 
-        if(_resource->enable_root_motion_t_xz && _resource->root_motion_node_index >= 0) {
+        if(_resource->enable_root_motion_t_xz && _resource->root_motion_node_index >= 0 && hRoot) {
             gfxm::vec3 rm_t = sample_buf.getRootMotionDelta().t;
             rm_t.y = .0f;
-            root->getTransform()->translate(rm_t);
+            hRoot.getAttrib<ecsTranslation>()->translate(rm_t);
         }
 
         /*
@@ -204,6 +201,11 @@ void DocAnim::onGui(Editor* ed, float dt) {
         }*/
     }
 
+    hLight.getAttrib<ecsRotation>()->setRotation(gfxm::to_quat(gfxm::to_orient_mat3(gfxm::inverse(gvp.getView()))));
+    hLight.getAttrib<ecsWorldTransform>();
+
+    world.update();
+
     auto window = ImGui::GetCurrentWindow();
     auto rect = window->ContentsRegionRect;
 
@@ -214,14 +216,19 @@ void DocAnim::onGui(Editor* ed, float dt) {
     float timeline_height = 50.0f;
     float viewport_height = (rect.Max.y - rect.Max.y) - timeline_height - button_height;
 
-
     if(cam_pivot) {
-        gvp.camSetPivot(cam_pivot->getTransform()->getWorldPosition());
+        gvp.camSetPivot(cam_pivot.getAttrib<ecsWorldTransform>()->getPosition());
     }
     gvp.camMode(GuiViewport::CAM_ORBIT);
-    gvp.draw(&scn, 0, gfxm::ivec2(0, viewport_height));
-
     
+    DrawList dl;
+    world.getSystem<ecsysSceneGraph>();
+    auto renderSys = world.getSystem<ecsRenderSystem>();
+    renderSys->fillDrawList(dl);
+    if (gvp.begin(gfxm::ivec2(0, viewport_height))) {
+        gvp.getRenderer()->draw(gvp.getViewport(), gvp.getProjection(), gvp.getView(), dl);
+    }
+    gvp.end();
 
     ImGui::Button(ICON_MDI_SKIP_BACKWARD);
     ImGui::SameLine();
@@ -231,6 +238,10 @@ void DocAnim::onGui(Editor* ed, float dt) {
     ImGui::SameLine();
     ImGui::Button(ICON_MDI_FAST_FORWARD);
     ImGui::SameLine();
+    if(ImGui::Button("Reset offset")) {
+        hRoot.getAttrib<ecsTranslation>()->setPosition(gfxm::vec3(0,0,0));
+    }
+    ImGui::SameLine();
     ImGui::Text(MKSTR(cursor).c_str());
     
     float cur = cursor;
@@ -239,32 +250,39 @@ void DocAnim::onGui(Editor* ed, float dt) {
         ImGuiExt::TimelineMarker("marker", 16);
         ImGuiExt::EndTimeline();
     }
+
     if(!playing) {
         cursor = cur;
     }
 }  
 
 void DocAnim::onGuiToolbox(Editor* ed) {
-    if(ImGui::DragFloat("playback speed", &playback_speed, 0.001f)) {
+    if(ImGui::DragFloat("playback speed", &playback_speed, 0.01f)) {
 
     }
-    imguiResourceTreeCombo("reference", ref_object, "so", [this](){
+    imguiResourceTreeCombo("reference", ref_object, "ecsw", [this](){
         if(ref_object) {
-            cam_pivot = 0;
-            scn.clear();
-            scn.copy(ref_object.get());
-            scn.getTransform()->setScale(
-                ref_object->getTransform()->getScale()
-            );
-            cam_pivot = &scn;
+            cam_pivot = ecsEntityHandle();
+            world.clearEntities();
+            hRoot = world.mergeWorld(ref_object.get());
+            hRoot.getAttrib<ecsTranslation>();
+            hRoot.getAttrib<ecsRotation>();
+            hRoot.getAttrib<ecsWorldTransform>();
+
+            hLight = world.createEntity();
+            hLight.getAttrib<ecsLightDirect>()->intensity = 25.0f;
+
+            _resource->reference_file = ref_object->Name();
         }
     });
     imguiResourceTreeCombo("skeleton", ref_skel, "skl", [this](){
-
+        if(ref_skel) {
+            _resource->reference_skeleton_file = ref_skel->Name();
+        }
     });
-    imguiObjectCombo("camera pivot", cam_pivot, &scn, [](){
+    if(imguiEntityCombo("camera pivot", &world, cam_pivot)) {
 
-    });
+    }
 
     ImGui::Separator();
 
@@ -290,4 +308,11 @@ void DocAnim::onGuiToolbox(Editor* ed) {
 
         ImGui::EndCombo();
     }
+}
+
+void DocAnim::onResourceSet() {
+    // Set reference
+    // Set ref skeleton
+    // Set camera target
+    // Set camera rotations
 }

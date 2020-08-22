@@ -24,7 +24,6 @@ public:
 
     virtual void rebuild() = 0;
     virtual void update(float dt, AnimSampleBuffer& sample_buffer) = 0;
-    virtual AnimSample getRootMotion() = 0;
 
     virtual void write(out_stream& out) = 0;
     virtual void read(in_stream& in) = 0;

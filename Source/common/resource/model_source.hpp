@@ -9,7 +9,8 @@
 #include "material.hpp"
 #include "animation.hpp"
 #include "skeleton.hpp"
-#include "../scene/game_scene.hpp"
+#include "../ecs/world.hpp"
+#include "../ecs/attribs/base_attribs.hpp"
 
 #include "../attributes/animation_stack.hpp"
 #include "../attributes/model.hpp"
@@ -24,10 +25,10 @@ class ModelSource : public Resource {
     void loadMeshes(const aiScene* ai_scene);
     void loadAnims(const aiScene* ai_scene);
     void loadResources(const aiScene* ai_scene);
-    void loadSceneGraph(const aiScene* ai_scene, aiNode* node, ktNode* o);
+    void loadSceneGraph(const aiScene* ai_scene, aiNode* node, ecsEntityHandle ent);
     void loadSceneGraph(const aiScene* ai_scene);
 public:
-    std::shared_ptr<GameScene> scene;
+    std::shared_ptr<ecsWorld> world;
     std::vector<std::shared_ptr<Mesh>> meshes;
     std::vector<std::shared_ptr<Texture2D>> textures;
     std::vector<std::shared_ptr<Material>> materials;
@@ -39,6 +40,7 @@ public:
 
     virtual bool deserialize(in_stream& in, size_t sz);
 
+    bool unpackSkeleton(const std::string& dir);
     bool unpack(const std::string& dir);
 };
 STATIC_RUN(ModelSource)

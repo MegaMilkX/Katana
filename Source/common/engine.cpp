@@ -25,6 +25,8 @@
 
 #include "ecs/ecs.hpp"
 
+#include "debug_overlay/debug_overlay.hpp"
+
 
 static void initNodeAttribs() {
     REG_ATTRIB_INL(ActionStateMachine, ActionStateMachine, Animation)
@@ -57,6 +59,8 @@ bool katanaInit(PlatformStartupParams* params) {
 
     initNodeAttribs();
     ecsInit();
+
+    debugOverlayInit();
 
     return true;
 }

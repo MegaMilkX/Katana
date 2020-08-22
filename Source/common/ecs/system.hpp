@@ -62,6 +62,21 @@ public:
         dirty_index = array.size();
     }
 
+    void sort_dirty_array(ecsWorld* world) {
+        std::sort(
+            array.begin() + dirty_index, 
+            array.end(),
+            [world](const T* a, const T* b){
+                int a_depth = world->getTreeDepth(a->getEntityUid());
+                int b_depth = world->getTreeDepth(b->getEntityUid());
+                return a_depth < b_depth;
+            }
+        );
+        for(int i = dirty_index; i < array.size(); ++i) {
+            array[i]->array_index = i;
+        }
+    }
+
     uint64_t get_mask() const override {
         return T::get_signature_static();
     }
@@ -429,6 +444,10 @@ public:
     template<typename ARCH_T>
     void clear_dirty() {
         return ecsTupleMap<ARCH_T>::clear_dirty_index();
+    }
+    template<typename ARCH_T>
+    void sort_dirty_array() {
+        ecsTupleMap<ARCH_T>::sort_dirty_array(world);
     }
     /*
     template<typename ARCH_T>

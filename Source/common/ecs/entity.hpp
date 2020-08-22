@@ -41,6 +41,7 @@ class ecsEntity {
     entity_id parent_uid = NULL_ENTITY;
     entity_id first_child_uid = NULL_ENTITY;
     entity_id next_sibling_uid = NULL_ENTITY;
+    int       tree_depth = 0;
 
     entity_id entity_uid;
     uint64_t attrib_bits;

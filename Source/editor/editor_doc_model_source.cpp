@@ -2,6 +2,8 @@
 
 #include "../common/scene/game_scene.hpp"
 
+#include "../common/ecs/systems/render.hpp"
+#include "../common/ecs/systems/scene_graph.hpp"
 
 void EditorDocModelSource::onGui(Editor* ed, float dt) {
     auto& mdl_src = _resource;
@@ -11,14 +13,25 @@ void EditorDocModelSource::onGui(Editor* ed, float dt) {
     ImVec2 winSize = ImVec2(winMax - winMin);
     float column0_ratio = 0.75f;
 
-    gvp.draw(mdl_src->scene.get(), 0, gfxm::ivec2(0,0));
+    DrawList dl;
+    mdl_src->world->getSystem<ecsysSceneGraph>();
+    mdl_src->world->update();
+    auto renderSys = mdl_src->world->getSystem<ecsRenderSystem>();
+    renderSys->fillDrawList(dl);
+    if (gvp.begin()) {
+      gvp.getRenderer()->draw(gvp.getViewport(), gvp.getProjection(), gvp.getView(), dl);
+    }
+    gvp.end();
 }
 
 void EditorDocModelSource::onGuiToolbox(Editor* ed) {
     auto& mdl_src = _resource;
 
-    if(ImGui::Button("Import")) {
+    if(ImGui::Button("Import", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))) {
         mdl_src->unpack(get_module_dir() + "/" + platformGetConfig().data_dir);
+    }
+    if(ImGui::Button("Import Skeleton", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))) {
+        mdl_src->unpackSkeleton(get_module_dir() + "/" + platformGetConfig().data_dir);
     }
 
     ImGui::BeginChildFrame(ImGui::GetID("EditorDocModelSourceTree"), ImVec2(0,0));

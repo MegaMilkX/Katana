@@ -186,6 +186,8 @@ void AnimFSM::update(
             sample_buffer[i].r = gfxm::slerp(trans_samples[i].r, sample_buffer[i].r, trans_weight);
             sample_buffer[i].s = gfxm::lerp(trans_samples[i].s, sample_buffer[i].s, trans_weight);
         }
+        sample_buffer.getRootMotionDelta().t = gfxm::lerp(gfxm::vec3(0,0,0), sample_buffer.getRootMotionDelta().t, trans_weight);
+        sample_buffer.getRootMotionDelta().r = gfxm::slerp(gfxm::quat(0,0,0,1), sample_buffer.getRootMotionDelta().r, trans_weight);
 
         trans_weight += dt * trans_speed;
         if(trans_weight > 1.0f) {

@@ -26,6 +26,7 @@ public:
 class ecsRenderSubSystem : public ecsSystem<
     ecsTuple<ecsWorldTransform, ecsMeshes>,
     ecsTuple<ecsWorldTransform, ecsLightOmni>,
+    ecsTuple<ecsWorldTransform, ecsLightDirect>,
     ecsTupleSubSceneRenderable
 > {
 public:
@@ -37,6 +38,15 @@ public:
                     a->get<ecsLightOmni>()->color,
                     a->get<ecsLightOmni>()->intensity,
                     a->get<ecsLightOmni>()->radius
+                }
+            );
+        }
+        for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsLightDirect>>()) {
+            dl.dir_lights.emplace_back(
+                DrawList::DirLight {
+                    gfxm::normalize(a->get<ecsWorldTransform>()->getTransform() * gfxm::vec4(0, 0, 1, 0)),
+                    a->get<ecsLightDirect>()->color,
+                    a->get<ecsLightDirect>()->intensity
                 }
             );
         }
@@ -96,9 +106,14 @@ public:
     }
 };
 
+#include "../../mesh_pool.hpp"
+using ecsTupleModel = ecsTuple<ecsOptional<ecsWorldTransform>, ecsModel>;
+
 class ecsRenderSystem : public ecsSystem<
+    ecsTupleModel,
     ecsTuple<ecsWorldTransform, ecsMeshes>,
     ecsTuple<ecsWorldTransform, ecsLightOmni>,
+    ecsTuple<ecsWorldTransform, ecsLightDirect>,
     ecsTupleSubSceneRenderable
 > {
     DrawList draw_list;
@@ -126,6 +141,50 @@ public:
                     a->get<ecsLightOmni>()->radius
                 }
             );
+        }
+
+        for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsLightDirect>>()) {
+            dl.dir_lights.emplace_back(
+                DrawList::DirLight {
+                    gfxm::normalize(a->get<ecsWorldTransform>()->getTransform() * gfxm::vec4(0, 0, 1, 0)),
+                    a->get<ecsLightDirect>()->color,
+                    a->get<ecsLightDirect>()->intensity
+                }
+            );
+        }
+
+        auto cube_mesh = MeshPool::get(PRIM_CUBE);
+        for(auto& a : get_array<ecsTupleModel>()) {
+            gfxm::mat4 m(1.0f);
+            auto mdl = a->get<ecsModel>();
+            auto w = a->get_optional<ecsWorldTransform>();
+            if(w) {
+                m = w->getTransform();
+            }
+            if(!mdl->model) {
+                DrawCmdSolid cmd;
+                cmd.vao = cube_mesh->getVao();
+                cmd.material = 0;
+                cmd.indexCount = cube_mesh->getIndexCount();
+                cmd.indexOffset = 0;
+                cmd.transform = m;
+                cmd.object_ptr = (void*)a->getEntityUid();
+                cmd.lightmap = 0;
+                dl.solids.emplace_back(cmd);
+            } else {
+                for(int i = 0; i < mdl->model->meshLinks.size(); ++i) {
+                    auto& link = mdl->model->meshLinks[i];
+                    DrawCmdSolid cmd;
+                    cmd.vao = link.mesh->mesh.getVao();
+                    cmd.material = 0;
+                    cmd.indexCount = link.mesh->mesh.getIndexCount();
+                    cmd.indexOffset = 0;
+                    cmd.transform = link.node->getWorld();
+                    cmd.object_ptr = (void*)a->getEntityUid();
+                    cmd.lightmap = 0;
+                    dl.solids.emplace_back(cmd);
+                }
+            }
         }
 
         for(auto& a : get_array<ecsTuple<ecsWorldTransform, ecsMeshes>>()) {

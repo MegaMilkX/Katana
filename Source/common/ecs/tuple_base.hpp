@@ -16,6 +16,44 @@ public:
     ecsTupleBase*   next_sibling        = 0;
     ecsTupleBase*   first_child         = 0;
 
+    void _addChild(ecsTupleBase* e) {
+        e->parent = this;
+        if(!first_child) {
+            first_child = e;
+            return;
+        }
+        auto child = first_child;
+        while(child != 0) { 
+            if(!child->next_sibling) {
+                child->next_sibling = e;
+                e->prev_sibling = child;
+                break;
+            }
+            child = child->next_sibling;
+        }
+    }
+    void _removeChild(ecsTupleBase* e) {
+        if (first_child == e) {
+            auto next = first_child->next_sibling;
+            first_child = next;
+            if (first_child) {
+                first_child->prev_sibling = 0;
+            }
+            return;
+        }
+
+        auto child = first_child;
+        while (child != 0) {
+            auto next = child->next_sibling;
+            if (next == e) {
+                child->next_sibling = next->next_sibling;
+                next->prev_sibling = child;
+                return;
+            }
+            child = child->next_sibling;
+        }
+    }
+
     virtual ~ecsTupleBase() {}
     virtual uint64_t get_signature() const = 0;
     virtual uint64_t get_optional_signature() const = 0;

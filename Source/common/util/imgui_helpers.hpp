@@ -317,7 +317,24 @@ inline void imguiObjectCombo(
     }
 }
 
-#include "ecs/entity_handle.hpp"
+#include "ecs/world.hpp"
+enum GUI_ENTITY_LIST_FLAGS {
+    GUI_ENTITY_LIST_FLAG_CONTEXT_MENU = 0x01
+};
+void saveTemplate(ecsEntityHandle hdl);
+void imguiEntityListItemContextMenu(const char* string_id, ecsEntityHandle hdl, entity_id& selected_ent);
+void imguiEntityListItem_(
+    ecsEntityHandle hdl, 
+    const std::string& name, 
+    entity_id& selected_ent,
+    int flags = GUI_ENTITY_LIST_FLAG_CONTEXT_MENU
+);
+void imguiEntityList_(
+    ecsWorld* cur_world, 
+    const std::vector<entity_id>& entities,
+    entity_id& selected_ent,
+    int flags = GUI_ENTITY_LIST_FLAG_CONTEXT_MENU
+);
 bool imguiEntityCombo(const char* label, ecsWorld* world, ecsEntityHandle& out);
 
 namespace ImGui {

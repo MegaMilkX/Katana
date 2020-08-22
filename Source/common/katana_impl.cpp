@@ -8,6 +8,8 @@
 #include "scene/controllers/constraint_ctrl.hpp"
 #include "scene/controllers/dynamics_ctrl.hpp"
 
+#include "../common/debug_overlay/debug_overlay.hpp"
+
 static float sFrameDelta = .0f;
 static float sTime = .0f;
 
@@ -28,25 +30,10 @@ float KatanaImpl::getDt() { return sFrameDelta; }
 
 void KatanaImpl::update() {
     if(!_session) return;
-
     _session->_update(sFrameDelta);
-
     _session->_render();
-    /*
-    unsigned w, h;
-    platformGetViewportSize(w, h);
-    vp.resize(w, h);
 
-    renderer.drawWorld(&vp, &_session->getWorld());
-    GLuint buffers[] = {
-        vp.getFinalImage(),
-        vp.getGBuffer()->getAlbedoTexture(),
-        vp.getGBuffer()->getNormalTexture(),
-        vp.getGBuffer()->getRoughnessTexture(),
-        vp.getGBuffer()->getMetallicTexture(),
-        vp.getGBuffer()->getDepthTexture()
-    };
-    renderer.drawToScreen(buffers[dbg_renderBufferId]);*/
+    debugOverlayDraw(1280, 720);
 }
 
 void KatanaImpl::update_time(float delta_time) {

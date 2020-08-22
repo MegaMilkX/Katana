@@ -13,7 +13,6 @@
 class ecsTupleAnimatedSubScene : public ecsTuple<ecsSubSceneAnimator, ecsSubScene, ecsOptional<ecsTranslation>, ecsOptional<ecsWorldTransform>> {
 public:
     ecsysSubScenePose* sysPose = 0;
-    AnimSampleBuffer sample_buffer;
 
     void onAttribUpdate(ecsSubScene* ss) override {
         assert(ss->getWorld());
@@ -29,7 +28,6 @@ public:
         auto animator = get<ecsSubSceneAnimator>();
         if(animator->getSkeleton()) {
             sysPose->setSkeleton(animator->getSkeleton());
-            sample_buffer = AnimSampleBuffer(animator->getSkeleton().get());
         }
     }
 };
@@ -100,16 +98,18 @@ public:
             if(!t->sysPose) {
                 continue;
             }
-            animator->getLclMotion()->update(1.0f/60.0f, t->sample_buffer);
+            animator->sample_buffer.getRootMotionDelta().t = gfxm::vec3(0,0,0);
+            animator->sample_buffer.getRootMotionDelta().r = gfxm::quat(0,0,0,1);
+            animator->getLclMotion()->update(1.0f/60.0f, animator->sample_buffer);
             
-            t->sysPose->setPose(t->sample_buffer.getSamples());
+            t->sysPose->setPose(animator->sample_buffer.getSamples());
 
             ecsTranslation* translation = t->get_optional<ecsTranslation>();
             ecsWorldTransform* world_trans = t->get_optional<ecsWorldTransform>();
 
             //TODO: Root motion
             if (translation && world_trans) {
-                gfxm::vec3 rm_t = t->sample_buffer.getRootMotionDelta().t;
+                gfxm::vec3 rm_t = animator->sample_buffer.getRootMotionDelta().t;
                 rm_t.y = .0f;
                 rm_t = (world_trans->getTransform()) * gfxm::vec4(rm_t, .0f);
                 translation->translate(rm_t);

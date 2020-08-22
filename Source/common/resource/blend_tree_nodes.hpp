@@ -100,6 +100,12 @@ public:
             animations[i].influence = .0f;
         }
 
+        pose.sample_buffer.getRootMotionDelta().t = gfxm::vec3(0,0,0);
+        pose.sample_buffer.getRootMotionDelta().r = gfxm::quat(0,0,0,1);
+        pa.sample_buffer.getRootMotionDelta() = AnimSample();
+        pb.sample_buffer.getRootMotionDelta() = AnimSample();
+        pc.sample_buffer.getRootMotionDelta() = AnimSample();
+
         edges.clear();
         hull_edges.clear();
         triangles.clear();
@@ -218,7 +224,7 @@ public:
             float cur = graph->getCursor();
             float pcur = graph->getPrevCursor();
             float alen = a->anim->length;
-            a->anim->sample_remapped(pose.sample_buffer, cur * alen, pcur * alen, skel, a->mapping);
+            a->anim->sample_remapped(pose.sample_buffer, pcur * alen, cur * alen, skel, a->mapping);
             a->influence = 1.0f;
         } else if(blend_group.size() == 2) {
             Anim* a = blend_group[0];
@@ -234,14 +240,18 @@ public:
             dot             = gfxm::_max(.0f, gfxm::_min(1.0f, dot));
             a->influence = 1.0f - dot;
             b->influence = dot;
+            a->influence = std::max(.0f, a->influence);
+            b->influence = std::max(.0f, b->influence);
 
-            a->anim->sample_remapped(pose.sample_buffer, cur * alen, pcur * alen, skel, a->mapping);
-            b->anim->sample_remapped(pb.sample_buffer, cur * blen, pcur * blen, skel, b->mapping);
+            a->anim->sample_remapped(pose.sample_buffer, pcur * alen, cur * alen, skel, a->mapping);
+            b->anim->sample_remapped(pb.sample_buffer, pcur * blen, cur * blen, skel, b->mapping);
             for(int i = 0; i < pose.sample_buffer.sampleCount(); ++i) {
                 pose.sample_buffer[i].t = gfxm::lerp(pose.sample_buffer[i].t, pb.sample_buffer[i].t, dot);
                 pose.sample_buffer[i].r = gfxm::slerp(pose.sample_buffer[i].r, pb.sample_buffer[i].r, dot);
                 pose.sample_buffer[i].s = gfxm::lerp(pose.sample_buffer[i].s, pb.sample_buffer[i].s, dot);
             }
+            pose.sample_buffer.getRootMotionDelta().t = gfxm::lerp(pose.sample_buffer.getRootMotionDelta().t, pb.sample_buffer.getRootMotionDelta().t, dot);
+            pose.sample_buffer.getRootMotionDelta().r = gfxm::slerp(pose.sample_buffer.getRootMotionDelta().r, pb.sample_buffer.getRootMotionDelta().r, dot);
         } else if(blend_group.size() == 3) { // Triangle type
             Anim* a = blend_group[0];
             Anim* b = blend_group[1];
@@ -263,20 +273,23 @@ public:
                 b->influence = 
                     ((C.y - A.y) * (blend_point.x - C.x) + (A.x - C.x) * (blend_point.y - C.y)) /
                     ((B.y - C.y) * (A.x - C.x) + (C.x - B.x) * (A.y - C.y));
-                c->influence = 1.0f - a->influence - b->influence;
+                c->influence = 1.0f - (a->influence + b->influence);
+                a->influence = std::max(.0f, a->influence);
+                b->influence = std::max(.0f, b->influence);
+                c->influence = std::max(.0f, c->influence);
 
-                a->anim->sample_remapped(pa.sample_buffer, cur * alen, pcur * alen, skel, a->mapping);
-                b->anim->sample_remapped(pb.sample_buffer, cur * blen, pcur * blen, skel, b->mapping);
-                c->anim->sample_remapped(pc.sample_buffer, cur * clen, pcur * clen, skel, c->mapping);
+                a->anim->sample_remapped(pa.sample_buffer, pcur * alen, cur * alen, skel, a->mapping);
+                b->anim->sample_remapped(pb.sample_buffer, pcur * blen, cur * blen, skel, b->mapping);
+                c->anim->sample_remapped(pc.sample_buffer, pcur * clen, cur * clen, skel, c->mapping);
 
+                float abw = a->influence + b->influence;
+                float law = a->influence / abw;
+                float lbw = b->influence / abw;
                 for(int i = 0; i < pose.sample_buffer.sampleCount(); ++i) {
-                    gfxm::quat qa = pa.sample_buffer[i].r;
-                    gfxm::quat qb = pb.sample_buffer[i].r;
-                    gfxm::quat qc = pc.sample_buffer[i].r;
-                    float abw = a->influence + b->influence;
-                    float law = a->influence / abw;
-                    float lbw = b->influence / abw;
-                    gfxm::quat q = gfxm::slerp(qa, qb, lbw);
+                    gfxm::quat qa   = pa.sample_buffer[i].r;
+                    gfxm::quat qb   = pb.sample_buffer[i].r;
+                    gfxm::quat qc   = pc.sample_buffer[i].r;
+                    gfxm::quat q    = gfxm::slerp(qa, qb, lbw);
                     q = gfxm::slerp(q, qc, c->influence);
 
                     pose.sample_buffer[i].t = 
@@ -289,6 +302,19 @@ public:
                         pb.sample_buffer[i].s * b->influence +
                         pc.sample_buffer[i].s * c->influence;
                 }
+                gfxm::vec3 rmta   = pa.sample_buffer.getRootMotionDelta().t;
+                gfxm::vec3 rmtb   = pb.sample_buffer.getRootMotionDelta().t;
+                gfxm::vec3 rmtc   = pc.sample_buffer.getRootMotionDelta().t;
+
+                gfxm::quat rmqa   = pa.sample_buffer.getRootMotionDelta().r;
+                gfxm::quat rmqb   = pb.sample_buffer.getRootMotionDelta().r;
+                gfxm::quat rmqc   = pc.sample_buffer.getRootMotionDelta().r;
+                gfxm::quat rmq    = gfxm::slerp(rmqa, rmqb, lbw);
+                           rmq    = gfxm::slerp(rmq, rmqc, c->influence);
+
+                pose.sample_buffer.getRootMotionDelta().t = 
+                    rmta * a->influence + rmtb * b->influence + rmtc * c->influence;
+                pose.sample_buffer.getRootMotionDelta().r = rmq;
             }
         }
     }
@@ -485,6 +511,9 @@ public:
             pose.sample_buffer[i].r = gfxm::slerp(a.sample_buffer[i].r, b.sample_buffer[i].r, w * fw);
             pose.sample_buffer[i].s = gfxm::lerp(a.sample_buffer[i].s, b.sample_buffer[i].s, w * fw);
         }
+        pose.sample_buffer.getRootMotionDelta().t = gfxm::lerp(a.sample_buffer.getRootMotionDelta().t, b.sample_buffer.getRootMotionDelta().t, w);
+        pose.sample_buffer.getRootMotionDelta().r = gfxm::slerp(a.sample_buffer.getRootMotionDelta().r, b.sample_buffer.getRootMotionDelta().r, w);
+
         if(a.speed == .0f) {
             pose.speed = b.speed;
         } else if(b.speed == .0f) {
@@ -492,8 +521,6 @@ public:
         } else {
             pose.speed = gfxm::lerp(a.speed, b.speed, w);
         }
-
-        pose.sample_buffer.getRootMotionDelta().t = gfxm::lerp(a.sample_buffer.getRootMotionDelta().t, b.sample_buffer.getRootMotionDelta().t, w);
     }
 
     void onGui() override;
@@ -549,6 +576,9 @@ public:
             pose.sample_buffer[i].r = gfxm::slerp(_a->sample_buffer[i].r, _b->sample_buffer[i].r, lr_weight);
             pose.sample_buffer[i].s = gfxm::lerp(_a->sample_buffer[i].s, _b->sample_buffer[i].s, lr_weight);
         }
+        pose.sample_buffer.getRootMotionDelta().t = gfxm::lerp(_a->sample_buffer.getRootMotionDelta().t, _b->sample_buffer.getRootMotionDelta().t, lr_weight);
+        pose.sample_buffer.getRootMotionDelta().r = gfxm::slerp(_a->sample_buffer.getRootMotionDelta().r, _b->sample_buffer.getRootMotionDelta().r, lr_weight);
+
         pose.speed = gfxm::lerp(_a->speed, _b->speed, lr_weight);
 
         pose.sample_buffer.getRootMotionDelta().t = gfxm::lerp(_a->sample_buffer.getRootMotionDelta().t, _b->sample_buffer.getRootMotionDelta().t, lr_weight);

@@ -132,6 +132,21 @@ template<typename T>
 std::shared_ptr<T> getResource(const std::string& path, bool create_empty_if_doesnt_exist = false) {
     return retrieve<T>(path, create_empty_if_doesnt_exist);
 }
+template<typename T>
+std::shared_ptr<T> getResourceCopy(const std::string& path, bool create_empty_if_doesnt_exist = false) {
+    auto ptr = retrieve<T>(path, create_empty_if_doesnt_exist);
+    assert(ptr);
+
+    dstream strm;
+    ptr->serialize(strm);
+    strm.jump(0);
+    assert(strm.bytes_available() > 0);
+
+    std::shared_ptr<T> r(new T);
+    r->deserialize(strm, strm.bytes_available());
+    r->Name(ptr->Name());
+    return r;
+}
 
 // Only for tools
 bool overwriteResourceFile(std::shared_ptr<Resource> r);

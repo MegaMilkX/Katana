@@ -32,7 +32,7 @@ class InputMgr2 {
     std::set<std::shared_ptr<InputDevice>>      devices;
 
     std::map<std::string, input_action_uid_t>   action_uids;
-    std::vector<InputAction>                    actions;
+    std::vector<InputAction2>                    actions;
 
     std::map<std::string, input_axis_uid_t>     axis_uids;
     std::vector<InputAxis>                      axes;
@@ -55,7 +55,7 @@ public:
     void                clearDevices();
     void                assignDevice(InputDevice* device, size_t user_idx);
 
-    void                setAction(const char* name, const InputAction& action);
+    void                setAction(const char* name, const InputAction2& action);
     input_action_uid_t  getActionUid(const char* name);
     void                setAxis(const char* name, const InputAxis& axis);
     input_axis_uid_t    getAxisUid(const char* name);

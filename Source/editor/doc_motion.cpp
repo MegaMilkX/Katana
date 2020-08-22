@@ -32,7 +32,7 @@ void DocMotion::resetGui() {
 void DocMotion::setReferenceObject(std::shared_ptr<EntityTemplate> tpl) {
     world.clearEntities();
                     
-    auto hdl = world.createEntityFromTemplate(tpl->Name().c_str());
+    ref_entity = world.createEntityFromTemplate(tpl->Name().c_str());
     //gfxm::aabb box;
     //scn.makeAabb(box);
 
@@ -41,7 +41,7 @@ void DocMotion::setReferenceObject(std::shared_ptr<EntityTemplate> tpl) {
 
     //viewport.resetCamera((box.from + box.to) * 0.5f, gfxm::length(box.to - box.from));
 
-    auto animator =  hdl.getAttrib<ecsSubSceneAnimator>();
+    auto animator =  ref_entity.getAttrib<ecsSubSceneAnimator>();
     animator->setMotion(_resource, true);
 
     //cam_pivot = 0;
@@ -141,6 +141,13 @@ void DocMotion::onGui(Editor* ed, float dt) {
             viewport.getProjection(), 
             viewport.getView(), 
             dl
+        );
+        
+        viewport.getDebugDraw().line(
+            gfxm::vec3(0,0,0), 
+            gfxm::vec3(0, 0, 0) + ref_entity.getAttrib<ecsSubSceneAnimator>()->sample_buffer.getRootMotionDelta().t * 20.0f, 
+            gfxm::vec3(1,0,0), 
+            DebugDraw::DEPTH_DISABLE
         );
     }
     viewport.end();

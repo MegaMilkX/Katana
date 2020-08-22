@@ -57,13 +57,6 @@ void BlendTree::update(float dt, AnimSampleBuffer& sample_buffer) {
     }
     sample_buffer.getRootMotionDelta() = pose.sample_buffer.getRootMotionDelta();
 }
-AnimSample   BlendTree::getRootMotion() {
-    AnimSample sample;
-
-    
-
-    return sample;
-}
 
 void BlendTree::write(out_stream& out) {
     DataWriter w(&out);

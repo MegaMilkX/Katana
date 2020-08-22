@@ -494,10 +494,7 @@ entity_id assimpImportEcsScene(ecsWorld* world, AssimpScene* scn) {
     return e;
 }
 
-
-entity_id assimpImportEcsScene(ecsWorld* world, const char* filename) {
-    progressBegin("Fbx import", 100);
-
+bool assimpLoadFile(const char* filename, AssimpScene& scene) {
     std::ifstream f(get_module_dir() + "/" + platformGetConfig().data_dir + "/" + std::string(filename), std::ios::binary | std::ios::ate);
     if(!f.is_open()) {
         LOG_WARN("Failed to open " << filename);
@@ -511,11 +508,82 @@ entity_id assimpImportEcsScene(ecsWorld* world, const char* filename) {
         return false;
     }
 
+    scene.load(buffer.data(), buffer.size(), filename);
+    return true;
+}
+
+entity_id assimpImportEcsScene(ecsWorld* world, const char* filename) {
+    progressBegin("Fbx import", 100);
+
     progressStep(1.0f, "Reading fbx scene");
-    AssimpScene assimp_scene(buffer.data(), buffer.size(), filename);
+    AssimpScene assimp_scene;
+    assimpLoadFile(filename, assimp_scene);
     progressStep(1.0f, "Constructing world");
     entity_id e = assimpImportEcsScene(world, &assimp_scene);
     
     progressEnd();
     return e;
+}
+
+
+
+void      assimpImportEcsModelGraph(Model_* model, ModelNode* node, const aiNode* ai_node) {
+    node->name = ai_node->mName.C_Str();
+    aiVector3D ai_pos;
+    aiQuaternion ai_quat;
+    aiVector3D ai_scale;
+    ai_node->mTransformation.Decompose(ai_scale, ai_quat, ai_pos);
+    node->translation = gfxm::vec3(ai_pos.x, ai_pos.y, ai_pos.z);
+    node->rotation = gfxm::quat(ai_quat.x, ai_quat.y, ai_quat.z, ai_quat.w);
+    node->scale = gfxm::vec3(ai_scale.x, ai_scale.y, ai_scale.z);
+    
+    for(int i = 0; i < ai_node->mNumChildren; ++i) {
+        auto n = new ModelNode;
+        n->parent = node;
+        aiNode* ch = ai_node->mChildren[i];
+        assimpImportEcsModelGraph(model, n, ch);
+        node->children.push_back(std::unique_ptr<ModelNode>(n));
+    }
+
+    for(int i = 0; i < ai_node->mNumMeshes; ++i) {
+        Model_::MeshLink link;
+        auto mesh_id = ai_node->mMeshes[i];
+        link.node = node;
+        link.mesh = model->meshes[mesh_id].get();
+        model->meshLinks.push_back(link);
+    }
+}
+void      assimpImportEcsModel(Model_* model, AssimpScene* assimp_scene) {
+    const aiScene* ai_scene = assimp_scene->getScene();
+
+    for(int i = 0; i < ai_scene->mNumMeshes; ++i) {
+        aiMesh* ai_mesh = ai_scene->mMeshes[i];
+        std::vector<const aiMesh*> meshes;
+        meshes.push_back(ai_mesh);
+        std::shared_ptr<Mesh> mesh = mergeMeshes(meshes);
+        model->meshes.push_back(mesh);        
+    }
+
+    assimpImportEcsModelGraph(model, model->rootNode.get(), ai_scene->mRootNode);
+
+    double scaleFactor = 1.0f;
+    if(ai_scene->mMetaData) {
+        if(ai_scene->mMetaData->Get("UnitScaleFactor", scaleFactor)) {
+            if(scaleFactor == 0.0) scaleFactor = 1.0f;
+            scaleFactor *= 0.01;
+        }
+    }
+    model->rootNode->translation = gfxm::vec3(0,0,0);
+    model->rootNode->rotation    = gfxm::quat(0,0,0,1);
+    model->rootNode->scale = gfxm::vec3(scaleFactor,scaleFactor,scaleFactor);
+}
+bool      assimpImportEcsModel(Model_* model, const char* filename) {
+    progressBegin("Fbx import", 100);
+    progressStep(1.0f, "Reading fbx scene");
+    AssimpScene assimp_scene;
+    assimpLoadFile(filename, assimp_scene);
+    progressStep(1.0f, "Constructing model");
+    assimpImportEcsModel(model, &assimp_scene);
+    progressEnd();
+    return true;
 }

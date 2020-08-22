@@ -8,6 +8,13 @@ void EditorDocTexture2d::onGui(Editor* ed, float dt) {
     ImVec2 winMin = ImGui::GetWindowContentRegionMin();
     ImVec2 winMax = ImGui::GetWindowContentRegionMax();
     ImVec2 winSize = ImVec2(winMax - winMin);
+
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    ImGuiIO& io = ImGui::GetIO();
+    static float zoom = 1.0f;
+    //zoom += -io.MouseWheel * 0.1f;
+    //zoom = gfxm::_min(1.0f, zoom);
+
     int tw = texture->Width();
     int th = texture->Height();
     if(tw > winSize.x) {
@@ -25,7 +32,7 @@ void EditorDocTexture2d::onGui(Editor* ed, float dt) {
         ImGui::Image(
             (ImTextureID)texture->GetGlName(), 
             ImVec2(tw, th),
-            ImVec2(0, 1), ImVec2(1, 0)
+            ImVec2(0, 1 * zoom), ImVec2(1 * zoom, 0)
         );
     }
 }

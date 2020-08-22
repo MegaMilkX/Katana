@@ -7,7 +7,6 @@
 
 
 void draw2d(const DrawList2d& dl, float screenW, float screenH);
-void drawText(Font* fnt, const std::string& str, float screenW, float screenH, float x, float y);
 
 enum GIZMO_RECT_CONTROL_POINT {
     GIZMO_RECT_NONE     = 0x000,
@@ -291,6 +290,17 @@ public:
             ImGui::EndDragDropTarget();
         }
         if(ImGui::BeginPopupEx(fbxPopupId, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_Modal | ImGuiWindowFlags_NoResize)) {
+            if(ImGui::Button("As Model")) {
+                auto hdl = state.world->createEntity();
+                auto ecsmdl = hdl.getAttrib<ecsModel>();
+                std::shared_ptr<Model_> mdl(new Model_);
+                assimpImportEcsModel(mdl.get(), dragged_node->getFullName().c_str());
+                ecsmdl->model = mdl;
+                state.selected_ent = hdl.getId();
+                hdl.getAttrib<ecsName>()->name = dragged_node->getName();
+                hdl.getAttrib<ecsWorldTransform>();
+                ImGui::CloseCurrentPopup();
+            }
             if(ImGui::Button("Merge")) {
                 entity_id e = assimpImportEcsScene(state.world, dragged_node->getFullName().c_str());
                 state.selected_ent = e;
@@ -306,6 +316,9 @@ public:
                 );
                 state.model_dnd_tasks.insert(std::unique_ptr<edTaskEcsWorldModelDragNDrop>(task));
                 edTaskPost(task);
+                ImGui::CloseCurrentPopup();
+            }
+            if(ImGui::Button("Cancel")) {
                 ImGui::CloseCurrentPopup();
             }
             ImGui::EndPopup();

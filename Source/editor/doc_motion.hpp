@@ -15,6 +15,7 @@ class DocMotion : public EditorDocumentTyped<Motion> {
     // Preview stuff
     GuiViewport                         viewport;
     ecsWorld                            world;
+    ecsEntityHandle                     ref_entity;
     std::shared_ptr<EntityTemplate>     reference;
 
     gfxm::vec3 root_motion_pos;

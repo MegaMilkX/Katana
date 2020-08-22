@@ -3,6 +3,7 @@
 #include <glfw/glfw3.h>
 
 #include "../shader_factory.hpp"
+#include "../mesh_pool.hpp"
 //#include "../event.hpp"
 #include "../debug_draw.hpp"
 //#include "../util/init_filesystem_resources.hpp"
@@ -12,6 +13,8 @@
 #include "../audio.hpp"
 #include "../lib/imgui_wrap.hpp"
 #include "../util/threading/utils.hpp"
+#include "../input2/input2.hpp"
+#include "../angel_script.hpp"
 
 static GLFWwindow* window = 0;
 static GLFWwindow* async_context = 0;
@@ -27,14 +30,16 @@ Config& platformGetConfig() {
 }
 
 bool platformInit(PlatformStartupParams* params) {
+    // Set this thread as the main one (used for deferred calls that need to be executed on the main thread)
     setMainThread(std::this_thread::get_id());
-    
+    // Fill the resource register
     gResourceTree.scanFilesystem(get_module_dir() + "/" + platformGetConfig().data_dir);
     
     if(!initWindow(params)) {
         return 0;
     }
     ShaderFactory::init();
+    MeshPool::init();
 
     DebugDraw::getInstance()->init();
 
@@ -42,6 +47,9 @@ bool platformInit(PlatformStartupParams* params) {
     initGlfwInputCallbacks(window, &input());
 
     audio().init(44100, 16);
+    
+    // Scripting
+    aslInit();
 
     // ImGui ========
     ImGuiInit();
@@ -79,8 +87,10 @@ bool platformInit(PlatformStartupParams* params) {
 void platformCleanup() {
     ImGuiCleanup();
 
+    aslCleanup();
     audio().cleanup();
     DebugDraw::getInstance()->cleanup();
+    MeshPool::cleanup();
     ShaderFactory::cleanup();
     cleanupWindow();
 }
@@ -92,6 +102,8 @@ bool platformIsShuttingDown() {
 void platformUpdate(float dt) {
     glfwPollEvents();
     updateGlfwInput(window);
+    inputReadDevices();
+    inputUpdate(dt);
     //eventMgr().pollEvents();
 
     unsigned w, h;

@@ -193,6 +193,7 @@ public:
     entity_id                   getParent                   (entity_id e);
     entity_id                   getFirstChild               (entity_id e);
     entity_id                   getNextSibling              (entity_id e);
+    int                         getTreeDepth                (entity_id e);
 
     ecsEntityHandle             mergeWorld                  (const char* res_name);
     ecsEntityHandle             mergeWorld                  (ecsWorld* world);

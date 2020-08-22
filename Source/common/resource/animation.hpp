@@ -47,6 +47,17 @@ public:
     const AnimSample& getRootMotionDelta() const {
         return root_motion_delta_sample;
     }
+
+    void blendTo(const AnimSampleBuffer& other, float weight) {
+        assert(samples.size() == other.samples.size());
+        for(int i = 0; i < samples.size(); ++i) {
+            samples[i].t = gfxm::lerp(samples[i].t, other.samples[i].t, weight);
+            samples[i].r = gfxm::slerp(samples[i].r, other.samples[i].r, weight);
+            samples[i].s = gfxm::lerp(samples[i].s, other.samples[i].s, weight);
+        }
+        root_motion_delta_sample.t = gfxm::lerp(root_motion_delta_sample.t, other.root_motion_delta_sample.t, weight);
+        root_motion_delta_sample.r = gfxm::slerp(root_motion_delta_sample.r, other.root_motion_delta_sample.r, weight);
+    }
 };
 
 class Animation : public Resource {
@@ -77,6 +88,15 @@ public:
     bool            enable_root_motion_t_xz = false;
     bool            enable_root_motion_t_y = false;
     bool            enable_root_motion_r_y = false;
+
+    // Editor things
+    std::string     reference_file;
+    std::string     reference_skeleton_file;
+    std::string     ref_camera_target;
+    float           ref_cam_rot_x = .0f;
+    float           ref_cam_rot_y = .0f;
+    float           ref_cam_zoom  = 2.0f;
+    //
 
     void                 clearNodes();
     size_t               nodeCount();

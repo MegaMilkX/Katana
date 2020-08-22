@@ -193,6 +193,7 @@ RendererPBR::RendererPBR() {
     );
 
     prog_light_omni = shaderLoader().loadShaderProgram("shaders/light_pass_omni.glsl");
+    prog_light_dir  = shaderLoader().loadShaderProgram("shaders/light_pass_direct.glsl");
     prog_deferred_final = shaderLoader().loadShaderProgram("shaders/deferred_final.glsl");
     prog_gbuf_solid = shaderLoader().loadShaderProgram("shaders/gbuf_solid_pbr.glsl");
     prog_gbuf_skin = shaderLoader().loadShaderProgram("shaders/gbuf_skin_pbr.glsl");
@@ -246,6 +247,40 @@ void RendererPBR::draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4
     drawSkinnedMeshes(draw_list);
 
     // ==== Lightness ================
+    for(size_t i = 0; i < draw_list.dir_lights.size(); ++i) {
+        auto& l = draw_list.dir_lights[i];
+        // TODO: No shadows yet
+        gbuffer->bind(GBuffer::LIGHTNESS_BIT, false);
+        
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_DEPTH_TEST);
+        glViewport((GLsizei)vp.x, (GLsizei)vp.y, (GLsizei)vp.z, (GLsizei)vp.w);
+
+        prog_light_dir->use();
+        gl::bindTexture2d(gl::TEXTURE_ALBEDO, gbuffer->getAlbedoTexture());
+        gl::bindTexture2d(gl::TEXTURE_DEPTH, gbuffer->getDepthTexture());
+        gl::bindTexture2d(gl::TEXTURE_NORMAL, gbuffer->getNormalTexture());
+        gl::bindTexture2d(gl::TEXTURE_METALLIC, gbuffer->getMetallicTexture());
+        gl::bindTexture2d(gl::TEXTURE_ROUGHNESS, gbuffer->getRoughnessTexture());
+        {
+            gfxm::vec4 view_pos4 = gfxm::inverse(view) * gfxm::vec4(0,0,0,1);
+            glUniform3f(prog_light_dir->getUniform("view_pos"), view_pos4.x, view_pos4.y, view_pos4.z);
+            glUniform2f(prog_light_dir->getUniform("viewport_size"), (float)vp.z, (float)vp.w);
+            gfxm::mat4 inverse_view_projection =
+                gfxm::inverse(proj * view);
+            glUniformMatrix4fv(prog_light_dir->getUniform("inverse_view_projection"), 1, GL_FALSE, (float*)&inverse_view_projection);
+        }
+        auto& dir = l.dir;
+        auto& intensity = l.intensity;
+        auto& color = l.color * intensity;
+
+        glUniform3fv(prog_light_dir->getUniform("light_dir"), 1, (GLfloat*)&dir);
+        glUniform3fv(prog_light_dir->getUniform("light_col"), 1, (float*)&color);
+
+        drawQuad();
+    }
     for(size_t i = 0; i < draw_list.omnis.size(); ++i) {
         auto& l = draw_list.omnis[i];
         drawShadowCubeMap(&shadowmap_cube, l.translation, draw_list);

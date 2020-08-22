@@ -167,6 +167,7 @@ class RendererPBR : public Renderer {
     gl::ShaderProgram* prog_gbuf_solid;
     gl::ShaderProgram* prog_gbuf_skin;
     gl::ShaderProgram* prog_light_omni;
+    gl::ShaderProgram* prog_light_dir;
     gl::ShaderProgram* prog_deferred_final;
     gl::ShaderProgram* prog_lightmap_sample;
 

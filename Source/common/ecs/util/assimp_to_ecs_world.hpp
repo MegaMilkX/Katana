@@ -5,6 +5,6 @@
 #include "../attribs/base_attribs.hpp"
 
 entity_id assimpImportEcsScene(ecsWorld* world, const char* filename);
-
+bool      assimpImportEcsModel(Model_* model, const char* filename);
 
 #endif

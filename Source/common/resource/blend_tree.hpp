@@ -48,7 +48,6 @@ public:
     Pose& getPoseData(float normal_cursor);
 
     void update(float dt, AnimSampleBuffer& sample_buffer) override;
-    AnimSample   getRootMotion() override;
 
     void         write(out_stream& out) override;
     void         read(in_stream& in) override;

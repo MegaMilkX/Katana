@@ -180,7 +180,7 @@ DECL_VERTEX_FMT(PARTICLE,
     Position, Velocity, ColorRGBA
 );
 DECL_VERTEX_FMT(TEXT,
-    Position, UV, TextUVLookup
+    Position, UV, TextUVLookup, ColorRGBA
 );
 DECL_VERTEX_FMT(QUAD_2D,
     Position, UV

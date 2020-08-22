@@ -6,6 +6,7 @@
 #include <GLFW/glfw3.h>
 #include "input_mgr.hpp"
 #include "../lib/imgui_wrap.hpp"
+#include "../input2/input2.hpp"
 
 int64_t getGlfwKey(const std::string& key) {
     static std::map<std::string, int64_t> keys = {
@@ -83,7 +84,7 @@ inline void initGlfwInputCallbacks(GLFWwindow* window, InputMgr* input_mgr) {
     glfwSetMouseButtonCallback(window, &onGlfwMouseKey);
     glfwSetScrollCallback(window, &onGlfwMouseScroll);
     glfwSetCharCallback(window, onGlfwChar);
-    //glfwSetCursorPosCallback(window, &onGlfwMouseMove);
+    glfwSetCursorPosCallback(window, &onGlfwMouseMove);
 }
 
 inline void updateGlfwInput(GLFWwindow* window) {
@@ -120,6 +121,10 @@ inline void onGlfwKey(GLFWwindow* window, int key, int scancode, int action, int
     io.KeyShift = io.KeysDown[GLFW_KEY_LEFT_SHIFT] || io.KeysDown[GLFW_KEY_RIGHT_SHIFT];
     io.KeyAlt = io.KeysDown[GLFW_KEY_LEFT_ALT] || io.KeysDown[GLFW_KEY_RIGHT_ALT];
     io.KeySuper = io.KeysDown[GLFW_KEY_LEFT_SUPER] || io.KeysDown[GLFW_KEY_RIGHT_SUPER];
+
+    if(action != GLFW_REPEAT) {
+        inputPost(InputDeviceType::Keyboard, 0, key, action == GLFW_PRESS ? 1.0f : 0.0f);
+    }
 }
 
 inline void onGlfwMouseKey(GLFWwindow* window, int button, int action, int mods)
@@ -133,6 +138,8 @@ inline void onGlfwMouseKey(GLFWwindow* window, int button, int action, int mods)
         ptr->set(getGlfwKeyName(button), 0.0f);
         ImGui::GetIO().MouseDown[button] = false;
     }
+
+    inputPost(InputDeviceType::Mouse, 0, button, action == GLFW_PRESS ? 1.0f : 0.0f);
 }
 
 inline void onGlfwMouseMove(GLFWwindow* window, double xpos, double ypos)
@@ -144,8 +151,15 @@ inline void onGlfwMouseMove(GLFWwindow* window, double xpos, double ypos)
     ptr->set("MOUSE_X", (float)diff[0]);
     ptr->set("MOUSE_Y", (float)diff[1]);
 
+    if(diff[0] != 0.0) {
+        inputPost(InputDeviceType::Mouse, 0, (uint16_t)KeyMouse::AxisX, xpos, InputKeyType::Absolute);
+    }
+    if(diff[1] != 0.0) {
+        inputPost(InputDeviceType::Mouse, 0, (uint16_t)KeyMouse::AxisY, ypos, InputKeyType::Absolute);
+    }
+
     prev_pos[0] = xpos;
-    prev_pos[1] = ypos;    
+    prev_pos[1] = ypos;  
 }
 
 inline void onGlfwMouseScroll(GLFWwindow* window, double xoffset, double yoffset)
@@ -156,6 +170,8 @@ inline void onGlfwMouseScroll(GLFWwindow* window, double xoffset, double yoffset
     ImGuiIO& io = ImGui::GetIO();
     io.MouseWheelH += (float)xoffset;
     io.MouseWheel += (float)yoffset;
+
+    inputPost(InputDeviceType::Mouse, 0, (uint16_t)KeyMouse::Scroll, yoffset, InputKeyType::Increment);
 }
 
 inline void onGlfwChar(GLFWwindow* window, unsigned int c) {

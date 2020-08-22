@@ -264,6 +264,10 @@ public:
     std::shared_ptr<btRigidBody> rigid_body;
     btDefaultMotionState motion_state;
 };
+class ecsTupleKinematicCharacter : public ecsTuple<
+    ecsKinematicCharacter,
+    ecsCollisionShape
+> {};
 
 
 class ecsSubDynamicsSys : public ecsSystem<

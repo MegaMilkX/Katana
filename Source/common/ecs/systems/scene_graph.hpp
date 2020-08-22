@@ -29,8 +29,11 @@ public:
 };
 class ecsTplIK : public ecsTuple<ecsWorldTransform, ecsIK> {};
 
+class ecsTplModel : public ecsTuple<ecsWorldTransform, ecsModel>{};
+
 class ecsysSceneGraph : public ecsSystem<
     tupleTransform,
+    ecsTplModel,
     ecsTupleSubGraph,
     ecsTplConstraint,
     ecsTplIK
@@ -44,6 +47,7 @@ class ecsysSceneGraph : public ecsSystem<
     }
 
     void updateDirtyTransforms() {
+        sort_dirty_array<tupleTransform>();
         for(int i = get_dirty_index<tupleTransform>(); i < count<tupleTransform>(); ++i) {
             auto tuple = get<tupleTransform>(i);
             ecsTranslation* translation     = tuple->get_optional<ecsTranslation>();
@@ -162,6 +166,18 @@ class ecsysSceneGraph : public ecsSystem<
         }
 
         updateDirtyTransforms(); // Upd again to fix objects affected by constraints
+
+        // Update model roots
+        for(int i = get_dirty_index<ecsTplModel>(); i < count<ecsTplModel>(); ++i) {
+            auto tuple = get<ecsTplModel>(i);
+            auto mdl  = tuple->get<ecsModel>();
+            if(mdl->model) {
+                // TODO:
+            }
+
+            tuple->clear_dirty_signature();
+        }
+        clear_dirty<ecsTplModel>();
     }
 
 };

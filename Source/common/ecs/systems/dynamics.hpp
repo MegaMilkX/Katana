@@ -13,6 +13,7 @@ class ecsDynamicsSys : public ecsSystem<
     ecsArchCollider,
     ecsTupleCollisionPlane,
     ecsArchRigidBody,
+    ecsTupleKinematicCharacter,
     ecsTupleCollisionCache
 > {
     btDefaultCollisionConfiguration* collisionConf;
@@ -26,13 +27,6 @@ class ecsDynamicsSys : public ecsSystem<
     collision_pair_set_t pair_cache;
 
     BulletDebugDrawer2_OpenGL debugDrawer;
-
-    void addColObj(btCollisionObject* c) {
-
-    }
-    void removeColObj(btCollisionObject* c) {
-        
-    }
 
 public:
     ecsDynamicsSys() {
