@@ -34,9 +34,13 @@ struct ecsTupleMapReference {
     std::unique_ptr<ecsTupleMapReference>   next;
 };
 
+class ArchetypeStorage;
 class ecsWorld;
 class ecsEntity {
     friend ecsWorld;
+
+    ArchetypeStorage* storage = 0;
+    int storage_index = 0;
 
     entity_id parent_uid = NULL_ENTITY;
     entity_id first_child_uid = NULL_ENTITY;
@@ -44,7 +48,7 @@ class ecsEntity {
     int       tree_depth = 0;
 
     entity_id entity_uid;
-    uint64_t attrib_bits;
+    uint64_t attrib_bits = 0;
     std::map<uint8_t, std::shared_ptr<ecsAttribBase>> attribs;
     uint64_t bitmaskInheritedAttribs = 0;
 
@@ -137,10 +141,10 @@ public:
         return attrib_bits;
     }
     void setBit(attrib_id attrib) {
-        attrib_bits |= (1 << attrib);
+        attrib_bits |= (1ULL << attrib);
     }
     void clearBit(attrib_id attrib) {
-        attrib_bits &= ~(1 << attrib);
+        attrib_bits &= ~(1ULL << attrib);
     }
 
 };

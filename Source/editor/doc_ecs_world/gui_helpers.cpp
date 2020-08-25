@@ -42,7 +42,7 @@ void imguiEntityAttributeList(DocEcsWorldState& state) {
                     }
                     if(ImGui::Selectable(inf->name.c_str())) {
                         state.backupState();
-                        if(bitmaskInheritedAttribs & (1 << attr_id)) {
+                        if(bitmaskInheritedAttribs & (1UL << attr_id)) {
                             // Don't create attribute, just break inheritance
                             state.world->clearAttribInheritance(state.selected_ent, attr_id);
                         } else {
@@ -62,7 +62,7 @@ void imguiEntityAttributeList(DocEcsWorldState& state) {
                         }
                         if(ImGui::Selectable(inf->name.c_str())) {
                             state.backupState();
-                            if(bitmaskInheritedAttribs & (1 << attr_id)) {
+                            if(bitmaskInheritedAttribs & (1UL << attr_id)) {
                                 // Don't create attribute, just break inheritance
                                 state.world->clearAttribInheritance(state.selected_ent, attr_id);
                             } else {
@@ -89,7 +89,7 @@ void imguiEntityAttributeList(DocEcsWorldState& state) {
         auto inf = getEcsAttribTypeLib().get_info(attrib->get_id());
         const std::string& name = inf->name;
         bool exists = true;
-        if(bitmaskInheritedAttribs & (1 << i)) {
+        if(bitmaskInheritedAttribs & (1UL << i)) {
             //ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
             ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);

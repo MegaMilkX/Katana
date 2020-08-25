@@ -47,4 +47,7 @@ void ecsInit (void) {
 
     // System attribs
     regEcsAttrib<ecsCollisionObject>("CollisionObject");
+
+    // TEST
+    regEcsAttrib<ecsTestAttrib>("TestAttrib", "Test");
 }

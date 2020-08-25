@@ -52,6 +52,17 @@ void unlinkTupleTreeRelations(ecsTupleBase* tuple) {
     tuple->next_sibling = 0;
 }
 
+
+ArchetypeStorage* ecsWorld::getArchStorage(uint64_t signature) {
+    auto it = archetype_storages.find(signature);
+    if(it != archetype_storages.end()) {
+        return it->second.get();
+    }
+    auto* ptr = new ArchetypeStorage(signature);
+    archetype_storages.insert(std::make_pair(signature, std::unique_ptr<ArchetypeStorage>(ptr)));
+    return ptr;
+}
+
 void ecsWorld::onAttribsCreated(entity_id ent, uint64_t entity_sig, uint64_t diff_sig) {
     // Check removal by excluders and optional additions
     auto e = entities.deref(ent);
@@ -299,7 +310,7 @@ ecsEntityHandle ecsWorld::createEntity() {
 ecsEntityHandle ecsWorld::createEntity(archetype_mask_t attrib_signature) {
     auto hdl = createEntity();
     for(int i = 0; i < 64; ++i) {
-        if(attrib_signature & (1 << i)) {
+        if(attrib_signature & (1ULL << i)) {
             createAttrib(hdl.getId(), i);
         }
     }
@@ -321,8 +332,8 @@ ecsEntityHandle ecsWorld::createEntityFromTemplate (const char* tplPath) {
     ecsWorld::deserializeEntity(ctx, hdl.getId());
 
     uint64_t bitmaskInheritedAttribs = tpl->getEntity().getAttribBitmask();
-    bitmaskInheritedAttribs &= ~(1 << getEcsAttribTypeLib().get_attrib_id("Translation"));
-    bitmaskInheritedAttribs &= ~(1 << getEcsAttribTypeLib().get_attrib_id("Name"));
+    bitmaskInheritedAttribs &= ~(1ULL << getEcsAttribTypeLib().get_attrib_id("Translation"));
+    bitmaskInheritedAttribs &= ~(1ULL << getEcsAttribTypeLib().get_attrib_id("Name"));
 
     // Mark all attributes as derived
     entities.deref(hdl.getId())->bitmaskInheritedAttribs = bitmaskInheritedAttribs;
@@ -344,10 +355,10 @@ void ecsWorld::removeEntity(entity_id id) {
     onAttribsRemoved(id, e->getAttribBits(), e->getAttribBits());    
 
     for (int i = 0; i < get_last_attrib_id() + 1; ++i) {
-        if ((1 << i) & e->getAttribBits()) {
+        if ((1ULL << i) & e->getAttribBits()) {
             global_attrib_counters[i]--;
             if (global_attrib_counters[i] == 0) {
-                global_attrib_mask &= ~(1 << i);
+                global_attrib_mask &= ~(1ULL << i);
             }
         }
     }
@@ -547,12 +558,45 @@ ecsEntityHandle ecsWorld::mergeWorld (ecsWorld* world) {
 
 void ecsWorld::createAttrib(entity_id ent, attrib_id attrib) {
     auto e = entities.deref(ent);
+    uint64_t old_sig = e->getAttribBits();
     auto a = e->getAttrib(this, attrib);
 
     global_attrib_counters[attrib]++;
-    global_attrib_mask |= (1 << attrib);
+    global_attrib_mask |= (1ULL << attrib);
 
-    onAttribsCreated(ent, e->getAttribBits(), 1 << a->get_id());
+    onAttribsCreated(ent, e->getAttribBits(), 1ULL << a->get_id());
+
+    // New stuff
+    // ------------
+    auto old_storage = e->storage;
+    int old_storage_index = 0;
+    if(old_storage) {
+        old_storage_index = e->storage_index;
+    }
+    uint64_t sig = e->getAttribBits();
+    auto storage = getArchStorage(sig);
+    uint64_t index = storage->storage.alloc();
+    e->storage = storage;
+    e->storage_index = index;
+    storage->storage_to_entity.push_back(ent);
+    if(!old_storage) {
+        constructEntityData(storage->storage.deref(index), sig);
+    } else {
+        copyConstructEntityData(storage->storage.deref(index), sig, old_storage->storage.deref(old_storage_index), old_sig);
+        deleteEntityData(old_storage->storage.deref(old_storage_index), old_sig);
+        // Move last element up
+        auto last_index = old_storage->storage.count() - 1;
+        if(last_index != old_storage_index) {
+            copyConstructEntityData(old_storage->storage.deref(old_storage_index), old_sig, old_storage->storage.deref(last_index), old_sig);
+            entity_id last_ent = old_storage->storage_to_entity.back();
+            entities.deref(last_ent)->storage_index = old_storage_index;
+            old_storage->storage_to_entity[old_storage_index] = last_ent;
+        }
+        deleteEntityData(old_storage->storage.deref(last_index), old_sig);
+        old_storage->storage.erase();
+        old_storage->storage_to_entity.pop_back();
+    }
+    // ------------
 }
 void ecsWorld::setAttribInheritanceMask(entity_id e, uint64_t mask) {
     auto ent = entities.deref(e);
@@ -562,8 +606,8 @@ void ecsWorld::setAttribInheritanceMask(entity_id e, uint64_t mask) {
 void ecsWorld::clearAttribInheritance(entity_id e, attrib_id attrib) {
     auto ent = entities.deref(e);
     assert(ent);
-    if(ent->bitmaskInheritedAttribs & (1 << attrib)) {
-        ent->bitmaskInheritedAttribs &= ~(1 << attrib);
+    if(ent->bitmaskInheritedAttribs & (1ULL << attrib)) {
+        ent->bitmaskInheritedAttribs &= ~(1ULL << attrib);
     }
     tryClearTemplateLink(e);
 }
@@ -575,18 +619,50 @@ void ecsWorld::clearAllAttribInheritance(entity_id e) {
 }
 void ecsWorld::removeAttrib(entity_id ent, attrib_id attrib) {
     auto e = entities.deref(ent);
-    onAttribsRemoved(ent, e->getAttribBits(), 1 << attrib);
+    // New stuff
+    // ------------
+    uint64_t old_sig = e->getAttribBits();
+    uint64_t sig = old_sig & ~(1ULL << attrib);
+    auto old_storage = e->storage;
+    auto storage     = getArchStorage(sig);
+    auto old_storage_index = e->storage_index;
+
+    if(sig != 0) {
+        auto new_idx = storage->storage.alloc();
+        void* dest = storage->storage.deref(new_idx);
+        copyConstructEntityData(dest, sig, old_storage->storage.deref(old_storage_index), old_sig);
+        e->storage = storage;
+        e->storage_index = new_idx;
+        storage->storage_to_entity.push_back(ent);
+    } else {
+        e->storage = 0;
+        e->storage_index = -1;
+    }
+    deleteEntityData(old_storage->storage.deref(e->storage_index), old_sig);
+    auto last_index = old_storage->storage.count() - 1;
+    if(last_index != old_storage_index) {
+        copyConstructEntityData(old_storage->storage.deref(old_storage_index), old_sig, old_storage->storage.deref(last_index), old_sig);
+        entity_id last_ent = old_storage->storage_to_entity.back();
+        entities.deref(last_ent)->storage_index = old_storage_index;
+        old_storage->storage_to_entity[old_storage_index] = last_ent;
+    }
+    deleteEntityData(old_storage->storage.deref(last_index), old_sig);
+    old_storage->storage.erase();
+    old_storage->storage_to_entity.pop_back();
+    // ------------
+
+    onAttribsRemoved(ent, e->getAttribBits(), 1ULL << attrib);
 
     global_attrib_counters[attrib]--;
     if(global_attrib_counters[attrib] == 0) {
-        global_attrib_mask &= ~(1 << attrib);
+        global_attrib_mask &= ~(1ULL << attrib);
     }
 
     e->removeAttrib(attrib);
 }
 void ecsWorld::removeAttribs(entity_id ent, uint64_t mask) {
     for(int i = 0; i < get_last_attrib_id() + 1; ++i) {
-        if(mask & (1 << i)) {
+        if(mask & (1ULL << i)) {
             removeAttrib(ent, i);
         }
     }
@@ -661,8 +737,8 @@ void ecsWorld::updateDerived(std::shared_ptr<EntityTemplate> tpl) {
 
 void ecsWorld::linkToTemplate(entity_id ent, std::shared_ptr<EntityTemplate> tpl) {
     uint64_t ignore_mask = 0;
-    ignore_mask |= (1 << getEcsAttribTypeLib().get_attrib_id("Translation"));
-    ignore_mask |= (1 << getEcsAttribTypeLib().get_attrib_id("Name"));
+    ignore_mask |= (1ULL << getEcsAttribTypeLib().get_attrib_id("Translation"));
+    ignore_mask |= (1ULL << getEcsAttribTypeLib().get_attrib_id("Name"));
     copyAttribs(ent, tpl->getEntity(), ignore_mask);
     uint64_t inheritanceMask = tpl->getEntity().getAttribBitmask();
     inheritanceMask &= ~ignore_mask;
@@ -679,8 +755,8 @@ void ecsWorld::resetToTemplate(entity_id ent) {
 
     // Do not clear Translation and Name
     uint64_t remove_mask = 0xffffffffffffffff;
-    remove_mask &= ~(1 << getEcsAttribTypeLib().get_attrib_id("Translation"));
-    remove_mask &= ~(1 << getEcsAttribTypeLib().get_attrib_id("Name"));
+    remove_mask &= ~(1ULL << getEcsAttribTypeLib().get_attrib_id("Translation"));
+    remove_mask &= ~(1ULL << getEcsAttribTypeLib().get_attrib_id("Name"));
     uint64_t ignore_mask = ~remove_mask;
     
     removeAttribs(ent, remove_mask);
@@ -690,7 +766,7 @@ void ecsWorld::resetToTemplate(entity_id ent) {
 
 
 void ecsWorld::signalAttribUpdate(entity_id ent, attrib_id attrib) {
-    uint64_t attr_mask = 1 << attrib;
+    uint64_t attr_mask = 1ULL << attrib;
     auto e = entities.deref(ent);
     e->signalAttribUpdate(this, attrib);/*
     if(e->getAttribBits() & attr_mask) {
@@ -870,7 +946,7 @@ void ecsWorld::serializeEntity (ecsWorldWriteCtx& ctx, entity_id e, bool keep_te
     ctx.write<entity_id>(ctx.getRemappedEntityId(ent->first_child_uid));
     ctx.write<uint32_t>(attrib_count);
     for(int i = 0; i <= get_last_attrib_id(); ++i) {
-        if(keep_template_link && (inheritedBitmask & (1 << i))) {
+        if(keep_template_link && (inheritedBitmask & (1ULL << i))) {
             continue;
         }
         ecsAttribBase* a = ent->findAttrib(i);
@@ -926,7 +1002,7 @@ void ecsWorld::deserializeEntity (ecsWorldReadCtx& ctx, entity_id e, uint64_t at
 
         ecsAttribBase* a = ctx.getWorld()->getAttribPtr(e, attrib_index);
 
-        if(attrib_ignore_mask & (1 << attrib_index)) {
+        if(attrib_ignore_mask & (1ULL << attrib_index)) {
             ctx.skipBytes(attrib_byte_count);
             continue;
         }

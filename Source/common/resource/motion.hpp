@@ -205,7 +205,7 @@ inline void  MotionParamHdl::set(float val) {
 class Motion : public Resource {
     RTTR_ENABLE(Resource)
 
-    std::unique_ptr<AnimatorBase> animator;
+    std::shared_ptr<AnimatorBase> animator;
     MotionBlackboard              blackboard;
 
 public:

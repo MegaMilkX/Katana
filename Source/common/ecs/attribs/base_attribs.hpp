@@ -558,8 +558,8 @@ friend ecsSubDynamicsSys;
 friend ecsDynamicsSys;
 friend ecsTplCollisionMesh;
     std::shared_ptr<CollisionMesh> mesh;
-    std::unique_ptr<btCollisionShape> shape;
-    std::unique_ptr<btTriangleIndexVertexArray> ivarray;
+    std::shared_ptr<btCollisionShape> shape;
+    std::shared_ptr<btTriangleIndexVertexArray> ivarray;
 
     void rebuildShape() {
         if(!mesh || mesh->indexCount() == 0) {
@@ -724,7 +724,20 @@ public:
 };
 class ecsKinematicCharacter : public ecsAttrib<ecsKinematicCharacter> {
 public:
-
+    int val;
+};
+class ecsTestAttrib : public ecsAttrib<ecsTestAttrib> {
+    int val;
+public:
+    ecsTestAttrib() {
+        LOG_WARN("ecsTestAttrib()");
+    }
+    ecsTestAttrib(const ecsTestAttrib& other) {
+        LOG_WARN("ecsTestAttrib(const ecsTestAttrib& other)");
+    }
+    ~ecsTestAttrib() {
+        LOG_WARN("~ecsTestAttrib()");
+    }
 };
 
 class ecsLightOmni : public ecsAttrib<ecsLightOmni> {

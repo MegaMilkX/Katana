@@ -16,7 +16,7 @@ void recursiveTupleMarkDirty(ecsTupleMapBase* container, ecsTupleBase* tuple, ui
 }
 
 void ecsEntity::signalAttribUpdate(ecsWorld* world, uint8_t attrib_id) {
-    uint64_t attrib_mask = (1 << attrib_id);
+    uint64_t attrib_mask = (1ULL << attrib_id);
     auto tuple_map_ref = first_tuple_map.get();
     while(tuple_map_ref != 0) {
         uint64_t tuple_mask = tuple_map_ref->ptr->get_mask() | tuple_map_ref->ptr->get_opt_mask();
