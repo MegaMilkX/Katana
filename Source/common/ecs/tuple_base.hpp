@@ -2,12 +2,13 @@
 #define ECS_TUPLE_BASE_HPP
 
 #include "types.hpp"
+#include "entity_handle.hpp"
 
 class ecsWorld;
 
 class ecsTupleBase {
 protected:
-    entity_id entity_uid;
+    ecsEntityHandle hdl;
 public:
     uint32_t        array_index         = 0;
     uint64_t        dirty_signature     = 0;
@@ -71,7 +72,7 @@ public:
     virtual void updateOptionals(ecsWorld* world, entity_id ent) = 0;
     virtual void clearOptionals(uint64_t mask) = 0;
 
-    entity_id getEntityUid() const { return entity_uid; }
+    entity_id getEntityUid() const { return hdl.getId(); }
 
     virtual void signalAttribUpdate(uint64_t attrib_sig) = 0;
 

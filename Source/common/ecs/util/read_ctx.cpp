@@ -4,7 +4,7 @@
 #include "../world.hpp"
 
 
-ecsAttribBase* ecsWorldReadCtx::readAttribRef() {
+entity_id ecsWorldReadCtx::readAttribRef() {
     entity_id e = readEntityRef();
     if(e == ENTITY_ERROR) {
         return 0;
@@ -15,14 +15,8 @@ ecsAttribBase* ecsWorldReadCtx::readAttribRef() {
 
     attrib = getEcsAttribTypeLib().get_attrib_id(attrib_name.c_str());
     if(attrib < 0) {
-        return 0;
+        return ENTITY_ERROR;
     }
 
-    ecsAttribBase* a = world->getAttribPtr(e, attrib);
-    if(!a) {
-        world->createAttrib(e, attrib);
-        a = world->getAttribPtr(e, attrib);
-    }
-
-    return a;
+    return e;
 }

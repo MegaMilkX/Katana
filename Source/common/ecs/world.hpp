@@ -124,7 +124,8 @@ inline int64_t archetypeOffset(uint64_t attrib_mask, attrib_id attr) {
 
 struct ArchetypeStorage {
     ArchetypeStorage(uint64_t signature)
-    : storage(archetypeSize(signature)) {
+    : signature(signature), storage(archetypeSize(signature)) {
+        std::fill(attrib_offsets, attrib_offsets + sizeof(attrib_offsets) / sizeof(attrib_offsets[0]), -1);
         entity_size = archetypeSize(signature);
         for(int i = 0; i < 64; ++i) {
             uint64_t bit = (1ULL << i);
@@ -136,23 +137,26 @@ struct ArchetypeStorage {
         }
     }
     uint64_t entity_size;
+    uint64_t signature;
     int64_t attrib_offsets[64];
     EntityStorage storage;
     std::vector<entity_id> storage_to_entity;
 };
 
 // Call constructors on all attributes
-inline void constructEntityData(void* data, uint64_t sig) {
+inline void constructEntityData(void* data, uint64_t sig, ecsWorld* world, entity_id e) {
     for(size_t i = 0; i < get_last_attrib_id() + 1; ++i) {
         if(sig & (1ULL << i)) {
             auto* inf = getEcsAttribTypeLib().get_info(i);
             auto offset = archetypeOffset(sig, i);
-            inf->constructor_in_place((ecsAttribBase*)((uint8_t*)data + offset));
+            auto attrib_ptr = (ecsAttribBase*)((uint8_t*)data + offset);
+            inf->constructor_in_place(attrib_ptr);
+            attrib_ptr->h_entity = ecsEntityHandle(world, e);
         }
     }
 }
 // Copy construct mutual attributes, construct attributes that are present in dest, but not src
-inline void copyConstructEntityData(void* dest, uint64_t dest_sig, void* src, uint64_t src_sig) {
+inline void copyConstructEntityData(void* dest, uint64_t dest_sig, void* src, uint64_t src_sig, ecsWorld* world, entity_id e) {
     for(size_t i = 0; i < get_last_attrib_id() + 1; ++i) {
         if(dest_sig & src_sig & (1ULL << i)) {
             auto* inf = getEcsAttribTypeLib().get_info(i);
@@ -162,7 +166,9 @@ inline void copyConstructEntityData(void* dest, uint64_t dest_sig, void* src, ui
         } else if (dest_sig & (1ULL << i)) {
             auto* inf = getEcsAttribTypeLib().get_info(i);
             auto dest_offset = archetypeOffset(dest_sig, i);
-            inf->constructor_in_place((ecsAttribBase*)((uint8_t*)dest + dest_offset));
+            auto attrib_ptr = (ecsAttribBase*)((uint8_t*)dest + dest_offset);
+            inf->constructor_in_place(attrib_ptr);
+            attrib_ptr->h_entity = ecsEntityHandle(world, e);
         }
     }
 }
@@ -217,7 +223,9 @@ class ecsWorld : public Resource {
         ((ecsSystemBase*)sys)->world = this;
         for(auto e : live_entities) {
             ecsEntity* ent = entities.deref(e);
-            sys->attribsCreated(this, e, ent->getAttribBits(), ent->getAttribBits());
+            if (ent->storage) {
+                sys->attribsCreated(this, e, ent->storage->signature, ent->storage->signature);
+            }
         }
         return sys;
     }
@@ -229,7 +237,9 @@ class ecsWorld : public Resource {
         ((ecsSystemBase*)sys)->world = this;
         for(auto e : live_entities) {
             ecsEntity* ent = entities.deref(e);
-            sys->attribsCreated(this, e, ent->getAttribBits(), ent->getAttribBits());
+            if (ent->storage) {
+                sys->attribsCreated(this, e, ent->storage->signature, ent->storage->signature);
+            }
         }
         return sys;
     }
@@ -285,6 +295,8 @@ public:
     void                        removeAttrib(entity_id ent, attrib_id attrib);
     void                        removeAttribs(entity_id ent, uint64_t mask);
 
+    ecsAttribBase*              findAttrib(entity_id ent, attrib_id attrib);
+
     ecsAttribBase*              getAttribPtr(entity_id ent, attrib_id id);
 
     void                        copyAttribs                 (entity_id dst, ecsEntityHandle src, uint64_t ignore_mask = 0);
@@ -339,32 +351,31 @@ STATIC_RUN(ecsWorld) {
 
 template<typename T>
 T* ecsWorld::findAttrib(entity_id ent) {
-    auto e = entities.deref(ent);
-    auto a = e->findAttrib<T>();
-    return a;
+    return (T*)findAttrib(ent, T::get_id_static());
 }
 template<typename T>
 T* ecsWorld::getAttrib(entity_id ent) {
     auto e = entities.deref(ent);
-    auto a = e->findAttrib<T>();
+    auto a = findAttrib<T>(ent);
     if(!a) {
         createAttrib<T>(ent);
-        a = e->findAttrib<T>();
+        a = findAttrib<T>(ent);
     }
     return a;
 }
 template<typename T>
 T* ecsWorld::setAttrib(entity_id ent, const T& value) {
     auto e = entities.deref(ent);
-    auto a = e->findAttrib<T>();
+    auto a = findAttrib<T>(ent);
     if(!a) {
-        e->setAttrib<T>(this, value);
-        a = e->findAttrib<T>();
+        createAttrib<T>(ent);
+        updateAttrib(ent, value);
+        a = findAttrib<T>(ent);
         
         global_attrib_counters[T::get_id_static()]++;
         global_attrib_mask |= (1ULL << T::get_id_static());
         
-        onAttribsCreated(ent, e->getAttribBits(), 1ULL << T::get_id_static());
+        onAttribsCreated(ent, e->storage->signature, 1ULL << T::get_id_static());
     } else {
         updateAttrib(ent, value);
     }
@@ -387,12 +398,16 @@ void ecsWorld::signalAttribUpdate(entity_id ent) {
 template<typename T>
 void ecsWorld::updateAttrib(entity_id ent, const T& value) {
     auto e = entities.deref(ent);
-    if(e->updateAttrib(value)) {
-        e->signalAttribUpdate(this, T::get_id_static());/*
-        for(auto& sys : systems) {
-            sys->signalUpdate(ent, 1ULL << T::get_id_static());
-        }*/
+    auto attrib_id = T::get_id_static();
+    if (!e->storage) {
+        assert(false);
+        return;
     }
+    auto attrib_ptr = findAttrib(ent, attrib_id);
+    assert(attrib_ptr);
+    T::attrib_info->copy_constructor(attrib_ptr, &value);
+
+    e->signalAttribUpdate(this, T::get_id_static());
 }
 
 template<typename T>

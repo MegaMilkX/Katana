@@ -313,12 +313,12 @@ typedef std::map<std::string, entity_id>        name_to_ent_map_t;
 typedef std::unordered_map<aiNode*, entity_id>  node_to_entity_t;
 #include "../util/threading/delegated_call.hpp"
 void assimpImportEcsSceneGraph(ecsWorld* world, name_to_ent_map_t& node_map, node_to_entity_t& deferred_entity_map, const aiScene* ai_scene, aiNode* ai_node, ecsEntityHandle ent) {
-    ecsName* ecs_name = ent.getAttrib<ecsName>();
-    ecsTranslation* translation = ent.getAttrib<ecsTranslation>();
-    ecsRotation* rotation = ent.getAttrib<ecsRotation>();
-    ecsScale* scale = ent.getAttrib<ecsScale>();
+    ent.getAttrib<ecsName>();
+    ent.getAttrib<ecsTranslation>();
+    ent.getAttrib<ecsRotation>();
+    ent.getAttrib<ecsScale>();
 
-    ecs_name->name = ai_node->mName.C_Str();
+    ent.getAttrib<ecsName>()->name = ai_node->mName.C_Str();
     
     if(ai_scene->mRootNode != ai_node) {
         aiVector3D ai_pos;
@@ -326,14 +326,14 @@ void assimpImportEcsSceneGraph(ecsWorld* world, name_to_ent_map_t& node_map, nod
         aiVector3D ai_scale;
         ai_node->mTransformation.Decompose(ai_scale, ai_quat, ai_pos);
         
-        translation->setPosition(ai_pos.x, ai_pos.y, ai_pos.z);
-        rotation->setRotation(ai_quat.x, ai_quat.y, ai_quat.z, ai_quat.w);
-        scale->setScale(ai_scale.x, ai_scale.y, ai_scale.z);
+        ent.getAttrib<ecsTranslation>()->setPosition(ai_pos.x, ai_pos.y, ai_pos.z);
+        ent.getAttrib<ecsRotation>()->setRotation(ai_quat.x, ai_quat.y, ai_quat.z, ai_quat.w);
+        ent.getAttrib<ecsScale>()->setScale(ai_scale.x, ai_scale.y, ai_scale.z);
     }
 
     ent.getAttrib<ecsWorldTransform>();
     
-    node_map[ecs_name->name] = ent.getId();
+    node_map[ent.getAttrib<ecsName>()->name] = ent.getId();
 
     for(unsigned i = 0; i < ai_node->mNumChildren; ++i) {
         auto child_ent = world->createEntity();
@@ -430,7 +430,7 @@ void assimpImportEcsSceneMeshes(ecsWorld* world, name_to_ent_map_t& node_map, no
 
                             auto it = node_map.find(name);
                             if(it != node_map.end()) {
-                                seg.skin_data->bone_nodes.emplace_back(world->getAttrib<ecsWorldTransform>(it->second));
+                                seg.skin_data->bone_nodes.emplace_back(ecsEntityHandle(world, it->second));
                                 seg.skin_data->bind_transforms.emplace_back(
                                     gfxm::transpose(*(gfxm::mat4*)&ai_bone->mOffsetMatrix)
                                 );

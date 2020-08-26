@@ -205,12 +205,16 @@ inline void  MotionParamHdl::set(float val) {
 class Motion : public Resource {
     RTTR_ENABLE(Resource)
 
-    std::shared_ptr<AnimatorBase> animator;
-    MotionBlackboard              blackboard;
+    std::shared_ptr<AnimatorBase>     animator;
+    std::shared_ptr<MotionBlackboard> blackboard;
 
 public:
     std::string                     reference_path;
     std::shared_ptr<Skeleton>       skeleton;
+
+    Motion() {
+        blackboard.reset(new MotionBlackboard());
+    }
 
     void rebuild(std::shared_ptr<Skeleton> skel) {
         skeleton = skel;
@@ -237,7 +241,7 @@ public:
         return animator.get();
     }
     MotionBlackboard& getBlackboard() {
-        return blackboard;
+        return *blackboard.get();
     }
 
     void update(float dt, AnimSampleBuffer& sample_buffer) {

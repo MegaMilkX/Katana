@@ -147,7 +147,7 @@ public:
 class ecsMeshes : public ecsAttrib<ecsMeshes> {
 public:
     struct SkinData {
-        std::vector<ecsWorldTransform*>         bone_nodes;
+        std::vector<ecsEntityHandle>            bone_nodes;
         std::vector<gfxm::mat4>                 bind_transforms;
         std::shared_ptr<gl::VertexArrayObject>  vao_cache;
         std::shared_ptr<gl::Buffer>             position_cache;
@@ -262,7 +262,7 @@ public:
                 auto& skin_data = getSegment(i).skin_data;
                 w.write<uint32_t>(skin_data->bone_nodes.size());
                 for(size_t j = 0; j < skin_data->bone_nodes.size(); ++j) {
-                    w.writeAttribRef(skin_data->bone_nodes[j]);
+                    w.writeAttribRef(skin_data->bone_nodes[j].getId(), ecsWorldTransform::get_id_static());
                     w.write<gfxm::mat4>(skin_data->bind_transforms[j]);
                 }
             } else {
@@ -336,9 +336,9 @@ public:
 
             if(bone_count && seg.mesh) {
                 for(uint32_t j = 0; j < bone_count; ++j) {
-                    ecsWorldTransform* attr = (ecsWorldTransform*)r.readAttribRef();
+                    entity_id entity = r.readAttribRef();
                     gfxm::mat4 m = r.read<gfxm::mat4>();
-                    seg.skin_data->bone_nodes.emplace_back(attr);
+                    seg.skin_data->bone_nodes.emplace_back(ecsEntityHandle(getEntityHdl().getWorld(), entity));
                     seg.skin_data->bind_transforms.emplace_back(m);
                 }
             }
