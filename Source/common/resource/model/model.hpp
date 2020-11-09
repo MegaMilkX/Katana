@@ -2,7 +2,9 @@
 #define RES_MODEL_HPP
 
 #include "../resource.h"
-
+#include "../../gl/vertex_array_object.hpp"
+#include "../../gl/vertex_buffer.hpp"
+#include "../../gl/buffer.hpp"
 #include "../mesh.hpp"
 
 
@@ -33,14 +35,28 @@ public:
     }
 };
 
+struct ModelMesh {
+    ModelNode*                  node;
+    std::shared_ptr<Mesh>       mesh;
+    std::shared_ptr<Material>   material;
+};
+struct ModelSkinCache {
+    std::shared_ptr<gl::VertexArrayObject>  vao;
+    std::shared_ptr<gl::Buffer>             position;
+    std::shared_ptr<gl::Buffer>             normal;
+    std::shared_ptr<gl::Buffer>             tangent;
+    std::shared_ptr<gl::Buffer>             bitangent;
+    std::shared_ptr<gl::Buffer>             pose;
+};
+struct ModelSkin {
+    ModelMesh                   mesh;
+    std::vector<ModelNode*>     bone_nodes;
+    std::vector<gfxm::mat4>     bind_transforms;
+    ModelSkinCache              skin_cache;
+};
+
 class Model_ : public Resource {
     RTTR_ENABLE(Resource)
-public:
-    struct MeshLink {
-        Mesh*       mesh = 0;
-        ModelNode*  node = 0;
-    };
-private:
 
 public:
     Model_()
@@ -48,14 +64,30 @@ public:
     {}
 
     std::unique_ptr<ModelNode>         rootNode;
-    std::vector<std::shared_ptr<Mesh>> meshes;
-    std::vector<MeshLink>              meshLinks;
+    std::vector<ModelMesh>             meshes;
+    std::vector<ModelSkin>             skin_meshes;
+
+    ModelNode* findNode(const char* name) {
+        return findLocalNode(rootNode.get(), name);
+    }
+    ModelNode* findLocalNode(ModelNode* parent, const char* name) {
+        ModelNode* r = 0;
+        for(auto& n : parent->children) {
+            if(n->name == name) {
+                r = n.get();
+                break;
+            } else {
+                r = findLocalNode(n.get(), name);
+            }
+        }
+        return r;
+    }
 
     void serialize(out_stream& out) override {
 
     }
     bool deserialize(in_stream& in, size_t sz) override {
-      return true;
+        return true;
     }
 };
 STATIC_RUN(Model_) {

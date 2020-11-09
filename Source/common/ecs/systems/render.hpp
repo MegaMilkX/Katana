@@ -172,14 +172,14 @@ public:
                 cmd.lightmap = 0;
                 dl.solids.emplace_back(cmd);
             } else {
-                for(int i = 0; i < mdl->model->meshLinks.size(); ++i) {
-                    auto& link = mdl->model->meshLinks[i];
+                for(int i = 0; i < mdl->model->meshes.size(); ++i) {
+                    auto& mesh_instance = mdl->model->meshes[i];
                     DrawCmdSolid cmd;
-                    cmd.vao = link.mesh->mesh.getVao();
+                    cmd.vao = mesh_instance.mesh->mesh.getVao();
                     cmd.material = 0;
-                    cmd.indexCount = link.mesh->mesh.getIndexCount();
+                    cmd.indexCount = mesh_instance.mesh->mesh.getIndexCount();
                     cmd.indexOffset = 0;
-                    cmd.transform = link.node->getWorld();
+                    cmd.transform = mesh_instance.node->getWorld();
                     cmd.object_ptr = (void*)a->getEntityUid();
                     cmd.lightmap = 0;
                     dl.solids.emplace_back(cmd);

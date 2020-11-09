@@ -15,6 +15,8 @@
 
 #include "storage/world_storage.hpp"
 
+#include "actor.hpp"
+
 class byte_block_vector {
     char** _blocks = 0;
     size_t _elem_size = 0;
@@ -256,6 +258,7 @@ public:
 
     void                        clearEntities               (void);
     void                        clearSystems                (void);
+
 
     ecsEntityHandle             createEntity                ();
     ecsEntityHandle             createEntity                (archetype_mask_t attrib_signature);

@@ -459,4 +459,7 @@ const char*           inputActionEventTypeToString(InputActionEventType t);
 
 void inputReadDevices();
 
+
+void inputShowMouse(bool show);
+
 #endif
