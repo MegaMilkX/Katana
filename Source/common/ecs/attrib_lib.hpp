@@ -10,9 +10,11 @@ class ecsAttribBase;
 struct attrib_type_info {
     typedef ecsAttribBase*(*constructor_fn_t)(void);
     typedef void          (*constructor_in_place_fn_t)(ecsAttribBase*);
+    typedef void          (*copy_constructor_fn_t)(ecsAttribBase* dest, const ecsAttribBase* src);
     
     constructor_fn_t constructor;
     constructor_in_place_fn_t constructor_in_place;
+    copy_constructor_fn_t     copy_constructor;
     std::string name;
     size_t size_of = 0;
     ecsAttribType attrib_type;
@@ -20,31 +22,35 @@ struct attrib_type_info {
 
 class EcsAttribTypeLib {
     std::unordered_map<std::string, std::vector<attrib_id>> table;
-    std::unordered_map<attrib_id, attrib_type_info> attrib_infos;
+    std::unordered_map<attrib_id, std::unique_ptr<attrib_type_info>> attrib_infos;
     std::unordered_map<std::string, attrib_id>      attrib_indices;
 public:
     template<typename T>
     void add(const char* category, const char* name) {
-        attrib_type_info inf;
-        inf.constructor = []()->ecsAttribBase*{
+        attrib_type_info* inf = new attrib_type_info();
+        inf->constructor = []()->ecsAttribBase*{
             return new T();
         };
-        inf.constructor_in_place = [](ecsAttribBase* ptr){
+        inf->constructor_in_place = [](ecsAttribBase* ptr){
             new ((T*)ptr) T();
         };
-        inf.name = name;
-        inf.size_of = sizeof(T);
-        inf.attrib_type = T::get_attrib_type_static();
+        inf->copy_constructor = [](ecsAttribBase* dest, const ecsAttribBase* src){
+            new((T*)dest) T(*(T*)src);
+        };
+        inf->name = name;
+        inf->size_of = sizeof(T);
+        inf->attrib_type = T::get_attrib_type_static();
         table[category].emplace_back(T::get_id_static());
-        attrib_infos[T::get_id_static()] = inf;
+        attrib_infos[T::get_id_static()].reset(inf);
         attrib_indices[name] = T::get_id_static();
+        T::attrib_info = inf;
     }
     const attrib_type_info* get_info(attrib_id id) const {
         const auto it = attrib_infos.find(id);
         if(it == attrib_infos.end()) {
             return 0;
         }
-        return &it->second;
+        return it->second.get();
     }
     const attrib_type_info* get_info(const char* name) const {
         const auto it = attrib_indices.find(name);
@@ -55,7 +61,7 @@ public:
         if(it2 == attrib_infos.end()) {
             return 0;
         }
-        return &it2->second;
+        return it2->second.get();
     }
     attrib_id get_attrib_id(const char* name) const {
         const auto it = attrib_indices.find(name);

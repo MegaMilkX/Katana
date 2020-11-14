@@ -15,7 +15,6 @@ struct ecsOptional {};
 template<typename Arg>
 class ecsTuplePart {
 protected:
-    Arg* ptr;
 public:
     ecsTuplePart() {}
     ecsTuplePart(ecsWorld* world, entity_id ent) {
@@ -34,11 +33,11 @@ public:
     }
 
     int updateOptional(ecsWorld* world, entity_id ent) { return 0; }
-    int clearOptional(uint64_t mask) { return 0; }
+    int clearOptional(ecsEntityHandle hdl, uint64_t mask) { return 0; }
 
-    int _signalAttribUpdate(uint64_t attrib_sig) {
+    int _signalAttribUpdate(ecsEntityHandle hdl, uint64_t attrib_sig) {
         if((1 << Arg::get_id_static()) == attrib_sig) {
-            onAttribUpdate(ptr);
+            onAttribUpdate(hdl.findAttrib<Arg>());
         }
         return 0;
     }
@@ -63,16 +62,16 @@ public:
     }
 
     int updateOptional(ecsWorld* world, entity_id ent) { return 0; }
-    int clearOptional(uint64_t mask) { return 0; }
+    int clearOptional(ecsEntityHandle hdl, uint64_t mask) { return 0; }
 
-    int _signalAttribUpdate(uint64_t attrib_sig) {
+    int _signalAttribUpdate(ecsEntityHandle hdl, uint64_t attrib_sig) {
         return 0;
     }
 };
 template<typename Arg>
 class ecsTuplePart<ecsOptional<Arg>> {
 protected:
-    Arg* ptr = 0;
+    Arg* stale_ptr = 0; // To check for add/remove events
 public:
     ecsTuplePart() {}
     ecsTuplePart(ecsWorld* world, entity_id ent) {
@@ -92,26 +91,25 @@ public:
 
     int updateOptional(ecsWorld* world, entity_id ent) {
         Arg* tmp = world->findAttrib<Arg>(ent);
-        if(tmp && !ptr) {
-            ptr = tmp;
-            onAddOptional(ptr);
-        } else if(!tmp && ptr) {
-            ptr = tmp;
-            onRemoveOptional(ptr);
+        if(tmp && !stale_ptr) {
+            stale_ptr = tmp;
+            onAddOptional(stale_ptr);
+        } else if(!tmp && stale_ptr) {
+            stale_ptr = tmp;
+            onRemoveOptional(stale_ptr);
         }
         return 0;
     }
-    int clearOptional(uint64_t mask) {
-        if(ptr && ((1 << Arg::get_id_static()) & mask)) {
-            onRemoveOptional(ptr);
-            ptr = 0;
+    int clearOptional(ecsEntityHandle hdl, uint64_t mask) {
+        if(((1 << Arg::get_id_static()) & mask)) {
+            onRemoveOptional(hdl.findAttrib<Arg>());
         }
         return 0;
     }
 
-    int _signalAttribUpdate(uint64_t attrib_sig) {
+    int _signalAttribUpdate(ecsEntityHandle hdl, uint64_t attrib_sig) {
         if((1 << Arg::get_id_static()) == attrib_sig) {
-            onAttribUpdate(ptr);
+            onAttribUpdate(hdl.findAttrib<Arg>());
         }
         return 0;
     }
@@ -129,25 +127,23 @@ public:
     : ecsTuplePart<Args>(world, ent)... {}
 
     void init(ecsWorld* world, entity_id ent) override {
-        *this = ecsTuple<Args...>(world, ent);
-        entity_uid = ent;
+        hdl = ecsEntityHandle(world, ent);
     }
 
     void updateOptionals(ecsWorld* world, entity_id ent) override {
         int x[] = { ecsTuplePart<Args>::updateOptional(world, ent)... };
     }
     void clearOptionals(uint64_t mask) override {
-        int x[] = { ecsTuplePart<Args>::clearOptional(mask)... };
+        int x[] = { ecsTuplePart<Args>::clearOptional(hdl, mask)... };
     }
 
     template<typename T>
     T* get() {
-        return ecsTuplePart<T>::ptr;
-        //return std::get<T*>(attribs);
+        return hdl.findAttrib<T>();
     }
     template<typename T>
     T* get_optional() {
-        return ecsTuplePart<ecsOptional<T>>::ptr;
+        return hdl.findAttrib<T>();
     }
 
     ecsTuple<Args...>* get_parent() {
@@ -161,7 +157,7 @@ public:
     }
 
     void signalAttribUpdate(uint64_t attrib_sig) {
-        int x[] = { ecsTuplePart<Args>::_signalAttribUpdate(attrib_sig)... };
+        int x[] = { ecsTuplePart<Args>::_signalAttribUpdate(hdl, attrib_sig)... };
     }
 
     static uint64_t get_signature_static() {

@@ -14,6 +14,10 @@ void ecsWorldWriteCtx::writeAttribRef(ecsAttribBase* attrib) {
 
     write<uint16_t>(attrib->get_id());
 }
+void ecsWorldWriteCtx::writeAttribRef(entity_id e, attrib_id a) {
+    write<uint64_t>(e);
+    write<uint16_t>(a);
+}
 
 void ecsWorldWriteCtx::beginSubBlock() {
     subblock_stream.jump(0);

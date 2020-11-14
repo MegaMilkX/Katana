@@ -522,3 +522,12 @@ void inputReadDevices() {
         stick_r_prev[i] = stick_r;
     }
 }
+
+
+#include <GLFW/glfw3.h>
+#include "platform/platform.hpp"
+
+void inputShowMouse(bool show) {
+    GLFWwindow* window = (GLFWwindow*)platformGetGlfwWindow();
+    glfwSetInputMode(window, GLFW_CURSOR, show ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+}

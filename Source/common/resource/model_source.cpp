@@ -548,7 +548,7 @@ void ModelSource::loadSceneGraph(const aiScene* ai_scene, aiNode* node, ecsEntit
 
                         ecsEntityHandle bone_object = ent.getWorld()->findEntity(name.c_str());
                         if(bone_object.isValid()) {
-                            seg.skin_data->bone_nodes.emplace_back(bone_object.getAttrib<ecsWorldTransform>());
+                            seg.skin_data->bone_nodes.emplace_back(bone_object);
                             seg.skin_data->bind_transforms.emplace_back(
                                 gfxm::transpose(*(gfxm::mat4*)&ai_bone->mOffsetMatrix)
                             );

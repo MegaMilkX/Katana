@@ -18,7 +18,7 @@ friend ecsysAnimation;
     
     std::shared_ptr<Skeleton> skeleton;
     std::shared_ptr<Motion>   motion_ref;
-    Motion                    motion_lcl;
+    std::shared_ptr<Motion>   motion_lcl;
 
     AnimSampleBuffer          sample_buffer;
     std::vector<AnimNode>     target_nodes;
@@ -33,7 +33,7 @@ public:
     }
     void setMotion(std::shared_ptr<Motion> motion) {
         motion_ref = motion;
-        motion_lcl = Motion();
+        motion_lcl.reset(new Motion());
         if(!motion_ref) {
             return;
         }
@@ -41,17 +41,17 @@ public:
         dstream strm;
         motion_ref->serialize(strm);
         strm.jump(0);
-        motion_lcl.deserialize(strm, strm.bytes_available());
+        motion_lcl->deserialize(strm, strm.bytes_available());
 
         if(skeleton) {
-            motion_lcl,skeleton = skeleton;
-            motion_lcl.rebuild();
+            motion_lcl->skeleton = skeleton;
+            motion_lcl->rebuild();
         }
 
         getEntityHdl().signalUpdate<ecsAnimator>();
     }
     Skeleton* getSkeleton() { return skeleton.get(); }
-    Motion* getLclMotion() { return &motion_lcl; }
+    Motion* getLclMotion() { return motion_lcl.get(); }
 
 
     void write(ecsWorldWriteCtx& out) override {

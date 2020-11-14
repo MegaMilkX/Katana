@@ -78,6 +78,7 @@ public:
     }
 
     void writeAttribRef(ecsAttribBase* attrib);
+    void writeAttribRef(entity_id e, attrib_id a);
 
 };
 

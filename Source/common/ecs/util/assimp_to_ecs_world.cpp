@@ -313,12 +313,12 @@ typedef std::map<std::string, entity_id>        name_to_ent_map_t;
 typedef std::unordered_map<aiNode*, entity_id>  node_to_entity_t;
 #include "../util/threading/delegated_call.hpp"
 void assimpImportEcsSceneGraph(ecsWorld* world, name_to_ent_map_t& node_map, node_to_entity_t& deferred_entity_map, const aiScene* ai_scene, aiNode* ai_node, ecsEntityHandle ent) {
-    ecsName* ecs_name = ent.getAttrib<ecsName>();
-    ecsTranslation* translation = ent.getAttrib<ecsTranslation>();
-    ecsRotation* rotation = ent.getAttrib<ecsRotation>();
-    ecsScale* scale = ent.getAttrib<ecsScale>();
+    ent.getAttrib<ecsName>();
+    ent.getAttrib<ecsTranslation>();
+    ent.getAttrib<ecsRotation>();
+    ent.getAttrib<ecsScale>();
 
-    ecs_name->name = ai_node->mName.C_Str();
+    ent.getAttrib<ecsName>()->name = ai_node->mName.C_Str();
     
     if(ai_scene->mRootNode != ai_node) {
         aiVector3D ai_pos;
@@ -326,14 +326,14 @@ void assimpImportEcsSceneGraph(ecsWorld* world, name_to_ent_map_t& node_map, nod
         aiVector3D ai_scale;
         ai_node->mTransformation.Decompose(ai_scale, ai_quat, ai_pos);
         
-        translation->setPosition(ai_pos.x, ai_pos.y, ai_pos.z);
-        rotation->setRotation(ai_quat.x, ai_quat.y, ai_quat.z, ai_quat.w);
-        scale->setScale(ai_scale.x, ai_scale.y, ai_scale.z);
+        ent.getAttrib<ecsTranslation>()->setPosition(ai_pos.x, ai_pos.y, ai_pos.z);
+        ent.getAttrib<ecsRotation>()->setRotation(ai_quat.x, ai_quat.y, ai_quat.z, ai_quat.w);
+        ent.getAttrib<ecsScale>()->setScale(ai_scale.x, ai_scale.y, ai_scale.z);
     }
 
     ent.getAttrib<ecsWorldTransform>();
     
-    node_map[ecs_name->name] = ent.getId();
+    node_map[ent.getAttrib<ecsName>()->name] = ent.getId();
 
     for(unsigned i = 0; i < ai_node->mNumChildren; ++i) {
         auto child_ent = world->createEntity();
@@ -430,7 +430,7 @@ void assimpImportEcsSceneMeshes(ecsWorld* world, name_to_ent_map_t& node_map, no
 
                             auto it = node_map.find(name);
                             if(it != node_map.end()) {
-                                seg.skin_data->bone_nodes.emplace_back(world->getAttrib<ecsWorldTransform>(it->second));
+                                seg.skin_data->bone_nodes.emplace_back(ecsEntityHandle(world, it->second));
                                 seg.skin_data->bind_transforms.emplace_back(
                                     gfxm::transpose(*(gfxm::mat4*)&ai_bone->mOffsetMatrix)
                                 );
@@ -527,7 +527,7 @@ entity_id assimpImportEcsScene(ecsWorld* world, const char* filename) {
 
 
 
-void      assimpImportEcsModelGraph(Model_* model, ModelNode* node, const aiNode* ai_node) {
+void      assimpImportEcsModelGraph(const aiScene* ai_scene, Model_* model, ModelNode* node, const aiNode* ai_node, std::vector<std::shared_ptr<Mesh>>& meshes) {
     node->name = ai_node->mName.C_Str();
     aiVector3D ai_pos;
     aiQuaternion ai_quat;
@@ -541,30 +541,53 @@ void      assimpImportEcsModelGraph(Model_* model, ModelNode* node, const aiNode
         auto n = new ModelNode;
         n->parent = node;
         aiNode* ch = ai_node->mChildren[i];
-        assimpImportEcsModelGraph(model, n, ch);
+        assimpImportEcsModelGraph(ai_scene, model, n, ch, meshes);
         node->children.push_back(std::unique_ptr<ModelNode>(n));
     }
 
     for(int i = 0; i < ai_node->mNumMeshes; ++i) {
-        Model_::MeshLink link;
         auto mesh_id = ai_node->mMeshes[i];
-        link.node = node;
-        link.mesh = model->meshes[mesh_id].get();
-        model->meshLinks.push_back(link);
+        auto ai_mesh = ai_scene->mMeshes[mesh_id];
+
+        ModelMesh mm;
+        mm.node = node;
+        mm.mesh = meshes[mesh_id];
+        model->meshes.push_back(mm);
+        /*
+        if(ai_mesh->HasBones()) {
+            ModelSkin ms;
+            ms.mesh.node = node;
+            ms.mesh.mesh = meshes[mesh_id];
+            for(int j = 0; j < ai_mesh->mNumBones; ++j) {
+                auto ai_bone = ai_mesh->mBones[j];
+                
+                // TODO:
+                //seg.skin_data->bone_nodes.emplace_back(ecsEntityHandle(world, it->second));
+                ms.bind_transforms.emplace_back(
+                    gfxm::transpose(*(gfxm::mat4*)&ai_bone->mOffsetMatrix)
+                );
+            }
+        } else {
+            ModelMesh mm;
+            mm.node = node;
+            mm.mesh = meshes[mesh_id];
+            model->meshes.push_back(mm);
+        }*/
     }
 }
 void      assimpImportEcsModel(Model_* model, AssimpScene* assimp_scene) {
     const aiScene* ai_scene = assimp_scene->getScene();
 
+    std::vector<std::shared_ptr<Mesh>> meshes;
     for(int i = 0; i < ai_scene->mNumMeshes; ++i) {
         aiMesh* ai_mesh = ai_scene->mMeshes[i];
-        std::vector<const aiMesh*> meshes;
-        meshes.push_back(ai_mesh);
-        std::shared_ptr<Mesh> mesh = mergeMeshes(meshes);
-        model->meshes.push_back(mesh);        
+        std::vector<const aiMesh*> ai_meshes;
+        ai_meshes.push_back(ai_mesh);
+        std::shared_ptr<Mesh> mesh = mergeMeshes(ai_meshes);
+        meshes.push_back(mesh);     
     }
 
-    assimpImportEcsModelGraph(model, model->rootNode.get(), ai_scene->mRootNode);
+    assimpImportEcsModelGraph(ai_scene, model, model->rootNode.get(), ai_scene->mRootNode, meshes);
 
     double scaleFactor = 1.0f;
     if(ai_scene->mMetaData) {

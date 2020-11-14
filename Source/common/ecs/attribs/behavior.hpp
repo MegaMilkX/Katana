@@ -32,7 +32,7 @@ STATIC_RUN(BehaviorBase) {
 class ecsBehaviorSys;
 class ecsBehavior : public ecsAttrib<ecsBehavior> {
 friend ecsBehaviorSys;
-    std::unique_ptr<BehaviorBase> bhvr;
+    std::shared_ptr<BehaviorBase> bhvr;
 
 public:
     void setBehavior(BehaviorBase* ptr) {

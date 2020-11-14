@@ -33,7 +33,7 @@ void KatanaImpl::update() {
     _session->_update(sFrameDelta);
     _session->_render();
 
-    debugOverlayDraw(1280, 720);
+    //debugOverlayDraw(1280, 720);
 }
 
 void KatanaImpl::update_time(float delta_time) {

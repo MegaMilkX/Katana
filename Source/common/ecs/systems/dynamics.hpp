@@ -63,6 +63,8 @@ public:
     void onUnfit(ecsTupleCollisionSubScene* subscene) {}
 
     void onFit(ecsArchCollider* collider) {
+
+        
         collider->world = world;
         collider->collision_object.reset(new btCollisionObject());
         collider->collision_object->setUserIndex((int)collider->getEntityUid()); // TODO: Bad, entity_id is 64 bit FIX THIS

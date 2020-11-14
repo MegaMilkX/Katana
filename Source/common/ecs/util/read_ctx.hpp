@@ -130,7 +130,7 @@ public:
         }
     }
 
-    ecsAttribBase* readAttribRef();
+    entity_id readAttribRef();
 };
 
 
