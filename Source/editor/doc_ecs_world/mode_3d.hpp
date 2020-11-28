@@ -99,10 +99,6 @@ public:
             }
         }
 
-        auto renderSys = state.world->getSystem<ecsRenderSystem>();
-        DrawList dl_silhouette;
-        renderSys->fillDrawList(dl_silhouette, state.selected_ent);
-
         if(state.gvp.begin()) {
             state.gvp.getRenderer()->draw(state.gvp.getViewport(), state.gvp.getProjection(), state.gvp.getView(), state.dl);
             fb_silhouette.reinitBuffers(state.gvp.getViewport()->getWidth(), state.gvp.getViewport()->getHeight());
@@ -117,7 +113,7 @@ public:
         state.gvp.getViewport()->getFinalBuffer()->bind();
         draw2d(dl2d, state.gvp.getSize().x, state.gvp.getSize().y);
 
-        state.gvp.getRenderer()->drawSilhouettes(&fb_silhouette, state.gvp.getProjection(), state.gvp.getView(), dl_silhouette);
+        state.gvp.getRenderer()->drawSilhouettes(&fb_silhouette, state.gvp.getProjection(), state.gvp.getView(), state.dl);
         outline(&fb_outline, fb_silhouette.getTextureId(0));
         cutout(&fb_blur, fb_outline.getTextureId(0), fb_silhouette.getTextureId(0));/*
         blur(&fb_outline, fb_silhouette.getTextureId(0), gfxm::vec2(1, 0));
@@ -225,9 +221,7 @@ public:
                     state.selected_ent = ent;
                     LOG("PICKED_SOLID: " << pix);
                 } else {
-                    entity_id ent = (entity_id)state.dl.skins[pix - state.dl.solids.size()].object_ptr;
-                    state.selected_ent = ent;
-                    LOG("PICKED_SKIN: " << pix - state.dl.solids.size());
+                    assert(false);
                 }
             }
         }

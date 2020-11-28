@@ -284,22 +284,22 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
 
     }*/
 
-    mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Position, vertices.data(), vertices.size() * sizeof(float));
+    mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::Position, vertices.data(), vertices.size() * sizeof(float));
     if(normal_layers.size() > 0) {
-        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Normal, normal_layers[0].data(), normal_layers[0].size() * sizeof(float));
+        mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::Normal, normal_layers[0].data(), normal_layers[0].size() * sizeof(float));
     }
     if(uv_layers.size() > 0) {
-        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::UV, uv_layers[0].data(), uv_layers[0].size() * sizeof(float));
+        mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::UV, uv_layers[0].data(), uv_layers[0].size() * sizeof(float));
     }
     if(rgb_layers.size() > 0) {
-        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::ColorRGBA, rgb_layers[0].data(), rgb_layers[0].size() * sizeof(uint8_t));
+        mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::ColorRGBA, rgb_layers[0].data(), rgb_layers[0].size() * sizeof(uint8_t));
     }
     if(!boneIndices.empty() && !boneWeights.empty()) {
-        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::BoneIndex4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4));
-        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::BoneWeight4, boneWeights.data(), boneWeights.size() * sizeof(gfxm::vec4));
+        mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::BoneIndex4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4));
+        mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::BoneWeight4, boneWeights.data(), boneWeights.size() * sizeof(gfxm::vec4));
     }
-    mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Tangent, tangent.data(), tangent.size() * sizeof(float));
-    mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Bitangent, bitangent.data(), bitangent.size() * sizeof(float));
+    mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::Tangent, tangent.data(), tangent.size() * sizeof(float));
+    mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::Bitangent, bitangent.data(), bitangent.size() * sizeof(float));
 
     mesh->mesh.setIndices(indices.data(), indices.size());
 
@@ -383,42 +383,42 @@ void assimpImportEcsSceneMeshes(ecsWorld* world, name_to_ent_map_t& node_map, no
                         seg.skin_data->tangent_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
                         seg.skin_data->bitangent_cache.reset(new gl::Buffer(GL_STREAM_DRAW, vertexCount * sizeof(float) * 3));
                         seg.skin_data->vao_cache->attach(seg.skin_data->position_cache->getId(), 
-                            VERTEX_FMT::ENUM_GENERIC::Position, VERTEX_FMT::Position::count, 
-                            VERTEX_FMT::Position::gl_type, VERTEX_FMT::Position::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                            VFMT::ENUM_GENERIC::Position, VFMT::Position::count, 
+                            VFMT::Position::gl_type, VFMT::Position::normalized ? GL_TRUE : GL_FALSE, 0, 0
                         );
                         seg.skin_data->vao_cache->attach(seg.skin_data->normal_cache->getId(), 
-                            VERTEX_FMT::ENUM_GENERIC::Normal, VERTEX_FMT::Normal::count, 
-                            VERTEX_FMT::Normal::gl_type, VERTEX_FMT::Normal::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                            VFMT::ENUM_GENERIC::Normal, VFMT::Normal::count, 
+                            VFMT::Normal::gl_type, VFMT::Normal::normalized ? GL_TRUE : GL_FALSE, 0, 0
                         );
                         seg.skin_data->vao_cache->attach(seg.skin_data->tangent_cache->getId(), 
-                            VERTEX_FMT::ENUM_GENERIC::Tangent, VERTEX_FMT::Tangent::count, 
-                            VERTEX_FMT::Tangent::gl_type, VERTEX_FMT::Tangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                            VFMT::ENUM_GENERIC::Tangent, VFMT::Tangent::count, 
+                            VFMT::Tangent::gl_type, VFMT::Tangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
                         );
                         seg.skin_data->vao_cache->attach(seg.skin_data->bitangent_cache->getId(), 
-                            VERTEX_FMT::ENUM_GENERIC::Bitangent, VERTEX_FMT::Bitangent::count, 
-                            VERTEX_FMT::Bitangent::gl_type, VERTEX_FMT::Bitangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                            VFMT::ENUM_GENERIC::Bitangent, VFMT::Bitangent::count, 
+                            VFMT::Bitangent::gl_type, VFMT::Bitangent::normalized ? GL_TRUE : GL_FALSE, 0, 0
                         );
                         seg.skin_data->pose_cache.reset(new gl::Buffer(GL_STATIC_DRAW, sizeof(float) * 16 * ai_mesh->mNumBones));
 
-                        if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UV)) {
-                            GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UV)->getId();
-                            seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::UV, 
-                                VERTEX_FMT::UV::count, VERTEX_FMT::UV::gl_type, 
-                                VERTEX_FMT::UV::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                        if(seg.mesh->mesh.getAttribBuffer(VFMT::ENUM_GENERIC::UV)) {
+                            GLuint id = seg.mesh->mesh.getAttribBuffer(VFMT::ENUM_GENERIC::UV)->getId();
+                            seg.skin_data->vao_cache->attach(id, VFMT::ENUM_GENERIC::UV, 
+                                VFMT::UV::count, VFMT::UV::gl_type, 
+                                VFMT::UV::normalized ? GL_TRUE : GL_FALSE, 0, 0
                             );
                         }
-                        if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)) {
-                            GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)->getId();
-                            seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::UVLightmap, 
-                                VERTEX_FMT::UVLightmap::count, VERTEX_FMT::UVLightmap::gl_type, 
-                                VERTEX_FMT::UVLightmap::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                        if(seg.mesh->mesh.getAttribBuffer(VFMT::ENUM_GENERIC::UVLightmap)) {
+                            GLuint id = seg.mesh->mesh.getAttribBuffer(VFMT::ENUM_GENERIC::UVLightmap)->getId();
+                            seg.skin_data->vao_cache->attach(id, VFMT::ENUM_GENERIC::UVLightmap, 
+                                VFMT::UVLightmap::count, VFMT::UVLightmap::gl_type, 
+                                VFMT::UVLightmap::normalized ? GL_TRUE : GL_FALSE, 0, 0
                             );
                         }
-                        if(seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA)) {
-                            GLuint id = seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA)->getId();
-                            seg.skin_data->vao_cache->attach(id, VERTEX_FMT::ENUM_GENERIC::ColorRGBA, 
-                                VERTEX_FMT::ColorRGBA::count, VERTEX_FMT::ColorRGBA::gl_type, 
-                                VERTEX_FMT::ColorRGBA::normalized ? GL_TRUE : GL_FALSE, 0, 0
+                        if(seg.mesh->mesh.getAttribBuffer(VFMT::ENUM_GENERIC::ColorRGBA)) {
+                            GLuint id = seg.mesh->mesh.getAttribBuffer(VFMT::ENUM_GENERIC::ColorRGBA)->getId();
+                            seg.skin_data->vao_cache->attach(id, VFMT::ENUM_GENERIC::ColorRGBA, 
+                                VFMT::ColorRGBA::count, VFMT::ColorRGBA::gl_type, 
+                                VFMT::ColorRGBA::normalized ? GL_TRUE : GL_FALSE, 0, 0
                             );
                         }
                         GLuint index_buf_id = seg.mesh->mesh.getIndexBuffer()->getId();
@@ -527,7 +527,67 @@ entity_id assimpImportEcsScene(ecsWorld* world, const char* filename) {
 
 
 
-void      assimpImportEcsModelGraph(const aiScene* ai_scene, Model_* model, ModelNode* node, const aiNode* ai_node, std::vector<std::shared_ptr<Mesh>>& meshes) {
+void assimpImportAttachMeshes(
+    const aiScene* ai_scene,
+    Model_* model, 
+    const std::unordered_map<const aiNode*, int>& node_map, 
+    const std::unordered_map<std::string, int>& name_to_node_map, 
+    const std::vector<const aiNode*>& mesh_nodes, 
+    const std::vector<std::shared_ptr<Mesh>>& meshes
+) {
+    for(const auto ai_node : mesh_nodes) {
+        for(int i = 0; i < ai_node->mNumMeshes; ++i) {
+            auto mesh_id = ai_node->mMeshes[i];
+            auto ai_mesh = ai_scene->mMeshes[mesh_id];
+
+            ModelMesh mm;
+            mm.node = node_map.find(ai_node)->second;
+            mm.mesh = meshes[mesh_id];
+            model->meshes.push_back(mm);
+
+            if(ai_mesh->HasBones()) {
+                std::vector<int>        bone_nodes;
+                std::vector<gfxm::mat4> bind_transforms;
+                for(unsigned j = 0; j < ai_mesh->mNumBones; ++j) {
+                    aiBone* ai_bone = ai_mesh->mBones[j];
+                    std::string name(ai_bone->mName.data, ai_bone->mName.length);
+
+                    
+                    auto it = name_to_node_map.find(name);
+                    if(it != name_to_node_map.end()) {
+                        bone_nodes.emplace_back(it->second);
+                        bind_transforms.emplace_back(
+                            gfxm::transpose(*(gfxm::mat4*)&ai_bone->mOffsetMatrix)
+                        );
+                    } else {
+                        bone_nodes.emplace_back(-1);
+                        bind_transforms.emplace_back(
+                            gfxm::mat4(1.0f)
+                        );
+                    }
+                }
+
+                auto skin = new MeshDeformerSkin(
+                    model,
+                    &mm.mesh->mesh,
+                    bone_nodes,
+                    bind_transforms
+                );
+                model->meshes.back().deformer.reset(skin);
+            }
+        }
+    }
+}
+void assimpImportModelNodeGraph(
+    const aiScene* ai_scene, 
+    const aiNode* ai_node, 
+    Model_* model, 
+    int node_id, 
+    std::unordered_map<const aiNode*, int>& node_map, 
+    std::unordered_map<std::string, int>& name_to_node_map,
+    std::vector<const aiNode*>& mesh_nodes
+) {
+    auto node = model->getNode(node_id);
     node->name = ai_node->mName.C_Str();
     aiVector3D ai_pos;
     aiQuaternion ai_quat;
@@ -536,43 +596,18 @@ void      assimpImportEcsModelGraph(const aiScene* ai_scene, Model_* model, Mode
     node->translation = gfxm::vec3(ai_pos.x, ai_pos.y, ai_pos.z);
     node->rotation = gfxm::quat(ai_quat.x, ai_quat.y, ai_quat.z, ai_quat.w);
     node->scale = gfxm::vec3(ai_scale.x, ai_scale.y, ai_scale.z);
+
+    node_map[ai_node] = node_id;
+    name_to_node_map[ai_node->mName.C_Str()] = node_id;
     
     for(int i = 0; i < ai_node->mNumChildren; ++i) {
-        auto n = new ModelNode;
-        n->parent = node;
+        int child_node_id = model->createNode(node_id);
         aiNode* ch = ai_node->mChildren[i];
-        assimpImportEcsModelGraph(ai_scene, model, n, ch, meshes);
-        node->children.push_back(std::unique_ptr<ModelNode>(n));
+        assimpImportModelNodeGraph(ai_scene, ch, model, child_node_id, node_map, name_to_node_map, mesh_nodes);
     }
 
-    for(int i = 0; i < ai_node->mNumMeshes; ++i) {
-        auto mesh_id = ai_node->mMeshes[i];
-        auto ai_mesh = ai_scene->mMeshes[mesh_id];
-
-        ModelMesh mm;
-        mm.node = node;
-        mm.mesh = meshes[mesh_id];
-        model->meshes.push_back(mm);
-        /*
-        if(ai_mesh->HasBones()) {
-            ModelSkin ms;
-            ms.mesh.node = node;
-            ms.mesh.mesh = meshes[mesh_id];
-            for(int j = 0; j < ai_mesh->mNumBones; ++j) {
-                auto ai_bone = ai_mesh->mBones[j];
-                
-                // TODO:
-                //seg.skin_data->bone_nodes.emplace_back(ecsEntityHandle(world, it->second));
-                ms.bind_transforms.emplace_back(
-                    gfxm::transpose(*(gfxm::mat4*)&ai_bone->mOffsetMatrix)
-                );
-            }
-        } else {
-            ModelMesh mm;
-            mm.node = node;
-            mm.mesh = meshes[mesh_id];
-            model->meshes.push_back(mm);
-        }*/
+    if(ai_node->mNumMeshes > 0) {
+        mesh_nodes.push_back(ai_node);
     }
 }
 void      assimpImportEcsModel(Model_* model, AssimpScene* assimp_scene) {
@@ -587,7 +622,12 @@ void      assimpImportEcsModel(Model_* model, AssimpScene* assimp_scene) {
         meshes.push_back(mesh);     
     }
 
-    assimpImportEcsModelGraph(ai_scene, model, model->rootNode.get(), ai_scene->mRootNode, meshes);
+    std::unordered_map<const aiNode*, int> node_map;
+    std::unordered_map<std::string, int> name_to_node_map;
+    std::vector<const aiNode*> mesh_nodes;
+    assimpImportModelNodeGraph(ai_scene, ai_scene->mRootNode, model, 0, node_map, name_to_node_map, mesh_nodes);
+    assimpImportAttachMeshes(ai_scene, model, node_map, name_to_node_map, mesh_nodes, meshes);
+    //assimpImportEcsModelGraph(ai_scene, model, 0, ai_scene->mRootNode, meshes);
 
     double scaleFactor = 1.0f;
     if(ai_scene->mMetaData) {
@@ -596,9 +636,9 @@ void      assimpImportEcsModel(Model_* model, AssimpScene* assimp_scene) {
             scaleFactor *= 0.01;
         }
     }
-    model->rootNode->translation = gfxm::vec3(0,0,0);
-    model->rootNode->rotation    = gfxm::quat(0,0,0,1);
-    model->rootNode->scale = gfxm::vec3(scaleFactor,scaleFactor,scaleFactor);
+    model->getRootNode()->translation = gfxm::vec3(0,0,0);
+    model->getRootNode()->rotation    = gfxm::quat(0,0,0,1);
+    model->getRootNode()->scale = gfxm::vec3(scaleFactor,scaleFactor,scaleFactor);
 }
 bool      assimpImportEcsModel(Model_* model, const char* filename) {
     progressBegin("Fbx import", 100);

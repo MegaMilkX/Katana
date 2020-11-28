@@ -61,7 +61,7 @@ class ecsRenderGui : public ecsSystem<
 >{
     std::vector<DrawCmd2d> cmds;
     std::shared_ptr<Texture2D> texture_white_px;
-    MeshData<VERTEX_FMT::LINE> lineMesh;
+    MeshData<VFMT::LINE> lineMesh;
     gfxm::vec2 screen_size_cache;
 
     void addQuad(const gfxm::rect& parent_rect, gfxm::rect& rect, ecsTupleGuiElement* elem, entity_id selected_ent) {

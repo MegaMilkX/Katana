@@ -7,10 +7,10 @@
 #include "../gl/indexed_mesh.hpp"
 
 
-template<typename VERTEX_FMT>
+template<typename VFMT>
 class MeshData {
     GLuint vao = 0;
-    gl::VertexAttribBuffer attribs[VERTEX_FMT::attrib_count];
+    gl::VertexAttribBuffer attribs[VFMT::attrib_count];
     std::unique_ptr<gl::IndexBuffer> indices;
     int vertex_count = 0;
     int index_count = 0;
@@ -32,13 +32,13 @@ public:
     int     getIndexCount() const   { return index_count; }
 };
 
-template<typename VERTEX_FMT>
-MeshData<VERTEX_FMT>::MeshData() {
+template<typename VFMT>
+MeshData<VFMT>::MeshData() {
     glGenVertexArrays(1, &vao);
     
-    auto vdesc = VERTEX_FMT::getVertexDesc();
+    auto vdesc = VFMT::getVertexDesc();
     glBindVertexArray(vao);
-    for(int i = 0; i < VERTEX_FMT::attrib_count; ++i) {
+    for(int i = 0; i < VFMT::attrib_count; ++i) {
         attribs[i].bind();
         glEnableVertexAttribArray((GLuint)i);
         glVertexAttribPointer(
@@ -51,20 +51,20 @@ MeshData<VERTEX_FMT>::MeshData() {
     }
     glBindVertexArray(0);
 }
-template<typename VERTEX_FMT>
-MeshData<VERTEX_FMT>::~MeshData() {
+template<typename VFMT>
+MeshData<VFMT>::~MeshData() {
     glDeleteVertexArrays(1, &vao);
 }
 
-template<typename VERTEX_FMT>
-void MeshData<VERTEX_FMT>::upload(int attrib, void* data, size_t size) {
+template<typename VFMT>
+void MeshData<VFMT>::upload(int attrib, void* data, size_t size) {
     attribs[attrib].data(data, size);
-    auto& attr_desc = VERTEX_FMT::getAttribDesc(attrib);
+    auto& attr_desc = VFMT::getAttribDesc(attrib);
     int vcount = size / (attr_desc.elem_size * attr_desc.count);
     vertex_count = std::max(vertex_count, vcount);
 }
-template<typename VERTEX_FMT>
-void MeshData<VERTEX_FMT>::uploadIndices(uint32_t* data, size_t count) {
+template<typename VFMT>
+void MeshData<VFMT>::uploadIndices(uint32_t* data, size_t count) {
     if(!indices) {
         indices.reset(new gl::IndexBuffer());
         glBindVertexArray(vao);
@@ -75,18 +75,18 @@ void MeshData<VERTEX_FMT>::uploadIndices(uint32_t* data, size_t count) {
     index_count = count;
 }
 
-template<typename VERTEX_FMT>
-void MeshData<VERTEX_FMT>::bind(void) {
+template<typename VFMT>
+void MeshData<VFMT>::bind(void) {
     glBindVertexArray(vao);
 }
 
-template<typename VERTEX_FMT>
-void MeshData<VERTEX_FMT>::draw(GLenum prim) {
+template<typename VFMT>
+void MeshData<VFMT>::draw(GLenum prim) {
     assert(vertex_count);
     glDrawArrays(prim, 0, vertex_count);
 }
-template<typename VERTEX_FMT>
-void MeshData<VERTEX_FMT>::drawIndexed(GLenum prim) {
+template<typename VFMT>
+void MeshData<VFMT>::drawIndexed(GLenum prim) {
     assert(vertex_count);
     assert(index_count);
     glDrawElements(prim, index_count, GL_UNSIGNED_INT, 0 /* offset */);

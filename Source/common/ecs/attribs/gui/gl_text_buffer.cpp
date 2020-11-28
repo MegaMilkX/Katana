@@ -102,25 +102,25 @@ void glTextBuffer::rebuild(Font* font, const std::string& str, int face_height, 
 
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbuf);
-    glEnableVertexAttribArray(VERTEX_FMT::ENUM_TEXT::Position);
+    glEnableVertexAttribArray(VFMT::ENUM_TEXT::Position);
     glVertexAttribPointer(
-        VERTEX_FMT::ENUM_TEXT::Position, 3, GL_FLOAT, GL_FALSE,
+        VFMT::ENUM_TEXT::Position, 3, GL_FLOAT, GL_FALSE,
         vertex_stride, 0
     );
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(gfxm::vec3), vertices.data(), GL_STREAM_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, uvbuf);
-    glEnableVertexAttribArray(VERTEX_FMT::ENUM_TEXT::UV);
+    glEnableVertexAttribArray(VFMT::ENUM_TEXT::UV);
     glVertexAttribPointer(
-        VERTEX_FMT::ENUM_TEXT::UV, 2, GL_FLOAT, GL_FALSE,
+        VFMT::ENUM_TEXT::UV, 2, GL_FLOAT, GL_FALSE,
         sizeof(float) * 2, 0
     );
     glBufferData(GL_ARRAY_BUFFER, uv.size() * sizeof(gfxm::vec2), uv.data(), GL_STREAM_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, uvlookupbuf);
-    glEnableVertexAttribArray(VERTEX_FMT::ENUM_TEXT::TextUVLookup);
+    glEnableVertexAttribArray(VFMT::ENUM_TEXT::TextUVLookup);
     glVertexAttribPointer(
-        VERTEX_FMT::ENUM_TEXT::TextUVLookup, 1, GL_FLOAT, GL_FALSE, 
+        VFMT::ENUM_TEXT::TextUVLookup, 1, GL_FLOAT, GL_FALSE, 
         sizeof(float), 0
     );
     glBufferData(GL_ARRAY_BUFFER, uv_lookup_indices.size() * sizeof(float), uv_lookup_indices.data(), GL_STREAM_DRAW);

@@ -40,10 +40,10 @@ static GLuint createQuadVao() {
 
 void draw2d(const DrawList2d& dl, float screenW, float screenH) {
     static gl::ShaderProgram* sh_quad = shaderLoader().loadShaderProgram(
-        "shaders/quad2d.glsl", false, VERTEX_FMT::QUAD_2D::getVertexDesc()
+        "shaders/quad2d.glsl", false, VFMT::QUAD_2D::getVertexDesc()
     );
     static gl::ShaderProgram* sh_text = shaderLoader().loadShaderProgram(
-        "shaders/text.glsl", false, VERTEX_FMT::TEXT::getVertexDesc()
+        "shaders/text.glsl", false, VFMT::TEXT::getVertexDesc()
     );
 
     // TODO: Clean up buffer
@@ -89,7 +89,7 @@ void draw2d(const DrawList2d& dl, float screenW, float screenH) {
             glDrawArrays(GL_TRIANGLES, 0, cmd.text.vertex_count);
         } else if(cmd.type == DRAW_CMD_LINE) {
             static gl::ShaderProgram* sh = shaderLoader().loadShaderProgram(
-                "shaders/line.glsl", false, VERTEX_FMT::LINE::getVertexDesc()
+                "shaders/line.glsl", false, VFMT::LINE::getVertexDesc()
             );
             sh->use();
             gfxm::mat4 model(1.0f);

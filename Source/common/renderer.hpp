@@ -84,33 +84,42 @@ public:
     void beginFrame(RenderViewport* vp, gfxm::mat4& proj, gfxm::mat4& view);
     void endFrame(GLint final_fb, const gfxm::mat4& view, const gfxm::mat4& proj, bool draw_skybox);
 
-    template<typename T>
-    void drawMultiple(gl::ShaderProgram* p, const T* elements, size_t count, Texture2D* default_lightmap = 0) {
+    void drawOne(const DrawCmdSolid& cmd, Texture2D* default_lightmap = 0) {
+        getState().setMaterial(cmd.material);
+        if(cmd.lightmap) {
+            gl::bindTexture2d(gl::TEXTURE_LIGHTMAP, cmd.lightmap->GetGlName());
+        } else {
+            if(default_lightmap) {
+                gl::bindTexture2d(gl::TEXTURE_LIGHTMAP, default_lightmap->GetGlName());
+            } else {
+                gl::bindTexture2d(gl::TEXTURE_LIGHTMAP, texture_white_px->GetGlName());
+            }
+        }
+
+        gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, irradiance_map->getId());
+        gl::bindCubeMap(gl::TEXTURE_EXT1, env_map->getId());
+
+        cmd.bind(getState());
+
+        glBindVertexArray(cmd.vao);
+        glDrawElements(GL_TRIANGLES, cmd.indexCount, GL_UNSIGNED_INT, (GLvoid*)cmd.indexOffset);
+        
+        GLenum err = glGetError();
+        assert(err == GL_NO_ERROR);
+    }
+
+    void drawMultiple(gl::ShaderProgram* p, const DrawCmdSolid* elements, size_t count, Texture2D* default_lightmap = 0) {
         getState().setProgram(p);
         for(size_t i = 0; i < count; ++i) {
             auto& e = elements[i];
-
-            getState().setMaterial(e.material);
-
-            if(e.lightmap) {
-                gl::bindTexture2d(gl::TEXTURE_LIGHTMAP, e.lightmap->GetGlName());
-            } else {
-                if(default_lightmap) {
-                    gl::bindTexture2d(gl::TEXTURE_LIGHTMAP, default_lightmap->GetGlName());
-                } else {
-                    gl::bindTexture2d(gl::TEXTURE_LIGHTMAP, texture_white_px->GetGlName());
-                }
-            }
-
-            gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, irradiance_map->getId());
-            gl::bindCubeMap(gl::TEXTURE_EXT1, env_map->getId());
-
-            e.bind(getState());
-
-            glBindVertexArray(e.vao);
-            glDrawElements(GL_TRIANGLES, e.indexCount, GL_UNSIGNED_INT, (GLvoid*)e.indexOffset);
-            GLenum err = glGetError();
-            assert(err == GL_NO_ERROR);
+            drawOne(e, default_lightmap);
+        }
+    }
+    void drawMultipleIndirect(gl::ShaderProgram* p, const DrawCmdSolid* elements, const int* indices, size_t count, Texture2D* default_lightmap = 0) {
+        getState().setProgram(p);
+        for(size_t i = 0; i < count; ++i) {
+            auto idx = indices[i];
+            drawOne(elements[idx], default_lightmap);
         }
     }
     template<typename T>
@@ -139,7 +148,7 @@ public:
     void drawWorld(RenderViewport* vp, ktWorld* world);
     void drawToScreen(GLuint textureId);
 
-    virtual void draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen = false, bool draw_skybox = true) = 0;
+    virtual void draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::mat4& view, DrawList& draw_list, bool draw_final_on_screen = false, bool draw_skybox = true) = 0;
 
     void setSkyGradient(curve<gfxm::vec3> grad);
 protected:
@@ -179,12 +188,14 @@ class RendererPBR : public Renderer {
 public:
     RendererPBR();
 
-    virtual void draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen = false, bool draw_skybox = true);
-    void draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& draw_list, GLint final_framebuffer_id, bool draw_skybox = true);
+    virtual void draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::mat4& view, DrawList& draw_list, bool draw_final_on_screen = false, bool draw_skybox = true);
+    void draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4& proj, const gfxm::mat4& view, DrawList& draw_list, GLint final_framebuffer_id, bool draw_skybox = true);
     void sampleLightmap(const gfxm::ivec4& vp, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& dl);
     void drawShadowCubeMap(gl::CubeMap* cube_map, const gfxm::vec3& world_pos, const DrawList& draw_list);
-    
-    void drawSkinnedMeshes(const DrawList& dl);
 };
+
+std::unique_ptr<gl::ShaderProgram> createSkinComputeShader();
+
+void runDeformers(DrawList& dl);
 
 #endif

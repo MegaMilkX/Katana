@@ -9,6 +9,16 @@
 
 #include "render_state.hpp"
 
+#include "resource/model/mesh_deformer.hpp"
+
+enum DRAW_GROUP {
+    DRAW_GROUP_SHADOW_CASTER,
+    DRAW_GROUP_EDITOR_SELECTED,
+    DRAW_GROUP_COUNT
+};
+static const int DRAW_GROUP_FLAG_SHADOW_CASTER = 0x1;
+static const int DRAW_GROUP_FLAG_EDITOR_SELECTED = 0x2;
+
 class DrawCmd {
 public:
     virtual ~DrawCmd() {}
@@ -19,8 +29,8 @@ public:
     Material* material = 0;
     size_t indexOffset = 0;
     size_t indexCount = 0;
-    void* object_ptr = 0;
     Texture2D* lightmap = 0;
+    void* object_ptr = 0;
 };
 
 class DrawCmdSolid : public DrawCmd {
@@ -30,26 +40,6 @@ public:
     }
 
     gfxm::mat4 transform;
-};
-
-class DrawCmdSkin : public DrawCmd {
-public:
-    virtual void bind(RenderState& state) const {
-        state.getProgram()->uploadModelTransform(transform);
-
-        gfxm::mat4 bone_m[SKIN_BONE_LIMIT];
-        unsigned bone_count = (std::min)((unsigned)SKIN_BONE_LIMIT, (unsigned)bind_transforms.size());
-        for(unsigned i = 0; i < bone_count; ++i) {
-            bone_m[i] = bone_transforms[i] * bind_transforms[i];
-        }
-        uBones bones;
-        memcpy(bones.pose, bone_m, sizeof(gfxm::mat4) * bone_count);
-        state.ubufBones.upload(bones);
-    }
-
-    gfxm::mat4 transform = gfxm::mat4(1.0f);
-    std::vector<gfxm::mat4> bone_transforms;
-    std::vector<gfxm::mat4> bind_transforms;
 };
 
 class DrawList {
@@ -66,14 +56,28 @@ public:
         float intensity = 1.0f;
     };
 
+    struct DeformerToCmd {
+        MeshDeformerBase* deformer;
+        size_t            drawCmd; // draw command to replace with the result of the deformer
+    };
+    std::vector<DeformerToCmd> deformers[MESH_DEFORMER_COUNT];
+
     std::vector<DrawCmdSolid> solids;
-    std::vector<DrawCmdSkin> skins;
     std::vector<OmniLight> omnis;
     std::vector<DirLight> dir_lights;
 
+    std::vector<int> draw_groups[DRAW_GROUP_COUNT];
+
     void clear() {
+        for(int i = 0; i < DRAW_GROUP_COUNT; ++i) {
+            draw_groups[i].clear();
+        }
+
+        for(int i = 0; i < MESH_DEFORMER_COUNT; ++i) {
+            deformers[i].clear();
+        }
+
         solids.clear();
-        skins.clear();
         omnis.clear();
         dir_lights.clear();
     }

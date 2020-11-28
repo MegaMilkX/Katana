@@ -24,7 +24,7 @@ public:
         const std::string& vsource,
         const std::string& fsource,
         bool force_reload = false,
-        const VERTEX_FMT::VERTEX_DESC* vtx_desc = 0
+        const VFMT::VERTEX_DESC* vtx_desc = 0
     ) {
         return instance->_getOrCreate(
             name, vsource, fsource, force_reload, vtx_desc
@@ -36,7 +36,7 @@ public:
         const std::string& vsource, 
         const std::string& fsource,
         bool force_reload = false,
-        const VERTEX_FMT::VERTEX_DESC* vtx_desc = 0
+        const VFMT::VERTEX_DESC* vtx_desc = 0
     ) {
         auto it = programs.find(name);
         if(it != programs.end() && !force_reload) {
@@ -68,8 +68,8 @@ public:
             prog->attachShader(&fs);
 
             if(!vtx_desc) {
-                for(int i = 0; i < VERTEX_FMT::GENERIC::attribCount(); ++i) {
-                    prog->bindAttrib(i, VERTEX_FMT::GENERIC::getAttribDesc(i).name);
+                for(int i = 0; i < VFMT::GENERIC::attribCount(); ++i) {
+                    prog->bindAttrib(i, VFMT::GENERIC::getAttribDesc(i).name);
                 }
             } else {
                 for(int i = 0; i < vtx_desc->attribCount; ++i) {

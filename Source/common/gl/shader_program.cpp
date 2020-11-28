@@ -37,12 +37,12 @@ void ShaderProgram::bindFragData(GLuint loc, const std::string& name)
     glBindFragDataLocation(id, loc, name.c_str());
     GL_LOG_ERROR("glBindFragDataLocation");
 }
-void ShaderProgram::setVertexFormat(const VERTEX_FMT::VERTEX_DESC* desc) {
+void ShaderProgram::setVertexFormat(const VFMT::VERTEX_DESC* desc) {
     for(int i = 0; i < desc->attribCount; ++i) {
         bindAttrib(i, desc->attribs[i].name);
     }
 }
-void ShaderProgram::setTransformFeedbackFormat(const VERTEX_FMT::VERTEX_DESC* desc) {
+void ShaderProgram::setTransformFeedbackFormat(const VFMT::VERTEX_DESC* desc) {
     std::vector<const char*> names(desc->attribCount);
     for(int i = 0; i < names.size(); ++i) {
         names[i] = desc->attribs[i].out_name;

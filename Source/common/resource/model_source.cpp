@@ -169,19 +169,19 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
         baseIndexValue += vertexCount;
     }
 
-    mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Position, vertices.data(), vertices.size() * sizeof(float));
+    mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::Position, vertices.data(), vertices.size() * sizeof(float));
     if(normal_layers.size() > 0) {
-        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Normal, normal_layers[0].data(), normal_layers[0].size() * sizeof(float));
+        mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::Normal, normal_layers[0].data(), normal_layers[0].size() * sizeof(float));
     }
     if(uv_layers.size() > 0) {
-        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::UV, uv_layers[0].data(), uv_layers[0].size() * sizeof(float));
+        mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::UV, uv_layers[0].data(), uv_layers[0].size() * sizeof(float));
     }
     if(!boneIndices.empty() && !boneWeights.empty()) {
-        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::BoneIndex4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4));
-        mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::BoneWeight4, boneWeights.data(), boneWeights.size() * sizeof(gfxm::vec4));
+        mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::BoneIndex4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4));
+        mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::BoneWeight4, boneWeights.data(), boneWeights.size() * sizeof(gfxm::vec4));
     }
-    mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Tangent, tangent.data(), tangent.size() * sizeof(float));
-    mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Bitangent, bitangent.data(), bitangent.size() * sizeof(float));
+    mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::Tangent, tangent.data(), tangent.size() * sizeof(float));
+    mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::Bitangent, bitangent.data(), bitangent.size() * sizeof(float));
 
     mesh->mesh.setIndices(indices.data(), indices.size());
 
@@ -276,19 +276,19 @@ static std::shared_ptr<Mesh> loadMesh(aiMesh* ai_mesh) {
         }
     }        
 
-    mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Position, vertices.data(), vertices.size() * sizeof(float));
+    mesh_ref->mesh.setAttribData(VFMT::ENUM_GENERIC::Position, vertices.data(), vertices.size() * sizeof(float));
     if(normal_layers.size() > 0) {
-        mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Normal, normal_layers[0].data(), normal_layers[0].size() * sizeof(float));
+        mesh_ref->mesh.setAttribData(VFMT::ENUM_GENERIC::Normal, normal_layers[0].data(), normal_layers[0].size() * sizeof(float));
     }
     if(uv_layers.size() > 0) {
-        mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::UV, uv_layers[0].data(), uv_layers[0].size() * sizeof(float));
+        mesh_ref->mesh.setAttribData(VFMT::ENUM_GENERIC::UV, uv_layers[0].data(), uv_layers[0].size() * sizeof(float));
     }
     if(!boneIndices.empty() && !boneWeights.empty()) {
-        mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::BoneIndex4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4));
-        mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::BoneWeight4, boneWeights.data(), boneWeights.size() * sizeof(gfxm::vec4));
+        mesh_ref->mesh.setAttribData(VFMT::ENUM_GENERIC::BoneIndex4, boneIndices.data(), boneIndices.size() * sizeof(gfxm::vec4));
+        mesh_ref->mesh.setAttribData(VFMT::ENUM_GENERIC::BoneWeight4, boneWeights.data(), boneWeights.size() * sizeof(gfxm::vec4));
     }
-    mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Tangent, tangent.data(), tangent.size() * sizeof(float));
-    mesh_ref->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::Bitangent, bitangent.data(), bitangent.size() * sizeof(float));
+    mesh_ref->mesh.setAttribData(VFMT::ENUM_GENERIC::Tangent, tangent.data(), tangent.size() * sizeof(float));
+    mesh_ref->mesh.setAttribData(VFMT::ENUM_GENERIC::Bitangent, bitangent.data(), bitangent.size() * sizeof(float));
 
     mesh_ref->mesh.setIndices(indices.data(), indices.size());
 

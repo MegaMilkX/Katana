@@ -86,7 +86,7 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
 
     auto renderSys = state.world->getSystem<ecsRenderSystem>();
     state.dl.clear();
-    renderSys->fillDrawList(state.dl);
+    renderSys->fillDrawList(state.dl, state.selected_ent);
 
     mode->onMainWindow(state);
 }

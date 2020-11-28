@@ -181,7 +181,7 @@ void gizmoRect2dDraw(float screenW, float screenH) {
     gfxm::vec4 col(0.7f, 0.5f, 0.6f, 1.0f);
     gfxm::vec4 col_hover(1.0f, 0.8f, 0.0f, 1.0f);
 
-    MeshData<VERTEX_FMT::LINE> mesh;
+    MeshData<VFMT::LINE> mesh;
     std::vector<gfxm::vec3> vertices = {
         gizmo_rect.nw, gizmo_rect.ne,
         gizmo_rect.ne, gizmo_rect.se,
@@ -293,11 +293,11 @@ void gizmoRect2dDraw(float screenW, float screenH) {
     gfxm::vec3 rotator_pos = gfxm::lerp(gizmo_rect.nw, gizmo_rect.ne, 0.5f) + gfxm::vec3(.0f, 20.0f, .0f);
     if(gizmo_rect.cp_flags & GIZMO_RECT_ROTATE) add_diamond_fn(rotator_pos, 12, gizmo_rect.cp == GIZMO_RECT_ROTATE ? col_hover : col);
 
-    mesh.upload(VERTEX_FMT::ENUM_LINE::Position, vertices.data(), vertices.size() * sizeof(vertices[0]));
-    mesh.upload(VERTEX_FMT::ENUM_LINE::ColorRGBA, colors.data(), colors.size() * sizeof(colors[0]));
+    mesh.upload(VFMT::ENUM_LINE::Position, vertices.data(), vertices.size() * sizeof(vertices[0]));
+    mesh.upload(VFMT::ENUM_LINE::ColorRGBA, colors.data(), colors.size() * sizeof(colors[0]));
 
     static gl::ShaderProgram* sh = shaderLoader().loadShaderProgram(
-        "shaders/line.glsl", false, VERTEX_FMT::LINE::getVertexDesc()
+        "shaders/line.glsl", false, VFMT::LINE::getVertexDesc()
     );
     sh->use();
     gfxm::mat4 model = gizmo_rect.transform;

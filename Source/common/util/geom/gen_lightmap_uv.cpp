@@ -4,20 +4,20 @@
 
 
 void GenLightmapUV(Mesh* mesh) {
-    auto& pos_desc = VERTEX_FMT::GENERIC::getAttribDesc(VERTEX_FMT::ENUM_GENERIC::Position);
-    int vertexCount = mesh->mesh.getAttribDataSize(VERTEX_FMT::ENUM_GENERIC::Position) / pos_desc.elem_size / pos_desc.count;
+    auto& pos_desc = VFMT::GENERIC::getAttribDesc(VFMT::ENUM_GENERIC::Position);
+    int vertexCount = mesh->mesh.getAttribDataSize(VFMT::ENUM_GENERIC::Position) / pos_desc.elem_size / pos_desc.count;
     int indexCount = mesh->mesh.getIndexCount();
     assert(vertexCount);
     assert(indexCount);
 
     std::vector<float> vertices(vertexCount * 3);
     std::vector<uint32_t> indices(indexCount);
-    mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::Position)->extractData(vertices.data(), 0, vertexCount * pos_desc.elem_size * pos_desc.count);
+    mesh->mesh.getAttribBuffer(VFMT::ENUM_GENERIC::Position)->extractData(vertices.data(), 0, vertexCount * pos_desc.elem_size * pos_desc.count);
     mesh->mesh.copyIndexData(indices.data());
 
     std::map<int, std::vector<char>> attribs_orig;
-    for(int i = 0; i < VERTEX_FMT::GENERIC::attribCount(); ++i) {
-        if(i == VERTEX_FMT::ENUM_GENERIC::UVLightmap) {
+    for(int i = 0; i < VFMT::GENERIC::attribCount(); ++i) {
+        if(i == VFMT::ENUM_GENERIC::UVLightmap) {
             continue;
         }
         auto attrib_buf = mesh->mesh.getAttribBuffer(i);
@@ -58,11 +58,11 @@ void GenLightmapUV(Mesh* mesh) {
         int xindexCount = atlas->meshes[i].indexCount;
 
         int vertex_offset = 0;
-        for(int j = 0; j < VERTEX_FMT::GENERIC::attribCount(); ++j) {
-            if(j == VERTEX_FMT::ENUM_GENERIC::UVLightmap) {
+        for(int j = 0; j < VFMT::GENERIC::attribCount(); ++j) {
+            if(j == VFMT::ENUM_GENERIC::UVLightmap) {
                 continue;
             }
-            const auto& attrib_desc = VERTEX_FMT::GENERIC::getAttribDesc(j);
+            const auto& attrib_desc = VFMT::GENERIC::getAttribDesc(j);
             int attrib_elem_size = attrib_desc.elem_size;
 
             auto attrib_buf = mesh->mesh.getAttribBuffer(j);
@@ -101,8 +101,8 @@ void GenLightmapUV(Mesh* mesh) {
     }
 
     // Upload new data
-    for(int i = 0; i < VERTEX_FMT::GENERIC::attribCount(); ++i) {
-        if(i == VERTEX_FMT::ENUM_GENERIC::UVLightmap) {
+    for(int i = 0; i < VFMT::GENERIC::attribCount(); ++i) {
+        if(i == VFMT::ENUM_GENERIC::UVLightmap) {
             continue;
         }
         auto it = attribs_new.find(i);
@@ -113,6 +113,6 @@ void GenLightmapUV(Mesh* mesh) {
         
         mesh->mesh.setAttribData(i, attrib_bytes.data(), attrib_bytes.size());
     }
-    mesh->mesh.setAttribData(VERTEX_FMT::ENUM_GENERIC::UVLightmap, xuv_layer.data(), xuv_layer.size() * sizeof(xuv_layer[0]));
+    mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::UVLightmap, xuv_layer.data(), xuv_layer.size() * sizeof(xuv_layer[0]));
     mesh->mesh.setIndices(indices_new.data(), indices_new.size());
 }

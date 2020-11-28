@@ -22,8 +22,8 @@ public:
     void attachShader(Shader* shader);
     void bindAttrib(GLuint loc, const std::string& name);
     void bindFragData(GLuint loc, const std::string& name);
-    void setVertexFormat(const VERTEX_FMT::VERTEX_DESC* desc);
-    void setTransformFeedbackFormat(const VERTEX_FMT::VERTEX_DESC* desc);
+    void setVertexFormat(const VFMT::VERTEX_DESC* desc);
+    void setTransformFeedbackFormat(const VFMT::VERTEX_DESC* desc);
     bool link();
     GLuint getUniform(const std::string& name);
     GLuint locProjection() const { return loc_projection; }

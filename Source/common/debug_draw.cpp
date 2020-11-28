@@ -8,10 +8,10 @@ void DebugDraw::init() {
 
     glBindVertexArray(vao_handle);
     glBindBuffer(GL_ARRAY_BUFFER, vbuf);
-    glEnableVertexAttribArray(VERTEX_FMT::ENUM_GENERIC::Position); // VERTEX
-    glEnableVertexAttribArray(VERTEX_FMT::ENUM_GENERIC::ColorRGBA); // COLOR
-    glVertexAttribPointer(VERTEX_FMT::ENUM_GENERIC::Position, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-    glVertexAttribPointer(VERTEX_FMT::ENUM_GENERIC::ColorRGBA, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)sizeof(gfxm::vec3));
+    glEnableVertexAttribArray(VFMT::ENUM_GENERIC::Position); // VERTEX
+    glEnableVertexAttribArray(VFMT::ENUM_GENERIC::ColorRGBA); // COLOR
+    glVertexAttribPointer(VFMT::ENUM_GENERIC::Position, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+    glVertexAttribPointer(VFMT::ENUM_GENERIC::ColorRGBA, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)sizeof(gfxm::vec3));
 
     line_prog = shaderLoader().loadShaderProgram("shaders/debug_draw/bullet_debug_line.glsl");
     tri_prog = shaderLoader().loadShaderProgram("shaders/debug_draw/triangle.glsl");

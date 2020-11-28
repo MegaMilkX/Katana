@@ -54,7 +54,7 @@ public:
                         bone_transforms.emplace_back(gfxm::mat4(1.0f));
                     }
                 }
-
+                /*
                 DrawCmdSkin s;
                 s.vao = vao;
                 s.material = mat;
@@ -64,7 +64,7 @@ public:
                 s.bone_transforms = bone_transforms;
                 s.bind_transforms = seg.skin_data->bind_transforms;
                 s.object_ptr = getOwner();
-                dl.skins.emplace_back(s);
+                dl.skins.emplace_back(s);*/
             }
         }
     }

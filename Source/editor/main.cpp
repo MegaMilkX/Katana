@@ -63,15 +63,15 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    VERTEX_FMT::GENERIC::vertexSize();
-    for(int i = 0; i < VERTEX_FMT::GENERIC::attribCount(); ++i) {
-        auto& dsc = VERTEX_FMT::GENERIC::getAttribDesc(i);
+    VFMT::GENERIC::vertexSize();
+    for(int i = 0; i < VFMT::GENERIC::attribCount(); ++i) {
+        auto& dsc = VFMT::GENERIC::getAttribDesc(i);
         LOG_WARN(dsc.name << ": " << dsc.count << ", " << dsc.gl_type << ", " << dsc.normalized);
     }
     
-    std::vector<const char*> array(VERTEX_FMT::GENERIC::attribCount());
-    VERTEX_FMT::GENERIC::makeOutAttribNameArray(array.data());
-    for(int i = 0; i < VERTEX_FMT::GENERIC::attribCount(); ++i) {
+    std::vector<const char*> array(VFMT::GENERIC::attribCount());
+    VFMT::GENERIC::makeOutAttribNameArray(array.data());
+    for(int i = 0; i < VFMT::GENERIC::attribCount(); ++i) {
         LOG_WARN(array[i]);
     }
 

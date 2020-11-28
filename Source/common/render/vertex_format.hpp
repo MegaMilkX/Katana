@@ -1,11 +1,17 @@
 #ifndef VERTEX_FORMAT_HPP
 #define VERTEX_FORMAT_HPP
 
+/*
+
+    Helpers for managing 3d mesh vertex and vertex attribute formats
+
+*/
+
 #include "../gl/glextutil.h"
 
 #include <assert.h>
 
-namespace VERTEX_FMT {
+namespace VFMT {
 
 template<int SIZE, GLenum GLTYPE>
 struct ELEM_TYPE {
@@ -22,6 +28,15 @@ typedef ELEM_TYPE<4, GL_FLOAT>          FLOAT;
 typedef ELEM_TYPE<4, GL_INT>            INT;
 typedef ELEM_TYPE<4, GL_UNSIGNED_INT>   UINT;
 typedef ELEM_TYPE<8, GL_DOUBLE>         DOUBLE;
+
+struct ATTRIB_DESC {
+    const char* name;
+    const char* out_name;
+    int         elem_size;
+    int         count;
+    GLenum      gl_type;
+    bool        normalized;
+};
 
 template<typename BASE_ELEM, int COUNT, bool NORMALIZED, const char* STRING_NAME, const char* STRING_OUT_NAME>
 class ATTRIB {
@@ -41,7 +56,18 @@ const char* ATTRIB<BASE_ELEM, COUNT, NORMALIZED, STRING_NAME, STRING_OUT_NAME>::
 #define TYPEDEF_ATTRIB(ELEM, COUNT, NORMALIZED, NAME) \
     constexpr char NAME ## Name[] = #NAME; \
     constexpr char NAME ## OutName[] = "out_" #NAME; \
-    typedef ATTRIB<ELEM, COUNT, NORMALIZED, NAME ## Name, NAME ## OutName> NAME;
+    typedef ATTRIB<ELEM, COUNT, NORMALIZED, NAME ## Name, NAME ## OutName> NAME; \
+    inline ATTRIB_DESC createDesc ## NAME() { \
+        ATTRIB_DESC desc; \
+        desc.name = NAME ## Name; \
+        desc.out_name = NAME ## OutName; \
+        desc.elem_size = NAME::elem_size; \
+        desc.count = NAME::count; \
+        desc.gl_type = NAME::gl_type; \
+        desc.normalized = NAME::normalized; \
+        return desc; \
+    } \
+    static const ATTRIB_DESC NAME ## Desc = createDesc ## NAME();
 
 TYPEDEF_ATTRIB(FLOAT, 3, false, Position);
 TYPEDEF_ATTRIB(FLOAT, 2, false, UV);
@@ -54,15 +80,6 @@ TYPEDEF_ATTRIB(FLOAT, 4, false, BoneWeight4);
 TYPEDEF_ATTRIB(UBYTE, 4, true,  ColorRGBA);
 TYPEDEF_ATTRIB(FLOAT, 3, false, Velocity);
 TYPEDEF_ATTRIB(FLOAT, 1, false, TextUVLookup);
-
-struct ATTRIB_DESC {
-    const char* name;
-    const char* out_name;
-    int         elem_size;
-    int         count;
-    GLenum      gl_type;
-    bool        normalized;
-};
 
 const int MAX_VERTEX_ATTRIBS = 32;
 

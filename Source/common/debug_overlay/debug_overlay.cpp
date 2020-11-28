@@ -93,33 +93,33 @@ void drawText(Font* fnt, const std::string& str, float screenW, float screenH, f
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbuf);
-    glEnableVertexAttribArray(VERTEX_FMT::ENUM_TEXT::Position);
+    glEnableVertexAttribArray(VFMT::ENUM_TEXT::Position);
     glVertexAttribPointer(
-        VERTEX_FMT::ENUM_TEXT::Position, 3, GL_FLOAT, GL_FALSE,
+        VFMT::ENUM_TEXT::Position, 3, GL_FLOAT, GL_FALSE,
         vertex_stride, 0
     );
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(gfxm::vec3), vertices.data(), GL_STREAM_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, uvbuf);
-    glEnableVertexAttribArray(VERTEX_FMT::ENUM_TEXT::UV);
+    glEnableVertexAttribArray(VFMT::ENUM_TEXT::UV);
     glVertexAttribPointer(
-        VERTEX_FMT::ENUM_TEXT::UV, 2, GL_FLOAT, GL_FALSE,
+        VFMT::ENUM_TEXT::UV, 2, GL_FLOAT, GL_FALSE,
         sizeof(float) * 2, 0
     );
     glBufferData(GL_ARRAY_BUFFER, uv.size() * sizeof(gfxm::vec2), uv.data(), GL_STREAM_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, uvlookupbuf);
-    glEnableVertexAttribArray(VERTEX_FMT::ENUM_TEXT::TextUVLookup);
+    glEnableVertexAttribArray(VFMT::ENUM_TEXT::TextUVLookup);
     glVertexAttribPointer(
-        VERTEX_FMT::ENUM_TEXT::TextUVLookup, 1, GL_FLOAT, GL_FALSE, 
+        VFMT::ENUM_TEXT::TextUVLookup, 1, GL_FLOAT, GL_FALSE, 
         sizeof(float), 0
     );
     glBufferData(GL_ARRAY_BUFFER, uv_lookup_indices.size() * sizeof(float), uv_lookup_indices.data(), GL_STREAM_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, colorbuf);
-    glEnableVertexAttribArray(VERTEX_FMT::ENUM_TEXT::ColorRGBA);
+    glEnableVertexAttribArray(VFMT::ENUM_TEXT::ColorRGBA);
     glVertexAttribPointer(
-      VERTEX_FMT::ENUM_TEXT::ColorRGBA, 4, GL_FLOAT, GL_FALSE,
+      VFMT::ENUM_TEXT::ColorRGBA, 4, GL_FLOAT, GL_FALSE,
       sizeof(float) * 4, 0
     );
     glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(gfxm::vec4), colors.data(), GL_STREAM_DRAW);
@@ -127,7 +127,7 @@ void drawText(Font* fnt, const std::string& str, float screenW, float screenH, f
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glViewport(0, 0, screenW, screenH);
-    static gl::ShaderProgram* sh = shaderLoader().loadShaderProgram("shaders/text.glsl", false, VERTEX_FMT::TEXT::getVertexDesc());
+    static gl::ShaderProgram* sh = shaderLoader().loadShaderProgram("shaders/text.glsl", false, VFMT::TEXT::getVertexDesc());
     sh->use();
     gfxm::mat4 proj = gfxm::ortho(0.0f, screenW, -screenH, 0.0f, -1.0f, 1.0f);
     glUniformMatrix4fv(sh->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);

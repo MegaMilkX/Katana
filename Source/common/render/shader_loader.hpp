@@ -9,7 +9,7 @@ class ShaderLoader {
     std::map<std::string, gl::ShaderProgram*>   shader_cache;
 public:
     std::string        getShaderSource   (const char* path, bool force_reload = false);
-    gl::ShaderProgram* loadShaderProgram (const char* path, bool force_reload = false, const VERTEX_FMT::VERTEX_DESC* vtx_desc = 0);
+    gl::ShaderProgram* loadShaderProgram (const char* path, bool force_reload = false, const VFMT::VERTEX_DESC* vtx_desc = 0);
 
     void               reloadAll         (void);
 };

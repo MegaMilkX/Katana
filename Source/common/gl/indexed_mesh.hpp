@@ -23,7 +23,7 @@ public:
         delegatedCall([this]() { glDeleteVertexArrays(1, &id); });
     }
     void setAttribData(int index, void* data, size_t size) {
-        auto& inf = VERTEX_FMT::GENERIC::getAttribDesc(index);
+        auto& inf = VFMT::GENERIC::getAttribDesc(index);
         setAttribData(index, data, size, inf.count, inf.gl_type, inf.normalized ? GL_TRUE : GL_FALSE);
     }
     void setAttribData(int index, void* data, size_t size, GLint attrib_size, GLenum type, GLboolean normalized) {
@@ -127,7 +127,7 @@ public:
             buf.resize(data_size);
             in.read((char*)buf.data(), buf.size());
 
-            auto& desc = VERTEX_FMT::GENERIC::getAttribDesc(attrib_id_ui8);
+            auto& desc = VFMT::GENERIC::getAttribDesc(attrib_id_ui8);
             setAttribData(
                 (int)attrib_id_ui8, 
                 buf.data(), buf.size(),

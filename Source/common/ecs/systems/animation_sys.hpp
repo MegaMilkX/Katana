@@ -32,14 +32,14 @@ public:
     }
 };
 
-class ecsTplAnimator : public ecsTuple<ecsAnimator, ecsOptional<ecsTranslation>, ecsOptional<ecsWorldTransform>> {
+class ecsTplAnimatedModel : public ecsTuple<ecsAnimator, ecsOptional<ecsTranslation>, ecsOptional<ecsWorldTransform>> {
 public:
 
 };
 
 class ecsysAnimation : public ecsSystem<
     ecsTupleAnimatedSubScene,
-    ecsTplAnimator
+    ecsTplAnimatedModel
 > {
 public:
     void onFit(ecsTupleAnimatedSubScene* t) {
@@ -52,26 +52,22 @@ public:
     }
     
     void onUpdate() {
-        for(int i = get_dirty_index<ecsTplAnimator>(); i < count<ecsTplAnimator>(); ++i) {
-            auto t = get<ecsTplAnimator>(i);
+        for(int i = get_dirty_index<ecsTplAnimatedModel>(); i < count<ecsTplAnimatedModel>(); ++i) {
+            auto t = get<ecsTplAnimatedModel>(i);
             auto a = t->get<ecsAnimator>();
             if(a->skeleton) {
                 a->sample_buffer = AnimSampleBuffer(a->skeleton.get());
-                a->target_nodes.resize(a->skeleton->boneCount());
+                a->model_target_nodes.resize(a->skeleton->boneCount());
                 for(int j = 0; j < a->skeleton->boneCount(); ++j) {
                     auto& b = a->skeleton->getBone(j);
-                    auto chdl = a->getEntityHdl().findChild(b.name.c_str());
-                    if(chdl.isValid()) {
-                        a->target_nodes[j].t = chdl.findAttrib<ecsTranslation>();
-                        a->target_nodes[j].r = chdl.findAttrib<ecsRotation>();
-                        a->target_nodes[j].s = chdl.findAttrib<ecsScale>();
-                    }
+                    auto node_id = t->get<ecsModel>()->model->findNodeId(b.name.c_str());
+                    a->model_target_nodes[j] = node_id;    
                 }
             }
         }
-        clear_dirty<ecsTplAnimator>();
+        clear_dirty<ecsTplAnimatedModel>();
 
-        for(auto& t : get_array<ecsTplAnimator>()) {
+        for(auto& t : get_array<ecsTplAnimatedModel>()) {
             auto a = t->get<ecsAnimator>();
             if(!a->motion_ref) {
                 continue;
@@ -82,10 +78,10 @@ public:
             a->getLclMotion()->update(1.0f/60.0f, a->sample_buffer);
             for(int i = 0; i < a->sample_buffer.getSamples().size(); ++i) {
                 auto& s = a->sample_buffer[i];
-                auto& tn = a->target_nodes[i];
-                if(tn.t) tn.t->setPosition(s.t);
-                if(tn.r) tn.r->setRotation(s.r);
-                if(tn.s) tn.s->setScale(s.s);
+                auto tgt_id = a->model_target_nodes[i];
+                t->get<ecsModel>()->model->nodes[tgt_id].translation = s.t;
+                t->get<ecsModel>()->model->nodes[tgt_id].rotation = s.r;
+                t->get<ecsModel>()->model->nodes[tgt_id].scale = s.s;
             }
         }
 

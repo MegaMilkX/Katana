@@ -22,6 +22,7 @@ friend ecsysAnimation;
 
     AnimSampleBuffer          sample_buffer;
     std::vector<AnimNode>     target_nodes;
+    std::vector<int>          model_target_nodes; // TODO: Temporary
 
 public:
 

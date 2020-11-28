@@ -51,9 +51,9 @@ public:
                     if(!seg.mesh) {
                         continue;
                     }
-                    if(!seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)
-                        || !seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::Normal)
-                        || !seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::Position)
+                    if(!seg.mesh->mesh.getAttribBuffer(VFMT::ENUM_GENERIC::UVLightmap)
+                        || !seg.mesh->mesh.getAttribBuffer(VFMT::ENUM_GENERIC::Normal)
+                        || !seg.mesh->mesh.getAttribBuffer(VFMT::ENUM_GENERIC::Position)
                     ) {
                         continue;
                     }
@@ -65,11 +65,11 @@ public:
                     md.tex_width = 256;
                     md.tex_height = 256;
                     md.position.resize(seg.mesh->vertexCount() * 3);
-                    seg.mesh->mesh.copyAttribData(VERTEX_FMT::ENUM_GENERIC::Position, md.position.data());
+                    seg.mesh->mesh.copyAttribData(VFMT::ENUM_GENERIC::Position, md.position.data());
                     md.normal.resize(seg.mesh->vertexCount() * 3);
-                    seg.mesh->mesh.copyAttribData(VERTEX_FMT::ENUM_GENERIC::Normal, md.normal.data());
+                    seg.mesh->mesh.copyAttribData(VFMT::ENUM_GENERIC::Normal, md.normal.data());
                     md.uv_lightmap.resize(seg.mesh->vertexCount() * 2);
-                    seg.mesh->mesh.copyAttribData(VERTEX_FMT::ENUM_GENERIC::UVLightmap, md.uv_lightmap.data());
+                    seg.mesh->mesh.copyAttribData(VFMT::ENUM_GENERIC::UVLightmap, md.uv_lightmap.data());
                     md.indices.resize(seg.mesh->indexCount());
                     seg.mesh->mesh.copyIndexData(md.indices.data());
                     md.segment = &seg;
@@ -87,9 +87,9 @@ public:
                 if(!seg.mesh) {
                     continue;
                 }
-                if(!seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::UVLightmap)
-                    || !seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::Normal)
-                    || !seg.mesh->mesh.getAttribBuffer(VERTEX_FMT::ENUM_GENERIC::Position)
+                if(!seg.mesh->mesh.getAttribBuffer(VFMT::ENUM_GENERIC::UVLightmap)
+                    || !seg.mesh->mesh.getAttribBuffer(VFMT::ENUM_GENERIC::Normal)
+                    || !seg.mesh->mesh.getAttribBuffer(VFMT::ENUM_GENERIC::Position)
                 ) {
                     continue;
                 }

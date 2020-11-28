@@ -21,17 +21,11 @@ void Renderer::drawSilhouettes(gl::FrameBuffer* fb, const gfxm::mat4& proj, cons
     glClear(GL_COLOR_BUFFER_BIT);
     prog_silhouette_solid->use();
     glUniform4fv(prog_silhouette_solid->getUniform("u_color"), 1, (float*)&gfxm::vec4(1,1,1,1));
-    drawMultiple(
+    drawMultipleIndirect(
         prog_silhouette_solid,
         dl.solids.data(),
-        dl.solids.size()
-    );
-    prog_silhouette_skin->use();
-    glUniform4fv(prog_silhouette_skin->getUniform("u_color"), 1, (float*)&gfxm::vec4(1,1,1,1));
-    drawMultiple(
-        prog_silhouette_skin,
-        dl.skins.data(),
-        dl.skins.size()
+        dl.draw_groups[DRAW_GROUP_EDITOR_SELECTED].data(),
+        dl.draw_groups[DRAW_GROUP_EDITOR_SELECTED].size()
     );
 }
 
@@ -57,13 +51,7 @@ void Renderer::drawPickPuffer(gl::FrameBuffer* fb, const gfxm::mat4& proj, const
         dl.solids.data(),
         dl.solids.size(),
         0
-    );/*
-    drawMultiplePick(
-        prog_pick_skin,
-        dl.skins.data(),
-        dl.skins.size(),
-        dl.solids.size()
-    );*/
+    );
 }
 
 void Renderer::drawWorld(RenderViewport* vp, ktWorld* world) {
@@ -206,7 +194,7 @@ RendererPBR::RendererPBR() {
 
 const int MAX_OMNI_LIGHT = 10;
 
-void RendererPBR::draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& draw_list, bool draw_final_on_screen, bool draw_skybox) {
+void RendererPBR::draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::mat4& view, DrawList& draw_list, bool draw_final_on_screen, bool draw_skybox) {
     draw(
         vp->getGBuffer(),
         gfxm::ivec4(0, 0, vp->getWidth(), vp->getHeight()),
@@ -215,7 +203,9 @@ void RendererPBR::draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::m
     );
 }
 
-void RendererPBR::draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& draw_list, GLint final_framebuffer_id, bool draw_skybox) {
+void RendererPBR::draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4& proj, const gfxm::mat4& view, DrawList& draw_list, GLint final_framebuffer_id, bool draw_skybox) {
+    runDeformers(draw_list);
+    
     setGlStates();
     setupUniformBuffers(proj, view);
     
@@ -236,15 +226,7 @@ void RendererPBR::draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4
         prog_gbuf_solid,
         draw_list.solids.data(),
         draw_list.solids.size()
-    );/*
-    drawMultiple(
-        prog_gbuf_skin,
-        draw_list.skins.data(),
-        draw_list.skins.size()
-    );*/
-
-    // ==== Skinned meshes ===========
-    drawSkinnedMeshes(draw_list);
+    );
 
     // ==== Lightness ================
     for(size_t i = 0; i < draw_list.dir_lights.size(); ++i) {
@@ -487,12 +469,7 @@ void RendererPBR::drawShadowCubeMap(gl::CubeMap* cube_map, const gfxm::vec3& eye
             prog_shadowmap_solid,
             draw_list.solids.data(),
             draw_list.solids.size()
-        );/*
-        drawMultiple(
-            prog_shadowmap_skin,
-            draw_list.skins.data(),
-            draw_list.skins.size()
-        );*/
+        );
     }
 
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -500,12 +477,206 @@ void RendererPBR::drawShadowCubeMap(gl::CubeMap* cube_map, const gfxm::vec3& eye
     glDeleteFramebuffers(1, &capFbo);
 }
 
-void RendererPBR::drawSkinnedMeshes(const DrawList& dl) {
-    for(int i = 0; i < dl.skins.size(); ++i) {
-        // TODO: Apply skinning through compute shader
+
+std::unique_ptr<gl::ShaderProgram> createSkinComputeShader() {
+    std::unique_ptr<gl::ShaderProgram> p(new gl::ShaderProgram);
+
+    gl::Shader sh(GL_COMPUTE_SHADER);
+    sh.source(R"(
+        #version 450
+        layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+        struct VEC3 {
+            float x, y, z;
+        };
+        layout(std430, binding = 0) buffer Position {
+            VEC3 Positions[];
+        };
+        layout(std430, binding = 1) buffer Normal {
+            VEC3 Normals[];
+        };
+        layout(std430, binding = 2) buffer Tangent {
+            VEC3 Tangents[];
+        };
+        layout(std430, binding = 3) buffer Bitangent {
+            VEC3 Bitangents[];
+        };
+        layout(std430, binding = 4) buffer BoneIndex4Buf {
+            vec4 BoneIndex4[];
+        };
+        layout(std430, binding = 5) buffer BoneWeight4Buf {
+            vec4 BoneWeight4[];
+        };
+        layout(std430, binding = 6) buffer Pose {
+            mat4 Poses[];
+        };
+
+        layout(std430, binding = 7) buffer out_Position {
+            VEC3 out_Positions[];
+        };
+        layout(std430, binding = 8) buffer out_Normal {
+            VEC3 out_Normals[];
+        };
+        layout(std430, binding = 9) buffer out_Tangent {
+            VEC3 out_Tangents[];
+        };
+        layout(std430, binding = 10) buffer out_Bitangent {
+            VEC3 out_Bitangents[];
+        };
+
+        
+        void main() {
+            uint gid = gl_GlobalInvocationID.x;
+
+            vec3 P = vec3(Positions[gid].x, Positions[gid].y, Positions[gid].z);
+            vec3 N = vec3(Normals[gid].x, Normals[gid].y, Normals[gid].z);
+            vec3 T = vec3(Tangents[gid].x, Tangents[gid].y, Tangents[gid].z);
+            vec3 B = vec3(Bitangents[gid].x, Bitangents[gid].y, Bitangents[gid].z);
+
+            ivec4 bi = ivec4(
+                int(BoneIndex4[gid].x), int(BoneIndex4[gid].y),
+                int(BoneIndex4[gid].z), int(BoneIndex4[gid].w)
+            );
+            vec4 w = BoneWeight4[gid];
+
+            mat4 m0 = Poses[bi.x];
+            mat4 m1 = Poses[bi.y];
+            mat4 m2 = Poses[bi.z];
+            mat4 m3 = Poses[bi.w];
+
+            vec3 NS = (
+                m0 * vec4(N, 0.0) * w.x +
+                m1 * vec4(N, 0.0) * w.y +
+                m2 * vec4(N, 0.0) * w.z +
+                m3 * vec4(N, 0.0) * w.w
+            ).xyz;
+            vec3 TS = (
+                m0 * vec4(T, 0.0) * w.x +
+                m1 * vec4(T, 0.0) * w.y +
+                m2 * vec4(T, 0.0) * w.z +
+                m3 * vec4(T, 0.0) * w.w
+            ).xyz;
+            vec3 BS = (
+                m0 * vec4(B, 0.0) * w.x +
+                m1 * vec4(B, 0.0) * w.y +
+                m2 * vec4(B, 0.0) * w.z +
+                m3 * vec4(B, 0.0) * w.w
+            ).xyz;
+
+            //NS = normalize(NS);
+            //TS = normalize(TS);
+            //BS = normalize(BS);
+
+            vec4 PS = (
+                m0 * vec4(P, 1.0) * w.x +
+                m1 * vec4(P, 1.0) * w.y +
+                m2 * vec4(P, 1.0) * w.z +
+                m3 * vec4(P, 1.0) * w.w
+            );
+
+            out_Positions[gid].x = PS.x;
+            out_Positions[gid].y = PS.y;
+            out_Positions[gid].z = PS.z;
+            out_Normals[gid].x = NS.x;
+            out_Normals[gid].y = NS.y;
+            out_Normals[gid].z = NS.z;
+            out_Tangents[gid].x = TS.x;
+            out_Tangents[gid].y = TS.y;
+            out_Tangents[gid].z = TS.z;
+            out_Bitangents[gid].x = BS.x;
+            out_Bitangents[gid].y = BS.y;
+            out_Bitangents[gid].z = BS.z;
+        }
+    )");
+    if (!sh.compile()) {
+        assert(false);
+        return 0;
+    }
+    p->attachShader(&sh);
+    if (!p->link()) {
+        assert(false);
+        return 0;
     }
 
-    for(int i = 0; i < dl.skins.size(); ++i) {
-        // TODO: Draw?
+
+
+    return p;
+}
+
+#include "resource/model/model.hpp"
+void computeSkinDeform(
+    MeshDeformerSkin* dfm,
+    gfxm::mat4 root_m4
+) {
+    static std::unique_ptr<gl::ShaderProgram> p = createSkinComputeShader();
+
+    glBindVertexArray(0);
+
+    std::vector<gfxm::mat4> bone_transforms(dfm->bone_nodes.size());
+    for(int i = 0; i < dfm->bone_nodes.size(); ++i) {
+        auto node_id = dfm->bone_nodes[i];
+        if(node_id >= 0) {
+            bone_transforms[i] = dfm->model->getWorldTransform(node_id) * dfm->bind_transforms[i];
+        } else {
+            bone_transforms[i] = gfxm::mat4(1.0f);
+        }
+    }
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+    dfm->pose->upload(bone_transforms.data(), bone_transforms.size() * sizeof(gfxm::mat4));
+
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+
+    GLuint pos_id = dfm->getSourceMesh()->getAttribBuffer(VFMT::ENUM_GENERIC::Position)->getId();
+    GLuint nrm_id = dfm->getSourceMesh()->getAttribBuffer(VFMT::ENUM_GENERIC::Normal)->getId();
+    GLuint tan_id = dfm->getSourceMesh()->getAttribBuffer(VFMT::ENUM_GENERIC::Tangent)->getId();
+    GLuint bitan_id = dfm->getSourceMesh()->getAttribBuffer(VFMT::ENUM_GENERIC::Bitangent)->getId();
+    GLuint bi4_id = dfm->getSourceMesh()->getAttribBuffer(VFMT::ENUM_GENERIC::BoneIndex4)->getId();
+    GLuint bw4_id = dfm->getSourceMesh()->getAttribBuffer(VFMT::ENUM_GENERIC::BoneWeight4)->getId();
+    
+
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, pos_id);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, nrm_id);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, tan_id);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, bitan_id);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, bi4_id);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, bw4_id);
+    dfm->pose->bindBase(GL_SHADER_STORAGE_BUFFER, 6);
+    dfm->position->bindBase(GL_SHADER_STORAGE_BUFFER, 7);
+    dfm->normal->bindBase(GL_SHADER_STORAGE_BUFFER, 8);
+    dfm->tangent->bindBase(GL_SHADER_STORAGE_BUFFER, 9);
+    dfm->bitangent->bindBase(GL_SHADER_STORAGE_BUFFER, 10);
+
+    p->use();
+
+    glDispatchCompute(
+        dfm->getSourceMesh()->getAttribDataSize(VFMT::ENUM_GENERIC::Position) / VFMT::Position::elem_size / VFMT::Position::count, 
+        1, 1
+    );
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, 0);
+
+    // Done!
+}
+
+
+void runDeformers(DrawList& dl) {
+    auto& skin_deformers = dl.deformers[MESH_DEFORMER_SKIN];
+    for (auto d : skin_deformers) {
+        MeshDeformerSkin* dfm = (MeshDeformerSkin*)d.deformer;
+
+        computeSkinDeform(dfm, gfxm::mat4(1.0f));
+        dl.solids[d.drawCmd].vao = dfm->vao->getId();
+        dl.solids[d.drawCmd].transform = gfxm::mat4(1.0f);
     }
 }

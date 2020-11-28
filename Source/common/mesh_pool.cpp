@@ -25,7 +25,7 @@ void MeshPool::init() {
         0, 5, 4, 0, 1, 5,
         3, 6, 2, 3, 7, 6
     };
-    m->setAttribData(VERTEX_FMT::ENUM_GENERIC::Position, vertices.data(), vertices.size() * sizeof(vertices[0]));
+    m->setAttribData(VFMT::ENUM_GENERIC::Position, vertices.data(), vertices.size() * sizeof(vertices[0]));
     m->setIndices(indices.data(), indices.size());
     meshes[PRIM_CUBE].reset(m);
 }

@@ -40,7 +40,7 @@ std::string ShaderLoader::getShaderSource (const char* path, bool force_reload) 
     return source;
 }
 
-gl::ShaderProgram* ShaderLoader::loadShaderProgram(const char* path, bool force_reload, const VERTEX_FMT::VERTEX_DESC* vtx_desc) {
+gl::ShaderProgram* ShaderLoader::loadShaderProgram(const char* path, bool force_reload, const VFMT::VERTEX_DESC* vtx_desc) {
     std::string source = getShaderSource(path, force_reload);
     if (source.empty()) {
         return 0;

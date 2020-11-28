@@ -22,6 +22,22 @@ public:
         return id;
     }
 
+    void attach(GLuint buffer, GLuint index, const VFMT::ATTRIB_DESC& attrib_desc) {
+        delegatedCall([this, buffer, index, &attrib_desc](){
+            glBindVertexArray(id);
+            glEnableVertexAttribArray((GLuint)index);
+            glBindBuffer(GL_ARRAY_BUFFER, buffer);
+            glVertexAttribPointer(
+                (GLuint)index,
+                attrib_desc.count,
+                attrib_desc.gl_type,
+                attrib_desc.normalized ? GL_TRUE : GL_FALSE,
+                0, 0
+            );
+            glBindVertexArray(0);
+        });
+    }
+
     void attach(GLuint buffer, GLuint index, GLint elem_count, GLenum elem_type, GLboolean normalized, int stride, int offset) {
         delegatedCall([this, buffer, index, elem_count, elem_type, normalized, stride, offset](){ 
             glBindVertexArray(id);
