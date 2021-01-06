@@ -84,6 +84,13 @@ bool AssimpScene::load(const void* data, size_t sz, const std::string& fname_hin
     aiProcess_CalcTangentSpace
   );
 
+  if(ai_scene->mMetaData) {
+      if(ai_scene->mMetaData->Get("UnitScaleFactor", fbxScaleFactor)) {
+          if(fbxScaleFactor == 0.0) fbxScaleFactor = 1.0f;
+          fbxScaleFactor *= 0.01;
+      }
+  }
+
   if (!ai_scene) {
     LOG_WARN("Failed to import " << fname_hint);
     return false;

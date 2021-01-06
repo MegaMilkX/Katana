@@ -7,7 +7,6 @@
 #include "../common/resource/resource_tree.hpp"
 
 #include "editor.hpp"
-#include "editor_doc_scene.hpp"
 #include "editor_doc_texture2d.hpp"
 
 #include "../common/util/has_suffix.hpp"

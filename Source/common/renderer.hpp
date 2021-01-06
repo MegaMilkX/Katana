@@ -145,12 +145,12 @@ public:
 
     void drawSilhouettes(gl::FrameBuffer* fb, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& dl);
     void drawPickPuffer(gl::FrameBuffer* fb, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& dl);
-    void drawWorld(RenderViewport* vp, ktWorld* world);
     void drawToScreen(GLuint textureId);
 
     virtual void draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::mat4& view, DrawList& draw_list, bool draw_final_on_screen = false, bool draw_skybox = true) = 0;
 
     void setSkyGradient(curve<gfxm::vec3> grad);
+    void setSkyCubemap(std::shared_ptr<CubeMap> cubemap);
 protected:
     RenderState state;
 

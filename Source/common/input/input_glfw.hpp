@@ -107,7 +107,7 @@ inline void updateGlfwInput(GLFWwindow* window) {
 inline void onGlfwKey(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     auto& io = ImGui::GetIO();
-    io.KeysDown[key] = action == GLFW_PRESS;
+    io.KeysDown[key] = action == GLFW_PRESS || action == GLFW_REPEAT;
 
     InputMgr* ptr = (InputMgr*)glfwGetWindowUserPointer(window); 
     if(action == GLFW_PRESS) {

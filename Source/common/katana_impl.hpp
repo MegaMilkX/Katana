@@ -2,6 +2,8 @@
 #define KATANA_IMPL_HPP
 
 #include "../katana/katana.hpp"
+#include "render_viewport.hpp"
+#include "renderer.hpp"
 
 class KatanaImpl : public KatanaApi {
     ktGameMode* _session = 0;

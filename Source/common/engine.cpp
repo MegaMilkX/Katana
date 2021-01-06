@@ -21,8 +21,6 @@
 #include "attributes/tiled_room.hpp"
 #include "attributes/voxel_field.hpp"
 
-#include "attributes/actors/tps_camera.hpp"
-
 #include "ecs/ecs.hpp"
 
 #include "debug_overlay/debug_overlay.hpp"
@@ -46,8 +44,6 @@ static void initNodeAttribs() {
     REG_ATTRIB_INL(SkeletonRef, SkeletonRef, Animation)
     REG_ATTRIB_INL(attribTiledRoomCtrl, TiledRoom, Test)
     REG_ATTRIB_INL(VoxelField, VoxelField, Rendering)
-
-    REG_ATTRIB_INL(actorTpsCamera, TpsCameraActor, Actors)
 }
 
 

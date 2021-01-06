@@ -21,11 +21,11 @@
 
 #include "../common/resource/resource_desc_library.hpp"
 
-#include "editor_doc_scene.hpp"
 #include "doc_motion.hpp"
 #include "doc_material.hpp"
 #include "doc_render_graph.hpp"
 #include "doc_ecs_world.hpp"
+#include "doc_kt_game_world.hpp"
 
 #include "util/editor_task_mgr.hpp"
 #include "../common/util/progress_counter.hpp"
@@ -215,8 +215,8 @@ void Editor::onGui(float dt) {
     if(ImGui::BeginMenuBar()) {
         if(ImGui::BeginMenu("File")) {
             if(ImGui::BeginMenu("New Resource")) {
-                if(ImGui::MenuItem("Scene")) {
-                    addWindow(new EditorDocScene());
+                if(ImGui::MenuItem("ktGameWorld")) {
+                    addWindow(new DocKtGameWorld());
                 }
                 if(ImGui::MenuItem("Motion")) {
                     addWindow(new DocMotion());

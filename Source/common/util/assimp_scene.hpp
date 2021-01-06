@@ -16,6 +16,8 @@ class AssimpScene {
     const aiScene* ai_scene = 0;
     std::vector<aiMesh*> meshes_with_fallback_uv;
 public:
+    double fbxScaleFactor = 1.0f;
+
     AssimpScene() {}
     AssimpScene(const void* data, size_t sz, const std::string& fname_hint);
     AssimpScene(const std::string& filename);

@@ -487,6 +487,12 @@ bool GuiViewport::begin(gfxm::ivec2 sz) {
         is_mouse_over = ImGui::IsWindowHovered();
         window_in_focus = ImGui::IsRootWindowFocused();
 
+        if(ImGui::IsKeyPressed(342)) { // LEFT ALT
+            cam_mode = CAM_MODE::CAM_ORBIT;
+        } else if(ImGui::IsKeyReleased(342)) {
+            cam_mode = CAM_MODE::CAM_PAN;
+        }
+
         bb = window->ClipRect;
         ImVec2 cursor_pos = ImGui::GetCursorPos();
         pos.x = cursor_pos.x;

@@ -6,6 +6,8 @@
 #include "model/model.hpp"
 #include "motion.hpp"
 
+#include <btBulletCollisionCommon.h>
+
 class Character : public Resource {
     RTTR_ENABLE(Resource)
 

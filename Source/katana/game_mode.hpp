@@ -1,9 +1,6 @@
 #ifndef GAME_MODE_HPP
 #define GAME_MODE_HPP
 
-#include "actor.hpp"
-#include "../common/world.hpp"
-
 #include <vector>
 #include <set>
 

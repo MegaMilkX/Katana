@@ -1,7 +1,5 @@
 #include "renderer.hpp"
 
-#include "world.hpp"
-
 #include "attributes/render_environment.hpp"
 
 
@@ -54,24 +52,6 @@ void Renderer::drawPickPuffer(gl::FrameBuffer* fb, const gfxm::mat4& proj, const
     );
 }
 
-void Renderer::drawWorld(RenderViewport* vp, ktWorld* world) {
-    DrawList dl;
-    world->getRenderController()->getDrawList(dl);
-
-    Camera* cam = world->getRenderController()->getDefaultCamera();
-    static gfxm::mat4 proj = gfxm::perspective(1.0f, 16.0f/9.0f, 0.1f, 1000.0f);
-    static gfxm::mat4 view = gfxm::inverse(gfxm::mat4(1.0f));
-    if(cam) {
-        proj = cam->getProjection(vp->getWidth(), vp->getHeight());
-        view = cam->getView();
-    }
-
-    auto env = world->getScene()->get<RenderEnvironment>();
-    setSkyGradient(env->getSkyGradient());
-
-    draw(vp, proj, view, dl);
-}
-
 void Renderer::setSkyGradient(curve<gfxm::vec3> curv) {
     const size_t byte_count = 512 * 3;
     char color[byte_count];
@@ -86,6 +66,11 @@ void Renderer::setSkyGradient(curve<gfxm::vec3> curv) {
     
     env_map->data(color, 1, 512, 3);
     irradiance_map->makeIrradianceMap(env_map);
+}
+
+void Renderer::setSkyCubemap(std::shared_ptr<CubeMap> cubemap) {
+    env_map = cubemap;
+    irradiance_map->makeIrradianceMap(cubemap);
 }
 
 void Renderer::drawToScreen(GLuint textureId) {

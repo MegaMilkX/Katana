@@ -72,6 +72,10 @@ public:
     ecsAttribType get_attrib_type() const override {
         return get_attrib_type_static();
     }
+
+    static uint64_t get_mask() {
+        return (1 << get_id_static());
+    }
 };
 template<typename T, ecsAttribType ATTR_TYPE>
 const attrib_type_info* ecsAttrib<T, ATTR_TYPE>::attrib_info;

@@ -17,6 +17,16 @@ void MeshPool::init() {
          0.5f,  0.5f, -0.5f,
         -0.5f,  0.5f, -0.5f
     };
+    std::vector<uint8_t> color_rgba = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        0, 0, 255, 255,
+        255, 0, 255, 255,
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        0, 0, 255, 255,
+        255, 0, 255, 255,
+    };
     std::vector<uint32_t> indices = {
         0, 2, 1, 0, 3, 2,
         4, 5, 6, 4, 6, 7,
@@ -26,6 +36,7 @@ void MeshPool::init() {
         3, 6, 2, 3, 7, 6
     };
     m->setAttribData(VFMT::ENUM_GENERIC::Position, vertices.data(), vertices.size() * sizeof(vertices[0]));
+    m->setAttribData(VFMT::ENUM_GENERIC::ColorRGBA, color_rgba.data(), color_rgba.size() * sizeof(vertices[0]));
     m->setIndices(indices.data(), indices.size());
     meshes[PRIM_CUBE].reset(m);
 }
