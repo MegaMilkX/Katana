@@ -5,8 +5,6 @@
 #include <rttr/registration>
 #include "../../../common/util/static_run.h"
 
-#include "../../transform.hpp"
-
 #include "../../scene/game_scene.hpp"
 
 #include "../../../common/util/data_stream.hpp"

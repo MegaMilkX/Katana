@@ -10,7 +10,7 @@ class ktEntity {
     friend ktGameWorld;
 
     ktGameWorld*     world = 0;
-    ktArchetypeNode* archetype;
+    ktArchetype* archetype;
     int              arch_array_index = -1;
 
 public:
@@ -18,7 +18,7 @@ public:
     virtual ~ktEntity() {}
 
     ktGameWorld*        getWorld() { return world; }
-    ktArchetypeNode*    getArchetype() { return archetype; }
+    ktArchetype*    getArchetype() { return archetype; }
 
     template<typename COMPONENT_T>
     void enableComponent(COMPONENT_T* ptr) {

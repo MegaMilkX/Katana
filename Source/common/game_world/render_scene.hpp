@@ -15,14 +15,13 @@
 
 #include "../mesh_pool.hpp"
 
+#include <game_world/transform.hpp>
+
 struct rsMesh {
-    gfxm::mat4  transform;
+    hTransform  transform;
+    std::shared_ptr<Mesh> mesh;
     gfxm::aabb  aabb;
     int32_t     octree_object;
-};
-class rsModel {
-public:
-    std::vector<std::unique_ptr<Mesh>> meshes;
 };
 struct rsCamera {
     gfxm::mat4 view;
@@ -31,61 +30,129 @@ struct rsCamera {
     float znear = 0.01f;
     float zfar  = 1000.0f;
 };
+struct rsLightOmni {
+    hTransform transform;
+    gfxm::vec3 color;
+    float intensity;
+    float radius;
+};
+
+struct RenderMeshData : public ktDirtyArrayElement {
+    struct elem {
+        Mesh*       mesh;
+        Material*   material;
+        hTransform  transform;
+        gfxm::aabb  aabb;
+    };
+
+    gfxm::aabb                  aabb;
+    int32_t                     octree_index;
+    std::vector<elem>           elements;
+};
 
 class ktRenderScene {
     Octree octree;
 
     std::set<ktNodeRenderable*> renderables;
 
-    gfxm::aabb transformAABB(const gfxm::aabb& box, const gfxm::mat4& transform) {
-        gfxm::vec3 points[8] = {
-            box.from,
-            gfxm::vec3(box.from.x, box.from.y, box.to.z),
-            gfxm::vec3(box.from.x, box.to.y, box.from.z),
-            gfxm::vec3(box.to.x, box.from.y, box.from.z),
-            box.to,
-            gfxm::vec3(box.to.x, box.to.y, box.from.z),
-            gfxm::vec3(box.to.x, box.from.y, box.to.z),
-            gfxm::vec3(box.from.x, box.to.y, box.to.z)
-        };
-        for(int i = 0; i < 8; ++i) {
-            points[i] = transform * gfxm::vec4(points[i], 1.0f);
-        }
-        gfxm::aabb aabb;
-        aabb.from = points[0];
-        aabb.to   = points[0];
-        for(int i = 1; i < 8; ++i) {
-            aabb.from = gfxm::vec3(
-                gfxm::_min(aabb.from.x, points[i].x),
-                gfxm::_min(aabb.from.y, points[i].y),
-                gfxm::_min(aabb.from.z, points[i].z)
-            );
-            aabb.to = gfxm::vec3(
-                gfxm::_max(aabb.to.x, points[i].x),
-                gfxm::_max(aabb.to.y, points[i].y),
-                gfxm::_max(aabb.to.z, points[i].z)
-            );
-        }
-        return aabb;
-    }
+    // ***
+    std::set<RenderMeshData*> render_datas;
+    std::set<rsLightOmni*> lights_omni;
+
+    ktDirtyArray<RenderMeshData> dirty_array;
+    // ***
 
 public:
-    void addMesh(rsMesh* mesh) {
-        mesh->octree_object = octree.createObject(mesh->aabb, 0);
+    void addRenderData(RenderMeshData* rd) {
+        assert(rd->elements.size() > 0);
+        rd->octree_index = octree.createObject(rd->aabb, (void*)rd);
+
+        for(auto& e : rd->elements) {
+            dirty_array.add(rd);
+            e.transform->linkDirtyArray(&dirty_array, rd);
+        }
+
+        // Temporary
+        render_datas.insert(rd);
     }
-    void removeMesh(rsMesh* mesh) {
-        octree.deleteObject(mesh->octree_object);
+    void removeRenderData(RenderMeshData* rd) {
+        render_datas.erase(rd);
+
+        for(auto& e : rd->elements) {
+            e.transform->unlinkDirtyArray(&dirty_array, rd);
+            dirty_array.remove(rd);
+        }
+
+        octree.deleteObject(rd->octree_index);
     }
+    void addLightOmni(rsLightOmni* omni) {
+        lights_omni.insert(omni);
+    }
+    void removeLightOmni(rsLightOmni* omni) {
+        lights_omni.erase(omni);
+    }
+
     void fillDrawList(rsCamera* cam, DrawList* dl) {
-        auto mesh = MeshPool::get(PRIMITIVE_MESH::PRIM_CUBE);
-        DrawCmdSolid cmd;
-        cmd.indexCount = mesh->getIndexCount();
-        cmd.indexOffset = 0;
-        cmd.lightmap = 0;
-        cmd.material = 0;
-        cmd.transform = gfxm::mat4(1.0f);
-        cmd.vao = mesh->getVao();
-        dl->solids.push_back(cmd);
+        for(int i = 0; i < dirty_array.dirtyCount(); ++i) {
+            auto render_data = dirty_array[i];
+            gfxm::aabb combined_aabb;
+            if(render_data->elements.size() > 0) {
+                combined_aabb = gfxm::aabb_transform(render_data->elements[0].aabb, render_data->elements[0].transform->getWorldTransform());
+            }
+            for(int j = 1; j < render_data->elements.size(); ++j) {
+                auto& e = render_data->elements[j];
+                gfxm::aabb box = gfxm::aabb_transform(e.aabb, e.transform->getWorldTransform());
+                combined_aabb.from.x = gfxm::_min(combined_aabb.from.x, box.from.x);
+                combined_aabb.from.y = gfxm::_min(combined_aabb.from.y, box.from.y);
+                combined_aabb.from.z = gfxm::_min(combined_aabb.from.z, box.from.z);
+                combined_aabb.to.x = gfxm::_max(combined_aabb.to.x, box.to.x);
+                combined_aabb.to.y = gfxm::_max(combined_aabb.to.y, box.to.y);
+                combined_aabb.to.z = gfxm::_max(combined_aabb.to.z, box.to.z); 
+            }
+            octree.updateObject(render_data->octree_index, combined_aabb);
+        }
+        dirty_array.clearDirtyCount();
+
+        auto cubeMesh = MeshPool::get(PRIMITIVE_MESH::PRIM_CUBE);
+
+        gfxm::frustum fr = gfxm::make_frustum(cam->projection, cam->view);
+        auto cell_list = octree.listVisibleCells(fr);
+        for(auto cell : cell_list) {
+            for(auto o : octree.getCell(cell)->objects) {
+                RenderMeshData* rd = (RenderMeshData*)octree.getObject(o)->user_ptr;
+
+                for(auto& e : rd->elements) {
+                    gl::IndexedMesh* pMesh = e.mesh ? &e.mesh->mesh : cubeMesh;
+                    DrawCmdSolid cmd;
+                    cmd.indexCount = pMesh->getIndexCount();
+                    cmd.indexOffset = 0;
+                    cmd.lightmap = 0;
+                    cmd.material = 0;
+                    cmd.transform = e.transform ? e.transform->getWorldTransform() : gfxm::mat4(1.0f);
+                    cmd.vao = pMesh->getVao();
+                    dl->solids.push_back(cmd);
+                }
+                /*
+                gl::IndexedMesh* pMesh = m->mesh ? &m->mesh->mesh : cubeMesh;
+                DrawCmdSolid cmd;
+                cmd.indexCount = pMesh->getIndexCount();
+                cmd.indexOffset = 0;
+                cmd.lightmap = 0;
+                cmd.material = 0;
+                cmd.transform = m->transform ? m->transform->getWorldTransform() : gfxm::mat4(1.0f);
+                cmd.vao = pMesh->getVao();
+                dl->solids.push_back(cmd);*/
+            }
+        }
+
+        for(auto l : lights_omni) {
+            DrawList::OmniLight light;
+            light.translation = l->transform->getWorldTransform() * gfxm::vec4(0,0,0,1);
+            light.radius = l->radius;
+            light.intensity = l->intensity;
+            light.color = l->color;
+            dl->omnis.push_back(light);
+        }
     }
 
 
@@ -103,7 +170,7 @@ public:
             auto transform = r->getWorldTransform();
             auto rd = r->getRenderData();
 
-            rd->aabb_transformed = transformAABB(rd->aabb, transform);
+            rd->aabb_transformed = gfxm::aabb_transform(rd->aabb, transform);
             octree.updateObject(rd->octree_object, rd->aabb_transformed);
             rd->cmd.transform = transform;
         }

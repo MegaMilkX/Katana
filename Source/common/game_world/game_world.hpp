@@ -25,14 +25,63 @@ class ktGameWorld : public Resource {
 
     ktArchetypeGraph archetype_graph;
 
-    std::unordered_map<rttr::type, std::unique_ptr<ktArchetypeNode>> actor_archetypes;
+    std::unordered_map<rttr::type, std::unique_ptr<ktArchetype>> actor_archetypes;
 
     std::vector<std::pair<rttr::type, int>>* constructed_signature;
+
+    template<typename... Args>
+    void for_each_entity(const std::function<void(Args*...)>& fn) {
+        auto signature = make_archetype_signature<Args...>();
+        for(auto& a : archetype_graph.getArchetypes()) {
+            if(!ktSignatureContainsAll(a->signature, signature)) {
+                continue;
+            }
+            for(int i = 0; i < a->count(); ++i) {
+                fn(((Args*)a->deref(i, rttr::type::get<Args>()))...);
+            }
+        }
+        for(auto& kv : actor_archetypes) {
+            if(!ktSignatureContainsAll(kv.second->signature, signature)) {
+                continue;
+            }
+            for(int i = 0; i < kv.second->count(); ++i) {
+                fn(((Args*)kv.second->deref(i, rttr::type::get<Args>()))...);
+            }
+        }
+    }
+    template<typename T>
+    void for_each_action(const std::function<void(T*)>& fn) {
+        
+    }
+    template<typename... Args>
+    void add_constructor(const std::function<void(Args*...)>& fn) {
+        auto signature = make_archetype_signature<Args...>();
+        auto arch = archetype_graph.getArchetype(signature);
+        arch->addConstructor(fn);
+    }
+    template<typename... Args>
+    void add_destructor(const std::function<void(Args*...)>& fn) {
+        
+    }
+    template<typename... Args>
+    void add_member_function(const std::string& name, const std::function<void(Args*...)>& fn) {
+
+    }
+
 
 public:
     std::set<ktGameObject*> game_objects;
 
-    ktGameWorld() {}
+    ktGameWorld() {
+        add_constructor<ktCoolComponent, ktVeryCoolComponent>([](ktCoolComponent* cool, ktVeryCoolComponent* very_cool){
+            LOG_WARN("Constructor invoked");
+            cool->my_value = 13.0f;
+            very_cool->cool_value = 13.0f;
+        });
+        add_member_function<ktCoolComponent, ktVeryCoolComponent>("Ping", [](ktCoolComponent* cool, ktVeryCoolComponent* very_cool){
+
+        });
+    }
     ~ktGameWorld() {
         for(auto o : game_objects) {
             delete o;
@@ -49,7 +98,7 @@ public:
 
         auto& arch = actor_archetypes[rttr::type::get<GAME_OBJECT_T>()];
         if(!arch) {
-            arch.reset(new ktArchetypeNode(sizeof(GAME_OBJECT_T)));
+            arch.reset(new ktArchetype(sizeof(GAME_OBJECT_T)));
             int idx = arch->allocOne();
             void* base_ptr = arch->derefBasePtr(idx);
             std::vector<std::pair<rttr::type, int>> signature;
@@ -58,12 +107,14 @@ public:
             constructed_signature = 0;
             ktSignatureSort(signature);
             arch->_lateSignatureInit(signature);
+            arch->invokeConstructors(idx);
             game_objects.insert((GAME_OBJECT_T*)base_ptr);
             return (GAME_OBJECT_T*)base_ptr;
         } else {
             int idx = arch->allocOne();
             void* base_ptr = arch->derefBasePtr(idx);
             new (base_ptr) GAME_OBJECT_T(this);
+            arch->invokeConstructors(idx);
             game_objects.insert((GAME_OBJECT_T*)base_ptr);
             return (GAME_OBJECT_T*)base_ptr;
         }
@@ -99,6 +150,8 @@ public:
 
         entity->archetype = new_arch;
         entity->arch_array_index = new_arch_idx;
+
+        new_arch->invokeConstructors(new_arch_idx);
     }
 
     template<typename... Args>
@@ -108,41 +161,19 @@ public:
         return sig;
     }
 
-    template<typename... Args>
-    void for_each_entity(const std::function<void(Args*...)>& fn) {
-        auto signature = make_archetype_signature<Args...>();
-        for(auto& a : archetype_graph.getArchetypes()) {
-            if(!ktSignatureContainsAll(a->signature, signature)) {
-                continue;
-            }
-            for(int i = 0; i < a->count(); ++i) {
-                fn(((Args*)a->deref(i, rttr::type::get<Args>()))...);
-            }
-        }
-        for(auto& kv : actor_archetypes) {
-            if(!ktSignatureContainsAll(kv.second->signature, signature)) {
-                continue;
-            }
-            for(int i = 0; i < kv.second->count(); ++i) {
-                fn(((Args*)kv.second->deref(i, rttr::type::get<Args>()))...);
-            }
-        }
-    }
-    template<typename T>
-    void for_each_action(const std::function<void(T*)>& fn) {
-
-    }
-
     void update(DebugDraw* dd) {
         for_each_entity<ktCoolComponent, ktVeryCoolComponent>([](ktCoolComponent* cool, ktVeryCoolComponent* very_cool){
             cool->my_value += very_cool->cool_value * 0.01f;
         });
 
-        dynamics_world.getBtWorld()->stepSimulation(1.0f/60.0f);
+        float dt = 1.0f/60.0f;
+
+        dynamics_world.update(dt);
         render_scene.update();
 
-        render_scene.debugDraw(dd);
-        dynamics_world.getBtWorld()->debugDrawWorld();
+        //render_scene.debugDraw(dd);
+        dynamics_world.getDebugDraw()->setDD(dd);
+        //dynamics_world.getBtWorld()->debugDrawWorld();
     }
 
 };

@@ -1345,6 +1345,38 @@ inline tvec3<T> screenToWorldPlaneXY(
     return ray_origin + v_to_target;
 }
 
+inline gfxm::aabb aabb_transform(const gfxm::aabb& box, const gfxm::mat4& transform) {
+    gfxm::vec3 points[8] = {
+        box.from,
+        gfxm::vec3(box.from.x, box.from.y, box.to.z),
+        gfxm::vec3(box.from.x, box.to.y, box.from.z),
+        gfxm::vec3(box.to.x, box.from.y, box.from.z),
+        box.to,
+        gfxm::vec3(box.to.x, box.to.y, box.from.z),
+        gfxm::vec3(box.to.x, box.from.y, box.to.z),
+        gfxm::vec3(box.from.x, box.to.y, box.to.z)
+    };
+    for(int i = 0; i < 8; ++i) {
+        points[i] = transform * gfxm::vec4(points[i], 1.0f);
+    }
+    gfxm::aabb aabb;
+    aabb.from = points[0];
+    aabb.to   = points[0];
+    for(int i = 1; i < 8; ++i) {
+        aabb.from = gfxm::vec3(
+            gfxm::_min(aabb.from.x, points[i].x),
+            gfxm::_min(aabb.from.y, points[i].y),
+            gfxm::_min(aabb.from.z, points[i].z)
+        );
+        aabb.to = gfxm::vec3(
+            gfxm::_max(aabb.to.x, points[i].x),
+            gfxm::_max(aabb.to.y, points[i].y),
+            gfxm::_max(aabb.to.z, points[i].z)
+        );
+    }
+    return aabb;
+}
+
 inline void expand_aabb(gfxm::aabb& box, const gfxm::vec3& pt) {
     if(pt.x < box.from.x) box.from.x = pt.x;
     if(pt.y < box.from.y) box.from.y = pt.y;
