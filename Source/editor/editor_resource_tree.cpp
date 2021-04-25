@@ -146,7 +146,7 @@ void EditorResourceTree::update(Editor* editor) {
 
     if(ImGui::Begin("Resource Tree")) {
         // TODO: ImGui::CalcTextSize()
-        ImGui::BeginChild("ResourcePreview", ImVec2(0, 150));
+        ImGui::BeginChild("ResourcePreview", ImVec2(150, 150));
         
         if(selected_node) {
             preview_tex = PreviewLibrary::get()->getPreview(selected_node->getFullName(), time(0) /* TODO */);
@@ -169,6 +169,8 @@ void EditorResourceTree::update(Editor* editor) {
             ImGui::TextWrapped(selected_node->getName().c_str());
         }
         ImGui::EndChild();
+
+        ImGui::SameLine();
 
         ImGui::BeginChildFrame(ImGui::GetID("ResourceTreeTree"), ImVec2(0,0));
         std::function<void(const std::shared_ptr<ResourceNode>&)> imguiResourceTree;

@@ -34,6 +34,7 @@ class ecsEntity;
 struct attrib_type_info;
 
 class ecsAttribBase {
+    friend ecsWorld;
     friend ecsEntity;
     friend void constructEntityData(void* data, uint64_t sig, ecsWorld* world, entity_id e);
     friend void copyConstructEntityData(void* dest, uint64_t dest_sig, void* src, uint64_t src_sig, ecsWorld* world, entity_id e);

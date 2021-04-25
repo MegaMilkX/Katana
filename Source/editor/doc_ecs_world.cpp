@@ -3,6 +3,8 @@
 #include "../common/util/filesystem.hpp"
 #include "../common/ecs/storage/storage_transform.hpp"
 
+#include "../common/ecs/entity_view/entity_view.hpp"
+
 
 DocEcsWorld::DocEcsWorld()
 : mode(new DocEcsWorldMode3d()) 
@@ -92,6 +94,25 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
 }
 
 void DocEcsWorld::onGuiToolbox(Editor* ed) {
+    ecsEntityViewTest test;
+    int light_id = 0;
+    _resource->forEachEntity<ecsEntityViewTest>([&light_id](ecsEntityViewTest& v){
+        gfxm::vec3 pos = v.translation->getPosition();
+        static float time = 0.0f;
+        time += 1.0f/60.0f;
+        pos.x = sinf(time + (float)light_id);
+        pos.z = cosf(time + (float)light_id);
+        pos.y = 1.4f;
+        ++light_id;
+        //pos.y = (1.0f + sinf(time));
+        v.translation->setPosition(pos);
+    });
+    
+    
+    if(ImGui::SmallButton(ICON_MDI_PLUS " Add ActorCharacter")) {
+        _resource->createActor<ecsACharacter>();
+    }
+
     if(!subscene_stack.empty()) {
         state.world = subscene_stack.back()->world;
         state.undo_stack = &subscene_stack.back()->undo_stack;

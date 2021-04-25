@@ -19,6 +19,7 @@
 class ResourceNode {
     ResourceNode* parent = 0;
     std::string name;
+    std::string ext;
     std::map<std::string, std::shared_ptr<ResourceNode>> nodes;
     std::shared_ptr<DataSource> data_src;
     std::shared_ptr<Resource> resource;
@@ -34,6 +35,7 @@ public:
     const std::map<std::string, std::shared_ptr<ResourceNode>>& 
                                     getChildren() const;
     std::string                     getName() const;
+    const std::string&              getExtension() const;
     std::string                     getFullName() const;
     std::shared_ptr<DataSource>     getSource();
     Resource*                       getPointer();
@@ -41,6 +43,7 @@ public:
     std::shared_ptr<T>              createResource();
     template<typename T>
     std::shared_ptr<T>              getResource();
+    std::vector<uint8_t>            readBytes();
     template<typename T>
     void                            overrideResource(std::shared_ptr<T> r);
 

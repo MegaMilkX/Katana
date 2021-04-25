@@ -77,7 +77,8 @@ void imguiResourceTreeCombo(
     const char* label,
     std::shared_ptr<T>& res,
     const char* ext,
-    std::function<void(void)> callback = nullptr
+    std::function<void(void)> callback = nullptr,
+    std::function<void(ResourceNode* node)> cb_drag_drop = nullptr
 ) {
     std::string current_name = "<null>";
     if(res) {
@@ -87,6 +88,8 @@ void imguiResourceTreeCombo(
         current_name = "<embedded>";
     }
     ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), label);
+
+    std::vector<std::string> extensions = split(ext, ',');
     
     if(ImGui::BeginCombo(MKSTR("###" << label).c_str(), current_name.c_str())) {
         std::set<const ResourceNode*> valid_nodes;
@@ -112,8 +115,7 @@ void imguiResourceTreeCombo(
             return false;
         };
 
-        std::vector<std::string> tokens = split(ext, ',');
-        walkNodes(gResourceTree.getRoot(), tokens, valid_nodes);
+        walkNodes(gResourceTree.getRoot(), extensions, valid_nodes);
 
         std::function<void(const std::shared_ptr<ResourceNode>&, const std::set<const ResourceNode*>&)> imguiResourceTree;
         imguiResourceTree = [&callback, &res, &imguiResourceTree](const std::shared_ptr<ResourceNode>& node, const std::set<const ResourceNode*>& valid_nodes) {
@@ -164,11 +166,26 @@ void imguiResourceTreeCombo(
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_RESOURCE")) {
             ResourceNode* node = *(ResourceNode**)payload->Data;
+            bool extension_match = false;
+            for(int i = 0; i < extensions.size(); ++i) {
+                // TODO: tolower
+                if(extensions[i].compare(node->getExtension()) == 0) {
+                    extension_match = true;
+                    break;
+                }
+            }
             if(node) {
-                auto r = node->getResource<T>();
-                if(r) {
-                    res = r;
-                    if(callback) callback();
+                if(extension_match) {
+                    auto r = node->getResource<T>();
+                    if(r) {
+                        res = r;
+                        if(callback) callback();
+                    }
+                } else {
+                    if(cb_drag_drop) {
+                        cb_drag_drop(node);
+                        if(callback) callback();
+                    }
                 }
 
             }

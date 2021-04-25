@@ -6,6 +6,9 @@
 #include "ecs/attribs/transform.hpp"
 #include "ecs/attribs/transform_tree.hpp"
 
+#include "actors/actor.hpp"
+#include "actors/character.hpp"
+
 
 void ecsInit (void) {
     regEcsAttrib<ecsName>("Name");
@@ -20,6 +23,9 @@ void ecsInit (void) {
 
     regEcsAttrib<ecsConstraint>("Constraint", "Constraints");
     regEcsAttrib<ecsIK>("IK", "Constraints");
+
+
+    regEcsAttrib<ecsCollisionObject>("CollisionObject", "Collision");
 
     regEcsAttrib<ecsCollisionShape>("CollisionShape", "Collision");
     regEcsAttrib<ecsCollisionPlane>("CollisionPlane", "Collision");
@@ -45,9 +51,16 @@ void ecsInit (void) {
 
     regEcsAttrib<ecsBehavior>("Behavior");
 
-    // System attribs
-    regEcsAttrib<ecsCollisionObject>("CollisionObject");
-
     // TEST
     regEcsAttrib<ecsTestAttrib>("TestAttrib", "Test");
+
+
+    // Actors
+    ActorDescBuilder<ecsACharacter>("Character")
+        .attrib(&ecsACharacter::name)
+        .attrib(&ecsACharacter::translation)
+        .attrib(&ecsACharacter::rotation)
+        .attrib(&ecsACharacter::scale)
+        .attrib(&ecsACharacter::world_transform)
+        .attrib(&ecsACharacter::light_omni);
 }

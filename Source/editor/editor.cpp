@@ -21,11 +21,11 @@
 
 #include "../common/resource/resource_desc_library.hpp"
 
+#include "doc_game_world.hpp"
 #include "doc_motion.hpp"
 #include "doc_material.hpp"
 #include "doc_render_graph.hpp"
 #include "doc_ecs_world.hpp"
-#include "doc_kt_game_world.hpp"
 
 #include "util/editor_task_mgr.hpp"
 #include "../common/util/progress_counter.hpp"
@@ -214,9 +214,9 @@ void Editor::onGui(float dt) {
 
     if(ImGui::BeginMenuBar()) {
         if(ImGui::BeginMenu("File")) {
-            if(ImGui::BeginMenu("New Resource")) {
-                if(ImGui::MenuItem("ktGameWorld")) {
-                    addWindow(new DocKtGameWorld());
+            if(ImGui::BeginMenu("New")) {
+                if(ImGui::MenuItem("GameWorld")) {
+                    addWindow(new DocGameWorld());
                 }
                 if(ImGui::MenuItem("Motion")) {
                     addWindow(new DocMotion());
@@ -531,9 +531,10 @@ int Editor::setupImguiLayout() {
 
     ImGuiID dsid_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.15f, NULL, &dockspace_id);
     ImGuiID dsid_right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.20f, NULL, &dockspace_id);
-    ImGuiID dsid_down = ImGui::DockBuilderSplitNode(dsid_left, ImGuiDir_Down, 0.40f, NULL, &dsid_left);
+    ImGuiID dsid_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.25f, NULL, &dockspace_id);
+    ImGuiID dsid_down_left = ImGui::DockBuilderSplitNode(dsid_down, ImGuiDir_Left, 0.30f, NULL, &dsid_down);
 
-    ImGui::DockBuilderDockWindow("Resource Tree", dsid_left);
+    ImGui::DockBuilderDockWindow("Resource Tree", dsid_down_left);
     ImGui::DockBuilderDockWindow("Directory", dsid_down);
     ImGui::DockBuilderDockWindow("Toolbox", dsid_right);
 

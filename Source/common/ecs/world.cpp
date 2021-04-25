@@ -59,10 +59,10 @@ ArchetypeStorage* ecsWorld::getArchStorage(uint64_t signature) {
     }
     auto it = archetype_storages.find(signature);
     if(it != archetype_storages.end()) {
-        return it->second.get();
+        return it->second.dynamic_storage.get();
     }
     auto* ptr = new ArchetypeStorage(signature);
-    archetype_storages.insert(std::make_pair(signature, std::unique_ptr<ArchetypeStorage>(ptr)));
+    archetype_storages.insert(std::make_pair(signature, ecsWorldArchetypes{ std::unique_ptr<ArchetypeStorage>(ptr) }));
     return ptr;
 }
 

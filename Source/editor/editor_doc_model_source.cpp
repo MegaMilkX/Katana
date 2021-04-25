@@ -27,6 +27,10 @@ void EditorDocModelSource::onGui(Editor* ed, float dt) {
 void EditorDocModelSource::onGuiToolbox(Editor* ed) {
     auto& mdl_src = _resource;
 
+    
+    if(ImGui::Button("Import StaticModel", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))) {
+        mdl_src->unpackStaticModel(get_module_dir() + "/" + platformGetConfig().data_dir);
+    }
     if(ImGui::Button("Import", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))) {
         mdl_src->unpack(get_module_dir() + "/" + platformGetConfig().data_dir);
     }

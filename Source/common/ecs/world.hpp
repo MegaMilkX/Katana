@@ -16,7 +16,7 @@
 #include "storage/world_storage.hpp"
 
 #include "actor.hpp"
-
+/*
 class byte_block_vector {
     char** _blocks = 0;
     size_t _elem_size = 0;
@@ -85,7 +85,7 @@ public:
         return _blocks[blockid] + localid * _elem_size;
     }
 };
-
+*/
 inline size_t calcArchetypeSize(uint64_t attribmask) {
     size_t sz = 0;
     for(size_t i = 0; i < get_last_attrib_id() + 1; ++i) {
@@ -125,7 +125,7 @@ inline int64_t archetypeOffset(uint64_t attrib_mask, attrib_id attr) {
 #include "entity_storage.hpp"
 
 struct ArchetypeStorage {
-    ArchetypeStorage(uint64_t signature)
+    ArchetypeStorage(uint64_t signature) // for dynamic entities
     : signature(signature), storage(archetypeSize(signature)) {
         std::fill(attrib_offsets, attrib_offsets + sizeof(attrib_offsets) / sizeof(attrib_offsets[0]), -1);
         entity_size = archetypeSize(signature);
@@ -137,6 +137,11 @@ struct ArchetypeStorage {
             auto& offs = attrib_offsets[i];
             offs = archetypeOffset(signature, i);
         }
+    }
+    ArchetypeStorage(uint64_t signature, int64_t* offset_table, uint64_t entity_size) // for static entities (actors)
+    : signature(signature), storage(entity_size) { 
+        this->entity_size = entity_size;
+        memcpy(attrib_offsets, offset_table, sizeof(attrib_offsets));
     }
     uint64_t entity_size;
     uint64_t signature;
@@ -188,6 +193,13 @@ inline void deleteEntityData(void* data, uint64_t sig) {
 
 ecsWorld* derefWorldIndex(int32_t idx);
 
+#include "actors/actor.hpp"
+
+struct ecsWorldArchetypes {
+    std::unique_ptr<ArchetypeStorage> dynamic_storage; // dynamic entity storage
+    std::unordered_map<rttr::type, std::unique_ptr<ArchetypeStorage>> actor_storages; // static actor storage (can't add or remove attributes)
+};
+
 class ecsWorld : public Resource {
     int32_t                                     pool_index = -1;
 
@@ -200,7 +212,7 @@ class ecsWorld : public Resource {
     ObjectPool<ecsEntity>                       entities;
     std::set<entity_id>                         live_entities;
 
-    std::unordered_map<uint64_t, std::unique_ptr<ArchetypeStorage>> archetype_storages;
+    std::unordered_map<uint64_t, ecsWorldArchetypes> archetype_storages; // key - signature
     ArchetypeStorage* getArchStorage(uint64_t signature);
     
     std::vector<std::unique_ptr<ecsSystemBase>> systems;
@@ -259,6 +271,8 @@ public:
     void                        clearEntities               (void);
     void                        clearSystems                (void);
 
+    template<typename T>
+    T*                          createActor                 ();
 
     ecsEntityHandle             createEntity                ();
     ecsEntityHandle             createEntity                (archetype_mask_t attrib_signature);
@@ -330,6 +344,9 @@ public:
     int                         systemCount();
     ecsSystemBase*              getSystem(int i);
 
+    template<typename ENTITY_VIEW_T>
+    void                        forEachEntity(std::function<void(ENTITY_VIEW_T& view)> fn);
+
     void                        update();
 
 
@@ -350,6 +367,52 @@ STATIC_RUN(ecsWorld) {
         .constructor<>()(
             rttr::policy::ctor::as_raw_ptr
         );
+}
+
+template<typename T>
+T* ecsWorld::createActor() {
+    auto desc = actorGetDesc<T>();
+    auto it = archetype_storages.find(desc->signature);
+    if(it == archetype_storages.end()) {
+        archetype_storages.insert(std::make_pair(desc->signature, ecsWorldArchetypes() ));
+        it = archetype_storages.find(desc->signature);
+        it->second.dynamic_storage.reset(new ArchetypeStorage(desc->signature));
+    }
+    auto& actor_map = it->second.actor_storages;
+    auto it_actor_storage = actor_map.find(rttr::type::get<T>());
+    if(it_actor_storage == actor_map.end()) {
+        actor_map.insert(std::make_pair(rttr::type::get<T>(), std::unique_ptr<ArchetypeStorage>(new ArchetypeStorage(desc->signature, desc->offset_table, sizeof(T)))));
+        it_actor_storage = actor_map.find(rttr::type::get<T>());
+    }
+    auto storage_ptr = it_actor_storage->second.get();
+    auto actor_entity_data_idx = storage_ptr->storage.alloc();
+    void* actor_ptr = storage_ptr->storage.deref(actor_entity_data_idx);
+    new (actor_ptr) T();
+
+    entity_id e = entities.acquire();
+    ecsEntity* entity = entities.deref(e);
+    entity->storage = storage_ptr;
+    entity->bitmaskInheritedAttribs = 0;
+    entity->first_child_uid = ENTITY_ERROR;
+    entity->next_sibling_uid = ENTITY_ERROR;
+    entity->parent_uid = ENTITY_ERROR;
+    entity->storage_index = actor_entity_data_idx;
+
+    // Set attributes's handles to their entity
+    // TODO: Need to get rid of this handle, it's a waste of memory
+    for(int i = 0; i < 64; ++i) {
+        auto offset = desc->offset_table[i];
+        uint8_t* actor_base_ptr = (uint8_t*)actor_ptr;
+        if(offset == -1) {
+            continue;
+        }
+        ecsAttribBase* attrib = (ecsAttribBase*)(actor_base_ptr + offset);
+        attrib->h_entity = ecsEntityHandle(this, e);
+    }
+
+    live_entities.insert(e);
+
+    onAttribsCreated(e, desc->signature, desc->signature);
 }
 
 template<typename T>
@@ -440,5 +503,45 @@ T* ecsWorld::getSystem(Args... arg) {
     }
     return addSystem<T, Args...>(std::forward<Args>(arg)...);
 }
+
+
+template<typename ENTITY_VIEW_T>
+void ecsWorld::forEachEntity(std::function<void(ENTITY_VIEW_T& view)> fn) {
+    // TODO: pointers to storages should be stored in persistent filters?
+    std::vector<ArchetypeStorage*> storages;
+    for(auto& it : archetype_storages) {
+        if((it.first & ENTITY_VIEW_T::get_signature()) == ENTITY_VIEW_T::get_signature()) {
+            storages.push_back(it.second.dynamic_storage.get());
+            for(auto& it2 : it.second.actor_storages) {
+                storages.push_back(it2.second.get());
+            }
+        }
+    }
+
+    ENTITY_VIEW_T view;
+    for(ArchetypeStorage* storage : storages) {
+        if(storage->storage.count() == 0) {
+            continue;
+        }
+        for(int i = 0; i < storage->storage.chunkCount(); ++i) {                // for each chunk
+            auto elemCount = storage->storage.chunkElemCount(i);
+            for(int j = 0; j < elemCount; ++j) {                                // for each element in that chunk
+                void* base_ptr = storage->storage.derefChunkElement(i, j);
+                for(int k = 0; k < view.attrib_pointers.size(); ++k) {          // set attrib pointers
+                    auto attrib_idx = view.attrib_indices[k];
+                    auto attrib_offs = storage->attrib_offsets[attrib_idx];
+
+                    if(attrib_offs != -1) {
+                        *view.attrib_pointers[k] = (ecsAttribBase*)((uint8_t*)base_ptr + attrib_offs);
+                    } else {
+                        *view.attrib_pointers[k] = 0;
+                    }
+                }
+                fn(view);                                                       // call function
+            }
+        }
+    }
+}
+
 
 #endif

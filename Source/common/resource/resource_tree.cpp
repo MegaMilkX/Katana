@@ -6,6 +6,8 @@
 
 #include "../platform/platform.hpp"
 
+#include "../util/filesystem.hpp"
+
 
 ResourceTree gResourceTree;
 
@@ -26,6 +28,8 @@ ResourceNode::ResourceNode() {
 }
 ResourceNode::ResourceNode(const std::string& name) {
     this->name = name;
+    this->ext = get_extension(name);
+    LOG("name: " << this->name << ", ext: " << this->ext);
 }
 
 void ResourceNode::setDataSource(DataSource* src) {
@@ -43,9 +47,8 @@ size_t ResourceNode::childCount() const {
 std::shared_ptr<ResourceNode> ResourceNode::getChild(const std::string& name) {
     auto& ptr = nodes[name];
     if(!ptr) {
-        ptr.reset(new ResourceNode);
+        ptr.reset(new ResourceNode(name));
         ptr->parent = this;
-        ptr->name = name;
     }
     return ptr;
 }
@@ -62,6 +65,9 @@ const std::map<std::string, std::shared_ptr<ResourceNode>>& ResourceNode::getChi
 }
 std::string ResourceNode::getName() const {
     return name;
+}
+const std::string& ResourceNode::getExtension() const {
+    return ext;
 }
 std::string ResourceNode::getFullName() const {
     if(parent) {
@@ -82,6 +88,16 @@ std::shared_ptr<DataSource> ResourceNode::getSource() {
 
 Resource* ResourceNode::getPointer() {
     return resource.get();
+}
+
+std::vector<uint8_t> ResourceNode::readBytes() {
+    std::vector<uint8_t> buf;
+    if(!data_src) {
+        return buf;
+    }
+    buf.resize(data_src->Size());
+    data_src->ReadAll((char*)buf.data());
+    return buf;
 }
 
 bool ResourceNode::isLoaded() const {
@@ -124,9 +140,8 @@ void ResourceNode::add(ResourceNode* other) {
         if(this_kv != nodes.end()) {
             this_kv->second->add(other_kv.second.get());
         } else {
-            ResourceNode* new_n = new ResourceNode();
+            ResourceNode* new_n = new ResourceNode(other_kv.second->name);
             new_n->parent = this;
-            new_n->name = other_kv.second->name;
             new_n->data_src = other_kv.second->data_src;
             new_nodes.insert(new_n);
         }

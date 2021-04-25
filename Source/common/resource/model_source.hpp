@@ -42,9 +42,9 @@ public:
 
     bool unpackSkeleton(const std::string& dir);
     bool unpack(const std::string& dir);
+    bool unpackStaticModel(const std::string& dir);
 };
-STATIC_RUN(ModelSource)
-{
+STATIC_RUN(ModelSource) {
     rttr::registration::class_<ModelSource>("ModelSource")
         .constructor<>()(rttr::policy::ctor::as_raw_ptr);
 }

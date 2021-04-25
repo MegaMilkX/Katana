@@ -676,3 +676,23 @@ bool ModelSource::unpack(const std::string& dir) {
 
     return true;
 }
+
+bool ModelSource::unpackStaticModel(const std::string& dir) {
+    std::string rname = Name();
+    rname = rname.substr(0, rname.find_last_of('.'));
+
+    const std::string res_dir_rel = rname.substr(0, rname.find_last_of("/"));
+    const std::string res_dir_dep_rel = rname;
+
+    const std::string unpack_dir = dir + "/" + rname;
+    const std::string mesh_dir = unpack_dir + "/mesh";
+    const std::string anim_dir = unpack_dir + "/anim";
+    const std::string material_dir = unpack_dir + "/material";
+    const std::string texture_dir = unpack_dir + "/texture";
+    const std::string source_dir = unpack_dir.substr(0, unpack_dir.find_last_of("/"));
+
+    createDirRecursive(mesh_dir);
+    createDirRecursive(anim_dir);
+    createDirRecursive(material_dir);
+    createDirRecursive(texture_dir);
+}

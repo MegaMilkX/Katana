@@ -32,6 +32,9 @@
 #include "../common/util/filesystem.hpp"
 
 
+#include "../common/ecs/actors/character.hpp"
+
+
 class DocEcsWorld : public EditorDocumentTyped<ecsWorld>, public InputListenerWrap {
     struct SubWorldContext {
         ecsWorld* world;

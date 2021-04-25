@@ -320,15 +320,6 @@ public:
     }
 
     void onToolbox(DocEcsWorldState& state) override {
-        /*
-        for(int i = 0; i < state.world->systemCount(); ++i) {
-            auto sys = state.world->getSystem(i);
-            bool exists = true;
-            if(ImGui::CollapsingHeader(MKSTR( sys ).c_str(), &exists, ImGuiTreeNodeFlags_DefaultOpen)) {
-                
-            }
-        }*/
-
         if(ImGui::SmallButton(ICON_MDI_PLUS " Create")) {
             state.backupState();
             state.selected_ent = state.world->createEntity().getId();

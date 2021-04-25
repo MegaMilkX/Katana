@@ -58,6 +58,10 @@ public:
     size_t chunkCount() const {
         return chunks.size();
     }
+    size_t chunkElemCount(int chunk) {
+        auto a = chunk * count_per_chunk;
+        return std::min(elem_count - a, count_per_chunk);
+    }
 
     size_t insert(void* data) {
         auto chunk_id = calcChunkId(elem_count);
@@ -91,6 +95,9 @@ public:
     }
     void* deref(size_t idx) {
         return calcPtr(idx);
+    }
+    void* derefChunkElement(size_t chunk_idx, size_t lcl_elem_idx) {
+        return ((uint8_t*)chunks[chunk_idx]) + (lcl_elem_idx * elem_size);
     }
 };
 
