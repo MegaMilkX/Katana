@@ -171,6 +171,7 @@ protected:
 
 #define RENDERER_PBR_SHADOW_CUBEMAP_COUNT 4
 #define RENDERER_PBR_SHADOW_CUBEMAP_SIZE 512
+#define RENDERER_PBR_SHADOW_MAP_SIZE 4096
 
 class RendererPBR : public Renderer {
     gl::ShaderProgram* prog_gbuf_solid;
@@ -183,14 +184,19 @@ class RendererPBR : public Renderer {
     gl::ShaderProgram* prog_shadowmap_solid;
     gl::ShaderProgram* prog_shadowmap_skin;
 
+    gl::ShaderProgram* prog_screen_quad;
+
+    GLuint      shadowmap;
     gl::CubeMap shadowmap_cube;
 
 public:
     RendererPBR();
+    ~RendererPBR();
 
     virtual void draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::mat4& view, DrawList& draw_list, bool draw_final_on_screen = false, bool draw_skybox = true);
     void draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4& proj, const gfxm::mat4& view, DrawList& draw_list, GLint final_framebuffer_id, bool draw_skybox = true);
     void sampleLightmap(const gfxm::ivec4& vp, const gfxm::mat4& proj, const gfxm::mat4& view, const DrawList& dl);
+    void drawShadowMap(GLuint map, const gfxm::vec3& dir, gfxm::mat4& out_view, gfxm::mat4& out_proj, const DrawList& draw_list);
     void drawShadowCubeMap(gl::CubeMap* cube_map, const gfxm::vec3& world_pos, const DrawList& draw_list);
 };
 

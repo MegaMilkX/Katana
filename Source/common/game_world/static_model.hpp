@@ -12,6 +12,9 @@ class ktAStaticModel : public ktActor {
     RTTR_ENABLE(ktActor)
 
     std::shared_ptr<StaticModel> static_mesh;
+
+    
+
 public:
     void setModel(std::shared_ptr<StaticModel> model) {
 

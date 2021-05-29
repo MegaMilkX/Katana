@@ -10,7 +10,7 @@
 #include <assert.h>
 
 
-class ecsTupleAnimatedSubScene : public ecsTuple<ecsSubSceneAnimator, ecsSubScene, ecsOptional<ecsTranslation>, ecsOptional<ecsWorldTransform>> {
+class ecsTupleAnimatedSubScene : public ecsTuple<ecsSubSceneAnimator, ecsSubScene, ecsOptional<ecsTranslation>, ecsOptional<ecsWorldTransform>, ecsOptional<ecsVelocity>> {
 public:
     ecsysSubScenePose* sysPose = 0;
 
@@ -51,7 +51,7 @@ public:
         t->_skeletonChanged();
     }
     
-    void onUpdate() {
+    void onUpdate(float dt) {
         for(int i = get_dirty_index<ecsTplAnimatedModel>(); i < count<ecsTplAnimatedModel>(); ++i) {
             auto t = get<ecsTplAnimatedModel>(i);
             auto a = t->get<ecsAnimator>();
@@ -75,7 +75,7 @@ public:
             if(!a->skeleton) {
                 continue;
             }
-            a->getLclMotion()->update(1.0f/60.0f, a->sample_buffer);
+            a->getLclMotion()->update(dt, a->sample_buffer);
             for(int i = 0; i < a->sample_buffer.getSamples().size(); ++i) {
                 auto& s = a->sample_buffer[i];
                 auto tgt_id = a->model_target_nodes[i];
@@ -96,7 +96,7 @@ public:
             }
             animator->sample_buffer.getRootMotionDelta().t = gfxm::vec3(0,0,0);
             animator->sample_buffer.getRootMotionDelta().r = gfxm::quat(0,0,0,1);
-            animator->getLclMotion()->update(1.0f/60.0f, animator->sample_buffer);
+            animator->getLclMotion()->update(dt, animator->sample_buffer);
             
             t->sysPose->setPose(animator->sample_buffer.getSamples());
 
@@ -108,7 +108,11 @@ public:
                 gfxm::vec3 rm_t = animator->sample_buffer.getRootMotionDelta().t;
                 rm_t.y = .0f;
                 rm_t = (world_trans->getTransform()) * gfxm::vec4(rm_t, .0f);
-                translation->translate(rm_t);
+                if(auto velo = t->get_optional<ecsVelocity>()) {
+                    velo->velo = rm_t / dt;
+                } else {
+                    translation->translate(rm_t);
+                }
             }
         }
     }

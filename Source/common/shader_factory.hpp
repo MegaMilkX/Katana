@@ -106,6 +106,7 @@ public:
             if((u = prog->getUniform("tex_shadowmap_omni[1]")) != -1) glUniform1i(u, gl::TEXTURE_SHADOW_CUBEMAP_1);
             if((u = prog->getUniform("tex_shadowmap_omni[2]")) != -1) glUniform1i(u, gl::TEXTURE_SHADOW_CUBEMAP_2);
             if((u = prog->getUniform("tex_shadowmap_cube")) != -1) glUniform1i(u, gl::TEXTURE_SHADOWMAP_CUBE);
+            if((u = prog->getUniform("tex_shadowmap")) != -1) glUniform1i(u, gl::TEXTURE_SHADOWMAP);
             if((u = prog->getUniform("tex_lightmap")) != -1) glUniform1i(u, gl::TEXTURE_LIGHTMAP);
 
             if((u = prog->getUniform("tex_0")) != -1) glUniform1i(u, gl::TEXTURE_0);

@@ -132,6 +132,12 @@ struct tmat4
         col[2].z = f;
         col[3].w = f;
     }
+    tmat4(T c00, T c01, T c02, T c03, T c10, T c11, T c12, T c13, T c20, T c21, T c22, T c23, T c30, T c31, T c32, T c33) {
+        col[0] = tvec4<T>(c00, c01, c02, c03);
+        col[1] = tvec4<T>(c10, c11, c12, c13);
+        col[2] = tvec4<T>(c20, c21, c22, c23);
+        col[3] = tvec4<T>(c30, c31, c32, c33);
+    }
 
     void operator=(const tmat3<T>& m)
     {

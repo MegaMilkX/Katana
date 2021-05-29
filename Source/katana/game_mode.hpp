@@ -13,7 +13,7 @@ public:
         onStart();
     }
     void _update(float dt) {
-        onUpdate();
+        onUpdate(dt);
     }
     void _render() {
         onRender();
@@ -23,7 +23,7 @@ public:
     }
 
     virtual void onStart()   = 0;
-    virtual void onUpdate()  = 0;
+    virtual void onUpdate(float dt)  = 0;
     virtual void onRender()  = 0;
     virtual void onCleanup() = 0;
 };

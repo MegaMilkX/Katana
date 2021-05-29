@@ -32,6 +32,7 @@ void ecsInit (void) {
     regEcsAttrib<ecsCollisionMesh>("CollisionMesh", "Collision");
     regEcsAttrib<ecsCollisionCache>("CollisionCache", "Collision");
     regEcsAttrib<ecsCollisionFilter>("CollisionFilter", "Collision");
+
     regEcsAttrib<ecsKinematicCharacter>("KinematicCharacter", "Collision");
     regEcsAttrib<ecsMass>("Mass", "Physics");
     regEcsAttrib<ecsMeshes>("Meshes", "Rendering");
@@ -51,8 +52,7 @@ void ecsInit (void) {
 
     regEcsAttrib<ecsBehavior>("Behavior");
 
-    // TEST
-    regEcsAttrib<ecsTestAttrib>("TestAttrib", "Test");
+    regEcsAttrib<ecsKinematicCapsule>("KinematicCapsule", "Collision");
 
 
     // Actors

@@ -132,7 +132,7 @@ void DocMotion::onGui(Editor* ed, float dt) {
         //skel_ref->debugDraw(&viewport.getDebugDraw());
     }*/
 
-    world.update();
+    world.update(dt);
     DrawList dl;
     world.getSystem<ecsRenderSystem>()->fillDrawList(dl);
     if(viewport.begin()) {

@@ -44,7 +44,7 @@ public:
         audio().freeChannel(src->channel);
     }
 
-    void onUpdate() override {
+    void onUpdate(float dt) override {
         for(auto& a : get_array<ecsTupleAudioListener>()) {
             audio().setListenerTransform(a->get<ecsWorldTransform>()->getTransform());
             // TODO: Only one listener is allowed, no need for array

@@ -204,7 +204,7 @@ void DocAnim::onGui(Editor* ed, float dt) {
     hLight.getAttrib<ecsRotation>()->setRotation(gfxm::to_quat(gfxm::to_orient_mat3(gfxm::inverse(gvp.getView()))));
     hLight.getAttrib<ecsWorldTransform>();
 
-    world.update();
+    world.update(dt);
 
     auto window = ImGui::GetCurrentWindow();
     auto rect = window->ContentsRegionRect;

@@ -12,15 +12,6 @@
 
 #include "actor.hpp"
 
-template<typename RESOURCE_T>
-class ktResourceSlot {
-    std::shared_ptr<RESOURCE_T> resource;
-public:
-    ktResourceSlot(std::function<void(void)> cb_on_change) {
-
-    }
-};
-
 class ktGameWorld : public Resource {
     RTTR_ENABLE(Resource);
 
@@ -75,7 +66,16 @@ public:
     }
 
     void update(float dt) {
+        for(auto a : actors) {
+            a->onUpdate(dt);
+        }
+        
         bt_world->stepSimulation(dt);
+
+        for(auto a : actors) {
+            a->onPostCollisionUpdate(dt);
+        }
+
         bt_world->debugDrawWorld();
     }
 

@@ -190,7 +190,7 @@ int main(int argc, char* argv[]) {
             platformGetMousePos(cx, cy);
 
             if(kt_play_mode) {
-                kt_play_mode->update();
+                kt_play_mode->update(dt);
             } else if(app_state) {
                 app_state->onUpdate();
                 app_state->onGui(dt);

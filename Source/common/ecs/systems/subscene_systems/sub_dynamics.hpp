@@ -324,6 +324,7 @@ public:
         if(col->get_optional<ecsCollisionCache>()) {
             col->collision_object->setUserPointer(col->get_optional<ecsCollisionCache>());
         }
+        col->get<ecsCollisionShape>()->object = col->collision_object.get();
 
         btTransform btt;
         gfxm::mat4 m = root_transform * col->get<ecsWorldTransform>()->getTransform();
@@ -331,8 +332,8 @@ public:
         col->collision_object->setWorldTransform(btt);
 
         ecsCollisionFilter* filter = col->get_optional<ecsCollisionFilter>();
-        uint64_t group = 1;
-        uint64_t mask = 1;
+        uint64_t group = COLLISION_DEFAULT_BIT;
+        uint64_t mask = COLLISION_DYNAMIC_BIT | COLLISION_KINEMATIC_BIT;
         if(filter) {
             group = filter->group;
             mask = filter->mask;
@@ -365,8 +366,8 @@ public:
         c->setWorldTransform(btt);
 
         ecsCollisionFilter* filter = col->get_optional<ecsCollisionFilter>();
-        uint64_t group = 1;
-        uint64_t mask = 1;
+        uint64_t group = COLLISION_DEFAULT_BIT;
+        uint64_t mask =  COLLISION_DYNAMIC_BIT | COLLISION_KINEMATIC_BIT;
         if(filter) {
             group = filter->group;
             mask = filter->mask;

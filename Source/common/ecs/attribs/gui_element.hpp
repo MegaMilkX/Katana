@@ -148,6 +148,7 @@ class ecsGuiText : public ecsAttrib<ecsGuiText> {
     GLuint vao = 0;
     GLuint vbuf = 0;
     GLuint uvbuf = 0;
+    GLuint rgbabuf = 0;
     GLuint uvlookupbuf = 0;
     int vertex_count = 0;
 
@@ -158,6 +159,7 @@ class ecsGuiText : public ecsAttrib<ecsGuiText> {
 
         std::vector<gfxm::vec3> vertices;
         std::vector<gfxm::vec2> uv;
+        std::vector<gfxm::vec4> rgba;
         std::vector<float>      uv_lookup_indices;
         float horiAdvance = .0f;
         float lineOffset = font->getLineHeight(face_height);
@@ -211,6 +213,11 @@ class ecsGuiText : public ecsAttrib<ecsGuiText> {
             uv.push_back(gfxm::vec2(1, 0));
             uv.push_back(gfxm::vec2(0, 0));
 
+            rgba.insert(rgba.end(), { 
+                gfxm::vec4(1,1,1,1), gfxm::vec4(1,1,1,1), gfxm::vec4(1,1,1,1),
+                gfxm::vec4(1,1,1,1), gfxm::vec4(1,1,1,1), gfxm::vec4(1,1,1,1)
+            });
+
             uv_lookup_indices.push_back(g.cache_id * 4);
             uv_lookup_indices.push_back(g.cache_id * 4 + 1);
             uv_lookup_indices.push_back(g.cache_id * 4 + 3);
@@ -255,6 +262,14 @@ class ecsGuiText : public ecsAttrib<ecsGuiText> {
         );
         glBufferData(GL_ARRAY_BUFFER, uv.size() * sizeof(gfxm::vec2), uv.data(), GL_STREAM_DRAW);
 
+        glBindBuffer(GL_ARRAY_BUFFER, rgbabuf);
+        glEnableVertexAttribArray(VFMT::ENUM_TEXT::ColorRGBA);
+        glVertexAttribPointer(
+            VFMT::ENUM_TEXT::ColorRGBA, 4, GL_FLOAT, GL_FALSE,
+            sizeof(float) * 4, 0
+        );
+        glBufferData(GL_ARRAY_BUFFER, rgba.size() * sizeof(rgba[0]), rgba.data(), GL_STREAM_DRAW);
+
         glBindBuffer(GL_ARRAY_BUFFER, uvlookupbuf);
         glEnableVertexAttribArray(VFMT::ENUM_TEXT::TextUVLookup);
         glVertexAttribPointer(
@@ -272,6 +287,7 @@ public:
     ecsGuiText() {
         glGenBuffers(1, &vbuf);
         glGenBuffers(1, &uvbuf);
+        glGenBuffers(1, &rgbabuf);
         glGenBuffers(1, &uvlookupbuf);
 
         glGenVertexArrays(1, &vao);
@@ -281,6 +297,7 @@ public:
             glDeleteVertexArrays(1, &vao);
             glDeleteBuffers(1, &vbuf);
             glDeleteBuffers(1, &uvbuf);
+            glDeleteBuffers(1, &rgbabuf);
             glDeleteBuffers(1, &uvlookupbuf);
         }
     }

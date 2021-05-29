@@ -78,6 +78,8 @@ void draw2d(const DrawList2d& dl, float screenW, float screenH) {
             glUniformMatrix4fv(sh_text->getUniform("mat_proj"), 1, GL_FALSE, (float*)&proj);
             glUniformMatrix4fv(sh_text->getUniform("mat_model"), 1, GL_FALSE, (float*)&cmd.transform);
             glUniform1i(sh_text->getUniform("lookupTextureWidth"), cmd.text.lookup_texture_width);
+
+            glUniform4f(sh_text->getUniform("color"), 1, 1, 1, 1);
             
             GLuint texture = cmd.text.tex_atlas;
             GLuint lookupTexture = cmd.text.tex_lookup;

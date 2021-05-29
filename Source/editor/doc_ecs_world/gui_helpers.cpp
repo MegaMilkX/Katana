@@ -86,7 +86,7 @@ void imguiEntityAttributeList(DocEcsWorldState& state) {
         if(!attrib) {
             continue;
         }
-        auto inf = getEcsAttribTypeLib().get_info(attrib->get_id());
+        auto inf = getEcsAttribTypeLib().get_info(i);
         const std::string& name = inf->name;
         bool exists = true;
         if(bitmaskInheritedAttribs & (1UL << i)) {
@@ -109,6 +109,7 @@ void imguiEntityAttributeList(DocEcsWorldState& state) {
 
         if(!exists) {
             state.world->removeAttrib(state.selected_ent, i);
+            break;
         }
     }
 }

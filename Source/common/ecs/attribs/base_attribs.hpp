@@ -355,6 +355,7 @@ class ecsCollisionShape : public ecsAttrib<ecsCollisionShape> {
     SHAPE type = SPHERE;
 
 public:
+    btCollisionObject* object = 0; // created by the system
     std::shared_ptr<btCollisionShape> shape;
     uint64_t                          collision_mask = 0;
     uint64_t                          collision_group = 0;
@@ -715,6 +716,7 @@ public:
         gfxm::vec3 pointOnA; // A is the cache owner
         gfxm::vec3 pointOnB;
         gfxm::vec3 normalOnB;
+        float penetration;
     };
     struct Other {
         ecsEntityHandle entity;
@@ -722,23 +724,21 @@ public:
     };
     std::vector<Other> entities;
 };
+
+
+struct ecsKinematicCapsule : public ecsAttrib<ecsKinematicCapsule> {
+    btRigidBody* rigid_body;
+    btCapsuleShape* capsule;
+    btMotionState* motion_state;
+    gfxm::vec3 offset;
+};
+
+
 class ecsKinematicCharacter : public ecsAttrib<ecsKinematicCharacter> {
 public:
     int val;
 };
-class ecsTestAttrib : public ecsAttrib<ecsTestAttrib> {
-    int val;
-public:
-    ecsTestAttrib() {
-        LOG_WARN("ecsTestAttrib()");
-    }
-    ecsTestAttrib(const ecsTestAttrib& other) {
-        LOG_WARN("ecsTestAttrib(const ecsTestAttrib& other)");
-    }
-    ~ecsTestAttrib() {
-        LOG_WARN("~ecsTestAttrib()");
-    }
-};
+
 
 class ecsLightOmni : public ecsAttrib<ecsLightOmni> {
 public:

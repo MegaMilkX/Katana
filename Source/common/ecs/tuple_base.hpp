@@ -62,7 +62,7 @@ public:
 
     template<typename T>
     bool is_dirty() const {
-        return (dirty_signature & (1 << T::get_id_static())) != 0;
+        return (dirty_signature & (1ULL << T::get_id_static())) != 0;
     }
     void clear_dirty_signature() {
         dirty_signature = 0;

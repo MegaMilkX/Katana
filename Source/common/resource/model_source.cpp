@@ -56,7 +56,7 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
     std::vector<float> tangent;
     std::vector<float> bitangent;
     std::vector<std::vector<float>> uv_layers;
-    std::vector<std::vector<float>> rgb_layers;
+    std::vector<std::vector<float>> rgba_layers;
     std::vector<gfxm::vec4> boneIndices;
     std::vector<gfxm::vec4> boneWeights;
 
@@ -168,6 +168,12 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
         indexOffset += indexCount;
         baseIndexValue += vertexCount;
     }
+    if(rgba_layers.empty()) {
+        std::vector<float> rgba;
+        rgba.resize(vertices.size() / 3 * 4);
+        std::fill(rgba.begin(), rgba.end(), 1.0f);
+        rgba_layers.push_back(rgba);
+    }
 
     mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::Position, vertices.data(), vertices.size() * sizeof(float));
     if(normal_layers.size() > 0) {
@@ -182,6 +188,8 @@ static std::shared_ptr<Mesh> mergeMeshes(const std::vector<const aiMesh*>& ai_me
     }
     mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::Tangent, tangent.data(), tangent.size() * sizeof(float));
     mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::Bitangent, bitangent.data(), bitangent.size() * sizeof(float));
+
+    mesh->mesh.setAttribData(VFMT::ENUM_GENERIC::ColorRGBA, rgba_layers[0].data(), rgba_layers[0].size() * sizeof(float));
 
     mesh->mesh.setIndices(indices.data(), indices.size());
 
@@ -695,4 +703,5 @@ bool ModelSource::unpackStaticModel(const std::string& dir) {
     createDirRecursive(anim_dir);
     createDirRecursive(material_dir);
     createDirRecursive(texture_dir);
+    return true;
 }

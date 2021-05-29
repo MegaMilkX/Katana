@@ -28,9 +28,9 @@ void KatanaImpl::stop() {
 float KatanaImpl::getTime() { return sTime; }
 float KatanaImpl::getDt() { return sFrameDelta; }
 
-void KatanaImpl::update() {
+void KatanaImpl::update(float dt) {
     if(!_session) return;
-    _session->_update(sFrameDelta);
+    _session->_update(dt);
     _session->_render();
 
     //debugOverlayDraw(1280, 720);

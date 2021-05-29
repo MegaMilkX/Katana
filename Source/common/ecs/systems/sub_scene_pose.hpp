@@ -33,7 +33,7 @@ public:
         }
     }
 
-    void onUpdate() {
+    void onUpdate(float dt) {
 
     }
 

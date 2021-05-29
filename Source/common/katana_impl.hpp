@@ -21,7 +21,7 @@ public:
     virtual float getTime();
     virtual float getDt();
 
-    void update();
+    void update(float dt);
 
     void update_time(float delta_time);
 };

@@ -9,7 +9,7 @@ class ecsTplBhvr : public ecsTuple<ecsBehavior> {};
 
 class ecsBehaviorSys : public ecsSystem<ecsTplBhvr>{
 public:
-    void onUpdate() override {
+    void onUpdate(float dt) override {
         for(int i = get_dirty_index<ecsTplBhvr>(); i < count<ecsTplBhvr>(); ++i) {
             auto b = get<ecsTplBhvr>(i);
             auto bhvr = b->get<ecsBehavior>();

@@ -166,7 +166,7 @@ public:
         ImGui::InputText("5", buf, 256);
     }
 private:
-    std::string col_group_names[6];
+    std::string col_group_names[7];
 
     std::set<std::pair<ktNode*, ktNode*>> pair_cache;
 

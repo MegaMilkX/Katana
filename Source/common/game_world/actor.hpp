@@ -2,6 +2,7 @@
 #define KT_ACTOR_HPP
 
 #include "../ecs/world.hpp"
+#include "../draw_list.hpp"
 
 class ktGameWorld;
 // Base class for most game objects or entities
@@ -40,6 +41,9 @@ public:
 
     virtual void onSpawn(ktGameWorld* world) {}
     virtual void onDespawn(ktGameWorld* world) {}
+
+    virtual void onUpdate(float dt) {}
+    virtual void onPostCollisionUpdate(float dt) {}
 
     virtual void onGui() {
         char buf[256];

@@ -39,8 +39,8 @@ void EntityTemplate::update(ecsEntityHandle hdl) {
     strm.jump(0);
 
     uint64_t ignore_mask = 0;
-    ignore_mask |= (1 << getEcsAttribTypeLib().get_attrib_id("Translation")); // Do not store translation
-    uint64_t name_mask = (1 << getEcsAttribTypeLib().get_attrib_id("Name"));
+    ignore_mask |= (1ULL << getEcsAttribTypeLib().get_attrib_id("Translation")); // Do not store translation
+    uint64_t name_mask = (1ULL << getEcsAttribTypeLib().get_attrib_id("Name"));
 
     ecsWorldReadCtx rctx(&getTemplateCacheWorld(), &strm);
     ecsWorld::deserializeAttribDesc(rctx);

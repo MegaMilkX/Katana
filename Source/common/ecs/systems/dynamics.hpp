@@ -7,6 +7,95 @@
 
 #include "subscene_systems/sub_dynamics.hpp"
 
+typedef ecsTuple<ecsTranslation, ecsRotation, ecsWorldTransform, ecsKinematicCapsule, ecsVelocity> ecsTupleKinematicCapsule;
+
+class btKinematicMotionState : public btMotionState {
+public:
+    gfxm::vec3 translation = gfxm::vec3(0,0,0);
+    gfxm::quat rotation = gfxm::quat(0,0,0,1);
+    gfxm::mat4 transform = gfxm::mat4(1.0f);
+
+    void getWorldTransform(btTransform& bt_transform) const override {
+        const gfxm::mat4& t = this->transform;
+        bt_transform.setFromOpenGLMatrix((float*)&t);
+    }
+    void setWorldTransform(const btTransform& bt_transform) override {
+        auto bt_vec3 = bt_transform.getOrigin();
+        translation = gfxm::vec3(bt_vec3.getX(), bt_vec3.getY(), bt_vec3.getZ());
+        auto bt_quat = bt_transform.getRotation();
+        rotation = gfxm::quat(bt_quat.getX(), bt_quat.getY(), bt_quat.getZ(), bt_quat.getW());
+    }
+};
+
+class ContactCallback3 : public btCollisionWorld::ContactResultCallback {
+public:
+    bool hasContact = false;
+    gfxm::vec3 penetration;
+    gfxm::vec3 A;
+    gfxm::vec3 B;
+
+    btScalar addSingleResult(btManifoldPoint& cp, const btCollisionObjectWrapper* colObj0Wrap, int partId0, int index0, const btCollisionObjectWrapper* colObj1Wrap, int partId1, int index1) override {
+        if(hasContact) {
+            return .0f;
+        }
+        if(cp.m_distance1 > .0f) {
+            return .0f;
+        }
+        
+        btVector3 btPosA = cp.m_positionWorldOnA;
+        btVector3 btPosB = cp.m_positionWorldOnB;
+        A = gfxm::vec3(btPosA.getX(), btPosA.getY(), btPosA.getZ());
+        B = gfxm::vec3(btPosB.getX(), btPosB.getY(), btPosB.getZ());
+        gfxm::vec3 P = B - A;
+
+        penetration = P;
+
+        hasContact = true;
+        return .0f;
+    }
+};
+
+class ConvexSweepCallback3 : public btCollisionWorld::ConvexResultCallback {
+public:
+    ConvexSweepCallback3(const gfxm::vec3& from, const gfxm::vec3& to, uint32_t mask)
+    : from(from), to(to), mask(mask) {}
+
+    virtual bool needsCollision(btBroadphaseProxy *proxy0) const {
+        return proxy0->m_collisionFilterGroup & mask;
+    }
+
+    virtual btScalar addSingleResult(btCollisionWorld::LocalConvexResult &convexResult, bool normalInWorldSpace) {
+        if(convexResult.m_hitCollisionObject->getInternalType() == btCollisionObject::CO_GHOST_OBJECT) {
+            return 0.0f;
+        }
+        if(convexResult.m_hitCollisionObject->getCollisionFlags() & btCollisionObject::CF_NO_CONTACT_RESPONSE) {
+            return 0.0f;
+        }
+
+        if(convexResult.m_hitFraction < closest_hit_fraction) {
+            closest_hit_fraction = convexResult.m_hitFraction;
+            closest_hit_center = gfxm::lerp(from, to, convexResult.m_hitFraction);
+            closest_hit = closest_hit_center;
+            has_hit = true;
+        }
+
+        gfxm::vec3 pos = gfxm::lerp(from, to, convexResult.m_hitFraction);
+
+        return .0f;
+    }
+
+    bool hasHit() {
+        return has_hit;
+    }
+
+    gfxm::vec3 closest_hit;
+    gfxm::vec3 closest_hit_center;
+    float closest_hit_fraction = 1.0f;
+private:
+    gfxm::vec3 from, to;
+    bool has_hit = false;
+    uint32_t mask;
+};
 
 class ecsDynamicsSys : public ecsSystem<
     ecsTupleCollisionSubScene,
@@ -14,7 +103,8 @@ class ecsDynamicsSys : public ecsSystem<
     ecsTupleCollisionPlane,
     ecsArchRigidBody,
     ecsTupleKinematicCharacter,
-    ecsTupleCollisionCache
+    ecsTupleCollisionCache,
+    ecsTupleKinematicCapsule
 > {
     btDefaultCollisionConfiguration* collisionConf;
     btCollisionDispatcher* dispatcher;
@@ -57,6 +147,33 @@ public:
         debugDrawer.setDD(dd);
     }
 
+    void onFit(ecsTupleKinematicCapsule* t) {
+        auto capsule = t->get<ecsKinematicCapsule>();
+        btVector3 local_inertia;
+        float mass = 60.0f;
+        capsule->motion_state = new btKinematicMotionState();
+        ((btKinematicMotionState*)capsule->motion_state)->transform = gfxm::translate(gfxm::mat4(1.0f), gfxm::vec3(.0f, 0.88f, .0f));
+        capsule->capsule = new btCapsuleShape(0.330f, 0.810f);
+        capsule->capsule->calculateLocalInertia(
+            mass, local_inertia
+        );
+        capsule->rigid_body = new btRigidBody(mass, capsule->motion_state, capsule->capsule, local_inertia);
+        capsule->rigid_body->setCollisionFlags(capsule->rigid_body->getCollisionFlags());
+        capsule->rigid_body->setActivationState(DISABLE_DEACTIVATION);
+        capsule->rigid_body->setAngularFactor(btVector3(0,0,0));
+        capsule->rigid_body->setLinearFactor(btVector3(1,0,1));
+        capsule->rigid_body->setDamping(.0f, .0f);
+
+        world->addRigidBody(capsule->rigid_body, COLLISION_KINEMATIC_BIT, COLLISION_DEFAULT_BIT | COLLISION_DYNAMIC_BIT | COLLISION_KINEMATIC_BIT);
+    }
+    void onUnfit(ecsTupleKinematicCapsule* t) {
+        auto capsule = t->get<ecsKinematicCapsule>();
+        world->removeRigidBody(capsule->rigid_body);
+        delete capsule->rigid_body;
+        delete capsule->capsule;
+        delete capsule->motion_state;
+    }
+
     void onFit(ecsTupleCollisionSubScene* subscene) {
         subscene->reinit(world);
     }
@@ -81,8 +198,8 @@ public:
         collider->collision_object->setWorldTransform(btt);
 
         ecsCollisionFilter* filter = collider->get_optional<ecsCollisionFilter>();
-        uint64_t group = 1;
-        uint64_t mask = 1;
+        uint64_t group = COLLISION_DEFAULT_BIT;
+        uint64_t mask = COLLISION_DYNAMIC_BIT | COLLISION_KINEMATIC_BIT;
         if(filter) {
             group = filter->group;
             mask = filter->mask;
@@ -108,8 +225,8 @@ public:
         }
 
         ecsCollisionFilter* filter = p->get_optional<ecsCollisionFilter>();
-        uint64_t group = 1;
-        uint64_t mask = 1;
+        uint64_t group = COLLISION_DEFAULT_BIT;
+        uint64_t mask = COLLISION_DYNAMIC_BIT | COLLISION_KINEMATIC_BIT;
         if(filter) {
             group = filter->group;
             mask = filter->mask;
@@ -148,8 +265,8 @@ public:
         }
 
         ecsCollisionFilter* filter = rb->get_optional<ecsCollisionFilter>();
-        uint64_t group = 1;
-        uint64_t mask = 1;
+        uint64_t group = COLLISION_DYNAMIC_BIT;
+        uint64_t mask = COLLISION_DEFAULT_BIT | COLLISION_DYNAMIC_BIT | COLLISION_KINEMATIC_BIT;
         if(filter) {
             group = filter->group;
             mask = filter->mask;
@@ -165,7 +282,7 @@ public:
         );
     }
 
-    void onUpdate() {
+    void onUpdate(float dt) {
         for(int i = get_dirty_index<ecsArchCollider>(); i < count<ecsArchCollider>(); ++i) {
             auto tuple = get<ecsArchCollider>(i);
             if(tuple->is_dirty<ecsCollisionShape>()) {
@@ -204,7 +321,27 @@ public:
             a->get<ecsCollisionCache>()->entities.clear();
         }
 
-        world->stepSimulation(1.0f/60.0f);
+        for(auto& a : get_array<ecsTupleKinematicCapsule>()) {
+            auto transform = a->get<ecsWorldTransform>();
+            auto capsule = a->get<ecsKinematicCapsule>();
+            auto motion_state = ((btKinematicMotionState*)capsule->motion_state);
+            auto velocity = a->get<ecsVelocity>();
+            capsule->rigid_body->setLinearVelocity(*(btVector3*)&(velocity->velo));
+            //capsule->rigid_body->translate(*(btVector3*)&(velocity->velo));                    
+        }
+
+        
+        world->stepSimulation(dt, 1, dt);
+
+        for(auto& a : get_array<ecsTupleKinematicCapsule>()) {
+            auto position = a->get<ecsTranslation>();
+            auto rotation = a->get<ecsRotation>();
+            auto capsule = a->get<ecsKinematicCapsule>();
+            auto motion_state = ((btKinematicMotionState*)capsule->motion_state);
+            gfxm::mat4 m;
+            capsule->rigid_body->getWorldTransform().getOpenGLMatrix((float*)&m);
+            position->setPosition(m * gfxm::vec4(0,-0.88f,0,1));       
+        }
 
         for(auto& a : get_array<ecsArchRigidBody>()) {
             auto& t = a->rigid_body->getWorldTransform();
@@ -213,7 +350,7 @@ public:
             auto& transform = a->get<ecsWorldTransform>()->getTransform();
             t.getOpenGLMatrix((float*)&transform);
         }
-
+        
         collision_pair_set_t pairs;
         int numManifolds = world->getDispatcher()->getNumManifolds();
         for(int i = 0; i < numManifolds; ++i) {
@@ -252,12 +389,14 @@ public:
                     const btVector3& ptA = btpt.getPositionWorldOnA();
                     const btVector3& ptB = btpt.getPositionWorldOnB();
                     const btVector3& normalOnB = btpt.m_normalWorldOnB;
+                    float penetration = -btpt.getDistance();
 
                     if(cacheEntityA) {
                         ecsCollisionCache::CollisionPoint pt;
                         pt.pointOnA = gfxm::vec3(ptA.getX(), ptA.getY(), ptA.getZ());
                         pt.pointOnB = gfxm::vec3(ptB.getX(), ptB.getY(), ptB.getZ());
                         pt.normalOnB = gfxm::vec3(normalOnB.getX(), normalOnB.getY(), normalOnB.getZ());
+                        pt.penetration = penetration;
                         cacheEntityA->points.push_back(pt);
                     }
                     if(cacheEntityB) {
@@ -265,6 +404,7 @@ public:
                         pt.pointOnA = gfxm::vec3(ptB.getX(), ptB.getY(), ptB.getZ());
                         pt.pointOnB = gfxm::vec3(ptA.getX(), ptA.getY(), ptA.getZ());
                         pt.normalOnB = -gfxm::vec3(normalOnB.getX(), normalOnB.getY(), normalOnB.getZ());
+                        pt.penetration = penetration;
                         cacheEntityB->points.push_back(pt);
                     }
 

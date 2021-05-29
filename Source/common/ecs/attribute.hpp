@@ -75,7 +75,7 @@ public:
     }
 
     static uint64_t get_mask() {
-        return (1 << get_id_static());
+        return (1ULL << get_id_static());
     }
 };
 template<typename T, ecsAttribType ATTR_TYPE>

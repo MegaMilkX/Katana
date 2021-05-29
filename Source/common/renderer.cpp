@@ -159,6 +159,15 @@ void Renderer::endFrame(GLint final_fb, const gfxm::mat4& view, const gfxm::mat4
 // == PBR ===
 
 RendererPBR::RendererPBR() {
+    glGenTextures(1, &shadowmap);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, shadowmap);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, RENDERER_PBR_SHADOW_MAP_SIZE, RENDERER_PBR_SHADOW_MAP_SIZE, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
     shadowmap_cube.init(
         RENDERER_PBR_SHADOW_CUBEMAP_SIZE, 
         RENDERER_PBR_SHADOW_CUBEMAP_SIZE,
@@ -175,9 +184,12 @@ RendererPBR::RendererPBR() {
     prog_shadowmap_skin = shaderLoader().loadShaderProgram("shaders/shadowmap_skin.glsl");
 
     prog_lightmap_sample = shaderLoader().loadShaderProgram("shaders/lightmap_sample.glsl");
-}
 
-const int MAX_OMNI_LIGHT = 10;
+    prog_screen_quad = shaderLoader().loadShaderProgram("shaders/screen_quad.glsl");
+}
+RendererPBR::~RendererPBR() {
+    glDeleteTextures(1, &shadowmap);
+}
 
 void RendererPBR::draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::mat4& view, DrawList& draw_list, bool draw_final_on_screen, bool draw_skybox) {
     draw(
@@ -191,9 +203,16 @@ void RendererPBR::draw(RenderViewport* vp, const gfxm::mat4& proj, const gfxm::m
 void RendererPBR::draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4& proj, const gfxm::mat4& view, DrawList& draw_list, GLint final_framebuffer_id, bool draw_skybox) {
     runDeformers(draw_list);
     
-    setGlStates();
-    setupUniformBuffers(proj, view);
-    
+    setGlStates();/*
+    if(!draw_list.dir_lights.empty()) {
+        auto& l = draw_list.dir_lights[0];
+        gfxm::mat4 sm_view;
+        gfxm::mat4 sm_proj;
+        drawShadowMap(shadowmap, l.dir, sm_view, sm_proj, draw_list);
+        setupUniformBuffers(sm_proj, sm_view);
+    } else */{
+        setupUniformBuffers(proj, view);
+    }
     gbuffer->bind(
         GBuffer::ALBEDO_BIT
         | GBuffer::NORMAL_BIT
@@ -216,7 +235,20 @@ void RendererPBR::draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4
     // ==== Lightness ================
     for(size_t i = 0; i < draw_list.dir_lights.size(); ++i) {
         auto& l = draw_list.dir_lights[i];
-        // TODO: No shadows yet
+        
+        gfxm::mat4 sm_view;
+        gfxm::mat4 sm_proj;
+        gfxm::mat4 sm_view_proj;
+        gfxm::mat4 bias(
+            .5f, .0f, .0f, .0f,
+            .0f, .5f, .0f, .0f,
+            .0f, .0f, .5f, .0f,
+            .5f, .5f, .5f, 1.f
+        );
+        drawShadowMap(shadowmap, l.dir, sm_view, sm_proj, draw_list);
+        sm_view_proj = sm_proj * sm_view;
+        sm_view_proj = bias * sm_view_proj;
+
         gbuffer->bind(GBuffer::LIGHTNESS_BIT, false);
         
         glEnable(GL_BLEND);
@@ -231,6 +263,7 @@ void RendererPBR::draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4
         gl::bindTexture2d(gl::TEXTURE_NORMAL, gbuffer->getNormalTexture());
         gl::bindTexture2d(gl::TEXTURE_METALLIC, gbuffer->getMetallicTexture());
         gl::bindTexture2d(gl::TEXTURE_ROUGHNESS, gbuffer->getRoughnessTexture());
+        gl::bindTexture2d(gl::TEXTURE_SHADOWMAP, shadowmap);
         {
             gfxm::vec4 view_pos4 = gfxm::inverse(view) * gfxm::vec4(0,0,0,1);
             glUniform3f(prog_light_dir->getUniform("view_pos"), view_pos4.x, view_pos4.y, view_pos4.z);
@@ -238,6 +271,7 @@ void RendererPBR::draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4
             gfxm::mat4 inverse_view_projection =
                 gfxm::inverse(proj * view);
             glUniformMatrix4fv(prog_light_dir->getUniform("inverse_view_projection"), 1, GL_FALSE, (float*)&inverse_view_projection);
+            glUniformMatrix4fv(prog_light_dir->getUniform("shadowmap_view_projection"), 1, GL_FALSE, (float*)&sm_view_proj);
         }
         auto& dir = l.dir;
         auto& intensity = l.intensity;
@@ -311,75 +345,12 @@ void RendererPBR::draw(GBuffer* gbuffer, const gfxm::ivec4& vp, const gfxm::mat4
     gl::bindTexture2d(gl::TEXTURE_DEPTH, gbuffer->getDepthTexture());
 
     drawQuad();
-
-    //gl::foo(view, proj);
-
-    // ==== Light pass ===============
-    /*
-    glDepthMask(GL_TRUE);
-    glEnable(GL_DEPTH_TEST);
-    glBindFramebuffer(GL_FRAMEBUFFER, final_framebuffer_id);
-    glViewport((GLsizei)vp.x, (GLsizei)vp.y, (GLsizei)vp.z, (GLsizei)vp.w);
-    
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    prog_light_pass->use();
-    
-    gfxm::vec3 light_omni_pos[MAX_OMNI_LIGHT];
-    gfxm::vec3 light_omni_col[MAX_OMNI_LIGHT];
-    float light_omni_radius[MAX_OMNI_LIGHT];
-    {
-        int count = std::min((int)draw_list.omnis.size(), MAX_OMNI_LIGHT);
-        for(size_t i = 0; i < count && i < MAX_OMNI_LIGHT; ++i) {
-            auto& l = draw_list.omnis[i];
-            light_omni_pos[i] = l.translation;
-            light_omni_col[i] = l.color * l.intensity;
-            light_omni_radius[i] = l.radius;
-        }
-        glUniform3fv(prog_light_pass->getUniform("light_omni_pos"), count, (float*)light_omni_pos);
-        glUniform3fv(prog_light_pass->getUniform("light_omni_col"), count, (float*)light_omni_col);
-        glUniform1fv(prog_light_pass->getUniform("light_omni_radius"), count, (float*)light_omni_radius);
-        glUniform1i(prog_light_pass->getUniform("light_omni_count"), count);
-    }
-    const int MAX_DIR_LIGHT = 3;
-    gfxm::vec3 light_dir[MAX_DIR_LIGHT];
-    gfxm::vec3 light_dir_col[MAX_DIR_LIGHT];
-    {
-        int count = std::min((int)draw_list.dir_lights.size(), MAX_DIR_LIGHT);
-        for(size_t i = 0; i < count; ++i) {
-            auto& l = draw_list.dir_lights[i];
-            light_dir[i] = l.dir;
-            light_dir_col[i] = l.color * l.intensity;
-        }
-        glUniform3fv(prog_light_pass->getUniform("light_dir"), count, (float*)light_dir);
-        glUniform3fv(prog_light_pass->getUniform("light_dir_col"), count, (float*)light_dir_col);
-        glUniform1i(prog_light_pass->getUniform("light_dir_count"), count);
-    }
-
-    gl::bindTexture2d(gl::TEXTURE_ALBEDO, gbuffer->getAlbedoTexture());
-    gl::bindTexture2d(gl::TEXTURE_NORMAL, gbuffer->getNormalTexture());
-    gl::bindTexture2d(gl::TEXTURE_METALLIC, gbuffer->getMetallicTexture());
-    gl::bindTexture2d(gl::TEXTURE_ROUGHNESS, gbuffer->getRoughnessTexture());
-    gl::bindTexture2d(gl::TEXTURE_LIGHTNESS, gbuffer->getLightnessTexture());
-    gl::bindCubeMap(gl::TEXTURE_ENVIRONMENT, irradiance_map->getId());
-    gl::bindTexture2d(gl::TEXTURE_DEPTH, gbuffer->getDepthTexture());
-    gl::bindTexture2d(gl::TEXTURE_EXT0, tex_ibl_brdf_lut->GetGlName());
-    gl::bindCubeMap(gl::TEXTURE_EXT1, env_map->getId());
-
-    gl::bindCubeMap(gl::TEXTURE_SHADOW_CUBEMAP_0, shadow_cubemaps[0].getId());
-    gl::bindCubeMap(gl::TEXTURE_SHADOW_CUBEMAP_1, shadow_cubemaps[1].getId());
-    gl::bindCubeMap(gl::TEXTURE_SHADOW_CUBEMAP_2, shadow_cubemaps[2].getId());
-
-    auto w = vp.z;
-    auto h = vp.w;
-    gfxm::vec4 view_pos4 = gfxm::inverse(view) * gfxm::vec4(0,0,0,1);
-    glUniform3f(prog_light_pass->getUniform("view_pos"), view_pos4.x, view_pos4.y, view_pos4.z);
-    glUniform2f(prog_light_pass->getUniform("viewport_size"), (float)w, (float)h);
-    gfxm::mat4 inverse_view_projection =
-        gfxm::inverse(proj * view);
-    glUniformMatrix4fv(prog_light_pass->getUniform("inverse_view_projection"), 1, GL_FALSE, (float*)&inverse_view_projection);
-    drawQuad();*/
-    
-    
+/*
+    prog_screen_quad->use();
+    gl::bindTexture2d(gl::TEXTURE_ALBEDO, shadowmap);
+    glViewport(0,0, 512, 512);
+    drawQuad();
+  */  
     endFrame(final_framebuffer_id, view, proj, draw_skybox);
 }
 
@@ -396,6 +367,67 @@ void RendererPBR::sampleLightmap(const gfxm::ivec4& vp, const gfxm::mat4& proj, 
         dl.solids.size(),
         texture_black_px.get()
     );
+}
+
+void RendererPBR::drawShadowMap(GLuint map, const gfxm::vec3& dir, gfxm::mat4& out_view, gfxm::mat4& out_proj, const DrawList& draw_list) {
+    gfxm::mat4 proj = gfxm::ortho(-25.0f, 25.0f, -25.0f, 25.0f, -50.01f, 50.0f);
+    gfxm::mat4 view(1.0f);
+    gfxm::vec3 up(.0f, 1.0f, .0f);
+    gfxm::vec3 direction = -dir;
+    gfxm::vec3 f(normalize(direction));
+    gfxm::vec3 s(normalize(cross(f, up)));
+    gfxm::vec3 u(cross(s, f));
+    view[0] = gfxm::vec4(s, .0f);
+    view[1] = gfxm::vec4(u, .0f);
+    view[2] = gfxm::vec4(-f, .0f);
+    view = gfxm::inverse(view);
+
+    out_view = view;
+    out_proj = proj;
+
+    const int side = RENDERER_PBR_SHADOW_MAP_SIZE;
+
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, map, 0);
+
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        LOG_ERR("Shadowmap fbo is incomplete");
+        assert(false);
+        return;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glDisable(GL_CULL_FACE);
+    glCullFace(GL_FRONT);
+    glDisable(GL_SCISSOR_TEST);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glDisable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ZERO);
+    glDepthMask(GL_TRUE);
+    glViewport(0,0,side,side);
+
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, map, 0);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    getState().ubufCommon3d.upload(uCommon3d{ view, proj });
+    getState().bindUniformBuffers();
+
+    drawMultiple(
+        prog_shadowmap_solid,
+        draw_list.solids.data(),
+        draw_list.solids.size()
+    );
+
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glDeleteFramebuffers(1, &fbo);
 }
 
 void RendererPBR::drawShadowCubeMap(gl::CubeMap* cube_map, const gfxm::vec3& eye, const DrawList& draw_list)

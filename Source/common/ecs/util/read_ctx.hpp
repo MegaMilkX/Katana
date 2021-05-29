@@ -39,14 +39,14 @@ public:
     uint64_t convertMask(uint64_t mask) {
         uint64_t converted = 0;
         for (int i = 0; i < (int)attrib_names.size(); ++i) {
-            if (mask & (1 << i)) {
+            if (mask & (1ULL << i)) {
                 auto& name = getAttribName(i);
                 attrib_id attrib_index = getEcsAttribTypeLib().get_attrib_id(name.c_str());
                 if (attrib_index == -1) {
                     LOG_ERR("Unknown attribute: " << name);
                     continue;
                 }
-                converted |= (1 << attrib_index);
+                converted |= (1ULL << attrib_index);
             }
         }
         return converted;

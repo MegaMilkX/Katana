@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
         frameTimer.start();
         platformUpdate(dt);
 
-        kt.update();
+        kt.update(dt);
 
         platformSwapBuffers();
         dt = frameTimer.end();

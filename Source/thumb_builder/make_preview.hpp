@@ -71,7 +71,7 @@ std::shared_ptr<Texture2D> makePreview<ecsWorld>(std::shared_ptr<ecsWorld> world
 
     DrawList dl;
     world->getSystem<ecsysSceneGraph>();
-    world->update();
+    world->update(1.0f/60.0f);
     world->getSystem<ecsRenderSystem>()->fillDrawList(dl);
 
     curve<gfxm::vec3> gradient;

@@ -146,11 +146,12 @@ DynamicsCtrl::DynamicsCtrl() {
     world->setDebugDrawer(&debugDrawer);
 
     col_group_names[0] = "Static";
-    col_group_names[1] = "Dynamic";
-    col_group_names[2] = "Trigger";
-    col_group_names[3] = "Actor";
-    col_group_names[4] = "Hitbox";
-    col_group_names[5] = "Hurtbox";
+    col_group_names[1] = "Kinematic";
+    col_group_names[2] = "Dynamic";
+    col_group_names[3] = "Trigger";
+    col_group_names[4] = "Actor";
+    col_group_names[5] = "Hitbox";
+    col_group_names[6] = "Hurtbox";
 }
 DynamicsCtrl::~DynamicsCtrl() {
     delete world;

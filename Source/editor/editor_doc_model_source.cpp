@@ -15,7 +15,7 @@ void EditorDocModelSource::onGui(Editor* ed, float dt) {
 
     DrawList dl;
     mdl_src->world->getSystem<ecsysSceneGraph>();
-    mdl_src->world->update();
+    mdl_src->world->update(dt);
     auto renderSys = mdl_src->world->getSystem<ecsRenderSystem>();
     renderSys->fillDrawList(dl);
     if (gvp.begin()) {

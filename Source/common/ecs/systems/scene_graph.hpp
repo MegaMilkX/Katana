@@ -38,6 +38,7 @@ class ecsysSceneGraph : public ecsSystem<
     ecsTplConstraint,
     ecsTplIK
 > {
+public:
     gfxm::mat4 root_transform = gfxm::mat4(1.0f);
 
     void onFit(ecsTupleSubGraph* sub_graph) {
@@ -84,11 +85,11 @@ class ecsysSceneGraph : public ecsSystem<
                 a->sub_system->root_transform = opt_world->getTransform();
                 a->sub_system->set_dirty_index<tupleTransform>(0);
             }
-            a->sub_system->onUpdate();
+            a->sub_system->onUpdate(1.0f/60.0f);
         }
     }
 
-    void onUpdate() {
+    void onUpdate(float dt) {
         updateDirtyTransforms();
 
         for(auto& a : get_array<ecsTplConstraint>()) {

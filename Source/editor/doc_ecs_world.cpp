@@ -66,7 +66,7 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
         state.undo_stack = &root_world_undo_stack;
     }
     
-    _resource->update();
+    _resource->update(dt);
 
     if(ImGui::BeginMenuBar()) {
         ImGui::PushItemWidth(100);
@@ -94,7 +94,7 @@ void DocEcsWorld::onGui(Editor* ed, float dt) {
 }
 
 void DocEcsWorld::onGuiToolbox(Editor* ed) {
-    ecsEntityViewTest test;
+    /*
     int light_id = 0;
     _resource->forEachEntity<ecsEntityViewTest>([&light_id](ecsEntityViewTest& v){
         gfxm::vec3 pos = v.translation->getPosition();
@@ -106,7 +106,7 @@ void DocEcsWorld::onGuiToolbox(Editor* ed) {
         ++light_id;
         //pos.y = (1.0f + sinf(time));
         v.translation->setPosition(pos);
-    });
+    });*/
     
     
     if(ImGui::SmallButton(ICON_MDI_PLUS " Add ActorCharacter")) {

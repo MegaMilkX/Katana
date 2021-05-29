@@ -167,7 +167,8 @@ void imguiEntityList_(
 
     for(int i = 0; i < named_entities.size(); ++i) {
         auto hdl = named_entities[i];
-        std::string name = hdl.findAttrib<ecsName>()->name;
+        auto name_attrib = hdl.findAttrib<ecsName>();
+        std::string name = name_attrib->name;
         imguiEntityListItem_(hdl, name, selected_ent);
     }
     for(int i = 0; i < unnamed_entities.size(); ++i) {

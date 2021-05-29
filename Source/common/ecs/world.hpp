@@ -86,6 +86,11 @@ public:
     }
 };
 */
+
+
+typedef uint64_t subscene_id;
+
+
 inline size_t calcArchetypeSize(uint64_t attribmask) {
     size_t sz = 0;
     for(size_t i = 0; i < get_last_attrib_id() + 1; ++i) {
@@ -126,7 +131,7 @@ inline int64_t archetypeOffset(uint64_t attrib_mask, attrib_id attr) {
 
 struct ArchetypeStorage {
     ArchetypeStorage(uint64_t signature) // for dynamic entities
-    : signature(signature), storage(archetypeSize(signature)) {
+    : signature(signature) {
         std::fill(attrib_offsets, attrib_offsets + sizeof(attrib_offsets) / sizeof(attrib_offsets[0]), -1);
         entity_size = archetypeSize(signature);
         for(int i = 0; i < 64; ++i) {
@@ -137,11 +142,13 @@ struct ArchetypeStorage {
             auto& offs = attrib_offsets[i];
             offs = archetypeOffset(signature, i);
         }
+        storage = EntityStorage(this, archetypeSize(signature), signature, attrib_offsets);
     }
     ArchetypeStorage(uint64_t signature, int64_t* offset_table, uint64_t entity_size) // for static entities (actors)
-    : signature(signature), storage(entity_size) { 
+    : signature(signature) { 
         this->entity_size = entity_size;
         memcpy(attrib_offsets, offset_table, sizeof(attrib_offsets));
+        storage = EntityStorage(this, entity_size, signature, attrib_offsets);
     }
     uint64_t entity_size;
     uint64_t signature;
@@ -237,8 +244,9 @@ class ecsWorld : public Resource {
         ((ecsSystemBase*)sys)->world = this;
         for(auto e : live_entities) {
             ecsEntity* ent = entities.deref(e);
-            if (ent->storage) {
-                sys->attribsCreated(this, e, ent->storage->signature, ent->storage->signature);
+            if (ent->chunk_header) {
+                auto signature = ent->chunk_header->signature;
+                sys->attribsCreated(this, e, signature, signature);
             }
         }
         return sys;
@@ -251,8 +259,9 @@ class ecsWorld : public Resource {
         ((ecsSystemBase*)sys)->world = this;
         for(auto e : live_entities) {
             ecsEntity* ent = entities.deref(e);
-            if (ent->storage) {
-                sys->attribsCreated(this, e, ent->storage->signature, ent->storage->signature);
+            if (ent->chunk_header) {
+                auto signature = ent->chunk_header->signature;
+                sys->attribsCreated(this, e, signature, signature);
             }
         }
         return sys;
@@ -273,6 +282,8 @@ public:
 
     template<typename T>
     T*                          createActor                 ();
+
+    subscene_id                 createSubscene              ();
 
     ecsEntityHandle             createEntity                ();
     ecsEntityHandle             createEntity                (archetype_mask_t attrib_signature);
@@ -347,7 +358,7 @@ public:
     template<typename ENTITY_VIEW_T>
     void                        forEachEntity(std::function<void(ENTITY_VIEW_T& view)> fn);
 
-    void                        update();
+    void                        update(float dt);
 
 
     void                        serialize(out_stream& out) override;
@@ -386,17 +397,19 @@ T* ecsWorld::createActor() {
     }
     auto storage_ptr = it_actor_storage->second.get();
     auto actor_entity_data_idx = storage_ptr->storage.alloc();
+    auto chunk_header = storage_ptr->storage.getChunkHeaderPtr(storage_ptr->storage.calcChunkId(actor_entity_data_idx));
+    uint64_t chunk_local_index = storage_ptr->storage.calcChunkLocalId(actor_entity_data_idx);
     void* actor_ptr = storage_ptr->storage.deref(actor_entity_data_idx);
     new (actor_ptr) T();
 
     entity_id e = entities.acquire();
     ecsEntity* entity = entities.deref(e);
-    entity->storage = storage_ptr;
+    entity->chunk_header = chunk_header;
     entity->bitmaskInheritedAttribs = 0;
     entity->first_child_uid = ENTITY_ERROR;
     entity->next_sibling_uid = ENTITY_ERROR;
     entity->parent_uid = ENTITY_ERROR;
-    entity->storage_index = actor_entity_data_idx;
+    entity->chunk_local_index = chunk_local_index;
 
     // Set attributes's handles to their entity
     // TODO: Need to get rid of this handle, it's a waste of memory
@@ -413,6 +426,7 @@ T* ecsWorld::createActor() {
     live_entities.insert(e);
 
     onAttribsCreated(e, desc->signature, desc->signature);
+    return (T*)actor_ptr;
 }
 
 template<typename T>
@@ -441,7 +455,7 @@ T* ecsWorld::setAttrib(entity_id ent, const T& value) {
         global_attrib_counters[T::get_id_static()]++;
         global_attrib_mask |= (1ULL << T::get_id_static());
         
-        onAttribsCreated(ent, e->storage->signature, 1ULL << T::get_id_static());
+        onAttribsCreated(ent, e->chunk_header->signature, 1ULL << T::get_id_static());
     } else {
         updateAttrib(ent, value);
     }
@@ -465,7 +479,7 @@ template<typename T>
 void ecsWorld::updateAttrib(entity_id ent, const T& value) {
     auto e = entities.deref(ent);
     auto attrib_id = T::get_id_static();
-    if (!e->storage) {
+    if (!e->chunk_header) {
         assert(false);
         return;
     }

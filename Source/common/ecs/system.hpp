@@ -29,7 +29,7 @@ public:
 
     ecsWorld* getWorld() const { return world; }
 
-    virtual void onUpdate() {
+    virtual void onUpdate(float dt) {
 
     }
 };

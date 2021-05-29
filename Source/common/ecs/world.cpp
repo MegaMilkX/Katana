@@ -352,12 +352,14 @@ ecsEntityHandle ecsWorld::createEntityFromTemplate (const char* tplPath) {
 void ecsWorld::removeEntity(entity_id id) {
     auto e = entities.deref(id);
     assert(e);
-    assert(e->storage);
+    assert(e->chunk_header);
 
-    if (e->storage) {
-        auto sig = e->storage->signature;
-        auto old_storage = e->storage;
-        auto old_storage_index = e->storage_index;
+    if (e->chunk_header) {
+        auto sig = e->chunk_header->signature;
+        auto old_chunk = e->chunk_header;
+        auto old_archetype = old_chunk->archetype;
+        uint64_t old_chunk_local_index = e->chunk_local_index;
+        auto old_storage_index = old_archetype->storage.getMaxElemCountPerChunk() * old_chunk->chunk_id + old_chunk_local_index;
 
         onAttribsRemoved(id, sig, sig);
 
@@ -370,20 +372,21 @@ void ecsWorld::removeEntity(entity_id id) {
             }
         }
 
-        deleteEntityData(old_storage->storage.deref(old_storage_index), sig);
-        auto last_index = old_storage->storage.count() - 1;
+        deleteEntityData(old_chunk->getElemPtr(old_chunk_local_index), sig);
+        auto last_index = old_archetype->storage.count() - 1;
         if (last_index != old_storage_index) {
-            copyConstructEntityData(old_storage->storage.deref(old_storage_index), sig, old_storage->storage.deref(last_index), sig, this, id);
-            entity_id last_ent = old_storage->storage_to_entity.back();
-            entities.deref(last_ent)->storage_index = old_storage_index;
-            old_storage->storage_to_entity[old_storage_index] = last_ent;
+            copyConstructEntityData(old_archetype->storage.deref(old_storage_index), sig, old_archetype->storage.deref(last_index), sig, this, id);
+            entity_id last_ent = old_archetype->storage_to_entity.back();
+            entities.deref(last_ent)->chunk_local_index = old_archetype->storage.calcChunkLocalId(old_storage_index);
+            entities.deref(last_ent)->chunk_header = old_archetype->storage.getChunkHeaderPtr(old_archetype->storage.calcChunkId(old_storage_index));
+            old_archetype->storage_to_entity[old_storage_index] = last_ent;
         }
-        deleteEntityData(old_storage->storage.deref(last_index), sig);
-        old_storage->storage.erase();
-        old_storage->storage_to_entity.pop_back();
+        deleteEntityData(old_archetype->storage.deref(last_index), sig);
+        old_archetype->storage.erase();
+        old_archetype->storage_to_entity.pop_back();
 
-        e->storage = 0;
-        e->storage_index = -1;
+        e->chunk_header = 0;
+        e->chunk_local_index = -1;
     }
 
     clearTemplateLink(id);
@@ -527,12 +530,12 @@ void ecsWorld::setParent (entity_id parent, entity_id child) {
     }
     
     // Update tuple relations. Tree relations turned out to be quite heavy
-    if(e->storage) {
+    if(e->chunk_header) {
         auto tuple_map = e->first_tuple_map.get();
         while(tuple_map != 0) {
             unlinkTupleTreeRelations(tuple_map->tuple);
             _findTreeRelations(child, tuple_map->ptr, tuple_map->tuple);
-            recursiveTupleMarkDirty(tuple_map->ptr, tuple_map->tuple, e->storage->signature);
+            recursiveTupleMarkDirty(tuple_map->ptr, tuple_map->tuple, e->chunk_header->signature);
             tuple_map = tuple_map->next.get();
         }
     }
@@ -580,15 +583,10 @@ ecsEntityHandle ecsWorld::mergeWorld (ecsWorld* world) {
 
 ecsAttribBase* ecsWorld::findAttrib(entity_id ent, attrib_id attrib) {
     auto e = entities.deref(ent);
-    if(!e->storage) {
+    if(!e->chunk_header) {
         return 0;
     }
-    uint8_t* base_ptr = (uint8_t*)e->storage->storage.deref(e->storage_index);
-    auto attrib_offset = e->storage->attrib_offsets[attrib];
-    if(attrib_offset == -1) {
-        return 0;
-    }
-    return (ecsAttribBase*)(base_ptr + attrib_offset);
+    return (ecsAttribBase*)e->chunk_header->getAttribPtr(e->chunk_local_index, attrib);
 }
 void ecsWorld::createAttrib(entity_id ent, attrib_id attrib) {
     auto e = entities.deref(ent);
@@ -598,35 +596,47 @@ void ecsWorld::createAttrib(entity_id ent, attrib_id attrib) {
 
     // New stuff
     // ------------
-    auto old_storage = e->storage;
-    int old_storage_index = 0;
+    auto old_chunk = e->chunk_header;
+    ArchetypeStorage* old_archetype = 0;
+    int old_chunk_local_index = 0;
     uint64_t old_sig = 0;
-    if(old_storage) {
-        old_storage_index = e->storage_index;
-        old_sig = old_storage->signature;
+    uint64_t old_storage_index = 0;
+    void* old_entity_data_ptr = 0;
+    if(old_chunk) {
+        old_archetype = old_chunk->archetype;
+        old_chunk_local_index = e->chunk_local_index;
+        old_sig = old_chunk->signature;
+        old_storage_index = old_archetype->storage.getMaxElemCountPerChunk() * old_chunk->chunk_id + old_chunk_local_index;
+        old_entity_data_ptr = old_chunk->getElemPtr(old_chunk_local_index);
     }
     uint64_t sig = old_sig | (1ULL << attrib);
     auto storage = getArchStorage(sig);
     uint64_t index = storage->storage.alloc();
-    e->storage = storage;
-    e->storage_index = index;
+    uint64_t chunk_index = storage->storage.calcChunkId(index);
+    uint64_t chunk_local_index = storage->storage.calcChunkLocalId(index);
+    EntityChunkHeader* new_chunk_header = storage->storage.getChunkHeaderPtr(chunk_index);
+    e->chunk_header = new_chunk_header;
+    e->chunk_local_index = chunk_local_index;
     storage->storage_to_entity.push_back(ent);
-    if(!old_storage) {
-        constructEntityData(storage->storage.deref(index), sig, this, ent);
+
+    void* const new_entity_data_ptr = new_chunk_header->getElemPtr(chunk_local_index);
+    if(!old_chunk) {
+        constructEntityData(new_entity_data_ptr, sig, this, ent);
     } else {
-        copyConstructEntityData(storage->storage.deref(index), sig, old_storage->storage.deref(old_storage_index), old_sig, this, ent);
-        deleteEntityData(old_storage->storage.deref(old_storage_index), old_sig);
+        copyConstructEntityData(new_entity_data_ptr, sig, old_entity_data_ptr, old_sig, this, ent);
+        deleteEntityData(old_entity_data_ptr, old_sig);
         // Move last element up
-        auto last_index = old_storage->storage.count() - 1;
+        auto last_index = old_archetype->storage.count() - 1;
         if(last_index != old_storage_index) {
-            copyConstructEntityData(old_storage->storage.deref(old_storage_index), old_sig, old_storage->storage.deref(last_index), old_sig, this, ent);
-            entity_id last_ent = old_storage->storage_to_entity.back();
-            entities.deref(last_ent)->storage_index = old_storage_index;
-            old_storage->storage_to_entity[old_storage_index] = last_ent;
+            copyConstructEntityData(old_archetype->storage.deref(old_storage_index), old_sig, old_archetype->storage.deref(last_index), old_sig, this, ent);
+            entity_id last_ent = old_archetype->storage_to_entity.back();
+            entities.deref(last_ent)->chunk_local_index = old_archetype->storage.calcChunkLocalId(old_storage_index);
+            entities.deref(last_ent)->chunk_header = old_archetype->storage.getChunkHeaderPtr(old_archetype->storage.calcChunkId(old_storage_index));
+            old_archetype->storage_to_entity[old_storage_index] = last_ent;
         }
-        deleteEntityData(old_storage->storage.deref(last_index), old_sig);
-        old_storage->storage.erase();
-        old_storage->storage_to_entity.pop_back();
+        deleteEntityData(old_archetype->storage.deref(last_index), old_sig);
+        old_archetype->storage.erase();
+        old_archetype->storage_to_entity.pop_back();
     }
     // ------------
     onAttribsCreated(ent, sig, 1ULL << attrib);
@@ -654,37 +664,49 @@ void ecsWorld::removeAttrib(entity_id ent, attrib_id attrib) {
     auto e = entities.deref(ent);
     // New stuff
     // ------------
-    auto old_storage = e->storage;
-    assert(old_storage);
-    uint64_t old_sig = old_storage->signature;
-    uint64_t sig = old_sig & ~(1ULL << attrib);
-    auto storage     = getArchStorage(sig);
-    auto old_storage_index = e->storage_index;
+    auto old_chunk = e->chunk_header;
+    assert(old_chunk);
+    uint64_t old_sig = old_chunk->signature;
+    uint64_t old_chunk_local_index = e->chunk_local_index;
+    ArchetypeStorage* old_archetype = old_chunk->archetype;
+    auto old_storage_index = old_archetype->storage.getMaxElemCountPerChunk() * old_chunk->chunk_id + old_chunk_local_index;
+
+    uint64_t sig     = old_sig & ~(1ULL << attrib);
+    ArchetypeStorage* storage = 0;
+    uint64_t new_storage_index = 0;
+    uint64_t new_chunk_local_index = 0;
+    EntityChunkHeader* new_chunk = 0;
+    if(sig != 0) {
+        storage = getArchStorage(sig);
+        new_storage_index = storage->storage.alloc();
+        new_chunk_local_index = storage->storage.calcChunkLocalId(new_storage_index);
+        new_chunk = storage->storage.getChunkHeaderPtr(storage->storage.calcChunkId(new_storage_index));
+    }
 
     onAttribsRemoved(ent, old_sig, 1ULL << attrib);
 
     if(sig != 0) {
-        auto new_idx = storage->storage.alloc();
-        void* dest = storage->storage.deref(new_idx);
-        copyConstructEntityData(dest, sig, old_storage->storage.deref(old_storage_index), old_sig, this, ent);
-        e->storage = storage;
-        e->storage_index = new_idx;
+        void* dest = new_chunk->getElemPtr(new_chunk_local_index);
+        copyConstructEntityData(dest, sig, old_chunk->getElemPtr(old_chunk_local_index), old_sig, this, ent);
+        e->chunk_header = new_chunk;
+        e->chunk_local_index = new_chunk_local_index;
         storage->storage_to_entity.push_back(ent);
     } else {
-        e->storage = 0;
-        e->storage_index = -1;
+        e->chunk_header = 0;
+        e->chunk_local_index = -1;
     }
-    deleteEntityData(old_storage->storage.deref(old_storage_index), old_sig);
-    auto last_index = old_storage->storage.count() - 1;
+    deleteEntityData(old_chunk->getElemPtr(old_chunk_local_index), old_sig);
+    auto last_index = old_archetype->storage.count() - 1;
     if(last_index != old_storage_index) {
-        copyConstructEntityData(old_storage->storage.deref(old_storage_index), old_sig, old_storage->storage.deref(last_index), old_sig, this, ent);
-        entity_id last_ent = old_storage->storage_to_entity.back();
-        entities.deref(last_ent)->storage_index = old_storage_index;
-        old_storage->storage_to_entity[old_storage_index] = last_ent;
+        copyConstructEntityData(old_archetype->storage.deref(old_storage_index), old_sig, old_archetype->storage.deref(last_index), old_sig, this, ent);
+        entity_id last_ent = old_archetype->storage_to_entity.back();
+        entities.deref(last_ent)->chunk_local_index = old_archetype->storage.calcChunkLocalId(old_storage_index);
+        entities.deref(last_ent)->chunk_header = old_archetype->storage.getChunkHeaderPtr(old_archetype->storage.calcChunkId(old_storage_index));
+        old_archetype->storage_to_entity[old_storage_index] = last_ent;
     }
-    deleteEntityData(old_storage->storage.deref(last_index), old_sig);
-    old_storage->storage.erase();
-    old_storage->storage_to_entity.pop_back();
+    deleteEntityData(old_archetype->storage.deref(last_index), old_sig);
+    old_archetype->storage.erase();
+    old_archetype->storage_to_entity.pop_back();
     // ------------
 
     global_attrib_counters[attrib]--;
@@ -723,10 +745,10 @@ uint64_t ecsWorld::getAttribBitmask(entity_id e) {
         assert(false);
         return 0;
     }
-    if (ent->storage == 0) {
+    if (ent->chunk_header == 0) {
         return 0;
     }
-    return ent->storage->signature;
+    return ent->chunk_header->signature;
 }
 
 uint64_t ecsWorld::getInheritedAttribBitmask(entity_id e) {
@@ -816,7 +838,7 @@ ecsSystemBase*  ecsWorld::getSystem(int i) {
     return systems[i].get();
 }
 
-void ecsWorld::update() {
+void ecsWorld::update(float dt) {
     timer t;
     t.start();
 
@@ -825,7 +847,7 @@ void ecsWorld::update() {
     }
 
     for(auto& sys : systems) {
-        sys->onUpdate();
+        sys->onUpdate(dt);
     }
 
     for(auto& kv : storages) {
@@ -964,10 +986,10 @@ static int countSetBits(uint64_t i)
 
 void ecsWorld::serializeEntity (ecsWorldWriteCtx& ctx, entity_id e, bool keep_template_link) {
     auto ent = ctx.getWorld()->entities.deref(e);
-    auto storage = ent->storage;
-    auto signature = 0;
-    if (storage) {
-        signature = storage->signature;
+    auto chunk = ent->chunk_header;
+    uint64_t signature = 0;
+    if (chunk) {
+        signature = chunk->signature;
     }
 
     uint32_t attrib_count = 0;
@@ -1026,17 +1048,17 @@ void ecsWorld::deserializeEntity (ecsWorldReadCtx& ctx, entity_id e, uint64_t at
     }
 
     for(int j = 0; j < attrib_count; ++j) {
-        attrib_id attrib_index = (attrib_id)ctx.read<uint16_t>();
+        attrib_id attrib_index_read = (attrib_id)ctx.read<uint16_t>();
 
         uint64_t attrib_byte_count = ctx.read<uint64_t>(); // Byte count saved by endSubBlock()
         
-        auto& attrib_name = ctx.getAttribName(attrib_index);
+        auto& attrib_name = ctx.getAttribName(attrib_index_read);
         // TODO: if attrib name is "" or other error - skip bytes
         if (attrib_name == "WorldTransform") {
           //__debugbreak();
         }
 
-        attrib_index = getEcsAttribTypeLib().get_attrib_id(attrib_name.c_str());
+        attrib_id attrib_index = getEcsAttribTypeLib().get_attrib_id(attrib_name.c_str());
 
         ecsAttribBase* a = ctx.getWorld()->getAttribPtr(e, attrib_index);
 

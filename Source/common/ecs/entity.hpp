@@ -9,6 +9,7 @@
 #include "entity_handle.hpp"
 #include "tuple_map_base.hpp"
 #include "tuple_base.hpp"
+#include "entity_storage.hpp"
 
 
 inline ecsAttribBase* allocAttrib(attrib_id id) {
@@ -39,8 +40,8 @@ class ecsWorld;
 class ecsEntity {
     friend ecsWorld;
 
-    ArchetypeStorage* storage = 0;
-    int storage_index = 0;
+    EntityChunkHeader* chunk_header = 0;
+    int chunk_local_index = 0;
 
     entity_id parent_uid = NULL_ENTITY;
     entity_id first_child_uid = NULL_ENTITY;

@@ -25,7 +25,7 @@ public:
         _resource->debugDrawer.setDD(&gvp.getDebugDraw());
     }
     void onGui(Editor* ed, float dt) override {
-        _resource->update(1.0f/60.0f);
+        _resource->update(dt);
         
         DrawList dl;
         if(gvp.begin()) {
@@ -74,8 +74,9 @@ public:
                         selected_actor = actor;
                     }
                 }
+                ImGui::TreePop();
             }
-            ImGui::TreePop();
+            
 
             ImGui::ListBoxFooter();
         }

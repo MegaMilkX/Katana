@@ -30,5 +30,7 @@ void ecsWorldWriteCtx::endSubBlock() {
     current_stream = strm;
     auto& buf = subblock_stream.getBuffer();
     write<uint64_t>(buf.size());
-    strm->write(buf.data(), buf.size());
+    if (buf.size() != 0) {
+        strm->write(buf.data(), buf.size());
+    }
 }

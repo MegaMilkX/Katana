@@ -23,7 +23,7 @@ public:
     virtual ~ecsTuplePart() {}
 
     static uint64_t get_inclusion_sig() {
-        return 1 << Arg::get_id_static();
+        return 1ULL << Arg::get_id_static();
     }
     static uint64_t get_optional_sig() {
         return 0;
@@ -36,7 +36,7 @@ public:
     int clearOptional(ecsEntityHandle hdl, uint64_t mask) { return 0; }
 
     int _signalAttribUpdate(ecsEntityHandle hdl, uint64_t attrib_sig) {
-        if((1 << Arg::get_id_static()) == attrib_sig) {
+        if((1ULL << Arg::get_id_static()) == attrib_sig) {
             onAttribUpdate(hdl.findAttrib<Arg>());
         }
         return 0;
@@ -58,7 +58,7 @@ public:
         return 0;
     }
     static uint64_t get_exclusion_sig() {
-        return 1 << Arg::get_id_static();
+        return 1ULL << Arg::get_id_static();
     }
 
     int updateOptional(ecsWorld* world, entity_id ent) { return 0; }
@@ -83,7 +83,7 @@ public:
         return 0;
     }
     static uint64_t get_optional_sig() {
-        return 1 << Arg::get_id_static();
+        return 1ULL << Arg::get_id_static();
     }
     static uint64_t get_exclusion_sig() {
         return 0;
@@ -101,14 +101,14 @@ public:
         return 0;
     }
     int clearOptional(ecsEntityHandle hdl, uint64_t mask) {
-        if(((1 << Arg::get_id_static()) & mask)) {
+        if(((1ULL << Arg::get_id_static()) & mask)) {
             onRemoveOptional(hdl.findAttrib<Arg>());
         }
         return 0;
     }
 
     int _signalAttribUpdate(ecsEntityHandle hdl, uint64_t attrib_sig) {
-        if((1 << Arg::get_id_static()) == attrib_sig) {
+        if((1ULL << Arg::get_id_static()) == attrib_sig) {
             onAttribUpdate(hdl.findAttrib<Arg>());
         }
         return 0;
