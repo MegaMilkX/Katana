@@ -14,7 +14,7 @@ class ktAStaticModel : public ktActor {
     std::shared_ptr<StaticModel> static_mesh;
 
     
-
+    ktGameWorld* world = 0;
 public:
     void setModel(std::shared_ptr<StaticModel> model) {
 
@@ -22,26 +22,15 @@ public:
 
     // ktActor
     void onSpawn(ktGameWorld* world) override {
-        
+        this->world = world;
     }
     void onDespawn(ktGameWorld* world) override {
-        
+        this->world = 0;
     }
 
-    void onGui() override {
-        ktActor::onGui();
-        imguiResourceTreeCombo("static mesh", static_mesh, "static_mesh", [](){
-
-        },[this](ResourceNode* node){
-            if(node->getExtension().compare("fbx") == 0) {
-                AssimpScene scn;
-                auto buf = node->readBytes();
-                scn.load(buf.data(), buf.size(), node->getName());
-                auto ai_scene = scn.getScene();
-                
-                
-            }
-        });
+    void onUpdate(float dt) override {
+        world->debug_draw->point(getWorldTransform() * gfxm::vec4(0.f,0.f,0.f,1.f), gfxm::vec3(1, 0, 0));
+        world->debug_draw->circle(getWorldTransform() * gfxm::vec4(0.f,0.f,0.f,1.f), 0.5f, gfxm::vec3(1,0,0), gfxm::to_mat3(getWorldTransform()));
     }
 };
 STATIC_RUN(ktAStaticModel) {

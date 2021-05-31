@@ -41,10 +41,6 @@ public:
         world->bt_world->removeRigidBody(bt_rigid_body.get());
     }
 
-    void onGui() override {
-        ktActor::onGui();
-    }
-
     // btMotionState
 private:
     void getWorldTransform(btTransform& transform) const override {

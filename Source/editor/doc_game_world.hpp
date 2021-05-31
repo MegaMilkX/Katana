@@ -6,14 +6,54 @@
 #include "../common/game_world/static_model.hpp"
 #include "../common/game_world/rigid_body.hpp"
 
+class ActorView {
+    ktActor* actor;
+    std::vector<std::shared_ptr<ImGuiPropertyView>> properties;
+public:
+    ActorView()
+    : actor(0) {}
+
+    ActorView(ktActor* a)
+    : actor(a) {
+        if(!actor) {
+            properties.clear();
+            return;
+        }
+
+        rttr::type t = actor->get_type();
+        for(auto prop : t.get_properties()) {
+            auto view = createImGuiPropertyView(rttr::instance(rttr::variant(a)), prop);
+            if(!view) {
+                continue;
+            }
+            properties.push_back(view);
+        }
+    }
+
+    void onGui() {
+        int i = 0;
+        for(auto& prop : properties) {
+            if(prop->onGui()) {
+                prop->get(rttr::instance(rttr::variant(actor)));
+            }
+            ++i;
+        }
+    }
+};
 
 class DocGameWorld : public EditorDocumentTyped<ktGameWorld> {
     GuiViewport gvp;
     ktActor* selected_actor = 0;
+    ActorView actor_view;
+
+    void selectActor(ktActor* a) {
+        selected_actor = a;
+        actor_view = ActorView(a);
+    }
 public:
     DocGameWorld() {
         if(_resource) {
-            _resource->debugDrawer.setDD(&gvp.getDebugDraw());
+            _resource->setDebugDraw(&gvp.getDebugDraw());
 
             btCollisionObject* co = new btCollisionObject;
             btCollisionShape* shape = new btSphereShape(0.5f);
@@ -48,7 +88,7 @@ public:
                     auto variant = a_type.create();
                     if(variant.can_convert<ktActor*>()) {
                         auto ptr = variant.get_value<ktActor*>();
-                        selected_actor = ptr;
+                        selectActor(ptr);
                         world->addActor(ptr);
                     } else {
                         LOG_ERR("Type " << variant.get_type().get_name().to_string() << " cannot be converted to ktActor*");
@@ -71,7 +111,7 @@ public:
                     auto actor = world->getActor(i);
                     std::string name = (std::ostringstream() << actor->getName() << "###" << actor).str();
                     if(ImGui::Selectable(name.c_str(), selected_actor == actor)) {
-                        selected_actor = actor;
+                        selectActor(actor);
                     }
                 }
                 ImGui::TreePop();
@@ -82,9 +122,7 @@ public:
         }
         ImGui::PopItemWidth();
 
-        if(selected_actor) {
-            selected_actor->onGui();
-        }
+        actor_view.onGui();
 
         return;
     }

@@ -354,6 +354,8 @@ void EditorResourceTree::update(Editor* editor) {
             }
             if(hovered) {
                 if(ImGui::IsMouseDoubleClicked(0)) {
+                    // Open file
+                    // TODO: Rework this
                     editor->tryOpenDocument(node->getFullName());
                 }
             }

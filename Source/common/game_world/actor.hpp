@@ -19,19 +19,17 @@ class ktActor {
     gfxm::vec3 scale = gfxm::vec3(1,1,1);
     gfxm::mat4 world_transform = gfxm::mat4(1.0f);
 public:
-    void setName(const char* name) {
-        this->name = name;
-    }
-    const std::string& getName() const {
-        return name;
-    }
+    void setName(const char* name) { this->name = name; }
+    const char* getName() const { return name.c_str(); }
 
-    void setTranslation(const gfxm::vec3& t) {
-        translation = t;
-    }
-    void setRotation(const gfxm::quat& q) {
-        rotation = q;
-    }
+    void setTranslation(const gfxm::vec3& t) { translation = t; }
+    void setRotation(const gfxm::quat& q) { rotation = q; }
+    void setScale(const gfxm::vec3& s) { scale = s; }
+
+    const gfxm::vec3& getTranslation() const { return translation; }
+    const gfxm::quat& getRotation() const { return rotation; }
+    const gfxm::vec3& getScale() const { return scale; }
+
     const gfxm::mat4& getWorldTransform() {
         return world_transform = 
             gfxm::translate(gfxm::mat4(1.0f), translation) * 
@@ -44,25 +42,6 @@ public:
 
     virtual void onUpdate(float dt) {}
     virtual void onPostCollisionUpdate(float dt) {}
-
-    virtual void onGui() {
-        char buf[256];
-        memset(buf, 0, sizeof(buf));
-        memcpy(buf, name.c_str(), name.size());
-        if(ImGui::InputText("name", buf, 256)) {
-            name = buf;
-        }
-
-        if(ImGui::InputFloat3("position", (float*)&translation, 3)) {
-
-        }
-        if(ImGui::InputFloat4("rotation", (float*)&rotation, 3)) {
-
-        } 
-        if(ImGui::InputFloat3("scale", (float*)&scale, 3)) {
-
-        }
-    }
     
 };
 
